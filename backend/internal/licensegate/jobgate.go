@@ -43,21 +43,41 @@ func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
 // it: reading through the pool instead would take a second connection while the first is held,
 // and callers queued on the same row could then exhaust the pool and wait on one another.
 func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgmtv1alpha1.Job) error {
-	accountUuid, err := husonymdb.ToUuid(job.GetAccountId())
+	used, err := featuresOfJob(ctx, g.db, dbtx, job)
 	if err != nil {
 		return err
+	}
+	missing := MissingFeatures(g.lic, used)
+	if len(missing) == 0 {
+		return nil
+	}
+	return husonymerrors.NewForbidden(RefusalMessage(missing))
+}
+
+// featuresOfJob lists the licensed features a job uses, from its definition and from what only
+// the database knows about it: whether it has an enabled hook, and what the user-defined
+// transformers it references store. It reads through the given handle.
+func featuresOfJob(
+	ctx context.Context,
+	db *husonymdb.HusonymDb,
+	dbtx husonymdb.BaseDBTX,
+	job *mgmtv1alpha1.Job,
+) ([]license.Feature, error) {
+	accountUuid, err := husonymdb.ToUuid(job.GetAccountId())
+	if err != nil {
+		return nil, err
 	}
 
 	hasEnabledHooks := false
 	if job.GetId() != "" {
 		jobUuid, err := husonymdb.ToUuid(job.GetId())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// A hook of any timing counts, as long as it is enabled: a disabled one does not run.
-		hooks, err := g.db.Q.GetActiveJobHooks(ctx, dbtx, jobUuid)
+		hooks, err := db.Q.GetActiveJobHooks(ctx, dbtx, jobUuid)
 		if err != nil {
-			return fmt.Errorf("unable to get the enabled hooks of job %s: %w", job.GetId(), err)
+			return nil, fmt.Errorf("unable to get the enabled hooks of job %s: %w", job.GetId(), err)
 		}
 		hasEnabledHooks = len(hooks) > 0
 	}
@@ -67,7 +87,7 @@ func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgm
 		if err != nil {
 			return nil, err
 		}
-		transformer, err := g.db.Q.GetUserDefinedTransformerById(ctx, dbtx, transformerUuid)
+		transformer, err := db.Q.GetUserDefinedTransformerById(ctx, dbtx, transformerUuid)
 		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, err
 		}
@@ -78,15 +98,7 @@ func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgm
 		return transformer.TransformerConfig.ToTransformerConfigDto()
 	}
 
-	used, err := FeaturesUsedBy(ctx, JobFacts{Job: job, HasEnabledHooks: hasEnabledHooks}, lookup)
-	if err != nil {
-		return err
-	}
-	missing := MissingFeatures(g.lic, used)
-	if len(missing) == 0 {
-		return nil
-	}
-	return husonymerrors.NewForbidden(RefusalMessage(missing))
+	return FeaturesUsedBy(ctx, JobFacts{Job: job, HasEnabledHooks: hasEnabledHooks}, lookup)
 }
 
 // CheckStored is Check for a job known by its id: the job is read from the database as the job

@@ -105,6 +105,11 @@ class UserAccountServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.FromString,
                 _registered_method=True)
+        self.GetLicenseUsage = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/GetLicenseUsage',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageResponse.FromString,
+                _registered_method=True)
         self.GetAccountOnboardingConfig = channel.unary_unary(
                 '/mgmt.v1alpha1.UserAccountService/GetAccountOnboardingConfig',
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetAccountOnboardingConfigRequest.SerializeToString,
@@ -292,6 +297,13 @@ class UserAccountServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetLicenseUsage(self, request, context):
+        """Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetAccountOnboardingConfig(self, request, context):
         """Retrieves the onboarding config for the account.
         """
@@ -461,6 +473,11 @@ def add_UserAccountServiceServicer_to_server(servicer, server):
                     servicer.GetSystemLicenseKey,
                     request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.SerializeToString,
+            ),
+            'GetLicenseUsage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetLicenseUsage,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageResponse.SerializeToString,
             ),
             'GetAccountOnboardingConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAccountOnboardingConfig,
@@ -1005,6 +1022,33 @@ class UserAccountService:
             '/mgmt.v1alpha1.UserAccountService/GetSystemLicenseKey',
             mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetLicenseUsage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/GetLicenseUsage',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.GetLicenseUsageResponse.FromString,
             options,
             channel_credentials,
             insecure,

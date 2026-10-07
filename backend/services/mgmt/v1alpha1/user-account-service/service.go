@@ -4,6 +4,7 @@ import (
 	"context"
 
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
@@ -27,12 +28,19 @@ type Service struct {
 	refreshLicense         func(ctx context.Context) error
 	installations          installationMemory
 	jobgate                JobGate
+	licenseusage           LicenseUsage
 }
 
 // JobGate tells whether a job of an account may start under the license.
 // *licensegate.JobGate is one.
 type JobGate interface {
 	CheckStored(ctx context.Context, accountId, jobId string) error
+}
+
+// LicenseUsage tells what an account uses of the license of the instance, whatever the license
+// allows. *licensegate.UsageReader is one.
+type LicenseUsage interface {
+	Of(ctx context.Context, accountId string) (*licensegate.Usage, error)
 }
 
 // LicenseDescriber tells what the process holds as its license at one instant. The provider
@@ -85,6 +93,7 @@ func New(
 	// just stored is in force when the call that stored it answers.
 	refreshLicense func(ctx context.Context) error,
 	jobgate JobGate,
+	licenseusage LicenseUsage,
 ) *Service {
 	return &Service{
 		cfg:                    cfg,
@@ -98,6 +107,7 @@ func New(
 		licenses:               licenses,
 		refreshLicense:         refreshLicense,
 		jobgate:                jobgate,
+		licenseusage:           licenseusage,
 	}
 }
 

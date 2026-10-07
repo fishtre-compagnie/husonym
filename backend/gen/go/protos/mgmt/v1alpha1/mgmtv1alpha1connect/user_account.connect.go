@@ -87,6 +87,9 @@ const (
 	// UserAccountServiceGetSystemLicenseKeyProcedure is the fully-qualified name of the
 	// UserAccountService's GetSystemLicenseKey RPC.
 	UserAccountServiceGetSystemLicenseKeyProcedure = "/mgmt.v1alpha1.UserAccountService/GetSystemLicenseKey"
+	// UserAccountServiceGetLicenseUsageProcedure is the fully-qualified name of the
+	// UserAccountService's GetLicenseUsage RPC.
+	UserAccountServiceGetLicenseUsageProcedure = "/mgmt.v1alpha1.UserAccountService/GetLicenseUsage"
 	// UserAccountServiceGetAccountOnboardingConfigProcedure is the fully-qualified name of the
 	// UserAccountService's GetAccountOnboardingConfig RPC.
 	UserAccountServiceGetAccountOnboardingConfigProcedure = "/mgmt.v1alpha1.UserAccountService/GetAccountOnboardingConfig"
@@ -160,6 +163,8 @@ type UserAccountServiceClient interface {
 	SetSystemLicense(context.Context, *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error)
 	// Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
 	GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error)
+	// Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.
+	GetLicenseUsage(context.Context, *connect.Request[v1alpha1.GetLicenseUsageRequest]) (*connect.Response[v1alpha1.GetLicenseUsageResponse], error)
 	// Retrieves the onboarding config for the account.
 	GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error)
 	// Sets the onboarding config for the account.
@@ -310,6 +315,13 @@ func NewUserAccountServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getLicenseUsage: connect.NewClient[v1alpha1.GetLicenseUsageRequest, v1alpha1.GetLicenseUsageResponse](
+			httpClient,
+			baseURL+UserAccountServiceGetLicenseUsageProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("GetLicenseUsage")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountOnboardingConfig: connect.NewClient[v1alpha1.GetAccountOnboardingConfigRequest, v1alpha1.GetAccountOnboardingConfigResponse](
 			httpClient,
 			baseURL+UserAccountServiceGetAccountOnboardingConfigProcedure,
@@ -405,6 +417,7 @@ type userAccountServiceClient struct {
 	getSystemInformation             *connect.Client[v1alpha1.GetSystemInformationRequest, v1alpha1.GetSystemInformationResponse]
 	setSystemLicense                 *connect.Client[v1alpha1.SetSystemLicenseRequest, v1alpha1.SetSystemLicenseResponse]
 	getSystemLicenseKey              *connect.Client[v1alpha1.GetSystemLicenseKeyRequest, v1alpha1.GetSystemLicenseKeyResponse]
+	getLicenseUsage                  *connect.Client[v1alpha1.GetLicenseUsageRequest, v1alpha1.GetLicenseUsageResponse]
 	getAccountOnboardingConfig       *connect.Client[v1alpha1.GetAccountOnboardingConfigRequest, v1alpha1.GetAccountOnboardingConfigResponse]
 	setAccountOnboardingConfig       *connect.Client[v1alpha1.SetAccountOnboardingConfigRequest, v1alpha1.SetAccountOnboardingConfigResponse]
 	getAccountStatus                 *connect.Client[v1alpha1.GetAccountStatusRequest, v1alpha1.GetAccountStatusResponse]
@@ -508,6 +521,11 @@ func (c *userAccountServiceClient) GetSystemLicenseKey(ctx context.Context, req 
 	return c.getSystemLicenseKey.CallUnary(ctx, req)
 }
 
+// GetLicenseUsage calls mgmt.v1alpha1.UserAccountService.GetLicenseUsage.
+func (c *userAccountServiceClient) GetLicenseUsage(ctx context.Context, req *connect.Request[v1alpha1.GetLicenseUsageRequest]) (*connect.Response[v1alpha1.GetLicenseUsageResponse], error) {
+	return c.getLicenseUsage.CallUnary(ctx, req)
+}
+
 // GetAccountOnboardingConfig calls mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig.
 func (c *userAccountServiceClient) GetAccountOnboardingConfig(ctx context.Context, req *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error) {
 	return c.getAccountOnboardingConfig.CallUnary(ctx, req)
@@ -603,6 +621,8 @@ type UserAccountServiceHandler interface {
 	SetSystemLicense(context.Context, *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error)
 	// Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
 	GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error)
+	// Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.
+	GetLicenseUsage(context.Context, *connect.Request[v1alpha1.GetLicenseUsageRequest]) (*connect.Response[v1alpha1.GetLicenseUsageResponse], error)
 	// Retrieves the onboarding config for the account.
 	GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error)
 	// Sets the onboarding config for the account.
@@ -749,6 +769,13 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	userAccountServiceGetLicenseUsageHandler := connect.NewUnaryHandler(
+		UserAccountServiceGetLicenseUsageProcedure,
+		svc.GetLicenseUsage,
+		connect.WithSchema(userAccountServiceMethods.ByName("GetLicenseUsage")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	userAccountServiceGetAccountOnboardingConfigHandler := connect.NewUnaryHandler(
 		UserAccountServiceGetAccountOnboardingConfigProcedure,
 		svc.GetAccountOnboardingConfig,
@@ -859,6 +886,8 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 			userAccountServiceSetSystemLicenseHandler.ServeHTTP(w, r)
 		case UserAccountServiceGetSystemLicenseKeyProcedure:
 			userAccountServiceGetSystemLicenseKeyHandler.ServeHTTP(w, r)
+		case UserAccountServiceGetLicenseUsageProcedure:
+			userAccountServiceGetLicenseUsageHandler.ServeHTTP(w, r)
 		case UserAccountServiceGetAccountOnboardingConfigProcedure:
 			userAccountServiceGetAccountOnboardingConfigHandler.ServeHTTP(w, r)
 		case UserAccountServiceSetAccountOnboardingConfigProcedure:
@@ -960,6 +989,10 @@ func (UnimplementedUserAccountServiceHandler) SetSystemLicense(context.Context, 
 
 func (UnimplementedUserAccountServiceHandler) GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) GetLicenseUsage(context.Context, *connect.Request[v1alpha1.GetLicenseUsageRequest]) (*connect.Response[v1alpha1.GetLicenseUsageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.GetLicenseUsage is not implemented"))
 }
 
 func (UnimplementedUserAccountServiceHandler) GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error) {

@@ -32,8 +32,6 @@ import (
 )
 
 const (
-	defaultCronStr = "0 0 1 1 *"
-
 	// createJobCleanupTimeout is how long the removal of a job whose schedule could not be
 	// created may take, once the call that created it has ended.
 	createJobCleanupTimeout = 15 * time.Second
@@ -507,7 +505,7 @@ func (s *Service) CreateJob(
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
-		cronStr = defaultCronStr
+		cronStr = job_util.UnscheduledCron
 	}
 	cronText := pgtype.Text{}
 	err = cronText.Scan(cronStr)
@@ -904,7 +902,7 @@ func (s *Service) UpdateJobSchedule(
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
-		cronStr = defaultCronStr
+		cronStr = job_util.UnscheduledCron
 	}
 	cronText := pgtype.Text{}
 	err = cronText.Scan(cronStr)

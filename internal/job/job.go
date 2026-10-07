@@ -6,6 +6,10 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 )
 
+// UnscheduledCron is the schedule stored for a job that was given none: a job always has a
+// schedule to be started through, so one without a cron of its own is written this one.
+const UnscheduledCron = "0 0 1 1 *"
+
 type SqlJobSourceOpts struct {
 	// Determines if the job should halt if a new column is detected that is not present in the job mappings
 	HaltOnNewColumnAddition bool

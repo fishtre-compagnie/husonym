@@ -288,6 +288,7 @@ func (s *HusonymApiTestClient) setupMux(
 		s.licenseStore(pgcontainer),
 		licensing.refresh,
 		jobGate,
+		licensegate.NewUsageReader(husonymDb, rbacClient),
 	)
 	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 

@@ -530,7 +530,7 @@ func serve(ctx context.Context) error {
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
 		WorkerOnly:               workerOnly,
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient))
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,

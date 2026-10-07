@@ -660,6 +660,74 @@ func (_c *MockUserAccountServiceClient_GetBillingAccounts_Call) RunAndReturn(run
 	return _c
 }
 
+// GetLicenseUsage provides a mock function for the type MockUserAccountServiceClient
+func (_mock *MockUserAccountServiceClient) GetLicenseUsage(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]) (*connect.Response[mgmtv1alpha1.GetLicenseUsageResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLicenseUsage")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.GetLicenseUsageResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]) (*connect.Response[mgmtv1alpha1.GetLicenseUsageResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]) *connect.Response[mgmtv1alpha1.GetLicenseUsageResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.GetLicenseUsageResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserAccountServiceClient_GetLicenseUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLicenseUsage'
+type MockUserAccountServiceClient_GetLicenseUsage_Call struct {
+	*mock.Call
+}
+
+// GetLicenseUsage is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]
+func (_e *MockUserAccountServiceClient_Expecter) GetLicenseUsage(context1 any, request any) *MockUserAccountServiceClient_GetLicenseUsage_Call {
+	return &MockUserAccountServiceClient_GetLicenseUsage_Call{Call: _e.mock.On("GetLicenseUsage", context1, request)}
+}
+
+func (_c *MockUserAccountServiceClient_GetLicenseUsage_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest])) *MockUserAccountServiceClient_GetLicenseUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.GetLicenseUsageRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_GetLicenseUsage_Call) Return(response *connect.Response[mgmtv1alpha1.GetLicenseUsageResponse], err error) *MockUserAccountServiceClient_GetLicenseUsage_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_GetLicenseUsage_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest]) (*connect.Response[mgmtv1alpha1.GetLicenseUsageResponse], error)) *MockUserAccountServiceClient_GetLicenseUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSystemInformation provides a mock function for the type MockUserAccountServiceClient
 func (_mock *MockUserAccountServiceClient) GetSystemInformation(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetSystemInformationRequest]) (*connect.Response[mgmtv1alpha1.GetSystemInformationResponse], error) {
 	ret := _mock.Called(context1, request)

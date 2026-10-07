@@ -445,6 +445,38 @@ components:
           description: The list of accounts that have a billing id.
       title: GetBillingAccountsResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetLicenseUsageRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account whose usage is detailed.
+      title: GetLicenseUsageRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetLicenseUsageResponse:
+      type: object
+      properties:
+        sourcesInInstance:
+          type: integer
+          title: sources_in_instance
+          format: int32
+          description: The number of sources the system counts, over every account. It is what the license key caps
+        sourcesInAccount:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.LicenseSource'
+          title: sources_in_account
+          description: The sources of this account, among the ones the system counts. The sources of other accounts are counted and never listed
+        featuresInUse:
+          type: array
+          items:
+            type: string
+          title: features_in_use
+          description: The licensed features this account uses, whatever the license key allows. mcp, mapping_review and run_logs leave nothing stored to tell their use by, and are never listed
+      title: GetLicenseUsageResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetSystemInformationRequest:
       type: object
       title: GetSystemInformationRequest
@@ -752,6 +784,24 @@ components:
       title: LicenseLimits
       additionalProperties: false
       description: What a license key caps. An unset field is uncapped, which is distinct from a cap of zero
+    mgmt.v1alpha1.LicenseSource:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          description: The unique identifier of the connection the source is read through
+        connectionName:
+          type: string
+          title: connection_name
+          description: The name of that connection. Empty when the connection no longer exists
+        database:
+          type: string
+          title: database
+          description: The database read through the connection. Empty for the engines counted per connection
+      title: LicenseSource
+      additionalProperties: false
+      description: A database that a synchronization job reads, as the license key counts it
     mgmt.v1alpha1.RemoveTeamAccountInviteRequest:
       type: object
       properties:
@@ -1445,6 +1495,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetBillingAccountsResponse'
+  /mgmt.v1alpha1.UserAccountService/GetLicenseUsage:
+    post:
+      tags:
+        - mgmt.v1alpha1.UserAccountService
+      summary: GetLicenseUsage
+      description: 'Retrieves what the system uses of its license: how many sources it counts, which of them are the account''s, and the licensed features the account uses.'
+      operationId: mgmt.v1alpha1.UserAccountService.GetLicenseUsage
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetLicenseUsageRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetLicenseUsageResponse'
   /mgmt.v1alpha1.UserAccountService/GetSystemInformation:
     post:
       tags:

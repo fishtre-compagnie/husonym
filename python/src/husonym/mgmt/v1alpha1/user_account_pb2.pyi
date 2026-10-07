@@ -392,6 +392,32 @@ class GetSystemLicenseKeyResponse(_message.Message):
     key: str
     def __init__(self, key: _Optional[str] = ...) -> None: ...
 
+class GetLicenseUsageRequest(_message.Message):
+    __slots__ = ("account_id",)
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    def __init__(self, account_id: _Optional[str] = ...) -> None: ...
+
+class GetLicenseUsageResponse(_message.Message):
+    __slots__ = ("sources_in_instance", "sources_in_account", "features_in_use")
+    SOURCES_IN_INSTANCE_FIELD_NUMBER: _ClassVar[int]
+    SOURCES_IN_ACCOUNT_FIELD_NUMBER: _ClassVar[int]
+    FEATURES_IN_USE_FIELD_NUMBER: _ClassVar[int]
+    sources_in_instance: int
+    sources_in_account: _containers.RepeatedCompositeFieldContainer[LicenseSource]
+    features_in_use: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, sources_in_instance: _Optional[int] = ..., sources_in_account: _Optional[_Iterable[_Union[LicenseSource, _Mapping]]] = ..., features_in_use: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class LicenseSource(_message.Message):
+    __slots__ = ("connection_id", "connection_name", "database")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    CONNECTION_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATABASE_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    connection_name: str
+    database: str
+    def __init__(self, connection_id: _Optional[str] = ..., connection_name: _Optional[str] = ..., database: _Optional[str] = ...) -> None: ...
+
 class GetAccountOnboardingConfigRequest(_message.Message):
     __slots__ = ("account_id",)
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]

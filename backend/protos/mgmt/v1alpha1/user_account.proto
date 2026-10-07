@@ -282,6 +282,29 @@ message GetSystemLicenseKeyResponse {
   string key = 1;
 }
 
+message GetLicenseUsageRequest {
+  // The unique identifier of the account whose usage is detailed.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetLicenseUsageResponse {
+  // The number of sources the system counts, over every account. It is what the license key caps
+  int32 sources_in_instance = 1;
+  // The sources of this account, among the ones the system counts. The sources of other accounts are counted and never listed
+  repeated LicenseSource sources_in_account = 2;
+  // The licensed features this account uses, whatever the license key allows. mcp, mapping_review and run_logs leave nothing stored to tell their use by, and are never listed
+  repeated string features_in_use = 3;
+}
+
+// A database that a synchronization job reads, as the license key counts it
+message LicenseSource {
+  // The unique identifier of the connection the source is read through
+  string connection_id = 1;
+  // The name of that connection. Empty when the connection no longer exists
+  string connection_name = 2;
+  // The database read through the connection. Empty for the engines counted per connection
+  string database = 3;
+}
+
 message GetAccountOnboardingConfigRequest {
   // The unique identifier of the account to get the onboarding config for.
   string account_id = 1 [(buf.validate.field).string.uuid = true];
@@ -610,6 +633,13 @@ service UserAccountService {
   // Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
   rpc GetSystemLicenseKey(GetSystemLicenseKeyRequest) returns (GetSystemLicenseKeyResponse) {
     option (mgmt.v1alpha1.requires) = {none: true};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.
+  rpc GetLicenseUsage(GetLicenseUsageRequest) returns (GetLicenseUsageResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

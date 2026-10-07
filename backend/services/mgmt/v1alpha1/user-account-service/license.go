@@ -117,6 +117,48 @@ func (s *Service) GetSystemLicenseKey(
 	return connect.NewResponse(&mgmtv1alpha1.GetSystemLicenseKeyResponse{Key: key}), nil
 }
 
+// GetLicenseUsage tells what the instance uses of its license, for an account to see next to
+// what the license allows: how many sources the instance counts, which of them are the
+// account's, and the licensed features the account uses.
+//
+// It is a read, so it asks for no license in force and for no feature: an instance whose
+// license lapsed, or lacks what it uses, is the one that most needs to see this. Of the other
+// accounts it tells the count of sources and nothing else.
+func (s *Service) GetLicenseUsage(
+	ctx context.Context,
+	req *connect.Request[mgmtv1alpha1.GetLicenseUsageRequest],
+) (*connect.Response[mgmtv1alpha1.GetLicenseUsageResponse], error) {
+	userdataclient := s.UserDataClient()
+	user, err := userdataclient.GetUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.Msg.GetAccountId()), rbac.AccountAction_View); err != nil {
+		return nil, err
+	}
+
+	usage, err := s.licenseusage.Of(ctx, req.Msg.GetAccountId())
+	if err != nil {
+		return nil, fmt.Errorf("unable to read what the account uses of the license: %w", err)
+	}
+
+	dto := &mgmtv1alpha1.GetLicenseUsageResponse{
+		// A count beyond what the message holds is as good as the largest one it holds.
+		SourcesInInstance: int32(max(min(usage.SourcesInInstance, math.MaxInt32), 0)),
+	}
+	for _, source := range usage.SourcesInAccount {
+		dto.SourcesInAccount = append(dto.SourcesInAccount, &mgmtv1alpha1.LicenseSource{
+			ConnectionId:   source.ConnectionId,
+			ConnectionName: source.ConnectionName,
+			Database:       source.Database,
+		})
+	}
+	for _, feature := range usage.FeaturesInUse {
+		dto.FeaturesInUse = append(dto.FeaturesInUse, string(feature))
+	}
+	return connect.NewResponse(dto), nil
+}
+
 // systemLicense describes the license of the instance, without the key value.
 //
 // Everything comes from one description of what the process holds, so that the answer never

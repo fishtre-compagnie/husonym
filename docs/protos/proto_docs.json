@@ -23601,6 +23601,78 @@
           ]
         },
         {
+          "name": "GetLicenseUsageRequest",
+          "longName": "GetLicenseUsageRequest",
+          "fullName": "mgmt.v1alpha1.GetLicenseUsageRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account whose usage is detailed.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetLicenseUsageResponse",
+          "longName": "GetLicenseUsageResponse",
+          "fullName": "mgmt.v1alpha1.GetLicenseUsageResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "sources_in_instance",
+              "description": "The number of sources the system counts, over every account. It is what the license key caps",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sources_in_account",
+              "description": "The sources of this account, among the ones the system counts. The sources of other accounts are counted and never listed",
+              "label": "repeated",
+              "type": "LicenseSource",
+              "longType": "LicenseSource",
+              "fullType": "mgmt.v1alpha1.LicenseSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "features_in_use",
+              "description": "The licensed features this account uses, whatever the license key allows. mcp, mapping_review and run_logs leave nothing stored to tell their use by, and are never listed",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetSystemInformationRequest",
           "longName": "GetSystemInformationRequest",
           "fullName": "mgmt.v1alpha1.GetSystemInformationRequest",
@@ -24306,6 +24378,54 @@
               "name": "allowed_connection_types",
               "description": "The connection types that are allowed. Empty when every type is",
               "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "LicenseSource",
+          "longName": "LicenseSource",
+          "fullName": "mgmt.v1alpha1.LicenseSource",
+          "description": "A database that a synchronization job reads, as the license key counts it",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection the source is read through",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "connection_name",
+              "description": "The name of that connection. Empty when the connection no longer exists",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "database",
+              "description": "The database read through the connection. Empty for the engines counted per connection",
+              "label": "",
               "type": "string",
               "longType": "string",
               "fullType": "string",
@@ -25318,6 +25438,21 @@
               "responseType": "GetSystemLicenseKeyResponse",
               "responseLongType": "GetSystemLicenseKeyResponse",
               "responseFullType": "mgmt.v1alpha1.GetSystemLicenseKeyResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetLicenseUsage",
+              "description": "Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.",
+              "requestType": "GetLicenseUsageRequest",
+              "requestLongType": "GetLicenseUsageRequest",
+              "requestFullType": "mgmt.v1alpha1.GetLicenseUsageRequest",
+              "requestStreaming": false,
+              "responseType": "GetLicenseUsageResponse",
+              "responseLongType": "GetLicenseUsageResponse",
+              "responseFullType": "mgmt.v1alpha1.GetLicenseUsageResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
