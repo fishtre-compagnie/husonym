@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 	"time"
 
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -68,8 +67,7 @@ type Builder struct {
 	inventory InventorySource
 	instance  Instance
 	license   license.EEInterface
-	keys      KeySource
-	ring      license.Keyring
+	key       *InstanceKey
 	facts     Facts
 }
 
@@ -87,7 +85,7 @@ func NewBuilder(
 ) *Builder {
 	return &Builder{
 		counters: counters, inventory: inventory, instance: instance,
-		license: lic, keys: keys, ring: ring, facts: facts,
+		license: lic, key: NewInstanceKey(keys, ring), facts: facts,
 	}
 }
 
@@ -155,26 +153,14 @@ func (b *Builder) Build(ctx context.Context, day, now time.Time) (*Sealed, error
 // the id, the state and the days left all come from that one value, which is the one the report
 // is then sealed with: they never tell of two keys. Nothing here cites the key.
 func (b *Builder) identify(ctx context.Context, now time.Time) (string, *telemetry.Identification, error) {
-	keyValue, err := b.keys.Current(ctx)
+	keyValue, key, err := b.key.inForce(ctx, now)
 	if err != nil {
-		return "", nil, fmt.Errorf("unable to read the license key: %w", err)
-	}
-	keyValue = strings.TrimSpace(keyValue)
-	if keyValue == "" {
-		return "", nil, ErrNoLicenseInForce
-	}
-	key, err := license.ParseWith(keyValue, b.ring)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to verify the license key: %w", err)
-	}
-	state := key.StateAt(now)
-	if state == license.StateFrozen {
-		return "", nil, ErrNoLicenseInForce
+		return "", nil, err
 	}
 	return keyValue, &telemetry.Identification{
 		KeyFingerprint: telemetry.KeyFingerprint(keyValue),
 		LicenseID:      telemetry.LicenseId(key.Id),
-		LicenseState:   telemetry.LicenseState(string(state)),
+		LicenseState:   telemetry.LicenseState(string(key.StateAt(now))),
 		DaysToExpiry:   daysBetween(now, key.ExpiresAt),
 	}, nil
 }

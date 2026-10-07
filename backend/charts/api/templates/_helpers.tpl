@@ -181,6 +181,9 @@ HUSONYM_INSTALL_KIND: helm
 {{- if and .Values.usageReport (eq (toString .Values.usageReport.diagnostics) "false") }}
 HUSONYM_TELEMETRY_DIAGNOSTICS: "false"
 {{- end }}
+{{- if and .Values.usageReport .Values.usageReport.mode }}
+HUSONYM_TELEMETRY: {{ .Values.usageReport.mode | quote }}
+{{- end }}
 {{- if and .Values.ee .Values.ee.license }}
 EE_LICENSE: {{ .Values.ee.license | quote }}
 {{- end }}

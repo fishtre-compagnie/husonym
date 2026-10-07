@@ -106,7 +106,7 @@ const licenseRefreshInterval = time.Minute
 const usageSettleInterval = time.Hour
 
 // usageReportInterval is how often the usage report of the day before is looked for, and
-// prepared when it is not there yet.
+// prepared when it is not there yet, and how often the reports that are due are sent.
 const usageReportInterval = time.Hour
 
 // licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
@@ -761,7 +761,26 @@ func serve(ctx context.Context) error {
 		licenseRing,
 		getUsageFacts(isAuthEnabled, presidioClients, runLogConfig),
 	)
-	go usagereport.NewPreparer(usageReports, usageStore, slogger).Every(licenseCtx, usageReportInterval)
+	// Each pass then sends the reports that are due, when the license provides for it and the
+	// operator did not set otherwise. It runs apart from every request and every run.
+	usageReportTransport, err := usagereport.NewHTTPTransport(
+		usagereport.ReportURLFromEnvironment(slogger), version.Get().GitVersion,
+	)
+	if err != nil {
+		return fmt.Errorf("unable to initialize the sending of the usage report: %w", err)
+	}
+	go usagereport.NewDaily(
+		usagereport.NewPreparer(usageReports, usageStore, slogger),
+		usagereport.NewSender(
+			usageStore,
+			eelicense,
+			usagereport.NewInstanceKey(licenseStore, licenseRing),
+			usagereport.ModeSettingFromEnvironment(),
+			usageReportTransport,
+			slogger,
+		),
+		slogger,
+	).Every(licenseCtx, usageReportInterval)
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,

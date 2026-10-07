@@ -1,11 +1,9 @@
 package usagereport
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 	"testing"
 	"time"
 
@@ -152,21 +150,6 @@ func Test_PrepareDue_AReportReturnedAfterItsContextEndedIsNotStored(t *testing.T
 	require.Empty(t, store.reports)
 }
 
-func Test_Every_StopsWhenItsContextIsDone(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan struct{})
-	go func() {
-		preparerOf(&fakeBuilder{}, newFakeStore()).Every(ctx, time.Hour)
-		close(done)
-	}()
-	cancel()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("Every did not stop")
-	}
-}
-
 // The day is closed at midnight UTC, and the pass waits five minutes more: the clock of the
 // process and the one of the database may differ by seconds.
 func Test_PrepareDue_WaitsForTheDayToBeClosed(t *testing.T) {
@@ -209,96 +192,4 @@ func Test_PrepareDue_WaitsForTheDayToBeClosed(t *testing.T) {
 			require.Len(t, store.reports, len(tc.want))
 		})
 	}
-}
-
-// syncBuilder counts its calls under a lock, and may panic on the first of them.
-type syncBuilder struct {
-	mu         sync.Mutex
-	calls      int
-	panicFirst bool
-}
-
-func (b *syncBuilder) Build(context.Context, time.Time, time.Time) (*Sealed, error) {
-	b.mu.Lock()
-	b.calls++
-	first := b.calls == 1
-	b.mu.Unlock()
-	if first && b.panicFirst {
-		panic("a value that must not be logged")
-	}
-	return nil, ErrNoLicenseInForce
-}
-
-func (b *syncBuilder) count() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.calls
-}
-
-// loopOf starts Every on a clock at noon, and stops it when the test ends.
-func loopOf(t *testing.T, builder ReportBuilder, logger *slog.Logger, first, every time.Duration) {
-	t.Helper()
-	preparer := NewPreparer(builder, newFakeStore(), logger)
-	preparer.firstPassAfter = first
-	preparer.now = func() time.Time { return now.Add(12 * time.Hour) }
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan struct{})
-	go func() {
-		preparer.Every(ctx, every)
-		close(done)
-	}()
-	t.Cleanup(func() {
-		cancel()
-		<-done
-	})
-}
-
-func Test_Every_RunsAFirstPassSoonAfterItStarts(t *testing.T) {
-	builder := &syncBuilder{}
-	loopOf(t, builder, slog.New(slog.DiscardHandler), time.Millisecond, time.Hour)
-
-	require.Eventually(t, func() bool { return builder.count() == 1 }, 5*time.Second, time.Millisecond)
-}
-
-func Test_Every_ThenRunsAtEachInterval(t *testing.T) {
-	builder := &syncBuilder{}
-	loopOf(t, builder, slog.New(slog.DiscardHandler), time.Millisecond, time.Millisecond)
-
-	require.Eventually(t, func() bool { return builder.count() >= 3 }, 5*time.Second, time.Millisecond)
-}
-
-func Test_Every_WaitsBeforeItsFirstPass(t *testing.T) {
-	builder := &syncBuilder{}
-	loopOf(t, builder, slog.New(slog.DiscardHandler), time.Hour, time.Millisecond)
-
-	time.Sleep(20 * time.Millisecond)
-	require.Zero(t, builder.count())
-}
-
-func Test_Every_APassThatPanicsDoesNotStopTheLoop(t *testing.T) {
-	var logs syncBuffer
-	builder := &syncBuilder{panicFirst: true}
-	loopOf(t, builder, slog.New(slog.NewTextHandler(&logs, nil)), time.Millisecond, time.Millisecond)
-
-	require.Eventually(t, func() bool { return builder.count() >= 2 }, 5*time.Second, time.Millisecond)
-	require.Contains(t, logs.String(), "panicked=true")
-	require.NotContains(t, logs.String(), "must not be logged")
-}
-
-// syncBuffer is a log sink a loop may write to while the test reads it.
-type syncBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *syncBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.Write(p)
-}
-
-func (b *syncBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.String()
 }

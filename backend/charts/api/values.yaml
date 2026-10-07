@@ -251,6 +251,8 @@ sidecarContainers: []
 usageReport:
   # -- Whether the usage report of the instance describes the instance beyond its identification, its version and its number of sources: how it is installed and configured, and counts of what it holds and runs. Set to false to leave that part out (sets HUSONYM_TELEMETRY_DIAGNOSTICS=false).
   diagnostics: true
+  # -- What the instance does with its usage report: sends it daily as the license provides (default, empty), keeps it for a report file (`offline`), or keeps it (`off`). Sets HUSONYM_TELEMETRY.
+  mode: ""
 
 # Configure the Husonym license
 ee:
