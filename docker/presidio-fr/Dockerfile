@@ -52,6 +52,12 @@ ENV HF_HUB_OFFLINE=1 \
 # conteneur : sous un quota, les threads en trop se disputent le temps alloué. Deux threads par
 # défaut ; à surcharger selon le quota réellement donné (voir le README).
 ENV OMP_NUM_THREADS=2
+# Durée, en secondes, au bout de laquelle gunicorn tue un worker qui n'a pas fini sa requête
+# (son option --timeout, 30 par défaut). Un long texte français prend plus de 30 s (voir le
+# README) ; un worker tué répond par une erreur 500 et son remplaçant recharge les modèles.
+# 120 par défaut : au-dessus des 60 s qu'attend le client de Husonym, pour que ce soit la limite
+# du client que rencontre un appelant.
+ENV WORKER_TIMEOUT=120
 
 # La configuration vit dans l'image. Les trois fichiers vont ensemble : le moteur d'analyse refuse
 # de démarrer si ses langues ne correspondent pas à celles du registre.
@@ -61,8 +67,8 @@ ENV NLP_CONF_FILE=/app/conf/fr/nlp.yaml \
     ANALYZER_CONF_FILE=/app/conf/fr/analyzer.yaml
 
 # Le reconnaisseur propre à cette image, et le serveur de Presidio lancé par un module qui
-# l'importe. Même commande que l'entrypoint.sh de l'image de base, au nom du module près et à
-# l'option --no-control-socket près (voir la commande, en bas).
+# l'importe. Même commande que l'entrypoint.sh de l'image de base, au nom du module près et aux
+# options --no-control-socket et --timeout près (voir la commande, en bas).
 COPY --chown=presidio:presidio mapped_ner_recognizer.py analyzer_app.py recognizer_check.py /app/
 # Les contrôles du reconnaisseur (découpage, réunion des trouvailles de deux morceaux, filtre des
 # étiquettes, erreur d'inférence), sans le modèle : un contrôle qui échoue, ou un nom interne de
@@ -76,4 +82,4 @@ USER 1001
 # écrit dans le journal, le worker hérite d'un verrou que personne ne relâchera : il ne démarre
 # jamais et /health ne répond pas (gunicorn #3509, corrigé en 25.2.0). Ce socket ne sert pas ici.
 # À retirer quand l'image de base embarquera gunicorn 25.2.0 ou plus.
-CMD ["sh", "-c", "exec poetry run gunicorn --no-control-socket -w \"$WORKERS\" -b \"0.0.0.0:$PORT\" \"analyzer_app:create_app()\""]
+CMD ["sh", "-c", "exec poetry run gunicorn --no-control-socket --timeout \"$WORKER_TIMEOUT\" -w \"$WORKERS\" -b \"0.0.0.0:$PORT\" \"analyzer_app:create_app()\""]

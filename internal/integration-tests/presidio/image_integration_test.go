@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -311,6 +313,60 @@ func Test_Analyzer_French_LongText_PersonAtTheEnd(t *testing.T) {
 	findings := analyze(t, baseURL, langFr, text)
 
 	requirePerson(t, text, "Corentin Delaunay", findings)
+}
+
+// The image starts gunicorn with a worker timeout of its own, 120 seconds unless WORKER_TIMEOUT
+// says otherwise: gunicorn's default of 30 seconds kills the worker in the middle of a long text.
+func Test_Analyzer_Gunicorn_WorkerTimeout(t *testing.T) {
+	startAnalyzer(t)
+
+	// Process 1 is gunicorn's master: the image's command replaces its shell by it.
+	exitCode, output, err := analyzer.TestContainer.Exec(
+		t.Context(), []string{"cat", "/proc/1/cmdline"}, tcexec.Multiplexed(),
+	)
+	require.NoError(t, err)
+	cmdline, err := io.ReadAll(output)
+	require.NoError(t, err)
+	require.Zerof(t, exitCode, "cat: %s", cmdline)
+
+	arguments := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
+	require.Truef(t, slices.ContainsFunc(arguments, func(argument string) bool {
+		return strings.HasSuffix(argument, "gunicorn")
+	}), "process 1 is not gunicorn: %q", arguments)
+	option := slices.Index(arguments, "--timeout")
+	require.NotEqualf(t, -1, option, "arguments: %q", arguments)
+	require.Greaterf(t, len(arguments), option+1, "arguments: %q", arguments)
+	require.Equal(t, "120", arguments[option+1])
+}
+
+// A text that takes several seconds to analyze returns its findings. The length is the one of a
+// single observation on this image without a CPU quota, 6.6 s for 20,000 characters of prose:
+// long enough to be far from a short request, short enough to end well before any timeout on a
+// slower machine. The duration is logged and not asserted.
+func Test_Analyzer_French_TextOfSeveralSeconds_PersonAtTheEnd(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	sentences := []string{
+		"Le colis a été déposé au guichet avant midi. ",
+		"La facture sera envoyée dès réception du bon de commande. ",
+		"Le technicien a remplacé le joint et vérifié la pression. ",
+		"Aucune pièce n'était disponible au dépôt ce matin. ",
+		"Le rendez-vous est reporté à la semaine prochaine. ",
+	}
+	tail := "Le dossier a été validé par Corentin Delaunay."
+	var filler strings.Builder
+	characters := 0
+	for i := 0; characters < 20000-utf8.RuneCountInString(tail); i++ {
+		filler.WriteString(sentences[i%len(sentences)])
+		characters += utf8.RuneCountInString(sentences[i%len(sentences)])
+	}
+	text := filler.String() + tail
+
+	start := time.Now()
+	findings := analyze(t, baseURL, langFr, text)
+	t.Logf("%d characters analyzed in %s", utf8.RuneCountInString(text), time.Since(start).Round(100*time.Millisecond))
+
+	requirePerson(t, text, "Corentin Delaunay", findings)
+	requireDeclaredEntities(t, findings)
 }
 
 func Test_Analyzer_French_TextWithoutWhitespace_PersonAtTheEnd(t *testing.T) {
