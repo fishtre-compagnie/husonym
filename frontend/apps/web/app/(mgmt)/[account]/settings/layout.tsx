@@ -150,6 +150,11 @@ function getAllNavSettings(accountName: string): Item[] {
       ref: 'anonymization',
       title: 'Anonymization',
     },
+    {
+      href: `/${accountName}/settings/license`,
+      ref: 'license',
+      title: 'License',
+    },
   ];
 }
 
