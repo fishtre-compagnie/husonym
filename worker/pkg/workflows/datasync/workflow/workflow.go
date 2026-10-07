@@ -392,8 +392,10 @@ func executeWorkflow(
 		"totalConfigs", len(bcResp.BenthosConfigs),
 	)
 
-	// The tables that finished with a page, at least, that was not counted.
-	uncountedTables := map[string]struct{}{}
+	// The tables that finished with a page, at least, that was not counted. Schema and name
+	// are kept apart: joined, a.b and c would be the table b.c of the schema a.
+	type schemaTable struct{ schema, table string }
+	uncountedTables := map[schemaTable]struct{}{}
 	executeSyncActivity := func(bc *benthosbuilder.BenthosConfigResponse, logger log.Logger) {
 		future := invokeSync(
 			bc,
@@ -433,7 +435,7 @@ func executeWorkflow(
 			totals.Retries += wfResult.Retries
 			if wfResult.Uncounted {
 				// A table may be synced in several passes: it counts once.
-				uncountedTables[bc.TableSchema+"."+bc.TableName] = struct{}{}
+				uncountedTables[schemaTable{bc.TableSchema, bc.TableName}] = struct{}{}
 				totals.TablesUncounted = int64(len(uncountedTables))
 			}
 			logger.Info("config sync completed", "name", bc.Name)

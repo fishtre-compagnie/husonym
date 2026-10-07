@@ -160,6 +160,22 @@ func Test_Workflow_CountsTheTablesItCouldNotCount(t *testing.T) {
 	require.Equal(t, workflow_shared.RunTotals{RowsRead: 35, TablesUncounted: 2}, *totals)
 }
 
+// Two tables whose schema and name join to the same text are two tables.
+func Test_Workflow_TablesNotCountedAreToldApartBySchemaAndName(t *testing.T) {
+	dotted := func(name, schema, table string) *benthosbuilder.BenthosConfigResponse {
+		config := usageTestConfig(table)
+		config.Name, config.TableSchema = name, schema
+		return config
+	}
+	totals, err := runUsageWorkflow(t,
+		[]*benthosbuilder.BenthosConfigResponse{dotted("first", "a.b", "c"), dotted("second", "a", "b.c")},
+		func(*tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			return &tablesync_workflow.TableSyncResponse{Uncounted: true}, nil
+		})
+	require.NoError(t, err)
+	require.Equal(t, workflow_shared.RunTotals{TablesUncounted: 2}, *totals)
+}
+
 func Test_Workflow_ATableThatFailsIsNotAmongThoseNotCounted(t *testing.T) {
 	totals, err := runUsageWorkflow(t,
 		[]*benthosbuilder.BenthosConfigResponse{usageTestConfig("users"), usageTestConfig("foo", "users")},
