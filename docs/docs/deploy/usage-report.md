@@ -7,19 +7,16 @@ slug: /deploy/usage-report
 ---
 
 Each day, a Husonym instance prepares a report of its own usage. When its license
-provides for it, the instance sends that report to Husonym. The report is made of
-counts and of values taken from fixed lists.
+provides for it, the instance sends that report to Husonym.
 
 ## What it contains
 
-- Which license key and which instance the report is about.
-- The version of Husonym.
-- The number of source databases.
-- Unless you turn them off, diagnostics: how the instance is installed, the number
-  of connections by type, of jobs by kind, of columns by built-in transformer and
-  by family of data type, the features in use, the runs of the day by status with
-  their durations, the number of rows read as a range ("under 10 million"), and
-  the number of users by role.
+Counts and version numbers that describe the instance: how it is installed and
+configured, what it holds, how its license is used, and the runs of the day.
+Part of it, the diagnostics, can be turned off.
+
+The report of each day is shown in full on the License page of your instance,
+before it is sent.
 
 ## What it never contains
 
