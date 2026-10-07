@@ -98,7 +98,7 @@ func (s *Service) GetUsageReporting(
 	var oldestToSend *usagestore.ReportSending
 	for i := range sendings {
 		sending := &sendings[i]
-		status := statusOfSending(sending, mode, since)
+		status := statusOfSending(sending, mode, since, s.cfg.Diagnostics)
 		if status == mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_TO_BE_SENT ||
 			status == mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_NOT_SENT {
 			oldestToSend = sending
@@ -206,14 +206,17 @@ func (s *Service) canView(ctx context.Context, accountId string) error {
 }
 
 // statusOfSending tells what became of a report. A report is kept when the instance does not
-// send, or when its day precedes the day sending began: the sender never takes it.
+// send, when its day precedes the day sending began, or when it carries the diagnostics and they
+// are switched off: the sender does not take it.
 func statusOfSending(
-	sending *usagestore.ReportSending, mode telemetry.Mode, since *time.Time,
+	sending *usagestore.ReportSending, mode telemetry.Mode, since *time.Time, diagnostics bool,
 ) mgmtv1alpha1.UsageReportStatus {
 	switch {
 	case sending.SentAt != nil:
 		return mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_SENT
 	case mode != telemetry.ModeOnline || since == nil || sending.Day.UTC().Before(since.UTC().Truncate(24*time.Hour)):
+		return mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_KEPT
+	case sending.Diagnostics && !diagnostics:
 		return mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_KEPT
 	case sending.Attempts > 0:
 		return mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_NOT_SENT

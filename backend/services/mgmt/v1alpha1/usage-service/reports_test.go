@@ -225,6 +225,63 @@ func Test_GetUsageReporting_KeepsEveryReportWhenTheModeIsNotOnline(t *testing.T)
 	}
 }
 
+// With the diagnostics switched off, a report that carries them is not sent: it reads as kept,
+// and it is not the one the first sending is told of. Switched back on, it is to be sent again.
+func Test_GetUsageReporting_KeepsAReportThatCarriesDiagnosticsWhenTheyAreOff(t *testing.T) {
+	prepared := now.Add(-3 * time.Hour)
+	sentAt := at(2)
+	sendings := []usagestore.ReportSending{
+		{Day: day(1), PreparedAt: prepared},                                                         // without
+		{Day: day(2), PreparedAt: prepared.Add(-24 * time.Hour), Diagnostics: true},                 // with, waiting
+		{Day: day(3), PreparedAt: prepared.Add(-48 * time.Hour), Diagnostics: true, Attempts: 2},    // with, tried
+		{Day: day(4), PreparedAt: prepared.Add(-72 * time.Hour), Diagnostics: true, SentAt: sentAt}, // with, sent before
+	}
+	for name, tc := range map[string]struct {
+		diagnostics bool
+		want        []mgmtv1alpha1.UsageReportStatus
+		first       time.Time
+	}{
+		"off": {
+			diagnostics: false,
+			want: []mgmtv1alpha1.UsageReportStatus{
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_TO_BE_SENT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_KEPT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_KEPT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_SENT,
+			},
+			first: prepared.Add(24 * time.Hour),
+		},
+		"on": {
+			diagnostics: true,
+			want: []mgmtv1alpha1.UsageReportStatus{
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_TO_BE_SENT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_TO_BE_SENT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_NOT_SENT,
+				mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_SENT,
+			},
+			first: prepared.Add(-24 * time.Hour),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
+			f.svc.cfg.Diagnostics = tc.diagnostics
+			// Sending began again after the report of four days ago was sent.
+			f.reports.since, f.reports.lastSent, f.reports.sendings = at(24*3+20), at(24*5), sendings
+
+			res, err := f.svc.GetUsageReporting(t.Context(), aView())
+
+			require.NoError(t, err)
+			require.Equal(t, tc.diagnostics, res.Msg.GetDiagnostics())
+			var got []mgmtv1alpha1.UsageReportStatus
+			for _, report := range res.Msg.GetReports() {
+				got = append(got, report.GetStatus())
+			}
+			require.Equal(t, tc.want, got)
+			require.True(t, res.Msg.GetFirstSendAt().AsTime().Equal(tc.first), "got %s", res.Msg.GetFirstSendAt().AsTime())
+		})
+	}
+}
+
 // The first sending is a day after the oldest report that is to be sent was prepared, while
 // nothing was sent since the instance started sending: what the sender waits for.
 func Test_GetUsageReporting_TellsWhenTheFirstReportIsSent(t *testing.T) {

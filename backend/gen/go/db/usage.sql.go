@@ -21,6 +21,7 @@ WHERE day = (
     AND r.day >= $2 AND r.day <= $3
     AND (r.last_attempt_at IS NULL OR r.last_attempt_at < $4)
     AND ($5::timestamptz IS NULL OR r.prepared_at <= $5::timestamptz)
+    AND NOT ($6::boolean AND r.document::jsonb ? 'diagnostics')
   ORDER BY r.day
   LIMIT 1
   FOR UPDATE SKIP LOCKED
@@ -29,11 +30,12 @@ RETURNING day, document, seal, key_fingerprint, prepared_at
 `
 
 type ClaimUsageReportParams struct {
-	Now               pgtype.Timestamptz
-	FromDay           pgtype.Date
-	ToDay             pgtype.Date
-	NotAttemptedSince pgtype.Timestamptz
-	PreparedBy        pgtype.Timestamptz
+	Now                pgtype.Timestamptz
+	FromDay            pgtype.Date
+	ToDay              pgtype.Date
+	NotAttemptedSince  pgtype.Timestamptz
+	PreparedBy         pgtype.Timestamptz
+	WithoutDiagnostics bool
 }
 
 type ClaimUsageReportRow struct {
@@ -46,7 +48,8 @@ type ClaimUsageReportRow struct {
 
 // One statement takes the oldest report that is due and marks the attempt: a report another
 // call holds is skipped, so two calls never get the same one. When a bound is given on the
-// preparation, a report prepared after it is not due yet.
+// preparation, a report prepared after it is not due yet. When the reports are to leave without
+// the diagnostics, a report whose document carries them is not due at all.
 func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
 	row := db.QueryRow(ctx, claimUsageReport,
 		arg.Now,
@@ -54,6 +57,7 @@ func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageR
 		arg.ToDay,
 		arg.NotAttemptedSince,
 		arg.PreparedBy,
+		arg.WithoutDiagnostics,
 	)
 	var i ClaimUsageReportRow
 	err := row.Scan(
@@ -382,7 +386,8 @@ func (q *Queries) ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, st
 }
 
 const listUsageReportSendings = `-- name: ListUsageReportSendings :many
-SELECT day, prepared_at, sent_at, last_attempt_at, attempts
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts,
+  (document::jsonb ? 'diagnostics')::boolean AS carries_diagnostics
 FROM husonym_api.usage_reports
 WHERE day >= $1 AND day <= $2
 ORDER BY day DESC
@@ -394,13 +399,15 @@ type ListUsageReportSendingsParams struct {
 }
 
 type ListUsageReportSendingsRow struct {
-	Day           pgtype.Date
-	PreparedAt    pgtype.Timestamptz
-	SentAt        pgtype.Timestamptz
-	LastAttemptAt pgtype.Timestamptz
-	Attempts      int32
+	Day                pgtype.Date
+	PreparedAt         pgtype.Timestamptz
+	SentAt             pgtype.Timestamptz
+	LastAttemptAt      pgtype.Timestamptz
+	Attempts           int32
+	CarriesDiagnostics bool
 }
 
+// Tells of each report whether its document carries the diagnostics, as the claim reads it.
 func (q *Queries) ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error) {
 	rows, err := db.Query(ctx, listUsageReportSendings, arg.Day, arg.Day_2)
 	if err != nil {
@@ -416,6 +423,7 @@ func (q *Queries) ListUsageReportSendings(ctx context.Context, db DBTX, arg List
 			&i.SentAt,
 			&i.LastAttemptAt,
 			&i.Attempts,
+			&i.CarriesDiagnostics,
 		); err != nil {
 			return nil, err
 		}

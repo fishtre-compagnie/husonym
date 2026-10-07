@@ -85,6 +85,9 @@ which may only lower it; only the mode `online` sends.
   leaves only 24 hours after it was prepared; once one was sent, the following ones go as soon
   as they are prepared. Leaving the mode `online` forgets since when it was sending, so coming
   back waits again on its first report.
+- **Diagnostics switched off**: a report is sent as it is stored, so one that was prepared with
+  the diagnostics is not sent while they are off: it stays, and reads as kept. Switching them
+  back on makes it due again.
 - **Retry**: a report that could not be sent is tried again after 6 hours, from the oldest, and
   reports of closed days older than 30 days are no longer sent. A failure is logged and never
   delays a request or a run.

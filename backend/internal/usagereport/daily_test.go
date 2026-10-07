@@ -81,7 +81,7 @@ func newDaily(builder *syncBuilder) *daily {
 	}
 	logger := slog.New(slog.NewTextHandler(d.logs, nil))
 	noon := func() time.Time { return now.Add(12 * time.Hour) }
-	sender := NewSender(d.store, &fakeLicense{inForce: true}, d.key, "", d.transport, logger)
+	sender := NewSender(d.store, &fakeLicense{inForce: true}, d.key, "", true, d.transport, logger)
 	sender.now = noon
 	d.loop = NewDaily(NewPreparer(builder, newFakeStore(), logger), sender, logger)
 	d.loop.now = noon

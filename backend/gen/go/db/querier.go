@@ -19,7 +19,8 @@ type Querier interface {
 	AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error)
 	// One statement takes the oldest report that is due and marks the attempt: a report another
 	// call holds is skipped, so two calls never get the same one. When a bound is given on the
-	// preparation, a report prepared after it is not due yet.
+	// preparation, a report prepared after it is not due yet. When the reports are to leave without
+	// the diagnostics, a report whose document carries them is not due at all.
 	ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error)
 	// Closes the row of a run still running, and creates nothing.
 	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error
@@ -203,6 +204,7 @@ type Querier interface {
 	// decoded is then left out on its own instead of failing the whole list.
 	ListJobsOfInstanceForUsage(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error)
 	ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)
+	// Tells of each report whether its document carries the diagnostics, as the claim reads it.
 	ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error)
 	// The reports of the days from the first given to the day before the second, the oldest first.
 	ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error)

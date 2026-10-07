@@ -175,6 +175,59 @@ func Test_ClaimReport_LeavesAReportPreparedAfterTheBound(t *testing.T) {
 	require.True(t, next.Equal(unbounded.Day))
 }
 
+// A claim that leaves the diagnostics out skips a report whose document carries them, whatever
+// the document holds besides, and the listing tells which reports those are.
+func Test_ClaimReport_LeavesAReportThatCarriesDiagnosticsWhenToldTo(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	_, store := migratedDatabase(ctx, t)
+	with, without, nested := october6, october6.Add(24*time.Hour), october6.Add(48*time.Hour)
+	for day, document := range map[time.Time]string{
+		with:    "{\"day\": \"2026-10-06\", \"diagnostics\": {\"runs\": {\"completed\": 3}}}\n",
+		without: "{\"day\": \"2026-10-07\", \"sources\": 2}\n",
+		// The word is there, and not as the block of the report.
+		nested: "{\"day\": \"2026-10-08\", \"license\": {\"diagnostics\": \"diagnostics\"}}\n",
+	} {
+		saved, err := store.SaveReport(ctx, StoredReport{
+			Day: day, Document: []byte(document), Seal: "seal", KeyFingerprint: "fp", PreparedAt: day.Add(25 * time.Hour),
+		})
+		require.NoError(t, err)
+		require.True(t, saved)
+	}
+
+	sendings, err := store.ListReportSendings(ctx, with, nested)
+	require.NoError(t, err)
+	require.Len(t, sendings, 3)
+	require.False(t, sendings[0].Diagnostics, "the newest: the word is nested")
+	require.False(t, sendings[1].Diagnostics)
+	require.True(t, sendings[2].Diagnostics, "the oldest carries the diagnostics")
+
+	claim := claimOf(with, nested, sendingNow.Add(-time.Hour), sendingNow)
+	claim.WithoutDiagnostics = true
+	for _, want := range []time.Time{without, nested} {
+		got, err := store.ClaimReport(ctx, claim)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.True(t, want.Equal(got.Day), "got the report of %s", got.Day)
+	}
+	none, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.Nil(t, none)
+	sendings, err = store.ListReportSendings(ctx, with, with)
+	require.NoError(t, err)
+	require.Zero(t, sendings[0].Attempts, "a report that stays is not counted as tried")
+
+	// Told otherwise, the report is due, and comes as it is stored.
+	claim.WithoutDiagnostics = false
+	got, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.True(t, with.Equal(got.Day))
+	require.Equal(t, "{\"day\": \"2026-10-06\", \"diagnostics\": {\"runs\": {\"completed\": 3}}}\n", string(got.Document))
+}
+
 func Test_ClaimReport_TwoCallsAtOnceNeverGetTheSameReport(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return

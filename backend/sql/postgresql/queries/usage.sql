@@ -166,7 +166,8 @@ SET sending_since = NULL;
 
 -- One statement takes the oldest report that is due and marks the attempt: a report another
 -- call holds is skipped, so two calls never get the same one. When a bound is given on the
--- preparation, a report prepared after it is not due yet.
+-- preparation, a report prepared after it is not due yet. When the reports are to leave without
+-- the diagnostics, a report whose document carries them is not due at all.
 -- name: ClaimUsageReport :one
 UPDATE husonym_api.usage_reports
 SET attempts = attempts + 1, last_attempt_at = sqlc.arg(now)
@@ -177,6 +178,7 @@ WHERE day = (
     AND r.day >= sqlc.arg(from_day) AND r.day <= sqlc.arg(to_day)
     AND (r.last_attempt_at IS NULL OR r.last_attempt_at < sqlc.arg(not_attempted_since))
     AND (sqlc.narg(prepared_by)::timestamptz IS NULL OR r.prepared_at <= sqlc.narg(prepared_by)::timestamptz)
+    AND NOT (sqlc.arg(without_diagnostics)::boolean AND r.document::jsonb ? 'diagnostics')
   ORDER BY r.day
   LIMIT 1
   FOR UPDATE SKIP LOCKED
@@ -189,8 +191,10 @@ UPDATE husonym_api.usage_reports
 SET sent_at = $2
 WHERE day = $1 AND sent_at IS NULL;
 
+-- Tells of each report whether its document carries the diagnostics, as the claim reads it.
 -- name: ListUsageReportSendings :many
-SELECT day, prepared_at, sent_at, last_attempt_at, attempts
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts,
+  (document::jsonb ? 'diagnostics')::boolean AS carries_diagnostics
 FROM husonym_api.usage_reports
 WHERE day >= $1 AND day <= $2
 ORDER BY day DESC;

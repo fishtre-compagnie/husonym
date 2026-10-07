@@ -18,6 +18,8 @@ type ReportSending struct {
 	// SentAt is nil while the report has not been sent; LastAttemptAt is nil while none was tried.
 	SentAt, LastAttemptAt *time.Time
 	Attempts              int32
+	// Diagnostics is whether the document of the report carries the diagnostics.
+	Diagnostics bool
 }
 
 // SendingSince gives since when the instance sends its usage report, nil when it does not.
@@ -48,6 +50,8 @@ type ReportClaim struct {
 	NotAttemptedSince time.Time
 	// PreparedBy, when it is given, leaves out a report prepared after that moment.
 	PreparedBy *time.Time
+	// WithoutDiagnostics leaves out a report whose document carries the diagnostics.
+	WithoutDiagnostics bool
 	// At is the moment of the claim, which the attempt is dated of.
 	At time.Time
 }
@@ -63,11 +67,12 @@ func (s *Store) ClaimReport(
 		preparedBy = toTimestamptz(*claim.PreparedBy)
 	}
 	row, err := s.db.Q.ClaimUsageReport(ctx, s.db.Db, db_queries.ClaimUsageReportParams{
-		Now:               toTimestamptz(claim.At),
-		FromDay:           utcDate(claim.From),
-		ToDay:             utcDate(claim.To),
-		NotAttemptedSince: toTimestamptz(claim.NotAttemptedSince),
-		PreparedBy:        preparedBy,
+		Now:                toTimestamptz(claim.At),
+		FromDay:            utcDate(claim.From),
+		ToDay:              utcDate(claim.To),
+		NotAttemptedSince:  toTimestamptz(claim.NotAttemptedSince),
+		PreparedBy:         preparedBy,
+		WithoutDiagnostics: claim.WithoutDiagnostics,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil //nolint:nilnil // no report due is not an error
@@ -111,6 +116,7 @@ func (s *Store) ListReportSendings(ctx context.Context, from, to time.Time) ([]R
 			SentAt:        optionalTime(row.SentAt),
 			LastAttemptAt: optionalTime(row.LastAttemptAt),
 			Attempts:      row.Attempts,
+			Diagnostics:   row.CarriesDiagnostics,
 		})
 	}
 	return sendings, nil

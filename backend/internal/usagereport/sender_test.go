@@ -2,6 +2,7 @@ package usagereport
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"slices"
@@ -67,6 +68,27 @@ func (f *fakeSendingStore) withReport(day string, preparedAt time.Time) *fakeSen
 		PreparedAt: preparedAt,
 	}})
 	return f
+}
+
+// withDiagnosticsReports adds reports like those of withReports, whose documents carry the
+// diagnostics.
+func (f *fakeSendingStore) withDiagnosticsReports(days ...string) *fakeSendingStore {
+	f.withReports(days...)
+	for _, day := range days {
+		row := f.row(day)
+		row.report.Document = []byte(`{"day": "` + day + `", "diagnostics": {"runs": 3}}` + "\n")
+	}
+	return f
+}
+
+// carriesDiagnostics reads a document the way the claim of the usage store does.
+func carriesDiagnostics(document []byte) bool {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(document, &fields); err != nil {
+		panic(err)
+	}
+	_, carries := fields["diagnostics"]
+	return carries
 }
 
 // sendingSince is an instance that sends since the given moment and has sent a report since:
@@ -161,6 +183,9 @@ func (f *fakeSendingStore) ClaimReport(_ context.Context, claim usagestore.Repor
 		if claim.PreparedBy != nil && row.report.PreparedAt.After(*claim.PreparedBy) {
 			continue
 		}
+		if claim.WithoutDiagnostics && carriesDiagnostics(row.report.Document) {
+			continue
+		}
 		row.attempts++
 		row.lastAttemptAt = &claim.At
 		report := row.report
@@ -208,7 +233,9 @@ func (f *fakeSendingStore) ListReportSendings(ctx context.Context, from, to time
 			continue
 		}
 		sendings = append(sendings, usagestore.ReportSending{
-			Day: row.report.Day, SentAt: row.sentAt, LastAttemptAt: row.lastAttemptAt, Attempts: row.attempts,
+			Day: row.report.Day, PreparedAt: row.report.PreparedAt,
+			SentAt: row.sentAt, LastAttemptAt: row.lastAttemptAt, Attempts: row.attempts,
+			Diagnostics: carriesDiagnostics(row.report.Document),
 		})
 	}
 	return sendings, nil
@@ -216,8 +243,10 @@ func (f *fakeSendingStore) ListReportSendings(ctx context.Context, from, to time
 
 // fakeTransport keeps the days it was given, and fails those it is told to.
 type fakeTransport struct {
-	mu      sync.Mutex
-	posted  []string
+	mu     sync.Mutex
+	posted []string
+	// sent holds the document of each report given, in the order of posted.
+	sent    [][]byte
 	failing map[string]error
 	// hang makes Post wait for its context to end, then return what ended it.
 	hang bool
@@ -230,6 +259,7 @@ func (f *fakeTransport) Post(ctx context.Context, report *usagestore.StoredRepor
 	defer f.mu.Unlock()
 	day := report.Day.Format(time.DateOnly)
 	f.posted = append(f.posted, day)
+	f.sent = append(f.sent, slices.Clone(report.Document))
 	if f.hang {
 		<-ctx.Done()
 		return ctx.Err()
@@ -238,6 +268,12 @@ func (f *fakeTransport) Post(ctx context.Context, report *usagestore.StoredRepor
 		f.afterPost()
 	}
 	return f.failing[day]
+}
+
+func (f *fakeTransport) bodies() [][]byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.sent)
 }
 
 func (f *fakeTransport) days() []string {
@@ -258,12 +294,14 @@ func (f *fakeKeyMode) TelemetryMode(context.Context, time.Time) (license.Telemet
 }
 
 type sending struct {
-	store     *fakeSendingStore
-	license   *fakeLicense
-	key       *fakeKeyMode
-	setting   string
-	transport *fakeTransport
-	logs      *syncBuffer
+	store   *fakeSendingStore
+	license *fakeLicense
+	key     *fakeKeyMode
+	setting string
+	// noDiagnostics is an instance whose operator switched the diagnostics off.
+	noDiagnostics bool
+	transport     *fakeTransport
+	logs          *syncBuffer
 }
 
 // newSending is an instance whose key provides for sending, and that has no setting.
@@ -278,7 +316,9 @@ func newSending(store *fakeSendingStore) *sending {
 }
 
 func (s *sending) sender() *Sender {
-	return NewSender(s.store, s.license, s.key, s.setting, s.transport, slog.New(slog.NewTextHandler(s.logs, nil)))
+	return NewSender(
+		s.store, s.license, s.key, s.setting, !s.noDiagnostics, s.transport, slog.New(slog.NewTextHandler(s.logs, nil)),
+	)
 }
 
 // sendDue makes one pass at the given moment, on a clock that stays at it.
@@ -545,6 +585,50 @@ func Test_SendDue_AfterSendingStartsAgainTheReportsOfBeforeStayAndTheFirstWaitsA
 		require.Nil(t, s.store.row(day).sentAt, day)
 		require.Zero(t, s.store.row(day).attempts, day)
 	}
+}
+
+// The diagnostics are switched off after reports were prepared with them: those stay, untried,
+// and the ones prepared since, which carry none, are sent. Switched back on, the ones that
+// stayed are due again and leave as they are stored.
+func Test_SendDue_WithDiagnosticsOffAReportThatCarriesThemStays(t *testing.T) {
+	s := newSending((&fakeSendingStore{}).
+		withDiagnosticsReports("2026-10-07", "2026-10-08").
+		withReports("2026-10-09").
+		sendingSince(sendNow.AddDate(0, 0, -5)))
+	s.noDiagnostics = true
+
+	require.NoError(t, s.sendDue(t, sendNow))
+	require.Equal(t, []string{"2026-10-09"}, s.transport.days())
+	for _, day := range []string{"2026-10-07", "2026-10-08"} {
+		require.Zero(t, s.store.row(day).attempts, day)
+		require.Nil(t, s.store.row(day).sentAt, day)
+	}
+	require.NoError(t, s.sendDue(t, sendNow.Add(7*time.Hour)))
+	require.Equal(t, []string{"2026-10-09"}, s.transport.days())
+
+	s.noDiagnostics = false
+	require.NoError(t, s.sendDue(t, sendNow.Add(8*time.Hour)))
+	require.Equal(t, []string{"2026-10-09", "2026-10-07", "2026-10-08"}, s.transport.days())
+	require.Equal(t,
+		`{"day": "2026-10-07", "diagnostics": {"runs": 3}}`+"\n", string(s.transport.bodies()[1]),
+		"the report that stayed leaves as it is stored")
+}
+
+// A report that stays does not count for the wait of the first sending: with the diagnostics
+// off, the first report that leaves is the first one prepared without them, a day after it was.
+func Test_SendDue_WithDiagnosticsOffTheFirstReportWithoutThemWaitsItsDay(t *testing.T) {
+	s := newSending((&fakeSendingStore{}).
+		startedSending(time.Date(2026, 10, 7, 0, 30, 0, 0, time.UTC)).
+		withDiagnosticsReports("2026-10-07").
+		withReports("2026-10-08", "2026-10-09"))
+	s.noDiagnostics = true
+
+	// The one of the 8th was prepared on the 9th at 00:02.
+	require.NoError(t, s.sendDue(t, time.Date(2026, 10, 10, 0, 1, 0, 0, time.UTC)))
+	require.Empty(t, s.transport.days())
+	require.NoError(t, s.sendDue(t, sendNow))
+	require.Equal(t, []string{"2026-10-08", "2026-10-09"}, s.transport.days())
+	require.Zero(t, s.store.row("2026-10-07").attempts)
 }
 
 func Test_SendDue_StopsAtTheFirstFailureOfThePass(t *testing.T) {

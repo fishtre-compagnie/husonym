@@ -760,7 +760,7 @@ func serve(ctx context.Context) error {
 		slogger.Error("the usage report of the instance is prepared and not sent", "error", err)
 	} else {
 		usageSender = usagereport.NewSender(
-			usageStore, eelicense, usageKey, usageModeSetting, usageReportTransport, slogger,
+			usageStore, eelicense, usageKey, usageModeSetting, usageFacts.Diagnostics, usageReportTransport, slogger,
 		)
 	}
 	go usagereport.NewDaily(

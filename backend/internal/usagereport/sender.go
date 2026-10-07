@@ -48,12 +48,14 @@ type KeyModeSource interface {
 
 // Sender sends the usage reports that are due, when the license provides for it.
 type Sender struct {
-	store     SendingStore
-	license   license.EEInterface
-	key       KeyModeSource
-	setting   string
-	transport Transport
-	logger    *slog.Logger
+	store   SendingStore
+	license license.EEInterface
+	key     KeyModeSource
+	setting string
+	// diagnostics is false when the operator switched the diagnostics off.
+	diagnostics bool
+	transport   Transport
+	logger      *slog.Logger
 
 	waitBeforeFirst time.Duration
 	retryAfter      time.Duration
@@ -64,17 +66,20 @@ type Sender struct {
 
 // NewSender takes the license of the process, which says whether anything is sent at all, the
 // key of the instance, which says what it provides for the report, and the setting of the
-// operator as it is written (HUSONYM_TELEMETRY), which may only lower it.
+// operator as it is written (HUSONYM_TELEMETRY), which may only lower it. diagnostics is false
+// when the operator switched the diagnostics off: a report that carries them then stays.
 func NewSender(
 	store SendingStore,
 	lic license.EEInterface,
 	key KeyModeSource,
 	setting string,
+	diagnostics bool,
 	transport Transport,
 	logger *slog.Logger,
 ) *Sender {
 	return &Sender{
-		store: store, license: lic, key: key, setting: setting, transport: transport, logger: logger,
+		store: store, license: lic, key: key, setting: setting, diagnostics: diagnostics,
+		transport: transport, logger: logger,
 		waitBeforeFirst: WaitBeforeFirst, retryAfter: retryAfter,
 		passTimeout: passTimeout, recordTimeout: recordTimeout, now: time.Now,
 	}
@@ -96,6 +101,10 @@ func WaitsBeforeFirst(since time.Time, lastSent *time.Time) bool {
 // it was prepared: the first one to leave can be read for a day before it does. Each report
 // waits its own day, so one that could not be sent does not let a newer one leave earlier. Once
 // one was sent, those that follow go as soon as they are prepared.
+//
+// A report is sent as it is stored. When the diagnostics are switched off, a report that was
+// prepared with them is therefore not sent at all: it stays, and those prepared from then on,
+// which carry none, are sent. Switching the diagnostics back on makes it due again.
 //
 // now is the moment of the pass, which what is due is told from; a report is claimed and marked
 // at the moment it is, read from the clock. The pass is bounded: reports left when it ends go
@@ -159,6 +168,7 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 		claimedAt := s.now()
 		claim := usagestore.ReportClaim{
 			From: from, To: yesterday, NotAttemptedSince: claimedAt.Add(-s.retryAfter), At: claimedAt,
+			WithoutDiagnostics: !s.diagnostics,
 		}
 		if waits {
 			claim.PreparedBy = new(claimedAt.Add(-s.waitBeforeFirst))
