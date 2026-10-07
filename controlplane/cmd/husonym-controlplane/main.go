@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
+	"github.com/fishtre-compagnie/husonym/controlplane/intake"
 	"github.com/fishtre-compagnie/husonym/controlplane/migrations"
 	"github.com/fishtre-compagnie/husonym/controlplane/registryimport"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -44,7 +46,7 @@ func newRootCmd() *cobra.Command {
 			return migrations.Up(cmd.Context(), databaseURL, logger)
 		},
 	})
-	root.AddCommand(migrate, newImportRegistryCmd())
+	root.AddCommand(migrate, newImportRegistryCmd(), newServeCmd())
 	return root
 }
 
@@ -78,13 +80,15 @@ func newImportRegistryCmd() *cobra.Command {
 			}
 			defer pool.Close()
 
-			result, err := registryimport.Run(cmd.Context(), cpstore.New(pool), registry, ring)
-			if err != nil {
-				return err
-			}
+			store := cpstore.New(pool)
+			result, err := registryimport.Run(cmd.Context(), store, intake.New(store, time.Now), registry, ring)
+			// The import stands even when the promotion after it failed: the counts are told.
 			// Only counts: the registry holds customer names and license keys.
 			fmt.Fprintf(cmd.OutOrStdout(), "added: %d\nalready there: %d\nrefused: %d\n",
 				result.Added, result.AlreadyThere, result.Refused)
+			if err != nil {
+				return err
+			}
 			if result.Refused > 0 {
 				return errors.New("some entries were refused")
 			}
