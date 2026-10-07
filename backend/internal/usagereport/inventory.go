@@ -10,6 +10,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -172,8 +173,8 @@ type accountRead struct {
 	features []license.Feature
 	members  []rbac.User
 	held     map[rbac.User]mgmtv1alpha1.AccountRole
-	// partial says that the features could not be read, and the members could.
-	partial bool
+	// featuresErr says why the features could not be read, when the members could.
+	featuresErr error
 }
 
 // readAccounts gathers what is told account by account: the features an account uses by itself,
@@ -188,12 +189,16 @@ func (r *InventoryReader) readAccounts(ctx context.Context, used map[license.Fea
 	roles := map[string]int{}
 	for _, account := range all {
 		read, err := guarded(func() (*accountRead, error) { return r.readAccount(ctx, accounts, account) })
-		if err != nil || read.partial {
+		cause := err
+		if cause == nil {
+			cause = read.featuresErr
+		}
+		if cause != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 			// The error is not logged: it can carry what a decoding quoted of a stored value.
-			leftOut(ctx, "an account could not be read and is left out of the usage report", "accountId", account.String())
+			leftOut(ctx, "an account could not be read and is left out of the usage report", "accountId", account.String(), cause)
 			inventory.Unread.Accounts++
 		}
 		if err != nil {
@@ -216,8 +221,9 @@ func (r *InventoryReader) readAccount(ctx context.Context, accounts rbac.Account
 		return nil, err
 	}
 	read := &accountRead{members: members, held: r.roles.Roles(members, account)}
-	read.features, err = guarded(func() ([]license.Feature, error) { return r.usage.AccountFeatures(ctx, account.String()) })
-	read.partial = err != nil
+	read.features, read.featuresErr = guarded(func() ([]license.Feature, error) {
+		return r.usage.AccountFeatures(ctx, account.String())
+	})
 	return read, nil
 }
 
@@ -255,7 +261,13 @@ func connectionTypes(ctx context.Context, rows []db_queries.ListConnectionsOfIns
 		if err != nil {
 			unread++
 			// The error is not logged: one of decoding can quote a piece of what it read.
-			leftOut(ctx, "a connection could not be read and is left out of the usage report", "connectionId", husonymdb.UUIDString(row.ID))
+			leftOut(
+				ctx,
+				"a connection could not be read and is left out of the usage report",
+				"connectionId",
+				husonymdb.UUIDString(row.ID),
+				err,
+			)
 			continue
 		}
 		types[husonymdb.UUIDString(row.ID)] = name
@@ -353,7 +365,13 @@ func roleCounts(counts map[string]int) []telemetry.RoleCount {
 	return roles
 }
 
-// leftOut logs what is left out of the report, by its id and nothing else of it.
-func leftOut(ctx context.Context, message, key, id string) {
+// leftOut logs what is left out of the report, by its id and nothing else of it. Of the cause
+// it says one thing: whether the reading panicked, which is a defect of the program to look for
+// rather than a damaged row. What the cause says is never logged.
+func leftOut(ctx context.Context, message, key, id string, cause error) {
+	if errors.Is(cause, errPanicked) {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(ctx, message, key, id, "panicked", true)
+		return
+	}
 	logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(ctx, message, key, id)
 }

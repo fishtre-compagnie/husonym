@@ -1,7 +1,9 @@
 package usagereport
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +24,35 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
+
+// migratedPool starts a PostgreSQL holding the schema of the API, and gives a pool on it.
+func migratedPool(ctx context.Context, t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	container, err := tcpostgres.NewPostgresTestContainer(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.TearDown(context.Background()) })
+	require.NoError(t, neomigrate.Up(ctx, container.URL, "../../sql/postgresql/schema", testutil.GetTestLogger(t)))
+	pool, err := pgxpool.New(ctx, container.URL)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// apiKeysFailingFor is the queries of the API, of which the one that lists the API keys of an
+// account fails for one account.
+type apiKeysFailingFor struct {
+	db_queries.Querier
+	account pgtype.UUID
+}
+
+func (q apiKeysFailingFor) GetAccountApiKeys(
+	ctx context.Context, db db_queries.DBTX, accountId pgtype.UUID,
+) ([]db_queries.HusonymApiAccountApiKey, error) {
+	if accountId == q.account {
+		return nil, errors.New("the API keys of " + leak + " cannot be listed")
+	}
+	return q.Querier.GetAccountApiKeys(ctx, db, accountId)
+}
 
 // rolesFailingFor is the roles of the instance, which panic for one account.
 type rolesFailingFor struct {
@@ -44,13 +75,7 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 		return
 	}
 	ctx, output := logged(t)
-	container, err := tcpostgres.NewPostgresTestContainer(ctx)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = container.TearDown(t.Context()) })
-	require.NoError(t, neomigrate.Up(ctx, container.URL, "../../sql/postgresql/schema", testutil.GetTestLogger(t)))
-	pool, err := pgxpool.New(ctx, container.URL)
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
+	pool := migratedPool(ctx, t)
 
 	queries := db_queries.New()
 	db := husonymdb.New(pool, queries)
@@ -351,6 +376,24 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 	}
 	require.Contains(t, output.String(), husonymdb.UUIDString(damagedConnection.ID))
 
+	// An account whose own features cannot be read, because a query fails, loses those and
+	// nothing else: its members still count, and what its jobs use is still told.
+	failing := licensegate.NewUsageReader(husonymdb.New(pool, apiKeysFailingFor{Querier: queries, account: first.ID}), roles)
+	withoutFeatures, err := NewInventoryReader(db, failing, roles, store, true).Read(ctx, now)
+	require.NoError(t, err)
+	want.Unread.Accounts = 1
+	want.Features = featureUses(map[license.Feature]bool{
+		license.FeatureJobHooks:           true,
+		license.FeatureCustomTransformers: true,
+		license.FeatureSubsetting:         true,
+		license.FeatureScheduling:         true,
+		// Not told any more: the identity provider and the roles of the first account.
+	})
+	require.Equal(t, want, withoutFeatures)
+	require.Contains(t, output.String(), `"accountId":"`+firstId+`"`)
+	require.NotContains(t, output.String(), "panicked")
+	want.Features = featureUses(inUse)
+
 	// An account whose reading panics is left out of the roles and of the features it uses by
 	// itself, and of nothing else.
 	withoutSecond, err := NewInventoryReader(db, usage, rolesFailingFor{held: roles, account: secondId}, store, true).Read(ctx, now)
@@ -358,7 +401,7 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 	want.Unread.Accounts = 1
 	want.Users.ByRole = []telemetry.RoleCount{{Role: "admin", Count: 1}, {Role: "job_viewer", Count: 1}}
 	require.Equal(t, want, withoutSecond)
-	require.Contains(t, output.String(), secondId)
+	require.Contains(t, output.String(), `"accountId":"`+secondId+`","panicked":true`)
 
 	// What the license tells of the first account reads the job whose type cannot be read too,
 	// and its log is held to the same rule: the job by its id, and nothing of what it holds.

@@ -295,7 +295,9 @@ func Test_readJobs_LeavesOutAJobThatCannotBeRead(t *testing.T) {
 			require.Equal(t, map[string]bool{connectionOne: true}, read.sourceConnections)
 			require.Equal(t, []pgtype.UUID{uuidOf(t, jobTwo)}, read.unread)
 
-			// The job is named by its id, and nothing of what it holds is written.
+			// The job is named by its id, and nothing of what it holds is written. It was
+			// refused before the models could panic on it.
+			require.NotContains(t, output.String(), "panicked")
 			require.Contains(t, output.String(), jobTwo)
 			require.Contains(t, output.String(), `"level":"WARN"`)
 			requireNoLeak(t, output.String())
@@ -361,6 +363,12 @@ func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrFails(t *testing.T) {
 			require.Equal(t, []pgtype.UUID{uuidOf(t, jobTwo)}, read.unread)
 			require.Contains(t, output.String(), jobTwo)
 			requireNoLeak(t, output.String())
+			// A panic is told apart from a row that does not decode, and by that alone.
+			if name == "a panic" {
+				require.Contains(t, output.String(), `"panicked":true`)
+			} else {
+				require.NotContains(t, output.String(), "panicked")
+			}
 		})
 	}
 }

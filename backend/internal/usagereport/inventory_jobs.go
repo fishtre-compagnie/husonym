@@ -103,7 +103,7 @@ func readJobs(ctx context.Context, rows []db_queries.ListJobsOfInstanceForUsageR
 				return nil, ctx.Err()
 			}
 			// The error is not logged: one of decoding can quote a piece of what it read.
-			leftOut(ctx, "a job could not be read and is left out of the usage report", "jobId", husonymdb.UUIDString(row.ID))
+			leftOut(ctx, "a job could not be read and is left out of the usage report", "jobId", husonymdb.UUIDString(row.ID), err)
 			read.unread = append(read.unread, row.ID)
 			continue
 		}
