@@ -57,7 +57,8 @@ type ReportClaim struct {
 }
 
 // ClaimReport marks one more attempt on the oldest unsent report that is due, and returns it;
-// nil when there is none. Two calls at once never get the same report.
+// nil when there is none. Two calls at once never get the same report. No report is due while
+// the instance does not send: a claim made after StopSending gets none, in the same statement.
 func (s *Store) ClaimReport(
 	ctx context.Context,
 	claim ReportClaim, //nolint:gocritic // hugeParam: callers hand a value they do not share

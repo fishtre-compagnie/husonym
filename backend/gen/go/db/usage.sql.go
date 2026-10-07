@@ -18,6 +18,7 @@ WHERE day = (
   SELECT r.day
   FROM husonym_api.usage_reports r
   WHERE r.sent_at IS NULL
+    AND EXISTS (SELECT 1 FROM husonym_api.instance i WHERE i.sending_since IS NOT NULL)
     AND r.day >= $2 AND r.day <= $3
     AND (r.last_attempt_at IS NULL OR r.last_attempt_at < $4)
     AND ($5::timestamptz IS NULL OR r.prepared_at <= $5::timestamptz)
@@ -49,7 +50,8 @@ type ClaimUsageReportRow struct {
 // One statement takes the oldest report that is due and marks the attempt: a report another
 // call holds is skipped, so two calls never get the same one. When a bound is given on the
 // preparation, a report prepared after it is not due yet. When the reports are to leave without
-// the diagnostics, a report whose document carries them is not due at all.
+// the diagnostics, a report whose document carries them is not due at all. Nothing is due once
+// the instance was told not to send: a call that still believes it sends gets no report.
 func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
 	row := db.QueryRow(ctx, claimUsageReport,
 		arg.Now,

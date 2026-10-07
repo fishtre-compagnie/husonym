@@ -20,7 +20,8 @@ type Querier interface {
 	// One statement takes the oldest report that is due and marks the attempt: a report another
 	// call holds is skipped, so two calls never get the same one. When a bound is given on the
 	// preparation, a report prepared after it is not due yet. When the reports are to leave without
-	// the diagnostics, a report whose document carries them is not due at all.
+	// the diagnostics, a report whose document carries them is not due at all. Nothing is due once
+	// the instance was told not to send: a call that still believes it sends gets no report.
 	ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error)
 	// Closes the row of a run still running, and creates nothing.
 	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error

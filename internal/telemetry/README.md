@@ -83,8 +83,9 @@ which may only lower it; only the mode `online` sends.
   an answer is read up to a limit and dropped.
 - **First sending**: until an instance has sent a report since it started sending, a report
   leaves only 24 hours after it was prepared; once one was sent, the following ones go as soon
-  as they are prepared. Leaving the mode `online` forgets since when it was sending, so coming
-  back waits again on its first report.
+  as they are prepared. Leaving the mode `online`, or being without a license key in force,
+  forgets since when it was sending, so coming back waits again on its first report. A replica
+  claims no report once another one has recorded that the instance does not send.
 - **Diagnostics switched off**: a report is sent as it is stored, so one that was prepared with
   the diagnostics is not sent while they are off: it stays, and reads as kept. Switching them
   back on makes it due again.

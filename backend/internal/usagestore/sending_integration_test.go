@@ -64,6 +64,7 @@ func Test_ClaimReport_GivesTheOldestDueReportAndCountsTheAttempt(t *testing.T) {
 	}
 	ctx := t.Context()
 	_, store := migratedDatabase(ctx, t)
+	require.NoError(t, store.StartSending(ctx, october6))
 	for i := range 3 {
 		saveReportOf(t, store, october6.Add(time.Duration(i)*24*time.Hour))
 	}
@@ -101,6 +102,7 @@ func Test_ClaimReport_SkipsWhatDoesNotQualify(t *testing.T) {
 	}
 	ctx := t.Context()
 	_, store := migratedDatabase(ctx, t)
+	require.NoError(t, store.StartSending(ctx, october6))
 	saveReportOf(t, store, october6)
 	day := october6.Add(24 * time.Hour)
 	saveReportOf(t, store, day)
@@ -142,6 +144,7 @@ func Test_ClaimReport_LeavesAReportPreparedAfterTheBound(t *testing.T) {
 	}
 	ctx := t.Context()
 	_, store := migratedDatabase(ctx, t)
+	require.NoError(t, store.StartSending(ctx, october6))
 	saveReportOf(t, store, october6)
 	next := october6.Add(24 * time.Hour)
 	saveReportOf(t, store, next)
@@ -183,6 +186,7 @@ func Test_ClaimReport_LeavesAReportThatCarriesDiagnosticsWhenToldTo(t *testing.T
 	}
 	ctx := t.Context()
 	_, store := migratedDatabase(ctx, t)
+	require.NoError(t, store.StartSending(ctx, october6))
 	with, without, nested := october6, october6.Add(24*time.Hour), october6.Add(48*time.Hour)
 	for day, document := range map[time.Time]string{
 		with:    "{\"day\": \"2026-10-06\", \"diagnostics\": {\"runs\": {\"completed\": 3}}}\n",
@@ -228,12 +232,46 @@ func Test_ClaimReport_LeavesAReportThatCarriesDiagnosticsWhenToldTo(t *testing.T
 	require.Equal(t, "{\"day\": \"2026-10-06\", \"diagnostics\": {\"runs\": {\"completed\": 3}}}\n", string(got.Document))
 }
 
+// The claim itself asks whether the instance sends: a replica that read that it does, before
+// another one recorded that it does not, gets no report and counts no attempt.
+func Test_ClaimReport_GivesNothingWhileTheInstanceDoesNotSend(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	_, store := migratedDatabase(ctx, t)
+	saveReportOf(t, store, october6)
+	next := october6.Add(24 * time.Hour)
+	saveReportOf(t, store, next)
+	claim := claimOf(october6, next, sendingNow.Add(-time.Hour), sendingNow)
+
+	never, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.Nil(t, never, "an instance that never sent")
+
+	require.NoError(t, store.StartSending(ctx, october6))
+	first, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.NotNil(t, first)
+	require.True(t, october6.Equal(first.Day))
+
+	require.NoError(t, store.StopSending(ctx))
+	stopped, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.Nil(t, stopped, "an instance that stopped sending")
+	sendings, err := store.ListReportSendings(ctx, next, next)
+	require.NoError(t, err)
+	require.Zero(t, sendings[0].Attempts)
+	require.Nil(t, sendings[0].LastAttemptAt)
+}
+
 func Test_ClaimReport_TwoCallsAtOnceNeverGetTheSameReport(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
 	ctx := t.Context()
 	_, store := migratedDatabase(ctx, t)
+	require.NoError(t, store.StartSending(ctx, october6))
 	const reports = 20
 	for i := range reports {
 		day := october6.Add(time.Duration(i) * 24 * time.Hour)

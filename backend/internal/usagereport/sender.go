@@ -94,7 +94,7 @@ func WaitsBeforeFirst(since time.Time, lastSent *time.Time) bool {
 // SendDue sends the reports that are due, from the oldest: those of the closed days since the
 // instance started sending, thirty days back at most, that were not sent yet nor tried in the
 // last hours. Nothing is sent without a license in force, nor in a mode that is not the one that
-// sends, which also forgets since when the instance was sending: an instance that comes back to
+// sends, and either forgets since when the instance was sending: an instance that comes back to
 // sending starts again, and what was prepared in between stays.
 //
 // Until a report was sent since the instance started sending, a report is due only a day after
@@ -111,7 +111,8 @@ func WaitsBeforeFirst(since time.Time, lastSent *time.Time) bool {
 // at a later pass.
 //
 // A report that cannot be sent is logged and ends the pass: it is not an error, and it is tried
-// again later. Several replicas may run it at once: a report is claimed by one of them only.
+// again later. Several replicas may run it at once: a report is claimed by one of them only,
+// and by none once one of them, set not to send, has recorded that the instance does not.
 //
 // A report may arrive twice: once it left, it is logged, then marked, and one that could not
 // be marked is sent again later. It is then the same report: same day, same bytes, same seal.
@@ -121,20 +122,17 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 
 	// Asked first, and of what the process holds: without a license nothing is read at all.
 	if !s.license.IsValid() {
-		return nil
+		return s.stop(ctx)
 	}
 	keyMode, err := s.key.TelemetryMode(ctx, now)
 	if errors.Is(err, ErrNoLicenseInForce) {
-		return nil
+		return s.stop(ctx)
 	}
 	if err != nil {
 		return err
 	}
 	if mode, _ := telemetry.EffectiveMode(keyMode, s.setting); mode != telemetry.ModeOnline {
-		if err := s.store.StopSending(ctx); err != nil {
-			return fmt.Errorf("unable to record that the usage report is not sent: %w", err)
-		}
-		return nil
+		return s.stop(ctx)
 	}
 
 	if err := s.store.StartSending(ctx, now); err != nil {
@@ -194,6 +192,16 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 		// A report was sent since the instance started sending: the others go as they are due.
 		waits = false
 	}
+}
+
+// stop forgets since when the instance was sending, when it does not send: without a license in
+// force as in a mode that is not the one that sends. A license that comes back, like a mode,
+// starts the sending again from that moment.
+func (s *Sender) stop(ctx context.Context) error {
+	if err := s.store.StopSending(ctx); err != nil {
+		return fmt.Errorf("unable to record that the usage report is not sent: %w", err)
+	}
+	return nil
 }
 
 // sent logs a report that left, then marks it. The line is written first, so that a report

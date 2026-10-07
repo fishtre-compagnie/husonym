@@ -50,6 +50,8 @@ type fakeSendingStore struct {
 	hang bool
 	// onMark is called when a report is about to be marked.
 	onMark func()
+	// onClaim is called when a report is about to be claimed, the store unlocked.
+	onClaim func()
 }
 
 // withReports adds the reports of the given days, each prepared two minutes after its day closed.
@@ -169,9 +171,16 @@ func (f *fakeSendingStore) LastSentAt(context.Context) (*time.Time, error) {
 }
 
 func (f *fakeSendingStore) ClaimReport(_ context.Context, claim usagestore.ReportClaim) (*usagestore.StoredReport, error) {
+	if f.onClaim != nil {
+		f.onClaim()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, "claim")
+	// Like the database: nothing is due while the instance does not send.
+	if f.since == nil {
+		return nil, nil //nolint:nilnil // none due
+	}
 	slices.SortFunc(f.rows, func(a, b *sendingRow) int { return a.report.Day.Compare(b.report.Day) })
 	for _, row := range f.rows {
 		if row.sentAt != nil || row.report.Day.Before(claim.From) || row.report.Day.After(claim.To) {
@@ -332,24 +341,80 @@ func sendDueAt(ctx context.Context, sender *Sender, at time.Time) error {
 	return sender.SendDue(ctx, at)
 }
 
-func Test_SendDue_WithoutALicenseInForceDoesNothing(t *testing.T) {
+func Test_SendDue_WithoutALicenseInForceStopsSendingAndReadsNothing(t *testing.T) {
 	s := newSending((&fakeSendingStore{}).withReports("2026-10-09").sendingSince(sendNow.AddDate(0, 0, -5)))
 	s.license.inForce = false
 
 	require.NoError(t, s.sendDue(t, sendNow))
 	require.Zero(t, s.key.calls)
-	require.Empty(t, s.store.called())
+	require.Equal(t, []string{"stop"}, s.store.called())
+	require.Nil(t, s.store.since)
 	require.Empty(t, s.transport.days())
-	require.NotNil(t, s.store.since)
 }
 
-func Test_SendDue_WithoutAKeyInForceDoesNothing(t *testing.T) {
+func Test_SendDue_WithoutAKeyInForceStopsSendingAndSendsNothing(t *testing.T) {
 	s := newSending((&fakeSendingStore{}).withReports("2026-10-09").sendingSince(sendNow.AddDate(0, 0, -5)))
 	s.key.err = ErrNoLicenseInForce
 
 	require.NoError(t, s.sendDue(t, sendNow))
-	require.Empty(t, s.store.called())
+	require.Equal(t, []string{"stop"}, s.store.called())
+	require.Nil(t, s.store.since)
 	require.Empty(t, s.transport.days())
+}
+
+// A key that froze or was removed, then one that is installed later: the sending does not resume
+// on the date of before. It starts again, what was prepared in between stays, and the first
+// report waits its day.
+func Test_SendDue_AKeyThatComesBackStartsANewWait(t *testing.T) {
+	for name, without := range map[string]func(*sending, bool){
+		"the license of the process": func(s *sending, gone bool) { s.license.inForce = !gone },
+		"the key of the instance": func(s *sending, gone bool) {
+			s.key.err = nil
+			if gone {
+				s.key.err = ErrNoLicenseInForce
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newSending((&fakeSendingStore{}).
+				withReports("2026-10-07", "2026-10-08").
+				sendingSince(time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)))
+			without(s, true)
+			require.NoError(t, s.sendDue(t, time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)))
+			require.Nil(t, s.store.since)
+
+			without(s, false)
+			s.store.withReports("2026-10-09")
+			require.NoError(t, s.sendDue(t, sendNow))
+			require.True(t, sendNow.Equal(*s.store.since))
+			require.Empty(t, s.transport.days())
+
+			s.store.withReports("2026-10-10")
+			prepared := s.store.row("2026-10-10").report.PreparedAt
+			require.NoError(t, s.sendDue(t, prepared.Add(24*time.Hour-time.Minute)))
+			require.Empty(t, s.transport.days())
+			require.NoError(t, s.sendDue(t, prepared.Add(24*time.Hour)))
+			require.Equal(t, []string{"2026-10-10"}, s.transport.days())
+			for _, day := range []string{"2026-10-07", "2026-10-08", "2026-10-09"} {
+				require.Zero(t, s.store.row(day).attempts, day)
+			}
+		})
+	}
+}
+
+// Another replica, restarted not to send, records that the instance does not send after this
+// one read that it does: this one claims nothing, and so posts nothing.
+func Test_SendDue_ClaimsNothingOnceAnotherReplicaStoppedTheSending(t *testing.T) {
+	s := newSending((&fakeSendingStore{}).
+		withReports("2026-10-08", "2026-10-09").
+		sendingSince(sendNow.AddDate(0, 0, -5)))
+	s.store.onClaim = func() { require.NoError(t, s.store.StopSending(t.Context())) }
+
+	require.NoError(t, s.sendDue(t, sendNow))
+	require.Empty(t, s.transport.days())
+	for _, day := range []string{"2026-10-08", "2026-10-09"} {
+		require.Zero(t, s.store.row(day).attempts, day)
+	}
 }
 
 func Test_SendDue_AKeyThatCannotBeReadIsAnErrorAndNothingIsSent(t *testing.T) {
