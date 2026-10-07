@@ -76,6 +76,11 @@ const sidebars: SidebarsConfig = {
           label: 'whoami',
         },
         {
+          type: 'doc',
+          id: 'cli/usage-report',
+          label: 'usage-report',
+        },
+        {
           type: 'category',
           label: 'accounts',
           collapsible: true,
