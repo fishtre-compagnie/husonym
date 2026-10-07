@@ -3,6 +3,7 @@ package licensegate
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -140,10 +141,24 @@ func licenseWith(features ...license.Feature) *testutil.FakeEELicense {
 func requireRefusal(t *testing.T, err error, features string) {
 	t.Helper()
 	require.Error(t, err)
+	// A handler that returns it to a caller answers permission-denied, with the sentence alone.
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
-	var refusal *connect.Error
+	var answered *connect.Error
+	require.ErrorAs(t, err, &answered)
+	require.Equal(t, "this job uses features the license does not include: "+features, answered.Message())
+	// What starts a run tells it apart by its type, and reads the features from it.
+	var refusal *Refusal
 	require.ErrorAs(t, err, &refusal)
+	require.Equal(t, features, joinFeatures(refusal.Missing))
 	require.Equal(t, "this job uses features the license does not include: "+features, refusal.Message())
+}
+
+func joinFeatures(features []license.Feature) string {
+	names := make([]string, 0, len(features))
+	for _, feature := range features {
+		names = append(names, string(feature))
+	}
+	return strings.Join(names, ", ")
 }
 
 func Test_JobGate_Check_NothingMissing(t *testing.T) {

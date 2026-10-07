@@ -178,6 +178,20 @@ runs freeze alike. When the request names a job, it also asks the job gate wheth
 uses a feature the license does not include, and answers `is_valid: false` with the reason
 if so.
 
+The refusal of the job gate is a typed error (`licensegate.Refusal`, which carries the
+missing features and still answers `permission_denied` where a handler returns it), and
+both start paths tell it apart by its type, not by a code. What `IsAccountStatusValid` does
+with what the gate answers:
+
+| The gate answers | `IsAccountStatusValid` |
+| --- | --- |
+| nothing: the job may start | `is_valid: true` |
+| a refusal | `is_valid: false`, the reason naming the features |
+| `ErrJobNotFound` | `is_valid: true`, with a warning in the log: a job id the API cannot find must not block a run |
+| any other error (the gate could not answer) | fails with `unavailable`: the activity that asks is retried, and the run does not start ungated |
+
+`CreateJobRun` fails on the same errors.
+
 If you add another entry point that starts work, gate it or make sure it passes through
 that check.
 

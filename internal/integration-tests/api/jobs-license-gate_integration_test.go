@@ -196,9 +196,10 @@ func (s *IntegrationTestSuite) Test_IsAccountStatusValid_RefusesByJob() {
 	require.Equal(t, mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_REASON_UNSPECIFIED, forTheAccount.Msg.GetAccountStatus())
 }
 
-// A job the check cannot read decides nothing: the run is not held back by a failure of the
-// gate itself, the answer is the one of the account, and the failure is logged.
-func (s *IntegrationTestSuite) Test_IsAccountStatusValid_AJobItCannotReadDoesNotRefuse() {
+// A job the API cannot find decides nothing: the run is not held back for it, the answer is the
+// one of the account, and a warning says so. (A gate that could not answer, on a database that
+// fails, is another matter: the call fails then, which the unit test of the handler covers.)
+func (s *IntegrationTestSuite) Test_IsAccountStatusValid_AJobItCannotFindDoesNotRefuse() {
 	t := s.T()
 	ctx := s.ctx
 	userOpt := integrationtests_test.WithUserId("unreadable-job-status")
@@ -231,6 +232,7 @@ func (s *IntegrationTestSuite) Test_IsAccountStatusValid_AJobItCannotReadDoesNot
 	require.Nil(t, resp.Msg.Reason)
 	require.Equal(t, mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_REASON_UNSPECIFIED, resp.Msg.GetAccountStatus())
 
-	require.Contains(t, logs.String(), `"level":"ERROR"`)
+	require.Contains(t, logs.String(), `"level":"WARN"`)
+	require.NotContains(t, logs.String(), `"level":"ERROR"`)
 	require.Contains(t, logs.String(), unknownJobId)
 }
