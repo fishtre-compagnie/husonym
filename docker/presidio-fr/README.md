@@ -77,31 +77,43 @@ différences près :
    - le suivant commence `chunk_overlap` caractères (40) avant cette fin, ou sur
      le début de mot le plus proche avant ce point, cherché sur 40 caractères de
      plus. Deux morceaux consécutifs partagent donc toujours au moins
-     40 caractères (80 au plus) : un nom de 40 caractères ou moins est entier
-     dans l'un des deux ;
+     40 caractères (80 au plus) : une portion de texte de 40 caractères ou moins
+     se trouve en entier dans l'un des deux. Cela vaut pour ce que les morceaux
+     contiennent, pas pour ce que le modèle y reconnaît (voir les limites plus
+     bas) ;
    - un morceau dont les tokens dépassent encore la fenêtre (certains caractères
      valent plusieurs tokens : « ½ », « ﷺ ») est redécoupé en deux, autant de
      fois qu'il le faut.
 3. **Les trouvailles de deux morceaux qui se chevauchent sont réunies.** Deux
    morceaux partagent une portion du texte et chacun y lit un nom avec son
    propre contexte : l'un peut le rendre entier, l'autre n'en rendre qu'une
-   partie (« Corentin Le »), parfois avec un meilleur score. Presidio garde
-   alors la trouvaille au meilleur score. Ici aucune n'est choisie : des
-   trouvailles du même type, venues de morceaux différents, qui se chevauchent
-   dans le texte sont remplacées par une seule, du plus petit début à la plus
-   grande fin, avec le meilleur score ; et ainsi de suite tant qu'il en reste
-   qui se chevauchent. Les trouvailles d'un même morceau sont rendues telles
-   que le modèle les a données. Aucun caractère désigné par un morceau n'est
-   perdu.
+   partie (« Corentin Le »), parfois avec un meilleur score. Presidio ne garde
+   alors que la trouvaille au meilleur score quand leur partie commune dépasse
+   la moitié de la plus courte, et les garde toutes les deux sinon. Ici aucune
+   n'est choisie : des trouvailles du même type qui se chevauchent dans le
+   texte, directement ou par l'intermédiaire d'autres, et qui ne viennent pas
+   toutes du même morceau, sont remplacées par une seule, du plus petit début
+   à la plus grande fin, avec le score et l'explication de la mieux notée.
+   Des trouvailles qui se chevauchent et viennent toutes du même morceau sont
+   rendues telles quelles. Aucun caractère désigné par un morceau n'est perdu,
+   aucun n'est ajouté.
 
    Ce que cela implique pour l'appelant : une trouvaille `PERSON` désigne un
    passage, pas forcément une seule personne. Deux personnes nommées l'une à
    la suite de l'autre de part et d'autre d'une coupe peuvent revenir en une
    seule trouvaille si les lectures des deux morceaux se chevauchent.
 
-   Ce qui reste la limite du modèle, et que la réunion ne corrige pas : un nom
-   que le modèle ne voit dans aucun morceau ; une trouvaille à laquelle il
-   manque sa première lettre, vue après un guillemet ou un chiffre.
+   **Limites, que la réunion ne corrige pas.** Elle ne réunit que ce que les
+   morceaux rendent :
+   - dans un long texte avec peu ou pas de blancs, quand la coupe tombe dans un
+     nom de plusieurs mots, le modèle peut n'en rendre qu'une partie dans
+     chacun des morceaux — ou rien — et l'image désigne alors cette partie.
+     Mesuré : un nom en « de La » rendu entier à 93 positions sur 180 dans un
+     texte dont les seules espaces sont celles du nom ; un nom de quatre mots
+     rendu sans son dernier mot à 1 position sur 30 dans du JSON compact ;
+   - un nom que le modèle ne voit dans aucun morceau ;
+   - une trouvaille à laquelle il manque sa première lettre, ou qui prend le
+     signe qui la précède, vue après un guillemet, un tiret ou un chiffre.
 4. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
    « aucune trouvaille » pour le morceau ; ici l'erreur remonte, et le serveur
    répond par une erreur au lieu d'une liste incomplète.

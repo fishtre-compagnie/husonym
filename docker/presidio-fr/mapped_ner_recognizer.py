@@ -14,7 +14,7 @@ Four things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
 """
 
 import inspect
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Tuple
 
 from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.chunkers import (
@@ -51,6 +51,8 @@ class BoundedTextChunker(CharacterBasedTextChunker):
         chunks = []
         start = 0
         while start < len(text):
+            if len(chunks) >= self.most_chunks(len(text)):
+                raise RuntimeError("more chunks than a text of this length can need")
             end = min(start + self.chunk_size, len(text))
             if end < len(text):
                 # A cut any closer to the start would not let the next chunk advance.
@@ -71,6 +73,16 @@ class BoundedTextChunker(CharacterBasedTextChunker):
                 raise RuntimeError("the chunks of the text do not advance")
             start = following
         return chunks
+
+    def most_chunks(self, length: int) -> int:
+        """The most chunks a text of this length is split into.
+
+        Two chunks in a row move the end forward by at least `chunk_size` less the most two
+        chunks share. The loop of `chunk` stops with an error past this count, whatever
+        keeps it from advancing.
+        """
+        step = self.chunk_size - self.chunk_overlap - self.start_reach
+        return 2 * (length // step + 1) + 1
 
     def _last_boundary(self, text: str, low: int, high: int) -> int:
         return max(text.rfind(char, low, high) for char in self.boundary_chars)
@@ -97,27 +109,56 @@ class BoundedTextChunker(CharacterBasedTextChunker):
 
         Two chunks share a part of the text and each reads a name there with its own
         context: one may return it whole and the other a part of it. No winner is chosen.
-        Findings of one entity type that come from different chunks and overlap become one,
-        from the smallest start to the largest end, with the highest score; this repeats
-        until no two of them overlap. Findings of one chunk are returned as the model gave
-        them. No character a chunk designated is dropped.
+        Findings of one entity type that overlap, directly or through others, and do not
+        all come from one chunk become one finding: from the smallest start to the largest
+        end, with the score and the explanation of the highest score (the first given, of
+        equal scores). Findings that overlap and all come from one chunk are returned as
+        they are. No character a chunk designated is dropped, and none is added.
+
+        The findings are sorted once and read in one pass.
 
         :param found: pairs of a chunk's index and one of its findings, at its position in
             the text.
+        :return: the findings by start; of equal starts, in the order they were given.
         """
-        merged = [({index}, result) for index, result in found]
-        pair = _first_pair_to_merge(merged)
-        while pair:
-            first, second = pair
-            (first_chunks, a), (second_chunks, b) = merged[first], merged[second]
-            best = a if a.score >= b.score else b
-            merged[first] = (
-                first_chunks | second_chunks,
-                _span(best, min(a.start, b.start), max(a.end, b.end)),
+        by_type: Dict[str, List[Tuple[int, int, int, int, RecognizerResult]]] = {}
+        for position, (chunk, result) in enumerate(found):
+            by_type.setdefault(result.entity_type, []).append(
+                (result.start, result.end, position, chunk, result)
             )
-            del merged[second]
-            pair = _first_pair_to_merge(merged)
-        return sorted((result for _, result in merged), key=lambda result: result.start)
+
+        merged: List[Tuple[int, int, RecognizerResult]] = []
+        for of_type in by_type.values():
+            of_type.sort(key=lambda item: item[:3])
+            group = [of_type[0]]
+            group_end = of_type[0][1]
+            for item in of_type[1:]:
+                if item[0] >= group_end:
+                    merged.extend(_united(group))
+                    group = []
+                    group_end = item[1]
+                group.append(item)
+                group_end = max(group_end, item[1])
+            merged.extend(_united(group))
+        merged.sort(key=lambda item: item[:2])
+        return [result for _, _, result in merged]
+
+
+def _united(
+    group: List[Tuple[int, int, int, int, RecognizerResult]],
+) -> List[Tuple[int, int, RecognizerResult]]:
+    """Unite findings that overlap, unless one chunk returned them all.
+
+    :param group: start, end, position given, chunk and finding of each.
+    :return: start, position and finding of what the group becomes.
+    """
+    if len({chunk for _, _, _, chunk, _ in group}) == 1:
+        return [(start, position, result) for start, _, position, _, result in group]
+    best = max(group, key=lambda item: (item[4].score, -item[2]))[4]
+    start = min(item[0] for item in group)
+    end = max(item[1] for item in group)
+    position = min(item[2] for item in group)
+    return [(start, position, _span(best, start, end))]
 
 
 def _span(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
@@ -130,23 +171,6 @@ def _span(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
         analysis_explanation=result.analysis_explanation,
         recognition_metadata=result.recognition_metadata,
     )
-
-
-def _first_pair_to_merge(
-    merged: List[Tuple[Set[int], RecognizerResult]],
-) -> Optional[Tuple[int, int]]:
-    """Find two findings of one entity type, not both of the same single chunk, that overlap."""
-    for first, (first_chunks, a) in enumerate(merged):
-        for second in range(first + 1, len(merged)):
-            second_chunks, b = merged[second]
-            if (
-                a.entity_type == b.entity_type
-                and a.start < b.end
-                and b.start < a.end
-                and len(first_chunks | second_chunks) > 1
-            ):
-                return first, second
-    return None
 
 
 class MappedLabelsNerRecognizer(HuggingFaceNerRecognizer):

@@ -7,7 +7,7 @@ base image, see the README.
 import random
 from typing import Dict, List, Set, Tuple
 
-from presidio_analyzer import RecognizerResult
+from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.chunkers import TextChunk
 
 from mapped_ner_recognizer import BoundedTextChunker, MappedLabelsNerRecognizer
@@ -24,10 +24,8 @@ def check_chunks(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
     if not text:
         assert chunks == [], chunks
         return chunks
-    # Two chunks in a row move the end forward by at least this many characters: the number
-    # of chunks of a text is bounded by its length.
-    step = size - overlap - chunker.start_reach
-    assert len(chunks) <= 2 * (len(text) // step + 1) + 1, (len(chunks), len(text), size, overlap)
+    # The chunker stops with an error past this count: a loop that does not advance fails.
+    assert len(chunks) <= chunker.most_chunks(len(text)), (len(chunks), len(text), size, overlap)
     assert chunks[0].start == 0, chunks[0]
     assert chunks[-1].end == len(text), chunks[-1]
     for chunk in chunks:
@@ -207,11 +205,99 @@ def check_predictions() -> None:
 
 
 def person(start: int, end: int, score: float, entity_type: str = "PERSON") -> RecognizerResult:
-    return RecognizerResult(entity_type=entity_type, start=start, end=end, score=score)
+    """A finding with an explanation of its own."""
+    explanation = AnalysisExplanation(
+        recognizer="check", original_score=score, textual_explanation=f"{start}-{end}"
+    )
+    return RecognizerResult(
+        entity_type=entity_type, start=start, end=end, score=score, analysis_explanation=explanation
+    )
 
 
 def merged(found: List[Tuple[int, RecognizerResult]]) -> List[tuple]:
     return [(r.start, r.end, r.score) for r in BoundedTextChunker.merge_across_chunks(found)]
+
+
+def reference_merge(found: List[Tuple[int, RecognizerResult]]) -> List[RecognizerResult]:
+    """The rule of the merge, written pair by pair: the image's merge must return the same.
+
+    Two findings of one entity type that overlap and are not both of the same single chunk
+    are replaced by their union, until no such pair is left.
+    """
+    groups = [({index}, result) for index, result in found]
+
+    def first_pair():
+        for first, (first_chunks, a) in enumerate(groups):
+            for second in range(first + 1, len(groups)):
+                second_chunks, b = groups[second]
+                if (
+                    a.entity_type == b.entity_type
+                    and a.start < b.end
+                    and b.start < a.end
+                    and len(first_chunks | second_chunks) > 1
+                ):
+                    return first, second
+        return None
+
+    pair = first_pair()
+    while pair:
+        first, second = pair
+        (first_chunks, a), (second_chunks, b) = groups[first], groups[second]
+        best = a if a.score >= b.score else b
+        groups[first] = (
+            first_chunks | second_chunks,
+            RecognizerResult(
+                entity_type=best.entity_type,
+                start=min(a.start, b.start),
+                end=max(a.end, b.end),
+                score=best.score,
+                analysis_explanation=best.analysis_explanation,
+            ),
+        )
+        del groups[second]
+        pair = first_pair()
+    return sorted((result for _, result in groups), key=lambda result: result.start)
+
+
+def described(results: List[RecognizerResult]) -> List[tuple]:
+    """What a caller sees of each finding; the explanation by identity."""
+    return [(r.entity_type, r.start, r.end, r.score, id(r.analysis_explanation)) for r in results]
+
+
+def check_merge_against_reference() -> int:
+    """The same findings, in the same order, as the rule written pair by pair."""
+    rng = random.Random(20261008)
+    count = 0
+    for distinct_scores in (True, False):
+        for _ in range(3000):
+            found = []
+            for _ in range(rng.randint(0, 14)):
+                start = rng.randint(0, 80)
+                score = rng.random() if distinct_scores else rng.choice([0.85, 0.9, 0.99])
+                entity_type = rng.choice(["PERSON", "PERSON", "LOCATION", "NRP"])
+                # Lengths from 1: findings that touch, chains, and several of one chunk.
+                found.append((rng.randint(0, 3), person(start, start + rng.randint(1, 25), score, entity_type)))
+            results = BoundedTextChunker.merge_across_chunks(found)
+            expected = reference_merge(found)
+            if distinct_scores:
+                assert described(results) == described(expected), found
+            else:
+                # Of equal scores the explanation kept is the first given: compared without it.
+                assert [d[:4] for d in described(results)] == [d[:4] for d in described(expected)], found
+            count += 1
+    return count
+
+
+def check_merge_of_many_findings() -> None:
+    """Thousands of findings are merged in one sorted pass: this ends, whatever the machine."""
+    rng = random.Random(20261009)
+    found = []
+    for index in range(60000):
+        start = rng.randint(0, 3_000_000)
+        found.append((index % 9000, person(start, start + rng.randint(1, 30), rng.random())))
+    results = BoundedTextChunker.merge_across_chunks(found)
+    assert covered(results) == covered([result for _, result in found])
+    assert 0 < len(results) <= len(found)
 
 
 def covered(results: List[RecognizerResult]) -> Dict[str, Set[int]]:
@@ -240,12 +326,29 @@ def check_named_merges() -> None:
     # Neighbours that do not overlap stay two, and so does a person named in two places.
     assert merged([(0, person(380, 390, 0.9)), (1, person(390, 400, 0.95))]) == [(380, 390, 0.9), (390, 400, 0.95)]
     assert merged([(0, person(10, 27, 0.99)), (3, person(1210, 1227, 0.99))]) == [(10, 27, 0.99), (1210, 1227, 0.99)]
-    # Findings of one chunk are left as they are, and so are findings of two entity types.
+    # Overlapping findings that all come from one chunk are left as they are, and so are
+    # findings of two entity types.
     assert merged([(0, person(10, 20, 0.9)), (0, person(15, 25, 0.95))]) == [(10, 20, 0.9), (15, 25, 0.95)]
     assert merged([(0, person(10, 20, 0.9)), (1, person(15, 25, 0.95, "LOCATION"))]) == [
         (10, 20, 0.9),
         (15, 25, 0.95),
     ]
+    # Two overlapping findings of one chunk become one with a finding of another chunk that
+    # overlaps one of them: no character is lost.
+    assert merged([(0, person(10, 20, 0.9)), (0, person(15, 25, 0.95)), (1, person(24, 30, 0.8))]) == [(10, 30, 0.95)]
+
+    # A merged finding carries the explanation of the finding of the highest score, and the
+    # first given of equal scores.
+    part, whole = person(376, 397, 0.999), person(376, 404, 0.99)
+    (united,) = BoundedTextChunker.merge_across_chunks([(1, whole), (0, part)])
+    assert united.analysis_explanation is part.analysis_explanation
+    assert united.entity_type == "PERSON"
+    first, second = person(376, 404, 0.99), person(380, 404, 0.99)
+    (united,) = BoundedTextChunker.merge_across_chunks([(0, first), (1, second)])
+    assert united.analysis_explanation is first.analysis_explanation
+    # A finding that is not merged is returned itself.
+    alone = person(380, 400, 0.9)
+    assert BoundedTextChunker.merge_across_chunks([(0, alone)]) == [alone]
 
     # Through the chunker: positions are those of the text, not of the chunk.
     text = "x" * 395 + "Corentin Le Guével" + "x" * 300
@@ -300,8 +403,10 @@ if __name__ == "__main__":
     check_named_texts()
     check_named_merges()
     merges = check_random_merges()
+    compared = check_merge_against_reference()
+    check_merge_of_many_findings()
     check_predictions()
     print(
         f"recognizer checks passed: {random_texts} random texts, {names} name positions, "
-        f"{merges} random merges"
+        f"{merges} random merges, {compared} merges compared with the reference"
     )

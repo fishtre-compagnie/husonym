@@ -63,8 +63,10 @@ recognizers:
 
   # MappedLabelsNerRecognizer (mapped_ner_recognizer.py, dans l'image) est le
   # HuggingFaceNerRecognizer de Presidio, moins les étiquettes absentes de
-  # label_mapping (LOC, ORG et MISC du modèle ne sortent pas), et avec des morceaux
-  # de chunk_size caractères au plus.
+  # label_mapping (LOC, ORG et MISC du modèle ne sortent pas), avec des morceaux de
+  # chunk_size caractères au plus qui partagent au moins chunk_overlap caractères.
+  # Les trouvailles de deux morceaux qui se chevauchent sont réunies en une seule,
+  # et une inférence qui échoue fait échouer la requête (voir le README).
   # threshold : en dessous de 0,8 une personne n'est pas rendue.
   - name: MappedLabelsNerRecognizer
     type: predefined
