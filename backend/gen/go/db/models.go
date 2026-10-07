@@ -119,9 +119,10 @@ type HusonymApiGateRefusalsDaily struct {
 
 // Stores the identity of the instance: a single row
 type HusonymApiInstance struct {
-	ID        pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	Singleton bool
+	ID           pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+	Singleton    bool
+	SendingSince pgtype.Timestamptz
 }
 
 type HusonymApiJob struct {
@@ -265,6 +266,9 @@ type HusonymApiUsageReport struct {
 	Seal           string
 	KeyFingerprint string
 	PreparedAt     pgtype.Timestamptz
+	SentAt         pgtype.Timestamptz
+	Attempts       int32
+	LastAttemptAt  pgtype.Timestamptz
 }
 
 type HusonymApiUser struct {

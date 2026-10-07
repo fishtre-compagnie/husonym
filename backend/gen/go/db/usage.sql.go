@@ -11,6 +11,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimUsageReport = `-- name: ClaimUsageReport :one
+UPDATE husonym_api.usage_reports
+SET attempts = attempts + 1, last_attempt_at = $1
+WHERE day = (
+  SELECT r.day
+  FROM husonym_api.usage_reports r
+  WHERE r.sent_at IS NULL
+    AND r.day >= $2 AND r.day <= $3
+    AND (r.last_attempt_at IS NULL OR r.last_attempt_at < $4)
+  ORDER BY r.day
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING day, document, seal, key_fingerprint, prepared_at
+`
+
+type ClaimUsageReportParams struct {
+	Now               pgtype.Timestamptz
+	FromDay           pgtype.Date
+	ToDay             pgtype.Date
+	NotAttemptedSince pgtype.Timestamptz
+}
+
+type ClaimUsageReportRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+// One statement takes the oldest report that is due and marks the attempt: a report another
+// call holds is skipped, so two calls never get the same one.
+func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
+	row := db.QueryRow(ctx, claimUsageReport,
+		arg.Now,
+		arg.FromDay,
+		arg.ToDay,
+		arg.NotAttemptedSince,
+	)
+	var i ClaimUsageReportRow
+	err := row.Scan(
+		&i.Day,
+		&i.Document,
+		&i.Seal,
+		&i.KeyFingerprint,
+		&i.PreparedAt,
+	)
+	return i, err
+}
+
 const closeRunUsage = `-- name: CloseRunUsage :exec
 UPDATE husonym_api.run_usage
 SET status = $1, ended_at = $2, rows_read = $3,
@@ -159,15 +210,47 @@ func (q *Queries) GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, erro
 	return id, err
 }
 
+const getLastUsageReportSentAt = `-- name: GetLastUsageReportSentAt :one
+SELECT max(sent_at)::timestamptz AS sent_at
+FROM husonym_api.usage_reports
+`
+
+func (q *Queries) GetLastUsageReportSentAt(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	row := db.QueryRow(ctx, getLastUsageReportSentAt)
+	var sent_at pgtype.Timestamptz
+	err := row.Scan(&sent_at)
+	return sent_at, err
+}
+
+const getSendingSince = `-- name: GetSendingSince :one
+SELECT sending_since
+FROM husonym_api.instance
+`
+
+func (q *Queries) GetSendingSince(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	row := db.QueryRow(ctx, getSendingSince)
+	var sending_since pgtype.Timestamptz
+	err := row.Scan(&sending_since)
+	return sending_since, err
+}
+
 const getUsageReport = `-- name: GetUsageReport :one
 SELECT day, document, seal, key_fingerprint, prepared_at
 FROM husonym_api.usage_reports
 WHERE day = $1
 `
 
-func (q *Queries) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error) {
+type GetUsageReportRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (GetUsageReportRow, error) {
 	row := db.QueryRow(ctx, getUsageReport, day)
-	var i HusonymApiUsageReport
+	var i GetUsageReportRow
 	err := row.Scan(
 		&i.Day,
 		&i.Document,
@@ -288,6 +371,69 @@ func (q *Queries) ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, st
 	return items, nil
 }
 
+const listUsageReportSendings = `-- name: ListUsageReportSendings :many
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts
+FROM husonym_api.usage_reports
+WHERE day >= $1 AND day <= $2
+ORDER BY day DESC
+`
+
+type ListUsageReportSendingsParams struct {
+	Day   pgtype.Date
+	Day_2 pgtype.Date
+}
+
+type ListUsageReportSendingsRow struct {
+	Day           pgtype.Date
+	PreparedAt    pgtype.Timestamptz
+	SentAt        pgtype.Timestamptz
+	LastAttemptAt pgtype.Timestamptz
+	Attempts      int32
+}
+
+func (q *Queries) ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error) {
+	rows, err := db.Query(ctx, listUsageReportSendings, arg.Day, arg.Day_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsageReportSendingsRow
+	for rows.Next() {
+		var i ListUsageReportSendingsRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.PreparedAt,
+			&i.SentAt,
+			&i.LastAttemptAt,
+			&i.Attempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markUsageReportSent = `-- name: MarkUsageReportSent :exec
+UPDATE husonym_api.usage_reports
+SET sent_at = $2
+WHERE day = $1 AND sent_at IS NULL
+`
+
+type MarkUsageReportSentParams struct {
+	Day    pgtype.Date
+	SentAt pgtype.Timestamptz
+}
+
+// A report already sent keeps the date it was sent on.
+func (q *Queries) MarkUsageReportSent(ctx context.Context, db DBTX, arg MarkUsageReportSentParams) error {
+	_, err := db.Exec(ctx, markUsageReportSent, arg.Day, arg.SentAt)
+	return err
+}
+
 const settleRunUsage = `-- name: SettleRunUsage :exec
 UPDATE husonym_api.run_usage
 SET status = $2, ended_at = $3, recorded_at = CURRENT_TIMESTAMP
@@ -303,6 +449,28 @@ type SettleRunUsageParams struct {
 // Only a run still open is settled.
 func (q *Queries) SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error {
 	_, err := db.Exec(ctx, settleRunUsage, arg.RunID, arg.Status, arg.EndedAt)
+	return err
+}
+
+const startUsageSending = `-- name: StartUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = $1
+WHERE sending_since IS NULL
+`
+
+// Only an instance that does not send yet starts: the first date stays.
+func (q *Queries) StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error {
+	_, err := db.Exec(ctx, startUsageSending, sendingSince)
+	return err
+}
+
+const stopUsageSending = `-- name: StopUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = NULL
+`
+
+func (q *Queries) StopUsageSending(ctx context.Context, db DBTX) error {
+	_, err := db.Exec(ctx, stopUsageSending)
 	return err
 }
 

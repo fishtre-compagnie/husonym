@@ -140,3 +140,50 @@ WHERE day = $1;
 -- name: DeleteUsageReportsBefore :exec
 DELETE FROM husonym_api.usage_reports
 WHERE day < $1;
+
+-- name: GetSendingSince :one
+SELECT sending_since
+FROM husonym_api.instance;
+
+-- Only an instance that does not send yet starts: the first date stays.
+-- name: StartUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = $1
+WHERE sending_since IS NULL;
+
+-- name: StopUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = NULL;
+
+-- One statement takes the oldest report that is due and marks the attempt: a report another
+-- call holds is skipped, so two calls never get the same one.
+-- name: ClaimUsageReport :one
+UPDATE husonym_api.usage_reports
+SET attempts = attempts + 1, last_attempt_at = sqlc.arg(now)
+WHERE day = (
+  SELECT r.day
+  FROM husonym_api.usage_reports r
+  WHERE r.sent_at IS NULL
+    AND r.day >= sqlc.arg(from_day) AND r.day <= sqlc.arg(to_day)
+    AND (r.last_attempt_at IS NULL OR r.last_attempt_at < sqlc.arg(not_attempted_since))
+  ORDER BY r.day
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING day, document, seal, key_fingerprint, prepared_at;
+
+-- A report already sent keeps the date it was sent on.
+-- name: MarkUsageReportSent :exec
+UPDATE husonym_api.usage_reports
+SET sent_at = $2
+WHERE day = $1 AND sent_at IS NULL;
+
+-- name: ListUsageReportSendings :many
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts
+FROM husonym_api.usage_reports
+WHERE day >= $1 AND day <= $2
+ORDER BY day DESC;
+
+-- name: GetLastUsageReportSentAt :one
+SELECT max(sent_at)::timestamptz AS sent_at
+FROM husonym_api.usage_reports;

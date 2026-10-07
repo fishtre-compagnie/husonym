@@ -192,6 +192,78 @@ func (_c *MockQuerier_AreConnectionsInAccount_Call) RunAndReturn(run func(ctx co
 	return _c
 }
 
+// ClaimUsageReport provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClaimUsageReport")
+	}
+
+	var r0 ClaimUsageReportRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ClaimUsageReportParams) (ClaimUsageReportRow, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ClaimUsageReportParams) ClaimUsageReportRow); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(ClaimUsageReportRow)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, ClaimUsageReportParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ClaimUsageReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClaimUsageReport'
+type MockQuerier_ClaimUsageReport_Call struct {
+	*mock.Call
+}
+
+// ClaimUsageReport is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg ClaimUsageReportParams
+func (_e *MockQuerier_Expecter) ClaimUsageReport(ctx any, db any, arg any) *MockQuerier_ClaimUsageReport_Call {
+	return &MockQuerier_ClaimUsageReport_Call{Call: _e.mock.On("ClaimUsageReport", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_ClaimUsageReport_Call) Run(run func(ctx context.Context, db DBTX, arg ClaimUsageReportParams)) *MockQuerier_ClaimUsageReport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 ClaimUsageReportParams
+		if args[2] != nil {
+			arg2 = args[2].(ClaimUsageReportParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ClaimUsageReport_Call) Return(claimUsageReportRow ClaimUsageReportRow, err error) *MockQuerier_ClaimUsageReport_Call {
+	_c.Call.Return(claimUsageReportRow, err)
+	return _c
+}
+
+func (_c *MockQuerier_ClaimUsageReport_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error)) *MockQuerier_ClaimUsageReport_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CloseRunUsage provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -5657,6 +5729,72 @@ func (_c *MockQuerier_GetJobsByAccount_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// GetLastUsageReportSentAt provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetLastUsageReportSentAt(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLastUsageReportSentAt")
+	}
+
+	var r0 pgtype.Timestamptz
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (pgtype.Timestamptz, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) pgtype.Timestamptz); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(pgtype.Timestamptz)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetLastUsageReportSentAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLastUsageReportSentAt'
+type MockQuerier_GetLastUsageReportSentAt_Call struct {
+	*mock.Call
+}
+
+// GetLastUsageReportSentAt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetLastUsageReportSentAt(ctx any, db any) *MockQuerier_GetLastUsageReportSentAt_Call {
+	return &MockQuerier_GetLastUsageReportSentAt_Call{Call: _e.mock.On("GetLastUsageReportSentAt", ctx, db)}
+}
+
+func (_c *MockQuerier_GetLastUsageReportSentAt_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetLastUsageReportSentAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetLastUsageReportSentAt_Call) Return(timestamptz pgtype.Timestamptz, err error) *MockQuerier_GetLastUsageReportSentAt_Call {
+	_c.Call.Return(timestamptz, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetLastUsageReportSentAt_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)) *MockQuerier_GetLastUsageReportSentAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLicenseKeyByLicenseId provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error) {
 	ret := _mock.Called(ctx, db, licenseID)
@@ -6095,6 +6233,72 @@ func (_c *MockQuerier_GetRunContextsByExternalIdSuffix_Call) RunAndReturn(run fu
 	return _c
 }
 
+// GetSendingSince provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetSendingSince(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSendingSince")
+	}
+
+	var r0 pgtype.Timestamptz
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (pgtype.Timestamptz, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) pgtype.Timestamptz); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(pgtype.Timestamptz)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetSendingSince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSendingSince'
+type MockQuerier_GetSendingSince_Call struct {
+	*mock.Call
+}
+
+// GetSendingSince is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetSendingSince(ctx any, db any) *MockQuerier_GetSendingSince_Call {
+	return &MockQuerier_GetSendingSince_Call{Call: _e.mock.On("GetSendingSince", ctx, db)}
+}
+
+func (_c *MockQuerier_GetSendingSince_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetSendingSince_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetSendingSince_Call) Return(timestamptz pgtype.Timestamptz, err error) *MockQuerier_GetSendingSince_Call {
+	_c.Call.Return(timestamptz, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetSendingSince_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)) *MockQuerier_GetSendingSince_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSlackAccessToken provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetSlackAccessToken(ctx context.Context, db DBTX, accountID pgtype.UUID) (string, error) {
 	ret := _mock.Called(ctx, db, accountID)
@@ -6390,22 +6594,22 @@ func (_c *MockQuerier_GetTemporalConfigByUserAccount_Call) RunAndReturn(run func
 }
 
 // GetUsageReport provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error) {
+func (_mock *MockQuerier) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (GetUsageReportRow, error) {
 	ret := _mock.Called(ctx, db, day)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetUsageReport")
 	}
 
-	var r0 HusonymApiUsageReport
+	var r0 GetUsageReportRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (HusonymApiUsageReport, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (GetUsageReportRow, error)); ok {
 		return returnFunc(ctx, db, day)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) HusonymApiUsageReport); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) GetUsageReportRow); ok {
 		r0 = returnFunc(ctx, db, day)
 	} else {
-		r0 = ret.Get(0).(HusonymApiUsageReport)
+		r0 = ret.Get(0).(GetUsageReportRow)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
 		r1 = returnFunc(ctx, db, day)
@@ -6451,12 +6655,12 @@ func (_c *MockQuerier_GetUsageReport_Call) Run(run func(ctx context.Context, db 
 	return _c
 }
 
-func (_c *MockQuerier_GetUsageReport_Call) Return(husonymApiUsageReport HusonymApiUsageReport, err error) *MockQuerier_GetUsageReport_Call {
-	_c.Call.Return(husonymApiUsageReport, err)
+func (_c *MockQuerier_GetUsageReport_Call) Return(getUsageReportRow GetUsageReportRow, err error) *MockQuerier_GetUsageReport_Call {
+	_c.Call.Return(getUsageReportRow, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetUsageReport_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error)) *MockQuerier_GetUsageReport_Call {
+func (_c *MockQuerier_GetUsageReport_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) (GetUsageReportRow, error)) *MockQuerier_GetUsageReport_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8433,6 +8637,80 @@ func (_c *MockQuerier_ListOpenRunUsageStartedBefore_Call) RunAndReturn(run func(
 	return _c
 }
 
+// ListUsageReportSendings provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListUsageReportSendings")
+	}
+
+	var r0 []ListUsageReportSendingsRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ListUsageReportSendingsParams) []ListUsageReportSendingsRow); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListUsageReportSendingsRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, ListUsageReportSendingsParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListUsageReportSendings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListUsageReportSendings'
+type MockQuerier_ListUsageReportSendings_Call struct {
+	*mock.Call
+}
+
+// ListUsageReportSendings is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg ListUsageReportSendingsParams
+func (_e *MockQuerier_Expecter) ListUsageReportSendings(ctx any, db any, arg any) *MockQuerier_ListUsageReportSendings_Call {
+	return &MockQuerier_ListUsageReportSendings_Call{Call: _e.mock.On("ListUsageReportSendings", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_ListUsageReportSendings_Call) Run(run func(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams)) *MockQuerier_ListUsageReportSendings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 ListUsageReportSendingsParams
+		if args[2] != nil {
+			arg2 = args[2].(ListUsageReportSendingsParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListUsageReportSendings_Call) Return(listUsageReportSendingsRows []ListUsageReportSendingsRow, err error) *MockQuerier_ListUsageReportSendings_Call {
+	_c.Call.Return(listUsageReportSendingsRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListUsageReportSendings_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error)) *MockQuerier_ListUsageReportSendings_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LockAccountRole provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -8741,6 +9019,69 @@ func (_c *MockQuerier_LockUser_Call) Return(uUID pgtype.UUID, err error) *MockQu
 }
 
 func (_c *MockQuerier_LockUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error)) *MockQuerier_LockUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkUsageReportSent provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) MarkUsageReportSent(ctx context.Context, db DBTX, arg MarkUsageReportSentParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkUsageReportSent")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, MarkUsageReportSentParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_MarkUsageReportSent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkUsageReportSent'
+type MockQuerier_MarkUsageReportSent_Call struct {
+	*mock.Call
+}
+
+// MarkUsageReportSent is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg MarkUsageReportSentParams
+func (_e *MockQuerier_Expecter) MarkUsageReportSent(ctx any, db any, arg any) *MockQuerier_MarkUsageReportSent_Call {
+	return &MockQuerier_MarkUsageReportSent_Call{Call: _e.mock.On("MarkUsageReportSent", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_MarkUsageReportSent_Call) Run(run func(ctx context.Context, db DBTX, arg MarkUsageReportSentParams)) *MockQuerier_MarkUsageReportSent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 MarkUsageReportSentParams
+		if args[2] != nil {
+			arg2 = args[2].(MarkUsageReportSentParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_MarkUsageReportSent_Call) Return(err error) *MockQuerier_MarkUsageReportSent_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_MarkUsageReportSent_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg MarkUsageReportSentParams) error) *MockQuerier_MarkUsageReportSent_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -10402,6 +10743,126 @@ func (_c *MockQuerier_SettleRunUsage_Call) Return(err error) *MockQuerier_Settle
 }
 
 func (_c *MockQuerier_SettleRunUsage_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SettleRunUsageParams) error) *MockQuerier_SettleRunUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StartUsageSending provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error {
+	ret := _mock.Called(ctx, db, sendingSince)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartUsageSending")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Timestamptz) error); ok {
+		r0 = returnFunc(ctx, db, sendingSince)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_StartUsageSending_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartUsageSending'
+type MockQuerier_StartUsageSending_Call struct {
+	*mock.Call
+}
+
+// StartUsageSending is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - sendingSince pgtype.Timestamptz
+func (_e *MockQuerier_Expecter) StartUsageSending(ctx any, db any, sendingSince any) *MockQuerier_StartUsageSending_Call {
+	return &MockQuerier_StartUsageSending_Call{Call: _e.mock.On("StartUsageSending", ctx, db, sendingSince)}
+}
+
+func (_c *MockQuerier_StartUsageSending_Call) Run(run func(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz)) *MockQuerier_StartUsageSending_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Timestamptz
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Timestamptz)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_StartUsageSending_Call) Return(err error) *MockQuerier_StartUsageSending_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_StartUsageSending_Call) RunAndReturn(run func(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error) *MockQuerier_StartUsageSending_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StopUsageSending provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) StopUsageSending(ctx context.Context, db DBTX) error {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StopUsageSending")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) error); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_StopUsageSending_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopUsageSending'
+type MockQuerier_StopUsageSending_Call struct {
+	*mock.Call
+}
+
+// StopUsageSending is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) StopUsageSending(ctx any, db any) *MockQuerier_StopUsageSending_Call {
+	return &MockQuerier_StopUsageSending_Call{Call: _e.mock.On("StopUsageSending", ctx, db)}
+}
+
+func (_c *MockQuerier_StopUsageSending_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_StopUsageSending_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_StopUsageSending_Call) Return(err error) *MockQuerier_StopUsageSending_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_StopUsageSending_Call) RunAndReturn(run func(ctx context.Context, db DBTX) error) *MockQuerier_StopUsageSending_Call {
 	_c.Call.Return(run)
 	return _c
 }
