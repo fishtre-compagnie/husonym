@@ -8,6 +8,9 @@ on:
       - controlplane/**
       - internal/license/**
       - internal/telemetry/**
+      - backend/gen/go/protos/mgmt/v1alpha1/**
+      - go.mod
+      - go.sum
       - docker/Dockerfile.controlplane
       - .github/workflows/controlplane-image.yml
   pull_request:
@@ -15,8 +18,18 @@ on:
       - controlplane/**
       - internal/license/**
       - internal/telemetry/**
+      - backend/gen/go/protos/mgmt/v1alpha1/**
+      - go.mod
+      - go.sum
       - docker/Dockerfile.controlplane
       - .github/workflows/controlplane-image.yml
+  workflow_dispatch:
+
+# One run at a time per ref. On a branch that publishes, runs wait for one another, so that the
+# tag of the branch ends on the latest commit; on a pull request, a newer run replaces the older.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   docker-controlplane:
@@ -24,13 +37,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
       packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6

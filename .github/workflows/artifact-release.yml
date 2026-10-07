@@ -14,6 +14,8 @@ on:
       - frontend/**
       - charts/**
       - docker/**
+      # The image of the control plane has its own workflow.
+      - '!docker/Dockerfile.controlplane'
 
 jobs:
   docker-backend:

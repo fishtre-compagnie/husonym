@@ -28,9 +28,10 @@ RUN apt-get update \
 
 COPY --from=builder /workspace/bin/husonym-controlplane /husonym-controlplane
 
-# Create a non-root user
+# Create a non-root user. It is named by its number, so that a runtime told to refuse root can
+# check it without reading the image's user database.
 RUN useradd -u 65532 -r nonroot
-USER nonroot
+USER 65532
 
 EXPOSE 8080
 
