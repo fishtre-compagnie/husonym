@@ -8982,6 +8982,69 @@ func (_c *MockQuerier_SetRunContext_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// SetTransactionLockTimeout provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error {
+	ret := _mock.Called(ctx, db, milliseconds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTransactionLockTimeout")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, int64) error); ok {
+		r0 = returnFunc(ctx, db, milliseconds)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_SetTransactionLockTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTransactionLockTimeout'
+type MockQuerier_SetTransactionLockTimeout_Call struct {
+	*mock.Call
+}
+
+// SetTransactionLockTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - milliseconds int64
+func (_e *MockQuerier_Expecter) SetTransactionLockTimeout(ctx any, db any, milliseconds any) *MockQuerier_SetTransactionLockTimeout_Call {
+	return &MockQuerier_SetTransactionLockTimeout_Call{Call: _e.mock.On("SetTransactionLockTimeout", ctx, db, milliseconds)}
+}
+
+func (_c *MockQuerier_SetTransactionLockTimeout_Call) Run(run func(ctx context.Context, db DBTX, milliseconds int64)) *MockQuerier_SetTransactionLockTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 int64
+		if args[2] != nil {
+			arg2 = args[2].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetTransactionLockTimeout_Call) Return(err error) *MockQuerier_SetTransactionLockTimeout_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_SetTransactionLockTimeout_Call) RunAndReturn(run func(ctx context.Context, db DBTX, milliseconds int64) error) *MockQuerier_SetTransactionLockTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateAccountApiKeyValue provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error) {
 	ret := _mock.Called(ctx, db, arg)

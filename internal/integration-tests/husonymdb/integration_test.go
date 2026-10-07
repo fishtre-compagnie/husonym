@@ -835,6 +835,62 @@ func (s *IntegrationTestSuite) Test_CreateJob_Guard() {
 	require.Equal(t, []string{"allowed"}, storedJobs(s.db.Db))
 }
 
+// Setting the subsets writes the source options back whole. A change of the source that is
+// under way when it starts is not undone: it waits for that change, and subsets the job as the
+// change left it.
+func (s *IntegrationTestSuite) Test_SetSourceSubsets_KeepsAChangeOfSourceUnderWay() {
+	t := s.T()
+
+	user := s.setUser(t, s.ctx, "foo")
+	account, err := s.db.CreateTeamAccount(s.ctx, user.ID, "myteam1", testutil.GetTestLogger(t))
+	requireNoErrResp(t, account, err)
+	job, err := s.db.CreateJob(s.ctx, &db_queries.CreateJobParams{
+		Name:               "foo",
+		AccountID:          account.ID,
+		Status:             1,
+		ConnectionOptions:  &pg_models.JobSourceOptions{PostgresOptions: &pg_models.PostgresSourceOptions{ConnectionId: "before"}},
+		Mappings:           []*pg_models.JobMapping{},
+		CreatedByID:        user.ID,
+		UpdatedByID:        user.ID,
+		WorkflowOptions:    &pg_models.WorkflowOptions{},
+		SyncOptions:        &pg_models.ActivityOptions{},
+		VirtualForeignKeys: []*pg_models.VirtualForeignConstraint{},
+		JobtypeConfig:      []byte(`{}`),
+	}, nil, nil)
+	requireNoErrResp(t, job, err)
+
+	// The change of source, as far as its write: the row is its own until it commits.
+	change, err := s.pgcontainer.DB.Begin(s.ctx)
+	require.NoError(t, err)
+	defer func() { _ = change.Rollback(s.ctx) }()
+	_, err = s.db.Q.UpdateJobSource(s.ctx, change, db_queries.UpdateJobSourceParams{
+		ID:                job.ID,
+		ConnectionOptions: &pg_models.JobSourceOptions{PostgresOptions: &pg_models.PostgresSourceOptions{ConnectionId: "after"}},
+		UpdatedByID:       user.ID,
+	})
+	require.NoError(t, err)
+
+	subset := make(chan error, 1)
+	go func() {
+		subset <- s.db.SetSourceSubsets(s.ctx, job.ID, account.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
+			Schemas: &mgmtv1alpha1.JobSourceSqlSubetSchemas_PostgresSubset{PostgresSubset: &mgmtv1alpha1.PostgresSourceSchemaSubset{}},
+		}, true, user.ID)
+	}()
+	// Time for the subsets to read the job, if nothing makes them wait for the change.
+	select {
+	case err := <-subset:
+		require.Failf(t, "the subsets were set while the source was being changed", "%v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	require.NoError(t, change.Commit(s.ctx))
+	require.NoError(t, <-subset)
+
+	stored, err := s.db.Q.GetJobById(s.ctx, s.db.Db, job.ID)
+	require.NoError(t, err)
+	require.Equal(t, "after", stored.ConnectionOptions.PostgresOptions.ConnectionId)
+	require.True(t, stored.ConnectionOptions.PostgresOptions.SubsetByForeignKeyConstraints)
+}
+
 func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 	t := s.T()
 
@@ -865,7 +921,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 	where := "blah"
 
 	t.Run("postgres", func(t *testing.T) {
-		err := s.db.SetSourceSubsets(s.ctx, job.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
+		err := s.db.SetSourceSubsets(s.ctx, job.ID, account.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
 			Schemas: &mgmtv1alpha1.JobSourceSqlSubetSchemas_PostgresSubset{
 				PostgresSubset: &mgmtv1alpha1.PostgresSourceSchemaSubset{
 					PostgresSchemas: []*mgmtv1alpha1.PostgresSourceSchemaOption{
@@ -883,7 +939,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 	})
 
 	t.Run("mysql", func(t *testing.T) {
-		err := s.db.SetSourceSubsets(s.ctx, job.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
+		err := s.db.SetSourceSubsets(s.ctx, job.ID, account.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
 			Schemas: &mgmtv1alpha1.JobSourceSqlSubetSchemas_MysqlSubset{
 				MysqlSubset: &mgmtv1alpha1.MysqlSourceSchemaSubset{
 					MysqlSchemas: []*mgmtv1alpha1.MysqlSourceSchemaOption{
@@ -901,7 +957,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 	})
 
 	t.Run("mssql", func(t *testing.T) {
-		err := s.db.SetSourceSubsets(s.ctx, job.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
+		err := s.db.SetSourceSubsets(s.ctx, job.ID, account.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
 			Schemas: &mgmtv1alpha1.JobSourceSqlSubetSchemas_MssqlSubset{
 				MssqlSubset: &mgmtv1alpha1.MssqlSourceSchemaSubset{
 					MssqlSchemas: []*mgmtv1alpha1.MssqlSourceSchemaOption{
@@ -919,7 +975,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 	})
 
 	t.Run("dynamodb", func(t *testing.T) {
-		err := s.db.SetSourceSubsets(s.ctx, job.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
+		err := s.db.SetSourceSubsets(s.ctx, job.ID, account.ID, &mgmtv1alpha1.JobSourceSqlSubetSchemas{
 			Schemas: &mgmtv1alpha1.JobSourceSqlSubetSchemas_DynamodbSubset{
 				DynamodbSubset: &mgmtv1alpha1.DynamoDBSourceSchemaSubset{
 					Tables: []*mgmtv1alpha1.DynamoDBSourceTableOption{

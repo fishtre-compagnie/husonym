@@ -3,6 +3,7 @@ package integrationtests_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -386,6 +387,51 @@ func (s *IntegrationTestSuite) Test_SourceCap_TwoCreationsAtOnceDoNotExceedIt() 
 			require.NoError(t, s.HusonymQuerier.RemoveJobById(s.ctx, s.Pgcontainer.DB, row.ID))
 		}
 	}
+}
+
+// A change of source holds the lock every creation of the instance takes while it waits for the
+// row of its job. When another request keeps that row, the change gives up after a bounded time
+// and says to try again, and the creations of the instance pass meanwhile.
+func (s *IntegrationTestSuite) Test_UpdateJobSourceConnection_AJobHeldElsewhereDoesNotStallTheInstance() {
+	t := s.T()
+	g := s.newCapGround("source-cap-held")
+	job := s.mustCreateJob(g, g.jobOn("held", g.source))
+	s.capSources(1)
+
+	// Another request has the row of the job, and keeps it. It lets go when the test ends, however
+	// it ends, and before the database of the test is reset.
+	holder, err := s.Pgcontainer.DB.Begin(s.ctx)
+	require.NoError(t, err)
+	defer func() { _ = holder.Rollback(s.ctx) }()
+	_, err = holder.Exec(s.ctx, "SELECT id FROM husonym_api.jobs WHERE id = $1 FOR UPDATE", job.GetId())
+	require.NoError(t, err)
+
+	// Well over the time the change waits for the row, well under the time limit of the tests.
+	const patience = 20 * time.Second
+	within := func(what string, call func() error) error {
+		t.Helper()
+		done := make(chan error, 1)
+		go func() { done <- call() }()
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(patience):
+			require.Failf(t, "the call is still waiting", "%s did not end within %s", what, patience)
+			return nil
+		}
+	}
+
+	err = within("the change of source", func() error { return s.moveJob(g, job.GetId(), g.source) })
+	require.Error(t, err)
+	require.Equal(t, connect.CodeAborted, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "the job is being changed by another request: try again in a moment")
+
+	// The row is still held: only the lock on the sources of the instance was let go.
+	err = within("the creation of another job", func() error {
+		_, err := s.createJob(g, g.jobOn("meanwhile", g.source))
+		return err
+	})
+	require.NoError(t, err)
 }
 
 // A license that caps other things and not the sources does not cap them: no cap is not a cap

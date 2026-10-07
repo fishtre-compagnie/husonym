@@ -59,12 +59,18 @@ func (d *HusonymDb) CreateJob(
 func (d *HusonymDb) SetSourceSubsets(
 	ctx context.Context,
 	jobId pgtype.UUID,
+	accountId pgtype.UUID,
 	schemas *mgmtv1alpha1.JobSourceSqlSubetSchemas,
 	subsetByForeignKeyConstraints bool,
 	userUuid pgtype.UUID,
 ) error {
 	return d.WithTx(ctx, nil, func(dbtx BaseDBTX) error {
-		dbjob, err := d.Q.GetJobById(ctx, dbtx, jobId)
+		// The source options are read, changed and written back whole: the row is locked meanwhile,
+		// or a change of the source landing in between would be undone by the write.
+		dbjob, err := d.Q.GetJobForUpdate(ctx, dbtx, db_queries.GetJobForUpdateParams{
+			ID:        jobId,
+			AccountID: accountId,
+		})
 		if err != nil {
 			return err
 		}

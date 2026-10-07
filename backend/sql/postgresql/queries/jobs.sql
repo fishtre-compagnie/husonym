@@ -195,6 +195,11 @@ SELECT EXISTS (
 -- name: LockLicenseSources :exec
 SELECT pg_advisory_xact_lock(hashtextextended('license_sources', 0));
 
+-- Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+-- waits longer fails with lock_not_available instead of holding what the transaction has locked.
+-- name: SetTransactionLockTimeout :exec
+SELECT set_config('lock_timeout', (sqlc.arg('milliseconds')::bigint)::text, true);
+
 -- What is needed to count the sources of the instance: the source options, the job type and,
 -- for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
 -- first query of this file that crosses accounts, on purpose: the license covers the whole

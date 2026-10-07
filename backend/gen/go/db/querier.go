@@ -227,6 +227,9 @@ type Querier interface {
 	SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error)
 	SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (HusonymApiAccount, error)
 	SetRunContext(ctx context.Context, db DBTX, arg SetRunContextParams) error
+	// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+	// waits longer fails with lock_not_available instead of holding what the transaction has locked.
+	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)

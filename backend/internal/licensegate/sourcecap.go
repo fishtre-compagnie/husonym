@@ -27,15 +27,18 @@ type SourceCandidate struct {
 // the write does not bring the instance over the cap of the license on sources. It gives nil
 // when the license has no such cap: there is then nothing to run.
 //
-// The guard refuses a write that gives the instance a source it does not have and leaves it
-// with more than the cap. A write that adds none is never refused, so an instance a newer key
-// left over its cap can still change its jobs and give sources up. The instance is counted as
-// the write leaves it, the candidate in place of the job as it is stored: at the cap, a job
-// that moves from a source it alone reads to another leaves the count where it was.
+// The rule: a source is added if the instance, as stored now, does not have it; the guard
+// refuses a write that adds a source and leaves the instance with more than the cap. A write
+// that adds none is never refused, so an instance a newer key left over its cap can still
+// change its jobs and give sources up. The instance is counted as the write leaves it, the
+// candidate in place of the job as it is stored: at the cap, a job that moves from a source it
+// alone reads to another leaves the count where it was.
 //
 // It holds the lock on the sources of the instance until the transaction ends, so that two
-// writes cannot both count the room the other is about to take. Unlike the check made when a
-// run starts, it fails closed: a write that cannot be counted is not made.
+// writes cannot both count the room the other is about to take. This relies on read committed:
+// the listing must see what the transaction that held the lock before it wrote, so a caller
+// must not run the guard in a stricter isolation level. Unlike the check made when a run
+// starts, it fails closed: a write that cannot be counted is not made.
 //
 // Like Check, it does not ask whether the license is in force: its callers have.
 func (g *JobGate) SourceGuard(candidate *SourceCandidate) func(ctx context.Context, dbtx husonymdb.BaseDBTX) error {

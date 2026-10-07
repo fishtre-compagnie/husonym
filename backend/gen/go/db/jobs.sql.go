@@ -629,6 +629,17 @@ func (q *Queries) SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJob
 	return i, err
 }
 
+const setTransactionLockTimeout = `-- name: SetTransactionLockTimeout :exec
+SELECT set_config('lock_timeout', ($1::bigint)::text, true)
+`
+
+// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+// waits longer fails with lock_not_available instead of holding what the transaction has locked.
+func (q *Queries) SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error {
+	_, err := db.Exec(ctx, setTransactionLockTimeout, milliseconds)
+	return err
+}
+
 const updateJobConnectionDestination = `-- name: UpdateJobConnectionDestination :one
 UPDATE husonym_api.job_destination_connection_associations
 SET options = $1,

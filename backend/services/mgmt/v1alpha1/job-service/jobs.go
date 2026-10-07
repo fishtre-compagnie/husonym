@@ -37,6 +37,10 @@ const (
 	// createJobCleanupTimeout is how long the removal of a job whose schedule could not be
 	// created may take, once the call that created it has ended.
 	createJobCleanupTimeout = 15 * time.Second
+
+	// jobRowLockTimeout is how long a change of the source of a job waits for the row of the job
+	// while it holds the lock on the sources of the instance.
+	jobRowLockTimeout = 5 * time.Second
 )
 
 func (s *Service) GetJobs(
@@ -1247,6 +1251,12 @@ func (s *Service) UpdateJobSourceConnection(
 			if err := sourceGuard(ctx, dbtx); err != nil {
 				return err
 			}
+			// The transaction now holds the lock every creation and source change of the instance
+			// takes. The row of the job may be held by another request for as long as that request
+			// lasts: this one waits for it a bounded time, then gives up and lets the others pass.
+			if err := s.db.Q.SetTransactionLockTimeout(ctx, dbtx, jobRowLockTimeout.Milliseconds()); err != nil {
+				return fmt.Errorf("unable to bound the wait for the job: %w", err)
+			}
 		}
 		if expected := req.Msg.GetExpectedUpdatedAt(); expected != nil {
 			// The row is locked until the update commits: a change landing between the check and
@@ -1309,6 +1319,11 @@ func (s *Service) UpdateJobSourceConnection(
 
 		return nil
 	}); err != nil {
+		if husonymdb.IsLockNotAvailable(err) {
+			return nil, connect.NewError(connect.CodeAborted, errors.New(
+				"the job is being changed by another request: try again in a moment",
+			))
+		}
 		return nil, err
 	}
 
@@ -1340,6 +1355,10 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	}
 	jobDto := jobResp.Msg.GetJob()
 	jobUuid, err := husonymdb.ToUuid(jobDto.GetId())
+	if err != nil {
+		return nil, err
+	}
+	accountUuid, err := husonymdb.ToUuid(jobDto.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -1401,6 +1420,7 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err := s.db.SetSourceSubsets(
 		ctx,
 		jobUuid,
+		accountUuid,
 		req.Msg.Schemas,
 		req.Msg.SubsetByForeignKeyConstraints,
 		user.PgId(),
