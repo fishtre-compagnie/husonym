@@ -189,8 +189,28 @@ func Test_Handler_BodyOneByteOverTheCap_Answers413WithoutReadingOn(t *testing.T)
 	require.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 	require.Empty(t, rec.Body.String())
 	require.Zero(t, r.receiver.calls)
-	// One byte past the cap is all the handler may take; reads come in chunks, so allow one.
-	require.LessOrEqual(t, body.read, publicapi.MaxBodyBytes+4096)
+	// The limit reader takes at most one byte past the cap.
+	require.LessOrEqual(t, body.read, publicapi.MaxBodyBytes+1)
+}
+
+func Test_Handler_BodyOfCapPlusOneByte_Answers413(t *testing.T) {
+	r := newRig(intake.Stored, nil)
+
+	rec := r.do(post(bytes.NewReader(bytes.Repeat([]byte("x"), publicapi.MaxBodyBytes+1))))
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	require.Zero(t, r.receiver.calls)
+}
+
+func Test_Handler_CancelledRequest_IsNotLoggedAsAnError(t *testing.T) {
+	r := newRig(intake.Stored, context.Canceled)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	rec := r.do(post(strings.NewReader("{}")).WithContext(ctx))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.NotContains(t, r.logs.String(), "level=ERROR")
 }
 
 func Test_Handler_Health(t *testing.T) {

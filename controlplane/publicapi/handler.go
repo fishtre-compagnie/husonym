@@ -84,6 +84,12 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 
 	outcome, err := h.receiver.Receive(r.Context(), document, seal, fingerprint)
 	if err != nil {
+		if r.Context().Err() != nil {
+			// The caller went away, or the server is stopping: not a failure of ours.
+			h.logger.Info("request", "path", reportPath, "status", http.StatusServiceUnavailable, "outcome", "interrupted")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 		// A failure of ours: fixed words and the error, nothing of the request.
 		h.logger.Error("unable to receive a usage report", "path", reportPath,
 			"status", http.StatusServiceUnavailable, "error", err.Error())

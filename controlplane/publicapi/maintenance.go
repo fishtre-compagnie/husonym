@@ -48,25 +48,33 @@ func pass(ctx context.Context, promoter Promoter, store PendingStore, logger *sl
 		return
 	}
 
-	fingerprints, err := store.PendingFingerprintsNowKnown(ctx)
-	if err != nil {
-		logger.Error("unable to list the pending reports to promote", "error", err.Error())
+	// A pass cut by the end of ctx is the server stopping, not a failure of ours.
+	fail := func(what string, err error) bool {
+		if err == nil {
+			return false
+		}
+		if ctx.Err() == nil {
+			logger.Error(what, "error", err.Error())
+		}
+		return true
 	}
+
 	var stored, discarded int
 	var failed error
+	fingerprints, err := store.PendingFingerprintsNowKnown(ctx)
+	failedList := fail("unable to list the pending reports to promote", err)
 	for _, fingerprint := range fingerprints {
 		s, d, err := promoter.PromotePending(ctx, fingerprint)
 		stored += s
 		discarded += d
 		failed = errors.Join(failed, err)
 	}
-	if failed != nil {
-		logger.Error("unable to promote some pending reports", "error", failed.Error())
-	}
+	failedPromote := fail("unable to promote some pending reports", failed)
 
 	purged, err := store.PurgePending(ctx, time.Now().Add(-intake.PendingKept))
-	if err != nil {
-		logger.Error("unable to purge the pending reports", "error", err.Error())
+	failedPurge := fail("unable to purge the pending reports", err)
+
+	if !failedList && !failedPromote && !failedPurge {
+		logger.Info("pending reports maintained", "stored", stored, "discarded", discarded, "purged", purged)
 	}
-	logger.Info("pending reports maintained", "stored", stored, "discarded", discarded, "purged", purged)
 }

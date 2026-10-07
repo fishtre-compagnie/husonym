@@ -26,6 +26,27 @@ func Test_ServePublic_WithoutADatabaseURL_Fails(t *testing.T) {
 	require.ErrorContains(t, cmd.ExecuteContext(t.Context()), databaseURLEnv)
 }
 
+func Test_ServePublic_UnreachableDatabase_FailsAndNeverListens(t *testing.T) {
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := probe.Addr().String()
+	require.NoError(t, probe.Close())
+	t.Setenv(databaseURLEnv, "postgres://nobody@127.0.0.1:1/none?connect_timeout=2")
+	t.Setenv(listenAddrEnv, addr)
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"serve", "public"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	require.Error(t, cmd.ExecuteContext(t.Context()))
+
+	conn, err := net.DialTimeout("tcp", addr, time.Second)
+	if err == nil {
+		_ = conn.Close()
+	}
+	require.Error(t, err, "nothing listens on the address")
+}
+
 func Test_ServePublic_ReceivesAReportAndStopsWhenItsContextEnds(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return

@@ -57,6 +57,44 @@ func runUntilPasses(t *testing.T, promoter publicapi.Promoter, store *fakePendin
 	return logs.String()
 }
 
+// blockingStore waits for the context to end, and fails with its error.
+type blockingStore struct{ started chan struct{} }
+
+func (b *blockingStore) PendingFingerprintsNowKnown(ctx context.Context) ([]string, error) {
+	close(b.started)
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func (*blockingStore) PurgePending(ctx context.Context, _ time.Time) (int64, error) {
+	return 0, ctx.Err()
+}
+
+func Test_RunMaintenance_APassCutByCancellation_LogsNoError(t *testing.T) {
+	logs := &bytes.Buffer{}
+	store := &blockingStore{started: make(chan struct{})}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		publicapi.RunMaintenance(ctx, panickingPromoter{}, store, slog.New(slog.NewTextHandler(logs, nil)), time.Hour)
+	}()
+	<-store.started
+	cancel()
+	<-done
+
+	require.NotContains(t, logs.String(), "level=ERROR")
+	require.NotContains(t, logs.String(), "maintained")
+}
+
+func Test_RunMaintenance_AFailedStep_LogsNoSummary(t *testing.T) {
+	store := &fakePendingStore{err: errors.New("database is down")}
+
+	logged := runUntilPasses(t, failingPromoter{}, store, 2)
+
+	require.NotContains(t, logged, "maintained")
+}
+
 func Test_RunMaintenance_APanicEndsThePassNotTheLoop(t *testing.T) {
 	logged := runUntilPasses(t, panickingPromoter{}, &fakePendingStore{}, 3)
 
