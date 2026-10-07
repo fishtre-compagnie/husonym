@@ -142,14 +142,25 @@ type analyzeRequest struct {
 	Text                  string   `json:"text"`
 	Language              string   `json:"language"`
 	Entities              []string `json:"entities,omitempty"`
+	ScoreThreshold        float64  `json:"score_threshold,omitempty"`
 	ReturnDecisionProcess bool     `json:"return_decision_process"`
 }
 
 // analyze posts one text and returns its findings ordered by position, then by entity type.
 func analyze(t *testing.T, baseURL, language, text string, entities ...string) []finding {
 	t.Helper()
+	return analyzeAbove(t, baseURL, language, text, 0, entities...)
+}
+
+// analyzeAbove is analyze with the request's score_threshold: the findings scoring below it are
+// not returned. Zero leaves the analyzer's default.
+func analyzeAbove(
+	t *testing.T, baseURL, language, text string, scoreThreshold float64, entities ...string,
+) []finding {
+	t.Helper()
 	body, err := json.Marshal(analyzeRequest{
-		Text: text, Language: language, Entities: entities, ReturnDecisionProcess: true,
+		Text: text, Language: language, Entities: entities, ScoreThreshold: scoreThreshold,
+		ReturnDecisionProcess: true,
 	})
 	require.NoError(t, err)
 	findings, err := decodeFindings(postJSON(t, baseURL+"/analyze", body))
