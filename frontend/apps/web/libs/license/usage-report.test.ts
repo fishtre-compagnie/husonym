@@ -56,6 +56,12 @@ describe('reportingLabel', () => {
     }
   );
 
+  it('gives no note when the license mode is unspecified', () => {
+    expect(reportingLabel(ONLINE, UNSPECIFIED, false)).toEqual({
+      text: 'Sent daily',
+    });
+  });
+
   it('says no report is prepared, with no note, when no key is in force', () => {
     expect(reportingLabel(UNSPECIFIED, UNSPECIFIED, false)).toEqual({
       text: 'No report is prepared',
@@ -121,6 +127,19 @@ describe('reportingNotice', () => {
     ).toBe('Your license provides for a usage report file');
   });
 
+  it('puts the silent days before a setting below the license', () => {
+    expect(
+      reportingNotice(
+        reporting({
+          mode: NONE,
+          licenseMode: ONLINE,
+          belowLicense: true,
+          silent: true,
+        })
+      )?.title
+    ).toBe('No usage report could be sent for 30 days');
+  });
+
   it('warns of 30 silent days', () => {
     expect(
       reportingNotice(
@@ -184,17 +203,44 @@ describe('prettyDocument', () => {
   });
 });
 
+const SEAL = 'ab01'.repeat(16);
+const FINGERPRINT = '9f'.repeat(32);
+
 describe('periodFileContent', () => {
   it('writes the document untouched, then the seal, one line each', () => {
-    expect(periodFileContent('{"a":1}', 'SEAL', 'FP')).toBe(
-      '{"a":1}\n{"seal":"SEAL","key_fingerprint":"FP"}\n'
+    expect(periodFileContent('{"a":1}', SEAL, FINGERPRINT)).toBe(
+      `{"a":1}\n{"seal":"${SEAL}","key_fingerprint":"${FINGERPRINT}"}\n`
     );
+  });
+
+  it.each([
+    ['a quote', `${'a'.repeat(63)}"`],
+    ['a backslash', `${'a'.repeat(63)}\\`],
+    ['the wrong length', 'ab01'.repeat(15)],
+    ['upper case', SEAL.toUpperCase()],
+    ['nothing', ''],
+  ])('refuses a seal with %s', (_, seal) => {
+    expect(() => periodFileContent('{}', seal, FINGERPRINT)).toThrow(
+      'the seal of the report is not in the expected form'
+    );
+  });
+
+  it('refuses a fingerprint that is not 64 lowercase hexadecimal characters', () => {
+    expect(() => periodFileContent('{}', SEAL, 'FP')).toThrow(
+      'the seal of the report is not in the expected form'
+    );
+  });
+
+  it('does not check the document', () => {
+    expect(
+      periodFileContent('not json', SEAL, FINGERPRINT).split('\n')[0]
+    ).toBe('not json');
   });
 
   it('keeps escaped characters, spacing and key order of the document', () => {
     const document =
       '{"b":"a\\u00e9\\n\\"q\\"","a": 1.0,"big":12345678901234567890}';
-    const content = periodFileContent(document, 's', 'f');
+    const content = periodFileContent(document, SEAL, FINGERPRINT);
     expect(content.split('\n')[0]).toBe(document);
     expect(content.endsWith('\n')).toBe(true);
     expect(content.split('\n')).toHaveLength(3);

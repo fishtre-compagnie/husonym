@@ -78,8 +78,8 @@ export function reportStatusLabel(
   }
 }
 
-// The banner above the card. Rarely both can hold: a silent instance sends, which a
-// mode set below the license does not.
+// The banner above the card. Only one is shown: silence, if it holds, comes before a
+// mode set below the license.
 export function reportingNotice(
   reporting: Pick<
     GetUsageReportingResponse,
@@ -138,14 +138,21 @@ export function prettyDocument(document: string): string {
   }
 }
 
+// The seal and the fingerprint of a key are 64 lowercase hexadecimal characters.
+const SEAL_FORM = /^[0-9a-f]{64}$/;
+
 // The file of a period: the document exactly as received, then its seal, one line
 // each. The document goes through no parser, so its bytes stay the ones that were
-// sealed.
+// sealed. The seal and the fingerprint are written between quotes without escaping,
+// so anything but their form is refused.
 export function periodFileContent(
   document: string,
   seal: string,
   keyFingerprint: string
 ): string {
+  if (!SEAL_FORM.test(seal) || !SEAL_FORM.test(keyFingerprint)) {
+    throw new Error('the seal of the report is not in the expected form');
+  }
   return `${document}\n{"seal":"${seal}","key_fingerprint":"${keyFingerprint}"}\n`;
 }
 

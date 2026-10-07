@@ -85,6 +85,7 @@ export default function UsageReportCard(props: Props): ReactElement {
             <Link
               href={`${siteConfig.links.docs}/deploy/usage-report`}
               target="_blank"
+              rel="noopener noreferrer"
               className="underline"
             >
               What it contains
@@ -153,6 +154,8 @@ function ReportingDetails({
           </dd>
         </>
       )}
+      {/* The API sets first_send_at only while it is in the future, in the first 24
+          hours of sending: its presence is the whole condition. */}
       {sends && firstAt && (
         <>
           <dt className="text-muted-foreground">First report</dt>
@@ -313,10 +316,12 @@ function ReportDocument({
     );
   }
 
+  // The string received, not the indented copy.
+  const received = data.document;
+
   async function onCopy(): Promise<void> {
     try {
-      // The string received, not the indented copy.
-      await navigator.clipboard.writeText(data!.document);
+      await navigator.clipboard.writeText(received);
       toast.success('Report copied');
     } catch (err) {
       toast.error('Unable to copy the report', {
@@ -328,7 +333,7 @@ function ReportDocument({
   return (
     <div className="flex flex-col gap-2">
       <pre className="bg-muted max-h-96 overflow-auto rounded-md p-3 text-xs">
-        {prettyDocument(data.document)}
+        {prettyDocument(received)}
       </pre>
       <p className="text-muted-foreground text-xs">
         Indented for reading. The report is sealed as one line.
@@ -429,7 +434,8 @@ function downloadFile(content: string, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  // Once the click is handled, not in the middle of it.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // The message of the API is written to be read as it is.
