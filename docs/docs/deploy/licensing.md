@@ -118,21 +118,21 @@ available whether or not a license is installed.
 On top of that, a license says which of these features it includes. A license that names no
 feature includes all of them, and so do all the licenses issued before features existed.
 
-| Feature               | What it covers                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------ |
-| `job_hooks`           | hooks that run SQL before and after a job                                            |
-| `account_hooks`       | account hooks, which announce the events of the runs                                 |
-| `pii_text`            | the PII text transformer, in a job, in the column preview and in the anonymization calls |
-| `pii_detection`       | the PII detection job and the detection call on a connection                         |
+| Feature               | What it covers                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `job_hooks`           | hooks that run SQL before and after a job                                                                               |
+| `account_hooks`       | account hooks, which announce the events of the runs                                                                    |
+| `pii_text`            | the PII text transformer, in a job, in the column preview and in the anonymization calls                                |
+| `pii_detection`       | the PII detection job and the detection call on a connection                                                            |
 | `custom_transformers` | user-defined transformers and JavaScript: in a mapping, in a rule, in the column preview and in the anonymization calls |
-| `subsetting`          | a WHERE clause on a table of the source                                              |
-| `scheduling`          | giving a job a schedule, and resuming a paused one                                   |
-| `mapping_review`      | reviewing and applying the mappings that a run proposes for new columns              |
-| `api_keys`            | creating and regenerating API keys                                                   |
-| `mcp`                 | the MCP server of the command-line tool                                              |
-| `rbac`                | giving a member a role other than administrator                                      |
-| `sso`                 | declaring an OIDC identity provider for an account                                   |
-| `run_logs`            | serving the logs of a run                                                            |
+| `subsetting`          | a WHERE clause on a table of the source                                                                                 |
+| `scheduling`          | giving a job a schedule, and resuming a paused one                                                                      |
+| `mapping_review`      | reviewing and applying the mappings that a run proposes for new columns                                                 |
+| `api_keys`            | creating and regenerating API keys                                                                                      |
+| `mcp`                 | the MCP server of the command-line tool                                                                                 |
+| `rbac`                | giving a member a role other than administrator                                                                         |
+| `sso`                 | declaring an OIDC identity provider for an account                                                                      |
+| `run_logs`            | serving the logs of a run                                                                                               |
 
 When a feature is not included:
 

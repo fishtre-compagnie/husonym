@@ -9,17 +9,16 @@ import {
 } from '@husonym/sdk';
 import {
   areRunLogsHidden,
-  BLOCKING_FEATURES,
   featureLabel,
   featureNoticeMessage,
   featureRows,
   featureUseNote,
-  isFeatureAllowed,
   invitationRole,
   isFeatureAvailable,
   isKeyAlreadyInForce,
   isRoleSelectable,
   LICENSE_FEATURES,
+  LicenseFeature,
   missingKeyMessage,
   licenseState,
   limitsInForce,
@@ -76,7 +75,14 @@ describe('featureLabel', () => {
   });
 });
 
-describe('isFeatureAllowed', () => {
+describe('a license that was read', () => {
+  // What a license allows, asked the way the application asks it: of a license that
+  // was read.
+  const isFeatureAllowed = (
+    license: SystemLicense | undefined,
+    name: LicenseFeature
+  ): boolean => isFeatureAvailable(true, license, name);
+
   it('allows nothing without a license', () => {
     expect(isFeatureAllowed(undefined, 'subsetting')).toBe(false);
   });
@@ -242,13 +248,6 @@ describe('featureRows', () => {
       LICENSE_FEATURES
     );
     expect(rows.filter((row) => row.blocking).map((row) => row.name)).toEqual([
-      'job_hooks',
-      'pii_text',
-      'pii_detection',
-      'custom_transformers',
-      'subsetting',
-    ]);
-    expect(BLOCKING_FEATURES).toEqual([
       'job_hooks',
       'pii_text',
       'pii_detection',

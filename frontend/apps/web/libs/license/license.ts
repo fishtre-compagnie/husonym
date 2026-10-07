@@ -32,7 +32,7 @@ export type LicenseFeature = (typeof LICENSE_FEATURES)[number];
 // them: the ones the job gate of the API counts
 // (backend/internal/licensegate/usage.go). The others, in use without being included,
 // block nothing: what exists keeps working, and changes are refused.
-export const BLOCKING_FEATURES: readonly LicenseFeature[] = [
+const BLOCKING_FEATURES: readonly LicenseFeature[] = [
   'job_hooks',
   'pii_text',
   'pii_detection',
@@ -62,7 +62,7 @@ export function featureLabel(name: LicenseFeature): string {
 
 // Whether the license in force allows a feature. A key that is not valid allows
 // nothing, whatever it lists.
-export function isFeatureAllowed(
+function isFeatureAllowed(
   license: SystemLicense | undefined,
   name: LicenseFeature
 ): boolean {
