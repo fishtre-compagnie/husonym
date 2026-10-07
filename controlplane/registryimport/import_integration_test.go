@@ -136,6 +136,37 @@ func Test_Import_PromotesThePendingReportsOfTheLicensesItAdds(t *testing.T) {
 	require.Equal(t, 1, stored)
 }
 
+// The product trims the key it is given before it derives the fingerprint and the seal: an entry
+// written with whitespace around its key is the license of that fingerprint all the same.
+func Test_Import_AKeyWithWhitespaceAround_IsFoundByTheFingerprintTheProductSends(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	receiver := intake.New(store, time.Now)
+	issuer := cptest.NewIssuer(t)
+	newline := issuer.Entry("lic-1", "cust-1", "Acme")
+	spaces := issuer.Entry("lic-2", "cust-2", "Globex")
+	// What the product holds, and seals with.
+	trimmed := []license.RegistryEntry{newline, spaces}
+	newline.Encoded = "\n" + newline.Encoded + "\r\n"
+	spaces.Encoded = " \t" + spaces.Encoded + "  "
+	registry := &license.Registry{Entries: []license.RegistryEntry{newline, spaces}}
+
+	result, err := registryimport.Run(ctx, store, receiver, registry, issuer.Keyring())
+	require.NoError(t, err)
+	require.Equal(t, registryimport.Result{Added: 2}, result)
+
+	for i := range trimmed {
+		sealed := cptest.ReportFor(t, &trimmed[i], instance, time.Now())
+		outcome, err := receiver.Receive(ctx, sealed.Document, sealed.Seal, sealed.Fingerprint)
+		require.NoError(t, err)
+		require.Equal(t, intake.Stored, outcome, trimmed[i].Id)
+	}
+}
+
 type failingPromoter struct{}
 
 func (failingPromoter) PromotePending(context.Context, string) (int, int, error) {

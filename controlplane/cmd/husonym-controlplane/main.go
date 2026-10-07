@@ -21,12 +21,13 @@ import (
 const databaseURLEnv = "CONTROLPLANE_DATABASE_URL"
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
+	if err := newRootCmd(license.EmbeddedKeyring).Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-func newRootCmd() *cobra.Command {
+// newRootCmd builds the command; keyring gives the public keys the registry is verified against.
+func newRootCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	root := &cobra.Command{
 		Use:          "husonym-controlplane",
 		Short:        "The Husonym control plane",
@@ -46,11 +47,11 @@ func newRootCmd() *cobra.Command {
 			return migrations.Up(cmd.Context(), databaseURL, logger)
 		},
 	})
-	root.AddCommand(migrate, newImportRegistryCmd(), newServeCmd())
+	root.AddCommand(migrate, newImportRegistryCmd(keyring), newServeCmd())
 	return root
 }
 
-func newImportRegistryCmd() *cobra.Command {
+func newImportRegistryCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	var registryPath string
 	cmd := &cobra.Command{
 		Use:   "import-registry",
@@ -70,7 +71,7 @@ func newImportRegistryCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ring, err := license.EmbeddedKeyring()
+			ring, err := keyring()
 			if err != nil {
 				return err
 			}

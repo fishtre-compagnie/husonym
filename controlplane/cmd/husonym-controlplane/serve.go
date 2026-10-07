@@ -92,7 +92,8 @@ func servePublic(
 	ctx context.Context, pool *pgxpool.Pool, listener net.Listener, logger *slog.Logger, tick time.Duration,
 ) error {
 	store := cpstore.New(pool)
-	receiver := intake.New(store, time.Now)
+	now := time.Now
+	receiver := intake.New(store, now)
 	server := newPublicServer(publicapi.NewHandler(receiver, logger))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)
@@ -100,7 +101,7 @@ func servePublic(
 	maintenanceDone := make(chan struct{})
 	go func() {
 		defer close(maintenanceDone)
-		publicapi.RunMaintenance(maintenanceCtx, receiver, store, logger, tick)
+		publicapi.RunMaintenance(maintenanceCtx, receiver, store, logger, now, tick)
 	}()
 
 	served := make(chan error, 1)

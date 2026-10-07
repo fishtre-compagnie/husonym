@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -41,7 +42,9 @@ func Run(
 	var added []string
 	for i := range registry.Entries {
 		entry := &registry.Entries[i]
-		key, err := license.ParseWith(entry.Encoded, ring)
+		// Whitespace around a key is not part of it: the product trims the key it is given, and
+		// so do the fingerprint and the seal.
+		key, err := license.ParseWith(strings.TrimSpace(entry.Encoded), ring)
 		if err != nil || key.Id != entry.Id || key.CustomerId == "" {
 			result.Refused++
 			continue

@@ -22,7 +22,8 @@ func startMaintenance(t *testing.T, receiver *intake.Intake, store *cpstore.Stor
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		publicapi.RunMaintenance(ctx, receiver, store, slog.New(slog.NewTextHandler(io.Discard, nil)), 10*time.Millisecond)
+		publicapi.RunMaintenance(ctx, receiver, store, slog.New(slog.NewTextHandler(io.Discard, nil)),
+			time.Now, 10*time.Millisecond)
 	}()
 	t.Cleanup(func() {
 		cancel()

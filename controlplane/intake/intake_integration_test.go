@@ -3,6 +3,7 @@ package intake_test
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -884,6 +885,107 @@ func Test_PromotePending_AReportAlreadyStoredIsNotStoredTwice(t *testing.T) {
 	var conflicts int
 	require.NoError(t, b.pool.QueryRow(ctx, `SELECT conflicts FROM controlplane.usage_reports`).Scan(&conflicts))
 	require.Zero(t, conflicts)
+}
+
+// The day of a pending report is judged from the moment it was received, not from the moment it
+// is promoted: by then it may be further back than a report received now may be.
+func Test_PromotePending_AReportReceived40DaysAgoIsStored(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	b := newBench(t)
+	// Received on 2026-08-28 for a day 49 days before: 89 days before the promotion.
+	before := received.AddDate(0, 0, -40)
+	b.now = before
+	document := b.document(b.report(instanceA, "2026-07-10"))
+	require.Equal(t, intake.Pending, b.post(document))
+
+	b.now = received
+	require.Equal(t, intake.Refused, b.post(document), "received today, the same report is too far back")
+	b.addLicense()
+	stored, discarded, err := b.intake.PromotePending(ctx, b.fingerprint)
+	require.NoError(t, err)
+	require.Equal(t, 1, stored)
+	require.Zero(t, discarded)
+
+	var day string
+	var receivedAt time.Time
+	require.NoError(t, b.pool.QueryRow(ctx,
+		`SELECT day::text, received_at FROM controlplane.usage_reports`).Scan(&day, &receivedAt))
+	require.Equal(t, "2026-07-10", day)
+	require.True(t, before.Equal(receivedAt))
+	require.Zero(t, b.count("pending_reports"))
+}
+
+// The import of the registry and the hourly maintenance may promote the same fingerprint at the
+// same moment.
+func Test_PromotePending_TwiceAtOnce_StoresEachReportOnceAndCountsABadSealOnce(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	b := newBench(t)
+	const reports = 20
+	for n := range reports {
+		instance := fmt.Sprintf("%02d3e4567-e89b-12d3-a456-426614174000", n)
+		require.Equal(t, intake.Pending, b.post(b.document(b.report(instance, "2026-10-06"))))
+	}
+	forged := b.document(b.report(instanceA, "2026-10-04"))
+	require.Equal(t, intake.Pending, b.receive(forged, strings.Repeat("0", 64), b.fingerprint))
+	b.addLicense()
+
+	const callers = 2
+	var stored, discarded [callers]int
+	var errs [callers]error
+	var wg sync.WaitGroup
+	for n := range callers {
+		wg.Go(func() { stored[n], discarded[n], errs[n] = b.intake.PromotePending(ctx, b.fingerprint) })
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+	// Each caller counts what it met; what is kept is counted once.
+	require.GreaterOrEqual(t, stored[0]+stored[1], reports)
+	require.GreaterOrEqual(t, discarded[0]+discarded[1], 1)
+	require.Zero(t, b.count("pending_reports"))
+	require.Equal(t, reports, b.count("usage_reports"))
+	require.Equal(t, reports, b.count("instances"))
+	var conflicts, rejections int
+	require.NoError(t, b.pool.QueryRow(ctx,
+		`SELECT coalesce(sum(conflicts), 0) FROM controlplane.usage_reports`).Scan(&conflicts))
+	require.NoError(t, b.pool.QueryRow(ctx,
+		`SELECT coalesce(sum(count), 0) FROM controlplane.seal_rejections`).Scan(&rejections))
+	require.Zero(t, conflicts)
+	require.Equal(t, 1, rejections)
+}
+
+// Receive lets no such row in; one written by other means is discarded, and the others go on.
+func Test_PromotePending_ADocumentThatNoLongerReadsIsDiscardedAndDoesNotStopTheOthers(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	b := newBench(t)
+	// It sorts first: it is met before the two that read.
+	_, err := b.pool.Exec(ctx,
+		`INSERT INTO controlplane.pending_reports (key_fingerprint, instance_id, day, document, seal, received_at)
+		 VALUES ($1, $2, '2026-10-04', '{"schema_version":', $3, $4)`,
+		b.fingerprint, instanceA, strings.Repeat("0", 64), received)
+	require.NoError(t, err)
+	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceB, "2026-10-05"))))
+	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceC, "2026-10-06"))))
+	b.addLicense()
+
+	stored, discarded, err := b.intake.PromotePending(ctx, b.fingerprint)
+	require.NoError(t, err)
+	require.Equal(t, 2, stored)
+	require.Equal(t, 1, discarded)
+	require.Zero(t, b.count("pending_reports"))
+	require.Equal(t, 2, b.count("usage_reports"))
+	require.Zero(t, b.count("seal_rejections"), "a document that does not read is not a seal that does not match")
 }
 
 func Test_PromotePending_UnknownFingerprint_LeavesWhatIsPending(t *testing.T) {

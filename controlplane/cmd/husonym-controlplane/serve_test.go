@@ -14,13 +14,14 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
 	"github.com/fishtre-compagnie/husonym/controlplane/cptest"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ServePublic_WithoutADatabaseURL_Fails(t *testing.T) {
 	t.Setenv(databaseURLEnv, "")
-	cmd := newRootCmd()
+	cmd := newRootCmd(license.EmbeddedKeyring)
 	cmd.SetArgs([]string{"serve", "public"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
@@ -35,7 +36,7 @@ func Test_ServePublic_UnreachableDatabase_FailsAndNeverListens(t *testing.T) {
 	require.NoError(t, probe.Close())
 	t.Setenv(databaseURLEnv, "postgres://nobody@127.0.0.1:1/none?connect_timeout=2")
 	t.Setenv(listenAddrEnv, addr)
-	cmd := newRootCmd()
+	cmd := newRootCmd(license.EmbeddedKeyring)
 	cmd.SetArgs([]string{"serve", "public"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
