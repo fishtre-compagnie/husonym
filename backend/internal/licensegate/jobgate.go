@@ -32,20 +32,27 @@ func NewJobGate(db *husonymdb.HusonymDb, lic license.EEInterface) *JobGate {
 //
 // It does not ask whether the license is in force: its callers have, and refuse first. An error
 // that is not the refusal means the question could not be answered.
+//
+// The job may be one that is not stored yet, without an id: it is checked on its definition
+// alone, since a job being created has no hook.
 func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
-	jobUuid, err := husonymdb.ToUuid(job.GetId())
-	if err != nil {
-		return err
-	}
 	accountUuid, err := husonymdb.ToUuid(job.GetAccountId())
 	if err != nil {
 		return err
 	}
 
-	// A hook of any timing counts, as long as it is enabled: a disabled one does not run.
-	hooks, err := g.db.Q.GetActiveJobHooks(ctx, g.db.Db, jobUuid)
-	if err != nil {
-		return fmt.Errorf("unable to get the enabled hooks of job %s: %w", job.GetId(), err)
+	hasEnabledHooks := false
+	if job.GetId() != "" {
+		jobUuid, err := husonymdb.ToUuid(job.GetId())
+		if err != nil {
+			return err
+		}
+		// A hook of any timing counts, as long as it is enabled: a disabled one does not run.
+		hooks, err := g.db.Q.GetActiveJobHooks(ctx, g.db.Db, jobUuid)
+		if err != nil {
+			return fmt.Errorf("unable to get the enabled hooks of job %s: %w", job.GetId(), err)
+		}
+		hasEnabledHooks = len(hooks) > 0
 	}
 
 	lookup := func(ctx context.Context, id string) (*mgmtv1alpha1.TransformerConfig, error) {
@@ -64,7 +71,7 @@ func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
 		return transformer.TransformerConfig.ToTransformerConfigDto()
 	}
 
-	used, err := FeaturesUsedBy(ctx, JobFacts{Job: job, HasEnabledHooks: len(hooks) > 0}, lookup)
+	used, err := FeaturesUsedBy(ctx, JobFacts{Job: job, HasEnabledHooks: hasEnabledHooks}, lookup)
 	if err != nil {
 		return err
 	}

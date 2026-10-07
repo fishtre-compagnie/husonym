@@ -25,7 +25,8 @@ type Service struct {
 
 	connectiondatabuilder connectiondata.ConnectionDataBuilder
 
-	// jobgate refuses to start a job that uses a feature the license does not include.
+	// jobgate refuses to start a job that uses a feature the license does not include, and to
+	// configure one so that it would.
 	jobgate *licensegate.JobGate
 }
 

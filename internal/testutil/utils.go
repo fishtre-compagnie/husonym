@@ -159,6 +159,14 @@ func (f *FakeEELicense) SetFeatures(features ...license.Feature) {
 	f.features = featureList(features)
 }
 
+// ClearFeatures lifts the restriction: the fake allows every feature again, as one made without
+// WithFeatures does. It is safe for concurrent use.
+func (f *FakeEELicense) ClearFeatures() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.features = nil
+}
+
 // HasFeature is false whenever the fake is not valid, like the real license.
 func (f *FakeEELicense) HasFeature(feature license.Feature) bool {
 	f.mu.RLock()

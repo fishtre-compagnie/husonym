@@ -21,6 +21,17 @@ func Test_FakeEELicense_HasFeature(t *testing.T) {
 		require.False(t, f.HasFeature(license.FeatureMcp))
 	})
 
+	t.Run("ClearFeatures returns to a key that names no feature list", func(t *testing.T) {
+		f := NewFakeEELicense(WithIsValid(), WithFeatures(license.FeatureMcp))
+		require.False(t, f.Describe().Key.AllowsEveryFeature())
+
+		f.ClearFeatures()
+		require.True(t, f.HasFeature(license.FeatureSso))
+		// Not a list of every feature: no list, which is what a key issued before lists says.
+		require.True(t, f.Describe().Key.AllowsEveryFeature())
+		require.Nil(t, f.Describe().Key.Features)
+	})
+
 	t.Run("WithFeatures with no argument allows none", func(t *testing.T) {
 		require.False(t, NewFakeEELicense(WithIsValid(), WithFeatures()).HasFeature(license.FeatureMcp))
 	})

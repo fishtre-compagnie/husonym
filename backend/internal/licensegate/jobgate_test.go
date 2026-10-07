@@ -208,6 +208,50 @@ func Test_JobGate_Check_Hooks(t *testing.T) {
 	})
 }
 
+// A job that is being created has no id: it is checked on its definition, and its hooks, which
+// it cannot have, are not looked up.
+func Test_JobGate_Check_AJobThatIsNotStoredYet(t *testing.T) {
+	notStored := func() *mgmtv1alpha1.Job {
+		job := aJob()
+		job.Id = ""
+		return job
+	}
+	// A store that cannot read hooks: asking it for them would fail the check.
+	store := &hooksDown{gateStore: newGateStore(), fails: errors.New("no hook is to be read")}
+	gate := func(lic license.EEInterface) *JobGate { return NewJobGate(husonymdb.New(nil, store), lic) }
+
+	t.Run("one that uses no feature is not refused", func(t *testing.T) {
+		require.NoError(t, gate(licenseWith()).Check(context.Background(), notStored()))
+	})
+
+	t.Run("what its definition uses is refused", func(t *testing.T) {
+		job := notStored()
+		job.Source = postgresWhere(ptr("id > 10"))
+		job.Mappings = mappingWith(userDefined(store.addTransformer(t, job.GetAccountId(), piiText())))
+
+		requireRefusal(t, gate(licenseWith()).Check(context.Background(), job),
+			"pii_text, custom_transformers, subsetting")
+		require.NoError(t, gate(licenseWith(
+			license.FeaturePiiText, license.FeatureCustomTransformers, license.FeatureSubsetting,
+		)).Check(context.Background(), job))
+	})
+
+	t.Run("a stored job still has its hooks looked up", func(t *testing.T) {
+		err := gate(licenseWith()).Check(context.Background(), aJob())
+		require.ErrorIs(t, err, store.fails)
+	})
+}
+
+// hooksDown is a store whose hooks alone cannot be read.
+type hooksDown struct {
+	*gateStore
+	fails error
+}
+
+func (s *hooksDown) GetActiveJobHooks(context.Context, db_queries.DBTX, pgtype.UUID) ([]db_queries.HusonymApiJobHook, error) {
+	return nil, s.fails
+}
+
 func Test_JobGate_Check_UserDefinedTransformers(t *testing.T) {
 	t.Run("one that stores a PII text uses pii_text", func(t *testing.T) {
 		store := newGateStore()

@@ -20,6 +20,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
@@ -394,6 +395,21 @@ func (s *Service) CreateJob(
 	}
 	if err := s.enforceJobLimit(ctx, user, accountUuid); err != nil {
 		return nil, err
+	}
+	// The job is refused for what it would use once created, before anything is written. It has
+	// no id yet, and so no hook.
+	if err := s.jobgate.Check(ctx, &mgmtv1alpha1.Job{
+		AccountId: req.Msg.GetAccountId(),
+		Source:    req.Msg.GetSource(),
+		Mappings:  req.Msg.GetMappings(),
+		JobType:   req.Msg.GetJobType(),
+	}); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCronSchedule() != "" {
+		if err := enforceScheduling(ctx, user, req.Msg.GetAccountId()); err != nil {
+			return nil, err
+		}
 	}
 
 	connectionUuids := []pgtype.UUID{}
@@ -865,6 +881,12 @@ func (s *Service) UpdateJobSchedule(
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
+	// Taking a schedule away stays possible without the feature.
+	if req.Msg.GetCronSchedule() != "" {
+		if err := enforceScheduling(ctx, user, jobDto.GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
@@ -955,12 +977,13 @@ func (s *Service) PauseJob(
 	// Only resuming is gated. Pausing stays available without a license: an account whose
 	// license lapsed must always be able to stop its schedules, and blocking that would
 	// leave it with jobs it can neither run nor quiet. Resuming lets the job run on its own
-	// again, so it takes what running it takes.
+	// again, so it takes what running it takes, and the feature that scheduling is.
 	if !req.Msg.Pause {
 		if err := user.EnforceJob(ctx, jobDto, rbac.JobAction_Execute); err != nil {
 			return nil, err
 		}
-		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		// The license in force is checked first, by the same call.
+		if err := enforceScheduling(ctx, user, jobDto.GetAccountId()); err != nil {
 			return nil, err
 		}
 	}
@@ -1028,6 +1051,21 @@ func (s *Service) UpdateJobSourceConnection(
 		return nil, err
 	}
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
+	// The job is judged as this change would leave it: a change that keeps a feature the license
+	// does not include is refused, one that gives it up is not.
+	candidate := &mgmtv1alpha1.Job{
+		Id:        jobDto.GetId(),
+		AccountId: jobDto.GetAccountId(),
+		Source:    req.Msg.GetSource(),
+		Mappings:  req.Msg.GetMappings(),
+		JobType:   jobDto.GetJobType(),
+	}
+	if req.Msg.GetJobType() != nil {
+		candidate.JobType = req.Msg.GetJobType()
+	}
+	if err := s.jobgate.Check(ctx, candidate); err != nil {
 		return nil, err
 	}
 
@@ -1290,6 +1328,13 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
+	// Only a request that sets a WHERE clause subsets: one that clears them all stays possible
+	// without the feature, and following the foreign keys alone is not subsetting.
+	if setsWhereClause(req.Msg.GetSchemas()) {
+		if err := user.EnforceFeature(ctx, jobDto.GetAccountId(), license.FeatureSubsetting); err != nil {
+			return nil, err
+		}
+	}
 
 	var connectionId *string
 	if jobDto.GetSource().GetOptions() != nil {
@@ -1347,6 +1392,46 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	return connect.NewResponse(&mgmtv1alpha1.SetJobSourceSqlConnectionSubsetsResponse{
 		Job: updatedJobRes.Msg.Job,
 	}), nil
+}
+
+// setsWhereClause reports whether a request to set the subsets of a job gives any table a WHERE
+// clause that is not blank.
+func setsWhereClause(schemas *mgmtv1alpha1.JobSourceSqlSubetSchemas) bool {
+	var clauses []string
+	for _, schema := range schemas.GetPostgresSubset().GetPostgresSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, schema := range schemas.GetMysqlSubset().GetMysqlSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, schema := range schemas.GetMssqlSubset().GetMssqlSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, table := range schemas.GetDynamodbSubset().GetTables() {
+		clauses = append(clauses, table.GetWhereClause())
+	}
+	for _, clause := range clauses {
+		if strings.TrimSpace(clause) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// enforceScheduling refuses to give a job a schedule, or to resume one, under a license that does
+// not include scheduling.
+//
+// It is the only gate on scheduling. A schedule set while the license included the feature keeps
+// firing after it no longer does: a scheduled run and a manual one are the same action of the
+// orchestrator, so the start of a run cannot tell them apart.
+func enforceScheduling(ctx context.Context, user *userdata.User, accountId string) error {
+	return user.EnforceFeature(ctx, accountId, license.FeatureScheduling)
 }
 
 func (s *Service) UpdateJobDestinationConnection(

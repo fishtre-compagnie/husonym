@@ -7,10 +7,12 @@ import (
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/proto"
@@ -106,6 +108,10 @@ func (s *Service) ReviewMappingChanges(
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
+	// Reading what waits for a review stays open to every license; deciding about it does not.
+	if err := user.EnforceFeature(ctx, req.Msg.GetAccountId(), license.FeatureMappingReview); err != nil {
+		return nil, err
+	}
 
 	params, err := reviewParams(user.PgId(), accountUuid, jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
 	if err != nil {
@@ -139,8 +145,9 @@ func (s *Service) ApplyMappingChanges(
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
-	// Setting transformers changes the job: it needs a valid license, as every other change.
-	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
+	// Setting transformers changes the job: it needs a valid license, as every other change, and
+	// one that includes the review, which this is the correcting half of.
+	if err := user.EnforceFeature(ctx, req.Msg.GetAccountId(), license.FeatureMappingReview); err != nil {
 		return nil, err
 	}
 	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), req.Msg.GetAccountId()); err != nil {
@@ -166,6 +173,16 @@ func (s *Service) ApplyMappingChanges(
 		var mappings []*pg_models.JobMapping
 		mappings, applied, err = setTransformers(job.Mappings, req.Msg.GetMappings())
 		if err != nil {
+			return err
+		}
+		// The job is judged on the mappings it is about to have, the columns the request leaves
+		// alone included. A refusal ends the transaction before anything is written.
+		job.Mappings = mappings
+		candidate, err := dtomaps.ToJobDto(&job, nil)
+		if err != nil {
+			return fmt.Errorf("unable to convert job to dto: %w", err)
+		}
+		if err := s.jobgate.Check(ctx, candidate); err != nil {
 			return err
 		}
 		if _, err := s.db.Q.UpdateJobMappings(ctx, dbtx, db_queries.UpdateJobMappingsParams{

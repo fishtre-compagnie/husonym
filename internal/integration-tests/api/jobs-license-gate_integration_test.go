@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"log"
 	"log/slog"
+	"testing"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/google/uuid"
@@ -16,50 +18,104 @@ import (
 
 const subsettingRefusal = "this job uses features the license does not include: subsetting"
 
-// createSubsettingJob gives the account a job that subsets one table, under the license of the
-// expiring mode, and restores every feature of that license when the test ends.
-func (s *IntegrationTestSuite) createSubsettingJob(
-	userOpt integrationtests_test.ClientConfigOption,
-	accountId, jobName string,
-) *mgmtv1alpha1.Job {
-	t := s.T()
-	connections := s.OSSAuthenticatedExpiringClients.Connections(userOpt)
-	jobs := s.OSSAuthenticatedExpiringClients.Jobs(userOpt)
-	t.Cleanup(func() { s.Mocks.ExpiringLicense.SetFeatures(license.AllFeatures()...) })
+// gateGround is an account of the expiring mode, whose license a test restricts, with the two
+// connections a job needs.
+type gateGround struct {
+	accountId   string
+	users       mgmtv1alpha1connect.UserAccountServiceClient
+	jobs        mgmtv1alpha1connect.JobServiceClient
+	source      *mgmtv1alpha1.Connection
+	destination *mgmtv1alpha1.Connection
+}
 
-	source := s.createPostgresConnection(connections, accountId, jobName+"-source", "test")
-	destination := s.createPostgresConnection(connections, accountId, jobName+"-destination", "test2")
-	where := "id > 10"
-	s.MockTemporalForCreateJob(jobName)
-	created, err := jobs.CreateJob(s.ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
-		AccountId: accountId,
-		JobName:   jobName,
-		Mappings: []*mgmtv1alpha1.JobMapping{{
-			Schema: "public",
-			Table:  "users",
-			Column: "name",
-			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
+// newGateGround makes the ground of a test, and has the license allow every feature again, as a
+// key that names no feature list does, when the test ends.
+func (s *IntegrationTestSuite) newGateGround(name string) *gateGround {
+	userOpt := integrationtests_test.WithUserId(name)
+	connections := s.OSSAuthenticatedExpiringClients.Connections(userOpt)
+	g := &gateGround{
+		users: s.OSSAuthenticatedExpiringClients.Users(userOpt),
+		jobs:  s.OSSAuthenticatedExpiringClients.Jobs(userOpt),
+	}
+	s.T().Cleanup(s.Mocks.ExpiringLicense.ClearFeatures)
+	s.setUser(s.ctx, g.users)
+	g.accountId = s.createPersonalAccount(s.ctx, g.users)
+	g.source = s.createPostgresConnection(connections, g.accountId, name+"-source", "test")
+	g.destination = s.createPostgresConnection(connections, g.accountId, name+"-destination", "test2")
+	return g
+}
+
+// closeFeature leaves the license every feature but one.
+func (s *IntegrationTestSuite) closeFeature(closed license.Feature) {
+	s.Mocks.ExpiringLicense.SetFeatures(everyFeatureBut(closed)...)
+}
+
+// sourceWhere is the source of the ground's jobs: one table, subset by the clause if there is one.
+func (g *gateGround) sourceWhere(where *string) *mgmtv1alpha1.JobSource {
+	return &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
+		Config: &mgmtv1alpha1.JobSourceOptions_Postgres{Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{
+			ConnectionId: g.source.GetId(),
+			Schemas: []*mgmtv1alpha1.PostgresSourceSchemaOption{{
+				Schema: "public",
+				Tables: []*mgmtv1alpha1.PostgresSourceTableOption{{Table: "users", WhereClause: where}},
 			}},
 		}},
-		Source: &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
-			Config: &mgmtv1alpha1.JobSourceOptions_Postgres{Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{
-				ConnectionId: source.GetId(),
-				Schemas: []*mgmtv1alpha1.PostgresSourceSchemaOption{{
-					Schema: "public",
-					Tables: []*mgmtv1alpha1.PostgresSourceTableOption{{Table: "users", WhereClause: &where}},
-				}},
-			}},
-		}},
+	}}
+}
+
+// jobRequest asks for a job that uses no licensed feature: a test adds the one it is about.
+func (g *gateGround) jobRequest(name string) *mgmtv1alpha1.CreateJobRequest {
+	return &mgmtv1alpha1.CreateJobRequest{
+		AccountId: g.accountId,
+		JobName:   name,
+		Mappings:  []*mgmtv1alpha1.JobMapping{passthroughMapping("name")},
+		Source:    g.sourceWhere(nil),
 		Destinations: []*mgmtv1alpha1.CreateJobDestination{{
-			ConnectionId: destination.GetId(),
+			ConnectionId: g.destination.GetId(),
 			Options: &mgmtv1alpha1.JobDestinationOptions{Config: &mgmtv1alpha1.JobDestinationOptions_PostgresOptions{
 				PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{},
 			}},
 		}},
-	}))
-	requireNoErrResp(t, created, err)
-	return created.Msg.GetJob()
+	}
+}
+
+// subsettingJobRequest asks for a job that subsets its table.
+func (g *gateGround) subsettingJobRequest(name string) *mgmtv1alpha1.CreateJobRequest {
+	where := "id > 10"
+	req := g.jobRequest(name)
+	req.Source = g.sourceWhere(&where)
+	return req
+}
+
+func passthroughMapping(column string) *mgmtv1alpha1.JobMapping {
+	return columnMapping(column, &mgmtv1alpha1.TransformerConfig{
+		Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
+	})
+}
+
+func columnMapping(column string, config *mgmtv1alpha1.TransformerConfig) *mgmtv1alpha1.JobMapping {
+	return &mgmtv1alpha1.JobMapping{
+		Schema:      "public",
+		Table:       "users",
+		Column:      column,
+		Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: config},
+	}
+}
+
+// requireJobRefusal is the refusal of a job for what it uses: it names the features.
+func requireJobRefusal(t testing.TB, err error, features string) {
+	t.Helper()
+	require.Error(t, err)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "this job uses features the license does not include: "+features)
+}
+
+// requireFeatureRefusal is the refusal of an operation the license does not include.
+func requireFeatureRefusal(t testing.TB, err error, feature license.Feature) {
+	t.Helper()
+	require.Error(t, err)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "this license does not include "+string(feature))
 }
 
 // everyFeatureBut is the list of the licensed features, one left out.
@@ -78,25 +134,21 @@ func everyFeatureBut(closed license.Feature) []license.Feature {
 func (s *IntegrationTestSuite) Test_CreateJobRun_RefusesAJobUsingAClosedFeature() {
 	t := s.T()
 	ctx := s.ctx
-	userOpt := integrationtests_test.WithUserId("closed-feature-run")
-	users := s.OSSAuthenticatedExpiringClients.Users(userOpt)
-	jobs := s.OSSAuthenticatedExpiringClients.Jobs(userOpt)
-	s.setUser(ctx, users)
-	accountId := s.createPersonalAccount(ctx, users)
-	job := s.createSubsettingJob(userOpt, accountId, "closed-feature-run-job")
+	g := s.newGateGround("closed-feature-run")
+	jobs, accountId := g.jobs, g.accountId
+	job := s.createJobUnderValidLicense(t, jobs, g.subsettingJobRequest("closed-feature-run-job"))
 
-	s.Mocks.ExpiringLicense.SetFeatures(everyFeatureBut(license.FeatureSubsetting)...)
+	s.closeFeature(license.FeatureSubsetting)
 
 	_, err := jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: job.GetId()}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
-	require.ErrorContains(t, err, subsettingRefusal)
+	requireJobRefusal(t, err, "subsetting")
+	// The mock is the whole suite's: only a run of this job, in this account, is this test's.
 	s.Mocks.TemporalClientManager.AssertNotCalled(
-		t, "StartScheduledRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		t, "StartScheduledRun", mock.Anything, accountId, job.GetId(), mock.Anything,
 	)
 
 	// The same job starts once the license includes the feature.
-	s.Mocks.ExpiringLicense.SetFeatures(license.AllFeatures()...)
+	s.Mocks.ExpiringLicense.ClearFeatures()
 	jobRunId := job.GetId() + "-2026-10-07T10:00:00Z"
 	s.Mocks.TemporalClientManager.EXPECT().
 		StartScheduledRun(mock.Anything, accountId, job.GetId(), mock.Anything).
@@ -113,12 +165,9 @@ func (s *IntegrationTestSuite) Test_CreateJobRun_RefusesAJobUsingAClosedFeature(
 func (s *IntegrationTestSuite) Test_IsAccountStatusValid_RefusesByJob() {
 	t := s.T()
 	ctx := s.ctx
-	userOpt := integrationtests_test.WithUserId("closed-feature-status")
-	users := s.OSSAuthenticatedExpiringClients.Users(userOpt)
-	s.setUser(ctx, users)
-	accountId := s.createPersonalAccount(ctx, users)
-	job := s.createSubsettingJob(userOpt, accountId, "closed-feature-status-job")
-	jobId := job.GetId()
+	g := s.newGateGround("closed-feature-status")
+	users, accountId := g.users, g.accountId
+	jobId := s.createJobUnderValidLicense(t, g.jobs, g.subsettingJobRequest("closed-feature-status-job")).GetId()
 
 	forTheJob, err := users.IsAccountStatusValid(ctx, connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
 		AccountId: accountId, JobId: &jobId,
@@ -126,9 +175,9 @@ func (s *IntegrationTestSuite) Test_IsAccountStatusValid_RefusesByJob() {
 	requireNoErrResp(t, forTheJob, err)
 	require.True(t, forTheJob.Msg.GetIsValid(), "the license includes every feature")
 
-	s.Mocks.ExpiringLicense.SetFeatures(everyFeatureBut(license.FeatureSubsetting)...)
+	s.closeFeature(license.FeatureSubsetting)
 
-	forTheJob, err = users.IsAccountStatusValid(ctx, connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
+	forTheJob, err =users.IsAccountStatusValid(ctx, connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
 		AccountId: accountId, JobId: &jobId,
 	}))
 	requireNoErrResp(t, forTheJob, err)
@@ -156,7 +205,7 @@ func (s *IntegrationTestSuite) Test_IsAccountStatusValid_AJobItCannotReadDoesNot
 	users := s.OSSAuthenticatedExpiringClients.Users(userOpt)
 	s.setUser(ctx, users)
 	accountId := s.createPersonalAccount(ctx, users)
-	t.Cleanup(func() { s.Mocks.ExpiringLicense.SetFeatures(license.AllFeatures()...) })
+	t.Cleanup(s.Mocks.ExpiringLicense.ClearFeatures)
 	// No feature at all: a job that could be read and used one would be refused.
 	s.Mocks.ExpiringLicense.SetFeatures()
 
