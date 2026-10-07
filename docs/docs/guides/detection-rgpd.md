@@ -206,14 +206,14 @@ Deux ajustements maison :
   reconnaisseurs `FR_NIR`, `FR_PHONE_NUMBER`, `FR_POSTAL_CODE`, `FR_SIRET`
   (voir `docker/presidio-fr/`).
 - **Personnes en français.** L'image reconnaît les personnes avec le modèle
-  CamemBERT `Jean-Baptiste/camembert-ner` ; spaCy fournit toujours les lieux
-  (`LOCATION`), et rien d'autre en français : une date en chiffres est reconnue
-  par motif, une date écrite en lettres (« née le 3 mars 1984 ») n'est pas
-  désignée par l'IA. En anglais, rien ne change : spaCy reconnaît aussi les
-  personnes. L'image demande le réseau pour se construire et aucun pour tourner ;
-  elle est plus lourde et plus lente que l'image officielle, surtout sur un texte
-  long ou pauvre en espaces (voir son `README.md` pour les poids et les durées
-  mesurés).
+  `cmarkea/distilcamembert-base-ner`, quantifié et exécuté par ONNX Runtime ;
+  spaCy fournit toujours les lieux (`LOCATION`), et rien d'autre en français :
+  une date en chiffres est reconnue par motif, une date écrite en lettres (« née
+  le 3 mars 1984 ») n'est pas désignée par l'IA. En anglais, rien ne change :
+  spaCy reconnaît aussi les personnes. L'image demande le réseau pour se
+  construire et aucun pour tourner ; elle est un peu plus lourde et plus lente
+  que l'image officielle, surtout sur un texte pauvre en espaces (voir son
+  `README.md` pour les poids et les durées mesurés).
 - **Affinage local.** Presidio dit `PERSON` pour un prénom, un nom ou un nom complet
   indifféremment, et `LOCATION` pour une ville comme pour une adresse. Husonym
   tranche ensuite sur la forme des valeurs : plusieurs mots → nom complet ; numéro en
@@ -302,22 +302,22 @@ api:
 ```
 
 :::note Pourquoi `fr` alors que Presidio est meilleur en anglais
-Les personnes ne sont reconnues par CamemBERT qu'en français. Les lieux comptent
+Le modèle des personnes de l'image n'est interrogé qu'en français. Les lieux comptent
 aussi : sur une colonne d'adresses, Presidio émet `LOCATION` en français et _rien_ en
 anglais — et l'affinage Husonym sait reclasser ce `LOCATION` en adresse. Un signal mal
 étiqueté qu'un étage aval corrige vaut mieux qu'aucun signal.
 
-Mesuré avec le moteur français précédent (spaCy pour les personnes, avant
-CamemBERT) : **isolément**, le modèle français était moins bon que l'anglais (F1 0,47
-contre 0,63) ; **dans le pipeline**, il gagnait (F1 0,90 contre 0,88). Ces chiffres
-n'ont pas été refaits avec CamemBERT.
+Mesuré avec le moteur français précédent (spaCy pour les personnes) : **isolément**,
+le modèle français était moins bon que l'anglais (F1 0,47 contre 0,63) ; **dans le
+pipeline**, il gagnait (F1 0,90 contre 0,88). Ces chiffres n'ont pas été refaits avec
+le moteur actuel.
 :::
 
 ## Performances mesurées
 
-Ces mesures datent du moteur français précédent (spaCy pour les personnes, avant
-CamemBERT) et n'ont pas été refaites depuis. Sur un jeu de test de 34 colonnes
-françaises à vérité terrain connue (`scripts/testdata/`) :
+Ces mesures datent du moteur français précédent (spaCy pour les personnes) et n'ont
+pas été refaites depuis. Sur un jeu de test de 34 colonnes françaises à vérité terrain
+connue (`scripts/testdata/`) :
 
 | Configuration                   | Rappel   | Précision | F1       |
 | ------------------------------- | -------- | --------- | -------- |
@@ -340,18 +340,22 @@ python3 scripts/testdata/bench-presidio.py
 - **Texte libre multi-PII** — une colonne de commentaires contenant à la fois un nom
   et un téléphone ne remonte qu'une seule catégorie, la plus fréquente.
 - **Personnes, ce que l'IA rate ou désigne à tort** — sur des textes métier inventés
-  (12 colonnes de 50 valeurs par langue, valeurs coupées à 200 caractères, seuil
-  0,35), l'image française a désigné 32 passages dont 31 sur un nom de personne,
-  et trouvé 31 des 32 noms. Elle n'a désigné une personne que dans 1 valeur sur 300
-  de six colonnes sans personne (noms de sociétés, de produits, villes, codes) : un
-  nom de cabinet. Elle a manqué un nom de famille en capitales en tête de valeur.
-  Ce sont des chiffres de ces jeux, pas une garantie : une colonne n'est signalée que
-  si une entité couvre au moins un tiers des valeurs lues, mais vérifiez un verdict
+  (12 colonnes de 50 valeurs par jeu, valeurs coupées à 200 caractères, seuil 0,35),
+  et sur un jeu français qui n'a pas servi à régler l'image, celle-ci a désigné
+  106 passages dont 102 sur un nom de personne, et trouvé 102 des 109 noms. Elle n'a
+  désigné une personne que dans 3 valeurs sur 300 de six colonnes sans personne (noms
+  de sociétés, de produits, villes, codes) : un nom de produit, un nom de salle, un
+  nom de lieu. Les noms manqués sont surtout des prénoms écrits seuls, sans nom de
+  famille. Dans un texte presque sans espaces (JSON compact, références collées), un
+  nom de plusieurs mots peut n'être désigné qu'en partie, ou pas du tout. Ce sont des
+  chiffres de ces jeux, pas une garantie : une colonne n'est signalée que si une
+  entité couvre au moins un tiers des valeurs lues, mais vérifiez un verdict
   _À vérifier_ avant d'agir.
 - **Lieux, téléphones et SIRET dans les colonnes sans personne** — la reconnaissance
-  des lieux reste celle de spaCy : sur les mêmes colonnes françaises sans personne,
-  73 valeurs sur 300 portent un `LOCATION`, 30 un `PHONE_NUMBER`, 9 un
-  `FR_PHONE_NUMBER` et 8 un `FR_SIRET`. Ces signaux n'ont pas changé avec CamemBERT.
+  des lieux reste celle de spaCy : sur les colonnes françaises sans personne d'un
+  autre jeu inventé, 73 valeurs sur 300 portent un `LOCATION`, 30 un `PHONE_NUMBER`,
+  9 un `FR_PHONE_NUMBER` et 8 un `FR_SIRET`. Ces signaux ne viennent pas du modèle des
+  personnes.
 - **Anglais** — la reconnaissance des personnes n'a pas changé : sur les mêmes jeux
   anglais, 30 passages justes sur 48 désignés (noms de sociétés, numéros de
   commande et mots d'état pris pour des personnes).

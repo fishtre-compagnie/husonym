@@ -100,7 +100,7 @@ services:
 
       # Scan de contenu PII (Phase 2) : client Presidio maison, hors licence EE.
       - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
-      # « fr » : les personnes ne sont reconnues par CamemBERT que dans cette
+      # « fr » : le modèle des personnes de l'image n'est interrogé que dans cette
       # langue (docker/presidio-fr/README.md). Dans le pipeline, ce qui compte
       # aussi est que Presidio DÉTECTE : sur une colonne d'adresses il émet
       # LOCATION en français et rien en anglais, et l'affinage Go (refine.go)
