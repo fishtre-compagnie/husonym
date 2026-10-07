@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	cpdb "github.com/fishtre-compagnie/husonym/controlplane/gen/db"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -27,20 +26,22 @@ type License struct {
 // AddLicense records an issued license under its customer, creating the customer on first
 // sight. An existing customer keeps its name. A license id already present is left as it is
 // and added is false.
-func (s *Store) AddLicense(ctx context.Context, entry *license.RegistryEntry, origin string) (added bool, err error) {
+//
+// key is the content of the license key, already verified by the caller: everything it carries
+// is stored from it. entry only supplies what the key does not carry: the encoded value, the kid,
+// the fingerprint of the signing key and the note.
+func (s *Store) AddLicense(
+	ctx context.Context, key *license.Key, entry *license.RegistryEntry, origin string,
+) (added bool, err error) {
 	var limits []byte
-	if entry.Limits != nil {
-		if limits, err = json.Marshal(entry.Limits); err != nil {
+	if key.Limits != nil {
+		if limits, err = json.Marshal(key.Limits); err != nil {
 			return false, fmt.Errorf("unable to encode the limits of a license: %w", err)
 		}
 	}
-	features := entry.Features
-	if features == nil {
-		features = []string{}
-	}
 	var graceDays pgtype.Int4
-	if entry.GraceDays != nil {
-		graceDays = pgtype.Int4{Int32: int32(*entry.GraceDays), Valid: true} //nolint:gosec // a number of days
+	if key.GraceDays != nil {
+		graceDays = pgtype.Int4{Int32: int32(*key.GraceDays), Valid: true} //nolint:gosec // a number of days
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -51,24 +52,24 @@ func (s *Store) AddLicense(ctx context.Context, entry *license.RegistryEntry, or
 	queries := cpdb.New(tx)
 
 	customerID, err := queries.UpsertCustomer(ctx, cpdb.UpsertCustomerParams{
-		ExternalID: entry.CustomerId,
-		Name:       entry.IssuedTo,
+		ExternalID: key.CustomerId,
+		Name:       key.IssuedTo,
 	})
 	if err != nil {
 		return false, fmt.Errorf("unable to record the customer of a license: %w", err)
 	}
 	inserted, err := queries.InsertLicense(ctx, cpdb.InsertLicenseParams{
-		ID:                    entry.Id,
+		ID:                    key.Id,
 		CustomerID:            customerID,
 		Encoded:               entry.Encoded,
 		KeyFingerprint:        telemetry.KeyFingerprint(entry.Encoded),
 		Kid:                   entry.Kid,
-		Plan:                  entry.Plan,
-		Features:              features,
+		Plan:                  key.Plan,
+		Features:              key.Features,
 		Limits:                limits,
-		Telemetry:             entry.Telemetry,
-		IssuedAt:              pgtype.Timestamptz{Time: entry.IssuedAt, Valid: true},
-		ExpiresAt:             pgtype.Timestamptz{Time: entry.ExpiresAt.UTC().Truncate(time.Second), Valid: true},
+		Telemetry:             key.Telemetry,
+		IssuedAt:              pgtype.Timestamptz{Time: key.IssuedAt, Valid: true},
+		ExpiresAt:             pgtype.Timestamptz{Time: key.ExpiresAt, Valid: true},
 		GraceDays:             graceDays,
 		SigningKeyFingerprint: entry.KeyFingerprint,
 		Note:                  entry.Note,

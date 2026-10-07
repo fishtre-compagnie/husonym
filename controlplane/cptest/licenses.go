@@ -33,13 +33,27 @@ func (i *Issuer) Keyring() license.Keyring {
 // Entry mints a license and returns its registry entry.
 func (i *Issuer) Entry(id, customerID, issuedTo string) license.RegistryEntry {
 	i.t.Helper()
-	issued, err := license.Issue(&license.IssueRequest{
+	return i.EntryFor(&license.IssueRequest{
 		Id:         id,
 		IssuedTo:   issuedTo,
 		CustomerId: customerID,
 		ExpiresAt:  time.Now().UTC().Add(365 * 24 * time.Hour),
 		Telemetry:  string(license.TelemetryOnline),
-	}, i.priv, i.Keyring())
+	})
+}
+
+// Key reads the content of the key of entry, verified against this Issuer's keyring.
+func (i *Issuer) Key(entry *license.RegistryEntry) *license.Key {
+	i.t.Helper()
+	key, err := license.ParseWith(entry.Encoded, i.Keyring())
+	require.NoError(i.t, err)
+	return key
+}
+
+// EntryFor mints the license req describes and returns its registry entry.
+func (i *Issuer) EntryFor(req *license.IssueRequest) license.RegistryEntry {
+	i.t.Helper()
+	issued, err := license.Issue(req, i.priv, i.Keyring())
 	require.NoError(i.t, err)
 	return license.RegistryEntry{
 		Id:             issued.Id,

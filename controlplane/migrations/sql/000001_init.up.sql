@@ -16,7 +16,8 @@ CREATE TABLE controlplane.licenses (
     key_fingerprint text NOT NULL UNIQUE,
     kid text NOT NULL,
     plan text NOT NULL,
-    features text[] NOT NULL,
+    -- NULL: the key lists no features and allows all of them; an empty array allows none.
+    features text[],
     limits jsonb,
     telemetry text NOT NULL,
     issued_at timestamptz NOT NULL,

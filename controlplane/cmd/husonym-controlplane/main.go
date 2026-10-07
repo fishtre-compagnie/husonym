@@ -55,6 +55,11 @@ func newImportRegistryCmd() *cobra.Command {
 		Short: "Load the registry of issued licenses",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// LoadRegistry reads a missing file as an empty registry, which suits the issuer
+			// but here would hide a mistyped path behind three zeros.
+			if _, err := os.Stat(registryPath); errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("registry file %s does not exist", registryPath)
+			}
 			databaseURL := os.Getenv(databaseURLEnv)
 			if databaseURL == "" {
 				return fmt.Errorf("%s is not set", databaseURLEnv)

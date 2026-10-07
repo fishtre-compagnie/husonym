@@ -21,7 +21,8 @@ type Result struct {
 
 // Run records every entry of registry in store. An entry whose encoded key does not verify
 // against ring, or whose id differs from the one inside the key, is refused and counted; the
-// other entries are still imported. Nothing about a refused entry is reported but the count.
+// other entries are still imported. What is stored comes from the verified key, not from the
+// entry. Nothing about a refused entry is reported but the count.
 func Run(ctx context.Context, store *cpstore.Store, registry *license.Registry, ring license.Keyring) (Result, error) {
 	var result Result
 	for i := range registry.Entries {
@@ -31,7 +32,7 @@ func Run(ctx context.Context, store *cpstore.Store, registry *license.Registry, 
 			result.Refused++
 			continue
 		}
-		added, err := store.AddLicense(ctx, entry, originRegistry)
+		added, err := store.AddLicense(ctx, key, entry, originRegistry)
 		if err != nil {
 			return result, fmt.Errorf("unable to import the registry: %w", err)
 		}
