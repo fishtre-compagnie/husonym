@@ -33,7 +33,7 @@ func SourcesOf(jobs []db_queries.ListJobSourcesOfInstanceRow) []Source {
 			continue
 		}
 		account := husonymdb.UUIDString(job.AccountID)
-		for _, source := range sourcesOfJob(job.ConnectionOptions, job.Mappings) {
+		for _, source := range sourcesOfJob(job.ConnectionOptions, job.Schemas) {
 			source.AccountId = account
 			seen[source] = struct{}{}
 		}
@@ -67,10 +67,12 @@ func isSynchronization(jobtypeConfig []byte) bool {
 }
 
 // sourcesOfJob gives the sources of one job, without their account.
-func sourcesOfJob(options *pg_models.JobSourceOptions, mappings []*pg_models.JobMapping) []Source {
+func sourcesOfJob(options *pg_models.JobSourceOptions, schemas []string) []Source {
 	if options == nil {
 		return nil
 	}
+	// A new engine in JobSourceOptions must be added here, and to the engines of the query that
+	// give schemas if it has databases: the test on the fields of the struct fails until it is.
 	switch {
 	case options.PostgresOptions != nil:
 		return perConnection(options.PostgresOptions.ConnectionId)
@@ -79,9 +81,9 @@ func sourcesOfJob(options *pg_models.JobSourceOptions, mappings []*pg_models.Job
 	case options.DynamoDBOptions != nil:
 		return perConnection(options.DynamoDBOptions.ConnectionId)
 	case options.MysqlOptions != nil:
-		return perSchema(options.MysqlOptions.ConnectionId, mappings)
+		return perSchema(options.MysqlOptions.ConnectionId, schemas)
 	case options.MongoDbOptions != nil:
-		return perSchema(options.MongoDbOptions.ConnectionId, mappings)
+		return perSchema(options.MongoDbOptions.ConnectionId, schemas)
 	}
 	// Generation jobs, and jobs with no source options.
 	return nil
@@ -94,21 +96,19 @@ func perConnection(connectionId string) []Source {
 	return []Source{{ConnectionId: connectionId}}
 }
 
-// perSchema gives one source per distinct schema of the mappings, or the connection alone when
-// no mapping names one.
-func perSchema(connectionId string, mappings []*pg_models.JobMapping) []Source {
+// perSchema gives one source per distinct schema the job maps, or the connection alone when it
+// maps none. For MongoDB a mapping's schema is the database name. The query hands the schemas
+// over already distinct and without empty names.
+func perSchema(connectionId string, schemas []string) []Source {
 	if connectionId == "" {
 		return nil
 	}
-	var sources []Source
-	for _, mapping := range mappings {
-		if mapping == nil || mapping.Schema == "" {
-			continue
-		}
-		sources = append(sources, Source{ConnectionId: connectionId, Database: mapping.Schema})
-	}
-	if len(sources) == 0 {
+	if len(schemas) == 0 {
 		return perConnection(connectionId)
+	}
+	sources := make([]Source, 0, len(schemas))
+	for _, schema := range schemas {
+		sources = append(sources, Source{ConnectionId: connectionId, Database: schema})
 	}
 	return sources
 }

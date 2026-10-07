@@ -12,9 +12,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func columnsOf(schema string, columns ...string) []*pg_models.JobMapping {
+	mappings := make([]*pg_models.JobMapping, 0, len(columns))
+	for _, column := range columns {
+		mappings = append(mappings, &pg_models.JobMapping{Schema: schema, Table: "t", Column: column})
+	}
+	return mappings
+}
+
 // The license covers the instance, so the list of sources has to come from the jobs of every
-// account at once, and the lock has to be takeable.
-func Test_ListJobSourcesOfInstance_CrossesAccounts(t *testing.T) {
+// account at once, and the schemas the query computes from the mappings have to be the ones the
+// count needs.
+func Test_ListJobSourcesOfInstance_CrossesAccountsAndGivesSchemas(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
@@ -27,16 +36,18 @@ func Test_ListJobSourcesOfInstance_CrossesAccounts(t *testing.T) {
 	queries := db_queries.New()
 	user, err := queries.SetAnonymousUser(ctx, container.DB)
 	require.NoError(t, err)
+	first, err := queries.CreateTeamAccount(ctx, container.DB, "first")
+	require.NoError(t, err)
+	second, err := queries.CreateTeamAccount(ctx, container.DB, "second")
+	require.NoError(t, err)
 
-	var accounts []db_queries.HusonymApiAccount
-	for _, slug := range []string{"first", "second"} {
-		account, err := queries.CreateTeamAccount(ctx, container.DB, slug)
-		require.NoError(t, err)
-		_, err = queries.CreateJob(ctx, container.DB, db_queries.CreateJobParams{
-			Name:               "job-" + slug,
+	createJob := func(account db_queries.HusonymApiAccount, name string, options *pg_models.JobSourceOptions, mappings []*pg_models.JobMapping) {
+		t.Helper()
+		_, err := queries.CreateJob(ctx, container.DB, db_queries.CreateJobParams{
+			Name:               name,
 			AccountID:          account.ID,
-			ConnectionOptions:  &pg_models.JobSourceOptions{PostgresOptions: &pg_models.PostgresSourceOptions{ConnectionId: "conn-" + slug}},
-			Mappings:           []*pg_models.JobMapping{},
+			ConnectionOptions:  options,
+			Mappings:           mappings,
 			CreatedByID:        user.ID,
 			UpdatedByID:        user.ID,
 			WorkflowOptions:    &pg_models.WorkflowOptions{},
@@ -45,8 +56,15 @@ func Test_ListJobSourcesOfInstance_CrossesAccounts(t *testing.T) {
 			JobtypeConfig:      []byte("{}"),
 		})
 		require.NoError(t, err)
-		accounts = append(accounts, account)
 	}
+
+	// Two schemas with several columns each, and a mapping with no schema at all.
+	mysqlMappings := append(columnsOf("shop", "a", "b", "c"), columnsOf("crm", "a", "b")...)
+	mysqlMappings = append(mysqlMappings, columnsOf("", "orphan")...)
+	createJob(first, "mysql", mysql("my"), mysqlMappings)
+	createJob(first, "mongo", &pg_models.JobSourceOptions{MongoDbOptions: &pg_models.MongoDbSourceOptions{ConnectionId: "mg"}}, columnsOf("events", "a"))
+	createJob(second, "postgres", postgres("pg"), columnsOf("public", "a", "b"))
+	createJob(second, "mysql-no-mappings", mysql("my2"), []*pg_models.JobMapping{})
 
 	tx, err := container.DB.Begin(ctx)
 	require.NoError(t, err)
@@ -55,11 +73,32 @@ func Test_ListJobSourcesOfInstance_CrossesAccounts(t *testing.T) {
 
 	rows, err := queries.ListJobSourcesOfInstance(ctx, tx)
 	require.NoError(t, err)
-	require.Len(t, rows, 2)
+	require.Len(t, rows, 4)
 
-	sources := SourcesOf(rows)
+	var schemas = map[string][]string{}
+	for _, row := range rows {
+		switch {
+		case row.ConnectionOptions.MysqlOptions != nil:
+			schemas[row.ConnectionOptions.MysqlOptions.ConnectionId] = row.Schemas
+		case row.ConnectionOptions.MongoDbOptions != nil:
+			schemas[row.ConnectionOptions.MongoDbOptions.ConnectionId] = row.Schemas
+		case row.ConnectionOptions.PostgresOptions != nil:
+			schemas[row.ConnectionOptions.PostgresOptions.ConnectionId] = row.Schemas
+		}
+	}
+	require.Equal(t, map[string][]string{
+		"my":  {"crm", "shop"},
+		"mg":  {"events"},
+		"pg":  {},
+		"my2": {},
+	}, schemas)
+
+	firstId, secondId := husonymdb.UUIDString(first.ID), husonymdb.UUIDString(second.ID)
 	require.ElementsMatch(t, []Source{
-		{AccountId: husonymdb.UUIDString(accounts[0].ID), ConnectionId: "conn-first"},
-		{AccountId: husonymdb.UUIDString(accounts[1].ID), ConnectionId: "conn-second"},
-	}, sources)
+		{AccountId: firstId, ConnectionId: "my", Database: "crm"},
+		{AccountId: firstId, ConnectionId: "my", Database: "shop"},
+		{AccountId: firstId, ConnectionId: "mg", Database: "events"},
+		{AccountId: secondId, ConnectionId: "pg"},
+		{AccountId: secondId, ConnectionId: "my2"},
+	}, SourcesOf(rows))
 }

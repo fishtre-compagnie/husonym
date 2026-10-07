@@ -433,22 +433,44 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 }
 
 const listJobSourcesOfInstance = `-- name: ListJobSourcesOfInstance :many
-SELECT id, account_id, connection_options, mappings, jobtype_config
-FROM husonym_api.jobs
-ORDER BY id
+SELECT
+  j.id,
+  j.account_id,
+  j.connection_options,
+  j.jobtype_config,
+  CASE
+    WHEN (j.connection_options ? 'mysqlOptions' OR j.connection_options ? 'mongoOptions')
+      AND jsonb_typeof(j.mappings) = 'array'
+    THEN ARRAY(
+      SELECT DISTINCT m->>'schema'
+      FROM jsonb_array_elements(j.mappings) AS m
+      WHERE coalesce(m->>'schema', '') <> ''
+      ORDER BY 1
+    )::text[]
+    ELSE ARRAY[]::text[]
+  END AS schemas
+FROM husonym_api.jobs j
+ORDER BY j.id
 `
 
 type ListJobSourcesOfInstanceRow struct {
 	ID                pgtype.UUID
 	AccountID         pgtype.UUID
 	ConnectionOptions *pg_models.JobSourceOptions
-	Mappings          []*pg_models.JobMapping
 	JobtypeConfig     []byte
+	Schemas           []string
 }
 
-// What is needed to count the sources of the instance: the source options, the mappings and the
-// job type of every job. This is the first query of this file that crosses accounts, on purpose:
-// the license covers the whole instance, so its cap on sources is counted over all of them.
+// What is needed to count the sources of the instance: the source options, the job type and,
+// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
+// first query of this file that crosses accounts, on purpose: the license covers the whole
+// instance, so its cap on sources is counted over all of them.
+//
+// The mappings themselves are not returned: they are the heavy part of a job and the count only
+// needs their schema names. Other engines read one source per connection, so they get none.
+// The JSON keys are the ones the Go models write: 'mysqlOptions' and 'mongoOptions' in the
+// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
+// A mappings value that is null or not an array yields no schema rather than an error.
 func (q *Queries) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error) {
 	rows, err := db.Query(ctx, listJobSourcesOfInstance)
 	if err != nil {
@@ -462,8 +484,8 @@ func (q *Queries) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]List
 			&i.ID,
 			&i.AccountID,
 			&i.ConnectionOptions,
-			&i.Mappings,
 			&i.JobtypeConfig,
+			&i.Schemas,
 		); err != nil {
 			return nil, err
 		}

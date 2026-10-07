@@ -2,6 +2,8 @@ package licensegate
 
 import (
 	"encoding/json"
+	"reflect"
+	"slices"
 	"testing"
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -31,14 +33,10 @@ func stored(t *testing.T, config *mgmtv1alpha1.JobTypeConfig) []byte {
 
 func syncJob(t *testing.T, account pgtype.UUID, options *pg_models.JobSourceOptions, schemas ...string) db_queries.ListJobSourcesOfInstanceRow {
 	t.Helper()
-	mappings := make([]*pg_models.JobMapping, 0, len(schemas))
-	for _, schema := range schemas {
-		mappings = append(mappings, &pg_models.JobMapping{Schema: schema, Table: "t", Column: "c"})
-	}
 	return db_queries.ListJobSourcesOfInstanceRow{
 		AccountID:         account,
 		ConnectionOptions: options,
-		Mappings:          mappings,
+		Schemas:           schemas,
 		JobtypeConfig: stored(t, &mgmtv1alpha1.JobTypeConfig{JobType: &mgmtv1alpha1.JobTypeConfig_Sync{
 			Sync: &mgmtv1alpha1.JobTypeConfig_JobTypeSync{},
 		}}),
@@ -90,7 +88,7 @@ func Test_SourcesOf_MysqlAndMongoCountOneSourcePerSchema(t *testing.T) {
 
 func Test_SourcesOf_MysqlDeduplicatesSchemasWithinAndAcrossJobs(t *testing.T) {
 	jobs := []db_queries.ListJobSourcesOfInstanceRow{
-		syncJob(t, accountA, mysql("my"), "shop", "shop", ""),
+		syncJob(t, accountA, mysql("my"), "shop"),
 		syncJob(t, accountA, mysql("my"), "shop"),
 	}
 	require.Equal(t, []Source{{AccountId: idA, ConnectionId: "my", Database: "shop"}}, SourcesOf(jobs))
@@ -99,7 +97,7 @@ func Test_SourcesOf_MysqlDeduplicatesSchemasWithinAndAcrossJobs(t *testing.T) {
 func Test_SourcesOf_MysqlWithoutUsableSchemaCountsTheConnection(t *testing.T) {
 	jobs := []db_queries.ListJobSourcesOfInstanceRow{
 		syncJob(t, accountA, mysql("my")),
-		syncJob(t, accountA, mysql("other"), ""),
+		syncJob(t, accountA, mysql("other")),
 	}
 	require.Equal(t, []Source{
 		{AccountId: idA, ConnectionId: "my"},
@@ -177,6 +175,24 @@ func Test_SourcesOf_UndecodableJobTypeCounts(t *testing.T) {
 	job := syncJob(t, accountA, postgres("pg"), "public")
 	job.JobtypeConfig = []byte("not json")
 	require.Equal(t, []Source{{AccountId: idA, ConnectionId: "pg"}}, SourcesOf([]db_queries.ListJobSourcesOfInstanceRow{job}))
+}
+
+// Every field of the source options is a decision: either it is a source the license counts, or
+// it is not. A field in neither list is an engine nobody decided about, and its jobs would go
+// uncounted.
+func Test_SourceOptionsFieldsAreAllDecided(t *testing.T) {
+	counted := []string{"PostgresOptions", "MysqlOptions", "MongoDbOptions", "DynamoDBOptions", "MssqlOptions"}
+	notCounted := []string{"GenerateOptions", "AiGenerateOptions"}
+
+	typ := reflect.TypeFor[pg_models.JobSourceOptions]()
+	for i := range typ.NumField() {
+		name := typ.Field(i).Name
+		require.Truef(t, slices.Contains(counted, name) != slices.Contains(notCounted, name),
+			"JobSourceOptions.%s must be in exactly one of the counted and not-counted lists of this test: "+
+				"decide in sources.go (and in ListJobSourcesOfInstance if it has databases) whether it is a source",
+			name)
+	}
+	require.Equal(t, len(counted)+len(notCounted), typ.NumField(), "a listed field no longer exists")
 }
 
 func Test_SourcesOf_NoSourceOptionsOrConnectionDoNotCount(t *testing.T) {

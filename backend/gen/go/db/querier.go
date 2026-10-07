@@ -144,9 +144,16 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
-	// What is needed to count the sources of the instance: the source options, the mappings and the
-	// job type of every job. This is the first query of this file that crosses accounts, on purpose:
-	// the license covers the whole instance, so its cap on sources is counted over all of them.
+	// What is needed to count the sources of the instance: the source options, the job type and,
+	// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
+	// first query of this file that crosses accounts, on purpose: the license covers the whole
+	// instance, so its cap on sources is counted over all of them.
+	//
+	// The mappings themselves are not returned: they are the heavy part of a job and the count only
+	// needs their schema names. Other engines read one source per connection, so they get none.
+	// The JSON keys are the ones the Go models write: 'mysqlOptions' and 'mongoOptions' in the
+	// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
+	// A mappings value that is null or not an array yields no schema rather than an error.
 	ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
