@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,21 +143,93 @@ func Test_writeReport_PrintsInvalidJsonAsItIs(t *testing.T) {
 	require.Contains(t, stderr.String(), "not valid JSON")
 }
 
-func Test_writeReport_BadInputFailsBeforeAnyCall(t *testing.T) {
-	for name, opts := range map[string]options{
-		"bad from":      {from: "2026-1", to: "2026-12", print: true},
-		"month 13":      {from: "2026-01", to: "2026-13", print: true},
-		"month 00":      {from: "2026-00", to: "2026-12", print: true},
-		"from after to": {from: "2026-12", to: "2026-01", print: true},
-		"no output":     {from: "2026-01", to: "2026-12"},
+// Bad flags are refused by the command itself, before it builds a client or asks for anything.
+func Test_Cmd_BadFlagsAreRefusedBeforeAnyCall(t *testing.T) {
+	for name, tt := range map[string]struct {
+		args []string
+		msg  string
+	}{
+		"missing from":  {[]string{"--to", "2026-12", "--print"}, "--from is required"},
+		"missing to":    {[]string{"--from", "2026-01", "--print"}, "--to is required"},
+		"bad from":      {[]string{"--from", "2026-1", "--to", "2026-12", "--print"}, "--from is required"},
+		"month 13":      {[]string{"--from", "2026-01", "--to", "2026-13", "--print"}, "--to is required"},
+		"month 00":      {[]string{"--from", "2026-00", "--to", "2026-12", "--print"}, "--from is required"},
+		"from after to": {[]string{"--from", "2026-12", "--to", "2026-01", "--print"}, "must not be after"},
+		"no output":     {[]string{"--from", "2026-01", "--to", "2026-12"}, "at least one of"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			f := &fakeUsage{document: testDocument}
-			err := writeReport(t.Context(), newClient(t, f), "acc-1", opts, &bytes.Buffer{}, &bytes.Buffer{})
-			require.Error(t, err)
-			require.Zero(t, f.calls.Load())
+			root := &cobra.Command{Use: "husonym", SilenceErrors: true, SilenceUsage: true}
+			root.PersistentFlags().String("api-key", "", "")
+			root.PersistentFlags().Bool("debug", false, "")
+			root.AddCommand(NewCmd())
+			root.SetArgs(append([]string{"usage-report"}, tt.args...))
+			root.SetOut(&bytes.Buffer{})
+			root.SetErr(&bytes.Buffer{})
+			// A client built for a real address would fail differently; the message proves
+			// the flags were refused first.
+			t.Setenv("HUSONYM_API_URL", "http://127.0.0.1:1")
+			err := root.ExecuteContext(t.Context())
+			require.ErrorContains(t, err, tt.msg)
 		})
 	}
+}
+
+func Test_writeReport_ForceReplacesWith0600(t *testing.T) {
+	f := &fakeUsage{document: testDocument}
+	path := filepath.Join(t.TempDir(), "report.json")
+	require.NoError(t, os.WriteFile(path, []byte("old"), 0o644))
+	require.NoError(t, os.Chmod(path, 0o644))
+
+	opts := validOpts(path)
+	opts.force = true
+	require.NoError(t, writeReport(t.Context(), newClient(t, f), "acc-1", opts, &bytes.Buffer{}, &bytes.Buffer{}))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	entries, err := os.ReadDir(filepath.Dir(path))
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "no temporary file is left")
+}
+
+func Test_writeReport_RefusalLeavesNoTemporaryFile(t *testing.T) {
+	f := &fakeUsage{document: testDocument}
+	path := filepath.Join(t.TempDir(), "report.json")
+	require.NoError(t, os.WriteFile(path, []byte("keep me"), 0o600))
+
+	err := writeReport(t.Context(), newClient(t, f), "acc-1", validOpts(path), &bytes.Buffer{}, &bytes.Buffer{})
+	require.Error(t, err)
+	entries, err := os.ReadDir(filepath.Dir(path))
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+}
+
+func Test_writeReport_FailedWriteLeavesNothing(t *testing.T) {
+	f := &fakeUsage{document: testDocument}
+
+	t.Run("directory does not exist", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing", "report.json")
+		err := writeReport(t.Context(), newClient(t, f), "acc-1", validOpts(path), &bytes.Buffer{}, &bytes.Buffer{})
+		require.Error(t, err)
+		require.NoFileExists(t, path)
+	})
+
+	t.Run("read-only directory", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root ignores directory permissions")
+		}
+		dir := t.TempDir()
+		require.NoError(t, os.Chmod(dir, 0o500))
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+		path := filepath.Join(dir, "report.json")
+
+		err := writeReport(t.Context(), newClient(t, f), "acc-1", validOpts(path), &bytes.Buffer{}, &bytes.Buffer{})
+		require.Error(t, err)
+		require.NoFileExists(t, path)
+		entries, rerr := os.ReadDir(dir)
+		require.NoError(t, rerr)
+		require.Empty(t, entries)
+	})
 }
 
 func Test_writeReport_SameMonthIsAllowed(t *testing.T) {

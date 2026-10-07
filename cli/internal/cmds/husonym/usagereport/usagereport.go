@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"connectrpc.com/connect"
@@ -85,17 +86,15 @@ Use --print to read the report before the file is handed over.`,
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "File to write the report to")
 	cmd.Flags().BoolVar(&opts.force, "force", false, "Overwrite the output file if it exists")
 	cmd.Flags().BoolVar(&opts.print, "print", false, "Print the report, indented, to standard output")
-	_ = cmd.MarkFlagRequired("from")
-	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
 
 func (o options) validate() error {
 	if !monthPattern.MatchString(o.from) {
-		return fmt.Errorf("--from must be a month as YYYY-MM, got %q", o.from)
+		return fmt.Errorf("--from is required and must be a month as YYYY-MM, got %q", o.from)
 	}
 	if !monthPattern.MatchString(o.to) {
-		return fmt.Errorf("--to must be a month as YYYY-MM, got %q", o.to)
+		return fmt.Errorf("--to is required and must be a month as YYYY-MM, got %q", o.to)
 	}
 	// Both are zero-padded, so the text order is the calendar order.
 	if o.from > o.to {
@@ -121,9 +120,6 @@ func writeReport(
 	opts options,
 	stdout, stderr io.Writer,
 ) error {
-	if err := opts.validate(); err != nil {
-		return err
-	}
 	res, err := client.GetUsagePeriodReport(
 		ctx,
 		connect.NewRequest(&mgmtv1alpha1.GetUsagePeriodReportRequest{
@@ -156,6 +152,10 @@ func writeReport(
 }
 
 // fileContent is the document as received, a newline, the seal object and a newline.
+//
+// It assumes the document is a single line: the API's compact JSON holds no raw newline
+// (a newline inside a string is escaped). The reader of the file relies on that: the
+// first line is the document byte for byte, which is what the seal on the second line covers.
 func fileContent(document []byte, s seal) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.Write(document)
@@ -168,26 +168,69 @@ func fileContent(document []byte, s seal) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// createFile writes content to path with mode 0600. Without force it never replaces a file,
-// even if one appears between the check and the write.
+// createFile puts content under path with mode 0600, whole or not at all: it is written to a
+// temporary file next to the target, then put in place in one step, so a failed write never
+// leaves a partial file under the target name, nor truncates a file that --force replaces.
+// Without force it never replaces a file, even if one appears meanwhile.
 func createFile(path string, content []byte, force bool) (err error) {
-	flags := os.O_WRONLY | os.O_CREATE | os.O_EXCL
-	if force {
-		flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	}
-	f, err := os.OpenFile(path, flags, 0o600)
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".usage-report-*") // created 0600
 	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("%s already exists, use --force to overwrite it", path)
-		}
 		return fmt.Errorf("unable to create %s: %w", path, err)
 	}
 	defer func() {
-		if cerr := f.Close(); err == nil && cerr != nil {
-			err = fmt.Errorf("unable to write %s: %w", path, cerr)
-		}
+		// Gone already once renamed; this only removes what a failure left behind.
+		_ = os.Remove(tmp.Name())
 	}()
+	if err := writeAndClose(tmp, content); err != nil {
+		return fmt.Errorf("unable to write %s: %w", path, err)
+	}
+
+	if force {
+		if err := os.Rename(tmp.Name(), path); err != nil {
+			return fmt.Errorf("unable to write %s: %w", path, err)
+		}
+		return nil
+	}
+	// Link fails if the target exists, which a rename would not.
+	err = os.Link(tmp.Name(), path)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, os.ErrExist):
+		return existsError(path)
+	}
+	// Hard links are not available here: create the target exclusively instead.
+	return createExclusive(path, content)
+}
+
+func existsError(path string) error {
+	return fmt.Errorf("%s already exists, use --force to overwrite it", path)
+}
+
+func writeAndClose(f *os.File, content []byte) error {
 	if _, err := f.Write(content); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// createExclusive is the fallback of createFile without hard links; it removes the target
+// if the write fails.
+func createExclusive(path string, content []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return existsError(path)
+		}
+		return fmt.Errorf("unable to create %s: %w", path, err)
+	}
+	if err := writeAndClose(f, content); err != nil {
+		_ = os.Remove(path)
 		return fmt.Errorf("unable to write %s: %w", path, err)
 	}
 	return nil
