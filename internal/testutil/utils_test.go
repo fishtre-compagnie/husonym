@@ -64,6 +64,14 @@ func Test_FakeEELicense_Describe(t *testing.T) {
 	f.SetFeatures()
 	require.False(t, f.Describe().Key.HasFeature(license.FeatureMcp))
 
+	maxSources := 2
+	f.SetLimits(&license.Limits{MaxSources: &maxSources})
+	require.Equal(t, &license.Limits{MaxSources: &maxSources}, f.Limits())
+	require.Equal(t, f.Limits(), f.Describe().Key.Limits)
+	f.SetLimits(nil)
+	require.Nil(t, f.Limits())
+	require.Nil(t, f.Describe().Key.Limits)
+
 	f.SetValid(false)
 	described = f.Describe()
 	require.False(t, described.InForce())

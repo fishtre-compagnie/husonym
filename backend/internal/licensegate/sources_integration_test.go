@@ -65,6 +65,12 @@ func Test_ListJobSourcesOfInstance_CrossesAccountsAndGivesSchemas(t *testing.T) 
 	createJob(first, "mongo", &pg_models.JobSourceOptions{MongoDbOptions: &pg_models.MongoDbSourceOptions{ConnectionId: "mg"}}, columnsOf("events", "a"))
 	createJob(second, "postgres", postgres("pg"), columnsOf("public", "a", "b"))
 	createJob(second, "mysql-no-mappings", mysql("my2"), []*pg_models.JobMapping{})
+	// Mappings that are a JSON null, not an array: the query must not try to read elements out of
+	// them. The queries of the product cannot store one (a nil slice is sent as a SQL NULL, which
+	// the column refuses), so it is written directly.
+	createJob(second, "mysql-null-mappings", mysql("my3"), []*pg_models.JobMapping{})
+	_, err = container.DB.Exec(ctx, `UPDATE husonym_api.jobs SET mappings = 'null'::jsonb WHERE name = 'mysql-null-mappings'`)
+	require.NoError(t, err)
 
 	tx, err := container.DB.Begin(ctx)
 	require.NoError(t, err)
@@ -73,7 +79,7 @@ func Test_ListJobSourcesOfInstance_CrossesAccountsAndGivesSchemas(t *testing.T) 
 
 	rows, err := queries.ListJobSourcesOfInstance(ctx, tx)
 	require.NoError(t, err)
-	require.Len(t, rows, 4)
+	require.Len(t, rows, 5)
 
 	var schemas = map[string][]string{}
 	for _, row := range rows {
@@ -91,6 +97,7 @@ func Test_ListJobSourcesOfInstance_CrossesAccountsAndGivesSchemas(t *testing.T) 
 		"mg":  {"events"},
 		"pg":  {},
 		"my2": {},
+		"my3": {},
 	}, schemas)
 
 	firstId, secondId := husonymdb.UUIDString(first.ID), husonymdb.UUIDString(second.ID)
@@ -100,5 +107,6 @@ func Test_ListJobSourcesOfInstance_CrossesAccountsAndGivesSchemas(t *testing.T) 
 		{AccountId: firstId, ConnectionId: "mg", Database: "events"},
 		{AccountId: secondId, ConnectionId: "pg"},
 		{AccountId: secondId, ConnectionId: "my2"},
+		{AccountId: secondId, ConnectionId: "my3"},
 	}, SourcesOf(rows))
 }

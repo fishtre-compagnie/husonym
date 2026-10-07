@@ -776,8 +776,63 @@ func (s *IntegrationTestSuite) Test_CreateJob() {
 			ConnectionId: connection.ID,
 			Options:      &pg_models.JobDestinationOptions{},
 		},
+	}, nil)
+	requireNoErrResp(t, job, err)
+}
+
+// The guard of a creation runs in the transaction that writes the job, before the job is
+// written, and an error from it leaves nothing written.
+func (s *IntegrationTestSuite) Test_CreateJob_Guard() {
+	t := s.T()
+
+	user := s.setUser(t, s.ctx, "foo")
+	account, err := s.db.CreateTeamAccount(s.ctx, user.ID, "myteam1", testutil.GetTestLogger(t))
+	requireNoErrResp(t, account, err)
+
+	params := func(name string) *db_queries.CreateJobParams {
+		return &db_queries.CreateJobParams{
+			Name:               name,
+			AccountID:          account.ID,
+			Status:             1,
+			ConnectionOptions:  &pg_models.JobSourceOptions{},
+			Mappings:           []*pg_models.JobMapping{},
+			CreatedByID:        user.ID,
+			UpdatedByID:        user.ID,
+			WorkflowOptions:    &pg_models.WorkflowOptions{},
+			SyncOptions:        &pg_models.ActivityOptions{},
+			VirtualForeignKeys: []*pg_models.VirtualForeignConstraint{},
+			JobtypeConfig:      []byte(`{}`),
+		}
+	}
+	storedJobs := func(dbtx husonymdb.BaseDBTX) []string {
+		jobs, err := s.db.Q.GetJobsByAccount(s.ctx, dbtx, account.ID)
+		require.NoError(t, err)
+		names := make([]string, 0, len(jobs))
+		for _, job := range jobs {
+			names = append(names, job.Name)
+		}
+		return names
+	}
+
+	// What the guard writes through its handle goes with the transaction it refuses.
+	refused := husonymerrors.NewForbidden("refused by the guard")
+	job, err := s.db.CreateJob(s.ctx, params("refused"), nil, func(ctx context.Context, dbtx husonymdb.BaseDBTX) error {
+		_, err := s.db.Q.CreateJob(ctx, dbtx, *params("written-by-the-guard"))
+		require.NoError(t, err)
+		return refused
+	})
+	require.ErrorIs(t, err, refused)
+	require.Nil(t, job)
+	require.Empty(t, storedJobs(s.db.Db))
+
+	var seenByTheGuard []string
+	job, err = s.db.CreateJob(s.ctx, params("allowed"), nil, func(_ context.Context, dbtx husonymdb.BaseDBTX) error {
+		seenByTheGuard = storedJobs(dbtx)
+		return nil
 	})
 	requireNoErrResp(t, job, err)
+	require.Empty(t, seenByTheGuard, "the guard runs before the job is written")
+	require.Equal(t, []string{"allowed"}, storedJobs(s.db.Db))
 }
 
 func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
@@ -804,7 +859,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 		SyncOptions:        &pg_models.ActivityOptions{},
 		VirtualForeignKeys: []*pg_models.VirtualForeignConstraint{},
 		JobtypeConfig:      []byte(`{"job_type": {"sync": {}}}`),
-	}, []*husonymdb.CreateJobConnectionDestination{})
+	}, []*husonymdb.CreateJobConnectionDestination{}, nil)
 	requireNoErrResp(t, job, err)
 
 	where := "blah"

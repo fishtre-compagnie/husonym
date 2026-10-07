@@ -13,6 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
@@ -580,6 +581,15 @@ func (s *Service) CreateJob(
 		jobtypeBits = []byte("{}")
 	}
 
+	// Unlike the cap on the jobs of an account, checked above before anything is written, the cap
+	// on the sources of the instance is checked in the transaction that writes the job: two
+	// creations at once cannot both take the last room.
+	sourceGuard := s.jobgate.SourceGuard(&licensegate.SourceCandidate{
+		AccountId:         accountUuid,
+		ConnectionOptions: connectionOptions,
+		JobtypeConfig:     jobtypeBits,
+		Mappings:          mappings,
+	})
 	cj, err := s.db.CreateJob(ctx, &db_queries.CreateJobParams{
 		Name:               req.Msg.JobName,
 		AccountID:          accountUuid,
@@ -593,7 +603,7 @@ func (s *Service) CreateJob(
 		WorkflowOptions:    workflowOptions,
 		SyncOptions:        activitySyncOptions,
 		JobtypeConfig:      jobtypeBits,
-	}, connDestParams)
+	}, connDestParams, sourceGuard)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create job: %w", err)
 	}
@@ -1221,7 +1231,23 @@ func (s *Service) UpdateJobSourceConnection(
 		return nil, err
 	}
 
+	sourceGuard := s.jobgate.SourceGuard(&licensegate.SourceCandidate{
+		JobId:             jobUuid,
+		AccountId:         accountUuid,
+		ConnectionOptions: connectionOptions,
+		JobtypeConfig:     jobTypeConfigBits,
+		Mappings:          mappings,
+	})
+
 	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
+		// The guard of the cap on sources is the first statement of the transaction, before the
+		// row of the job is locked: every write that takes both locks then takes the one on the
+		// sources of the instance first, and two of them cannot wait on one another.
+		if sourceGuard != nil {
+			if err := sourceGuard(ctx, dbtx); err != nil {
+				return err
+			}
+		}
 		if expected := req.Msg.GetExpectedUpdatedAt(); expected != nil {
 			// The row is locked until the update commits: a change landing between the check and
 			// the write waits, and the next caller expecting the old version is refused.

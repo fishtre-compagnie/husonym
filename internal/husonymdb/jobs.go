@@ -15,13 +15,22 @@ type CreateJobConnectionDestination struct {
 	Options      *pg_models.JobDestinationOptions
 }
 
+// CreateJob writes the job and its destinations in one transaction. The guard, when there is
+// one, runs first in that transaction: an error from it writes nothing, and what it locks stays
+// locked until the job is written.
 func (d *HusonymDb) CreateJob(
 	ctx context.Context,
 	cjParams *db_queries.CreateJobParams,
 	destinations []*CreateJobConnectionDestination,
+	guard func(ctx context.Context, dbtx BaseDBTX) error,
 ) (*db_queries.HusonymApiJob, error) {
 	var createdJob *db_queries.HusonymApiJob
 	if err := d.WithTx(ctx, nil, func(tx BaseDBTX) error {
+		if guard != nil {
+			if err := guard(ctx, tx); err != nil {
+				return err
+			}
+		}
 		job, err := d.Q.CreateJob(ctx, tx, *cjParams)
 		if err != nil {
 			return err

@@ -201,7 +201,17 @@ func (f *FakeEELicense) Describe() license.Description {
 
 // Limits lets the fake exercise cap enforcement.
 func (f *FakeEELicense) Limits() *license.Limits {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	return f.limits
+}
+
+// SetLimits changes the usage caps the fake reports from now on; nil lifts them all. It is safe
+// for concurrent use.
+func (f *FakeEELicense) SetLimits(limits *license.Limits) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.limits = limits
 }
 
 func GetConcurrentTestLogger(t testing.TB) *slog.Logger {
