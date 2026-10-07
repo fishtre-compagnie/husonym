@@ -11,10 +11,27 @@ import (
 )
 
 type Querier interface {
+	CountPendingReports(ctx context.Context, keyFingerprint string) (CountPendingReportsRow, error)
+	CountSealRejection(ctx context.Context, arg CountSealRejectionParams) error
+	// Counts a report that differs from the one already stored for its instance and day. No row is
+	// touched when the document is the same: that is a repeat.
+	CountUsageReportConflict(ctx context.Context, arg CountUsageReportConflictParams) (int64, error)
+	DeletePendingReport(ctx context.Context, arg DeletePendingReportParams) (int64, error)
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
 	InsertLicense(ctx context.Context, arg InsertLicenseParams) (int64, error)
+	InsertPendingReport(ctx context.Context, arg InsertPendingReportParams) error
+	// The first report received for an instance and a day is the one that stays.
+	InsertUsageReport(ctx context.Context, arg InsertUsageReportParams) (int64, error)
+	ListPendingFingerprintsNowKnown(ctx context.Context) ([]string, error)
+	ListPendingReports(ctx context.Context, keyFingerprint string) ([]ControlplanePendingReport, error)
+	PendingReportExists(ctx context.Context, arg PendingReportExistsParams) (bool, error)
+	PurgePendingReports(ctx context.Context, receivedAt pgtype.Timestamptz) (int64, error)
 	// An existing customer is left as it is: a name is never overwritten.
 	UpsertCustomer(ctx context.Context, arg UpsertCustomerParams) (pgtype.UUID, error)
+	// An instance keeps the moment it was first seen. What tells its latest state is only replaced
+	// by the report of a later day, so that a late report of an earlier day changes nothing. A
+	// report without the diagnostics does not erase the kind of installation already known.
+	UpsertInstance(ctx context.Context, arg UpsertInstanceParams) error
 }
 
 var _ Querier = (*Queries)(nil)
