@@ -18,11 +18,10 @@ func fullReport() *Report {
 		GeneratedAt:   "2026-10-07T00:05:12Z",
 		Identification: Identification{
 			KeyFingerprint: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			LicenseID:      "lic_abc123",
+			LicenseID:      "0123456789abcdef",
 			InstanceID:     "123e4567-e89b-12d3-a456-426614174000",
-			Plan:           "team",
 			LicenseState:   "valid",
-			DaysToExpiry:   intp(212),
+			DaysToExpiry:   212,
 		},
 		Version: Version{Husonym: "v0.3.0"},
 		Sources: Sources{Count: 3},
@@ -74,12 +73,26 @@ func Test_Report_FullPassesValidate(t *testing.T) {
 	require.NoError(t, Validate(document))
 }
 
-func Test_Report_ThePublishedExampleIsAccepted(t *testing.T) {
-	require.NoError(t, Validate([]byte(`{
-	  "schema_version": 1, "day": "2026-10-06", "generated_at": "2026-10-07T00:05:12Z",
-	  "identification": {"instance_id": "123e4567-e89b-12d3-a456-426614174000", "license_state": "none"},
-	  "version": {"husonym": "v0.3.0"}, "sources": {"count": 0}
-	}`)))
+func Test_Validate_RefusesAReportMissingItsIdentification(t *testing.T) {
+	for _, field := range []string{"key_fingerprint", "license_id", "instance_id", "license_state", "days_to_expiry"} {
+		t.Run(field, func(t *testing.T) {
+			document, err := fullReport().Marshal()
+			require.NoError(t, err)
+			var tree map[string]any
+			require.NoError(t, json.Unmarshal(document, &tree))
+			delete(tree["identification"].(map[string]any), field)
+			broken, _ := json.Marshal(tree)
+			require.Error(t, Validate(broken))
+		})
+	}
+}
+
+func Test_Report_IdentificationIsNeverOmitted(t *testing.T) {
+	document, err := (&Report{}).Marshal()
+	require.NoError(t, err)
+	for _, field := range []string{"key_fingerprint", "license_id", "instance_id", "license_state", "days_to_expiry"} {
+		require.Contains(t, string(document), `"`+field+`"`)
+	}
 }
 
 func Test_Report_WithoutDiagnosticsOrOptionalFieldsOmitsThem(t *testing.T) {
@@ -174,6 +187,8 @@ func Test_Validate_RefusesAValueOutsideOfItsList(t *testing.T) {
 		"husonym version":  func(r *Report) { r.Version.Husonym = "my build" },
 		"day":              func(r *Report) { r.Day = "yesterday" },
 		"generated_at":     func(r *Report) { r.GeneratedAt = "2026-10-07T00:05:12+02:00" },
+		"license id":       func(r *Report) { r.Identification.LicenseID = "contract-42" },
+		"postgres major":   func(r *Report) { r.Diagnostics.Installation.PostgresMajor = intp(1000) },
 		"fingerprint":      func(r *Report) { r.Identification.KeyFingerprint = "abc" },
 		"instance id":      func(r *Report) { r.Identification.InstanceID = "my-host" },
 		"negative count":   func(r *Report) { r.Sources.Count = -1 },
@@ -189,53 +204,55 @@ func Test_Validate_RefusesAValueOutsideOfItsList(t *testing.T) {
 	}
 }
 
+func shuffleRows[T any](rng *rand.Rand, rows []T) {
+	rng.Shuffle(len(rows), func(i, j int) { rows[i], rows[j] = rows[j], rows[i] })
+}
+
+func withErrors(r *Report) *Report {
+	r.Diagnostics.Errors = []ErrorCount{
+		{Category: "timeout", Step: "hooks", Count: 1}, {Category: "canceled", Step: "table_sync", Count: 2},
+		{Category: "timeout", Step: "preflight", Count: 3},
+	}
+	return r
+}
+
 func Test_Marshal_GivesTheSameBytesWhateverTheOrder(t *testing.T) {
-	want, err := fullReport().Marshal()
+	want, err := withErrors(fullReport()).Marshal()
 	require.NoError(t, err)
 
-	shuffled := fullReport()
+	shuffled := withErrors(fullReport())
 	d := shuffled.Diagnostics
-	d.Errors = []ErrorCount{{Category: "timeout", Step: "hooks", Count: 1}, {Category: "canceled", Step: "table_sync", Count: 2}}
-	reference := fullReport()
-	reference.Diagnostics.Errors = slices.Clone(d.Errors)
-	reference.Diagnostics.Errors[0], reference.Diagnostics.Errors[1] = reference.Diagnostics.Errors[1], reference.Diagnostics.Errors[0]
-	wantErrors, err := reference.Marshal()
-	require.NoError(t, err)
-
 	rng := rand.New(rand.NewPCG(1, 2))
 	for range 20 {
-		rng.Shuffle(len(d.Connections), func(i, j int) { d.Connections[i], d.Connections[j] = d.Connections[j], d.Connections[i] })
-		rng.Shuffle(
-			len(d.SourceEngines),
-			func(i, j int) { d.SourceEngines[i], d.SourceEngines[j] = d.SourceEngines[j], d.SourceEngines[i] },
-		)
-		rng.Shuffle(len(d.Jobs.ByKind), func(i, j int) { d.Jobs.ByKind[i], d.Jobs.ByKind[j] = d.Jobs.ByKind[j], d.Jobs.ByKind[i] })
-		rng.Shuffle(len(d.Transformers.System), func(i, j int) {
-			d.Transformers.System[i], d.Transformers.System[j] = d.Transformers.System[j], d.Transformers.System[i]
-		})
-		rng.Shuffle(len(d.ColumnTypes), func(i, j int) { d.ColumnTypes[i], d.ColumnTypes[j] = d.ColumnTypes[j], d.ColumnTypes[i] })
-		rng.Shuffle(len(d.Features), func(i, j int) { d.Features[i], d.Features[j] = d.Features[j], d.Features[i] })
-		rng.Shuffle(len(d.Refusals), func(i, j int) { d.Refusals[i], d.Refusals[j] = d.Refusals[j], d.Refusals[i] })
-		rng.Shuffle(
-			len(d.Runs.ByStatus),
-			func(i, j int) { d.Runs.ByStatus[i], d.Runs.ByStatus[j] = d.Runs.ByStatus[j], d.Runs.ByStatus[i] },
-		)
-		rng.Shuffle(len(d.Errors), func(i, j int) { d.Errors[i], d.Errors[j] = d.Errors[j], d.Errors[i] })
-		rng.Shuffle(len(d.Users.ByRole), func(i, j int) { d.Users.ByRole[i], d.Users.ByRole[j] = d.Users.ByRole[j], d.Users.ByRole[i] })
+		shuffleRows(rng, d.Connections)
+		shuffleRows(rng, d.SourceEngines)
+		shuffleRows(rng, d.Jobs.ByKind)
+		shuffleRows(rng, d.Transformers.System)
+		shuffleRows(rng, d.ColumnTypes)
+		shuffleRows(rng, d.Features)
+		shuffleRows(rng, d.Refusals)
+		shuffleRows(rng, d.Runs.ByStatus)
+		shuffleRows(rng, d.Errors)
+		shuffleRows(rng, d.Users.ByRole)
 
 		got, err := shuffled.Marshal()
 		require.NoError(t, err)
-		// The errors differ from the full report's, so compare all but them to want, and them apart.
-		gotErrors, err := reference.Marshal()
-		require.NoError(t, err)
-		require.Equal(t, wantErrors, gotErrors)
-		var a, b map[string]any
-		require.NoError(t, json.Unmarshal(got, &a))
-		require.NoError(t, json.Unmarshal(want, &b))
-		delete(a["diagnostics"].(map[string]any), "errors")
-		delete(b["diagnostics"].(map[string]any), "errors")
-		require.Equal(t, b, a)
+		require.Equal(t, want, got)
 	}
+}
+
+func Test_Marshal_OrdersRowsWithTheSameKeysByCount(t *testing.T) {
+	rows := []ConnectionCount{{Type: "postgres", Role: "source", Count: 5}, {Type: "postgres", Role: "source", Count: 2}}
+	var documents [][]byte
+	for _, order := range [][]ConnectionCount{rows, {rows[1], rows[0]}} {
+		r := fullReport()
+		r.Diagnostics.Connections = order
+		document, err := r.Marshal()
+		require.NoError(t, err)
+		documents = append(documents, document)
+	}
+	require.Equal(t, documents[0], documents[1])
+	require.Contains(t, string(documents[0]), `"count":2},{"type":"postgres","role":"source","count":5`)
 }
 
 func Test_Marshal_SortsByKeysAndLeavesTheReportAlone(t *testing.T) {

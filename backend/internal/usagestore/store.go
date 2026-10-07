@@ -250,3 +250,13 @@ func utcDate(at time.Time) pgtype.Date {
 func toTimestamptz(value time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: value, Valid: true}
 }
+
+// JobKinds are all the kinds of run, in a stable order.
+func JobKinds() []JobKind {
+	return []JobKind{JobKindSync, JobKindGenerate, JobKindAiGenerate, JobKindPiiDetect}
+}
+
+// Statuses are all the statuses of a run, in a stable order.
+func Statuses() []Status {
+	return []Status{StatusRunning, StatusCompleted, StatusFailed, StatusCanceled, StatusTerminated, StatusTimedOut}
+}

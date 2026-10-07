@@ -25,15 +25,14 @@ type Report struct {
 	Diagnostics *Diagnostics `json:"diagnostics,omitempty"`
 }
 
-// Identification says which instance and which license the report comes from. The license
-// values are absent when no key was ever read.
+// Identification says which instance and which license the report comes from. A report is
+// never built without a license in force, so every field is always there.
 type Identification struct {
-	KeyFingerprint string `json:"key_fingerprint,omitempty"`
-	LicenseID      string `json:"license_id,omitempty"`
+	KeyFingerprint string `json:"key_fingerprint"`
+	LicenseID      string `json:"license_id"`
 	InstanceID     string `json:"instance_id"`
-	Plan           string `json:"plan,omitempty"`
 	LicenseState   string `json:"license_state"`
-	DaysToExpiry   *int   `json:"days_to_expiry,omitempty"`
+	DaysToExpiry   int    `json:"days_to_expiry"` // negative once the key has expired
 }
 
 // Version is the version of the software.
@@ -190,35 +189,41 @@ type RoleCount struct {
 }
 
 // Marshal is the document as JSON, with no trailing newline. Every array is sorted by its keys
-// and none is null, so one state gives one sequence of bytes. The report is left as it was.
+// and none is null, so one state gives one sequence of bytes; rows with the same keys are ordered by their count. The report is left as it was.
 func (r *Report) Marshal() ([]byte, error) {
 	sorted := *r
 	if r.Diagnostics != nil {
 		d := *r.Diagnostics
 		d.Connections = sortBy(d.Connections, func(a, b ConnectionCount) int {
-			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Role, b.Role))
+			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
 		})
 		d.SourceEngines = sortBy(d.SourceEngines, func(a, b SourceEngine) int {
-			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Major, b.Major))
+			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Major, b.Major), cmp.Compare(a.Runs, b.Runs))
 		})
 		d.Jobs.ByKind = sortBy(d.Jobs.ByKind, func(a, b JobKindCount) int {
-			return cmp.Or(strings.Compare(a.Kind, b.Kind), compareBool(a.Scheduled, b.Scheduled))
+			return cmp.Or(strings.Compare(a.Kind, b.Kind), compareBool(a.Scheduled, b.Scheduled), cmp.Compare(a.Count, b.Count))
 		})
 		d.Transformers.System = sortBy(d.Transformers.System, func(a, b TransformerColumns) int {
-			return strings.Compare(a.Name, b.Name)
+			return cmp.Or(strings.Compare(a.Name, b.Name), cmp.Compare(a.Columns, b.Columns))
 		})
 		d.ColumnTypes = sortBy(d.ColumnTypes, func(a, b ColumnTypeCount) int {
-			return strings.Compare(a.Family, b.Family)
+			return cmp.Or(strings.Compare(a.Family, b.Family), cmp.Compare(a.Columns, b.Columns))
 		})
-		d.Features = sortBy(d.Features, func(a, b FeatureUse) int { return strings.Compare(a.Name, b.Name) })
-		d.Refusals = sortBy(d.Refusals, func(a, b GateCount) int { return strings.Compare(a.Gate, b.Gate) })
+		d.Features = sortBy(d.Features, func(a, b FeatureUse) int {
+			return cmp.Or(strings.Compare(a.Name, b.Name), compareBool(a.InUse, b.InUse))
+		})
+		d.Refusals = sortBy(d.Refusals, func(a, b GateCount) int {
+			return cmp.Or(strings.Compare(a.Gate, b.Gate), cmp.Compare(a.Count, b.Count))
+		})
 		d.Runs.ByStatus = sortBy(d.Runs.ByStatus, func(a, b RunCount) int {
-			return cmp.Or(strings.Compare(a.Kind, b.Kind), strings.Compare(a.Status, b.Status))
+			return cmp.Or(strings.Compare(a.Kind, b.Kind), strings.Compare(a.Status, b.Status), cmp.Compare(a.Count, b.Count))
 		})
 		d.Errors = sortBy(d.Errors, func(a, b ErrorCount) int {
-			return cmp.Or(strings.Compare(a.Category, b.Category), strings.Compare(a.Step, b.Step))
+			return cmp.Or(strings.Compare(a.Category, b.Category), strings.Compare(a.Step, b.Step), cmp.Compare(a.Count, b.Count))
 		})
-		d.Users.ByRole = sortBy(d.Users.ByRole, func(a, b RoleCount) int { return strings.Compare(a.Role, b.Role) })
+		d.Users.ByRole = sortBy(d.Users.ByRole, func(a, b RoleCount) int {
+			return cmp.Or(strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
+		})
 		sorted.Diagnostics = &d
 	}
 	document, err := json.Marshal(&sorted)

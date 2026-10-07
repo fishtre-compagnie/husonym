@@ -135,7 +135,8 @@
         "sync",
         "generate",
         "ai_generate",
-        "pii_detect"
+        "pii_detect",
+        "other"
       ]
     },
     "license_state": {
@@ -144,7 +145,8 @@
         "valid",
         "expiring",
         "grace",
-        "frozen"
+        "frozen",
+        "other"
       ]
     },
     "operating_system": {
@@ -191,7 +193,8 @@
         "failed",
         "canceled",
         "terminated",
-        "timed_out"
+        "timed_out",
+        "other"
       ]
     },
     "transformer_name": {
@@ -664,20 +667,19 @@
           "type": "string"
         },
         "license_id": {
-          "pattern": "^lic_[0-9A-Za-z_-]{1,64}$",
+          "pattern": "^([0-9a-f]{16}|other)$",
           "type": "string"
         },
         "license_state": {
           "$ref": "#/$defs/license_state"
-        },
-        "plan": {
-          "pattern": "^[0-9A-Za-z_.-]{1,64}$",
-          "type": "string"
         }
       },
       "required": [
+        "key_fingerprint",
+        "license_id",
         "instance_id",
-        "license_state"
+        "license_state",
+        "days_to_expiry"
       ],
       "type": "object"
     },
@@ -700,7 +702,7 @@
       "additionalProperties": false,
       "properties": {
         "husonym": {
-          "pattern": "^(dev|v?[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.+-]{1,64})?)$",
+          "pattern": "^(other|v?[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16}){0,3})?)$",
           "type": "string"
         }
       },

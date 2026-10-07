@@ -16,11 +16,11 @@ const other = "other"
 // functions of this file before it reaches the report.
 var (
 	// JobKinds are the kinds of job a run can belong to.
-	JobKinds = []string{"sync", "generate", "ai_generate", "pii_detect"}
+	JobKinds = []string{"sync", "generate", "ai_generate", "pii_detect", other}
 	// RunStatuses are the statuses of a run.
-	RunStatuses = []string{"running", "completed", "failed", "canceled", "terminated", "timed_out"}
+	RunStatuses = []string{"running", "completed", "failed", "canceled", "terminated", "timed_out", other}
 	// LicenseStates are the states of the license lifecycle.
-	LicenseStates = []string{"none", "valid", "expiring", "grace", "frozen"}
+	LicenseStates = []string{"none", "valid", "expiring", "grace", "frozen", other}
 	// ConnectionRoles are the roles a connection plays in a job.
 	ConnectionRoles = []string{"source", "destination"}
 	// ConnectionTypes are the types of connection, and other.
@@ -146,19 +146,18 @@ func ConnectionRole(raw string) string {
 	return ""
 }
 
-// TransformerName is the lower-cased name of a system transformer source, given with or without
-// its TRANSFORMER_SOURCE_ prefix, or other.
-func TransformerName(source string) string {
-	value := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(source)), "transformer_source_")
-	return member(TransformerNames, value)
-}
+// JobKind is the kind of a job as the usage store names it, or other.
+func JobKind(raw string) string { return member(JobKinds, raw) }
 
-// RowsBucket is the band a number of rows falls in; a negative number is in the lowest band.
-func RowsBucket(n int64) string {
-	for i, limit := range []int64{1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000} {
-		if n < limit {
-			return RowsBuckets[i]
-		}
-	}
-	return RowsBuckets[len(RowsBuckets)-1]
+// RunStatus is the status of a run as the usage store names it, or other.
+func RunStatus(raw string) string { return member(RunStatuses, raw) }
+
+// LicenseState is the state of the license lifecycle, or other.
+func LicenseState(raw string) string { return member(LicenseStates, raw) }
+
+// TransformerName is the lower-cased name of a system transformer source, or other. It takes the
+// enum and never a name, so that a transformer of the customer that is named like a system one
+// cannot be counted as it.
+func TransformerName(source mgmtv1alpha1.TransformerSource) string {
+	return member(TransformerNames, strings.TrimPrefix(source.String(), "TRANSFORMER_SOURCE_"))
 }

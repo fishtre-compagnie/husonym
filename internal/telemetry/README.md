@@ -25,9 +25,10 @@ it is placed in a `Report`. The schema has `additionalProperties: false` at each
 ## Stable bytes
 
 `Report.Marshal` sorts every array by its keys and writes no `null` array, so one state always
-gives the same bytes. Optional fields (`diagnostics`, `duration_seconds`, `users.active_30d`,
-`auth_provider`, `postgres_major`, `temporal_version`, `workers`, and the license values when no
-key was read) are absent, never zero.
+gives the same bytes; rows with the same keys are ordered by their count. Optional fields
+(`diagnostics`, `duration_seconds`, `users.active_30d`, `auth_provider`, `postgres_major`,
+`temporal_version`, `workers`) are absent, never zero. The identification block is never optional:
+a report is only built with a license in force, so its five fields are always there.
 
 ## Seal
 

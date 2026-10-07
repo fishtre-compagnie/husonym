@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
 var update = flag.Bool("update", false, "rewrite the generated files (the schema from the closed lists, the seal vector)")
@@ -115,25 +118,23 @@ func Test_Roles_AreTheAccountRolesOfTheProto(t *testing.T) {
 }
 
 func Test_TransformerName(t *testing.T) {
-	for source, want := range map[string]string{
-		"generate_email":                    "generate_email",
-		"TRANSFORMER_SOURCE_GENERATE_EMAIL": "generate_email",
-		"TRANSFORMER_SOURCE_PASSTHROUGH":    "passthrough",
-		"TRANSFORMER_SOURCE_USER_DEFINED":   "other",
-		"TRANSFORMER_SOURCE_UNSPECIFIED":    "other",
-		"my_secret_transformer":             "other",
-		"":                                  "other",
+	for source, want := range map[mgmtv1alpha1.TransformerSource]string{
+		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL: "generate_email",
+		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_PASSTHROUGH:    "passthrough",
+		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_USER_DEFINED:   "other",
+		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED:    "other",
+		mgmtv1alpha1.TransformerSource(9999):                             "other",
 	} {
 		require.Equal(t, want, TransformerName(source), source)
 	}
-	for number, name := range mgmtv1alpha1.TransformerSource_name {
+	for number := range mgmtv1alpha1.TransformerSource_name {
 		source := mgmtv1alpha1.TransformerSource(number)
 		if source == mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED ||
 			source == mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_USER_DEFINED {
 			continue
 		}
-		require.Contains(t, TransformerNames, TransformerName(name))
-		require.NotEqual(t, "other", TransformerName(name), name)
+		require.Contains(t, TransformerNames, TransformerName(source))
+		require.NotEqual(t, "other", TransformerName(source), source)
 	}
 }
 
@@ -154,7 +155,7 @@ func Test_ColumnTypeFamily(t *testing.T) {
 		"bigint unsigned": "integer", "numeric(10,2)": "decimal", "timestamptz": "timestamp",
 		"timestamp(3) with time zone": "timestamp", "jsonb": "json", "uuid": "uuid",
 		"text[]": "array", "_int4": "array", "tinyint(1)": "integer", "nvarchar(max)": "text",
-		"INTEGER": "integer", "customer_status": "other", "": "other",
+		"INTEGER": "integer", "ARRAY": "array", "USER-DEFINED": "other", "customer_status": "other", "": "other",
 	} {
 		require.Equal(t, want, ColumnTypeFamily(raw), raw)
 	}
@@ -196,4 +197,84 @@ func Test_ColumnTypeFamilies_AreAllInTheList(t *testing.T) {
 	for name, family := range columnTypeFamilies {
 		require.Contains(t, ColumnTypeFamilies, family, name)
 	}
+}
+
+func Test_ColumnTypeTable_ListsNoTypeUnderTwoFamilies(t *testing.T) {
+	seen := map[string]string{}
+	for family, names := range typeNamesByFamily {
+		for _, name := range names {
+			previous, twice := seen[name]
+			require.False(t, twice, "%q is under %q and %q", name, previous, family)
+			seen[name] = family
+		}
+	}
+}
+
+func Test_LicenseStates_AreTheOnesOfTheLicense(t *testing.T) {
+	require.ElementsMatch(t, []string{
+		string(license.StateNone), string(license.StateValid), string(license.StateExpiring),
+		string(license.StateGrace), string(license.StateFrozen), "other",
+	}, LicenseStates)
+}
+
+func Test_ListMappings_SendWhatIsUnknownToOther(t *testing.T) {
+	require.Equal(t, "sync", JobKind("sync"))
+	require.Equal(t, "other", JobKind("my job"))
+	require.Equal(t, "timed_out", RunStatus("timed_out"))
+	require.Equal(t, "other", RunStatus("exploded"))
+	require.Equal(t, "frozen", LicenseState("frozen"))
+	require.Equal(t, "other", LicenseState("lifetime"))
+}
+
+func Test_HusonymVersion(t *testing.T) {
+	for raw, want := range map[string]string{
+		"v0.3.0": "v0.3.0", "0.3.0": "0.3.0", "v0.3.0-rc.1": "v0.3.0-rc.1", "v0.0.0-main": "v0.0.0-main",
+		"main": "other", "feat/usage": "other", "1.2.3-db.prod.customer.example.com": "other", "": "other",
+	} {
+		require.Equal(t, want, HusonymVersion(raw), raw)
+	}
+}
+
+// The license tool generates an id as 8 random bytes in lowercase hex (randomId in issue.go).
+func Test_LicenseId(t *testing.T) {
+	for raw, want := range map[string]string{
+		"0123456789abcdef": "0123456789abcdef", "contract-42": "other", "0123456789abcdef.corp.example.com": "other",
+		"0123456789abcdef0": "other", "0123456789ABCDEF": "other", "": "other",
+	} {
+		require.Equal(t, want, LicenseId(raw), raw)
+	}
+}
+
+// walkSchema calls visit on every schema node of the tree, with its path.
+func walkSchema(node any, path string, visit func(path string, node map[string]any)) {
+	switch n := node.(type) {
+	case map[string]any:
+		visit(path, n)
+		for key, child := range n {
+			walkSchema(child, path+"/"+key, visit)
+		}
+	case []any:
+		for i, child := range n {
+			walkSchema(child, fmt.Sprintf("%s/%d", path, i), visit)
+		}
+	}
+}
+
+// Every object of the schema is closed and every string is constrained, so that nobody can add
+// an unconstrained string without a test failing.
+func Test_Schema_ClosesEveryObjectAndConstrainsEveryString(t *testing.T) {
+	walkSchema(readSchema(t), "", func(path string, node map[string]any) {
+		switch node["type"] {
+		case "object":
+			require.Equal(t, false, node["additionalProperties"], "%s is an open object", path)
+		case "string":
+			_, enum := node["enum"]
+			_, constant := node["const"]
+			pattern, _ := node["pattern"].(string)
+			if !enum && !constant {
+				require.True(t, strings.HasPrefix(pattern, "^") && strings.HasSuffix(pattern, "$"),
+					"%s is a string without enum, const or anchored pattern", path)
+			}
+		}
+	})
 }

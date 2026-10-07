@@ -16,6 +16,31 @@ func TemporalVersion(raw string) string {
 	return ""
 }
 
+// versionShape is the version of the software: a release, or a build stamped with a short suffix
+// such as the default v0.0.0-main.
+var versionShape = regexp.MustCompile(
+	`^v?\d{1,4}\.\d{1,4}\.\d{1,4}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?$`)
+
+// HusonymVersion is the version when it has the shape of a release, other otherwise.
+func HusonymVersion(raw string) string {
+	if versionShape.MatchString(raw) {
+		return raw
+	}
+	return other
+}
+
+// licenseIDShape is the id the license tool generates: 8 random bytes in lowercase hex.
+var licenseIDShape = regexp.MustCompile(`^[0-9a-f]{16}$`)
+
+// LicenseId is the id of the license when it is the one the license tool generates, other for
+// an id someone chose.
+func LicenseId(raw string) string {
+	if licenseIDShape.MatchString(raw) {
+		return raw
+	}
+	return other
+}
+
 // lengthSuffix is a length or a precision in parentheses, as in varchar(255) or numeric(10,2).
 var lengthSuffix = regexp.MustCompile(`\s*\([^)]*\)`)
 
@@ -82,12 +107,12 @@ var columnTypeFamilies = func() map[string]string {
 }()
 
 // ColumnTypeFamily is the family of a column type as a database spells it: a length or precision
-// in parentheses is dropped, a trailing [] or a leading _ (the catalog's spelling) makes an array,
+// in parentheses is dropped, information_schema's ARRAY, a trailing [] or a leading _ (the catalog's spelling) makes an array,
 // MySQL's unsigned and zerofill are dropped, and a type that is not a built-in one (a domain, an
 // enum or a type of the customer) is other.
 func ColumnTypeFamily(raw string) string {
 	name := strings.ToLower(strings.TrimSpace(raw))
-	if strings.HasSuffix(name, "[]") || strings.HasPrefix(name, "_") {
+	if name == "array" || strings.HasSuffix(name, "[]") || strings.HasPrefix(name, "_") {
 		return "array"
 	}
 	name = strings.Join(strings.Fields(lengthSuffix.ReplaceAllString(name, "")), " ")
@@ -96,4 +121,14 @@ func ColumnTypeFamily(raw string) string {
 		return family
 	}
 	return other
+}
+
+// RowsBucket is the band a number of rows falls in; a negative number is in the lowest band.
+func RowsBucket(n int64) string {
+	for i, limit := range []int64{1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000} {
+		if n < limit {
+			return RowsBuckets[i]
+		}
+	}
+	return RowsBuckets[len(RowsBuckets)-1]
 }
