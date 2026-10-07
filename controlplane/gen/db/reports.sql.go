@@ -11,23 +11,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countPendingReports = `-- name: CountPendingReports :one
+const countInstances = `-- name: CountInstances :one
 SELECT
-    count(*) FILTER (WHERE key_fingerprint = $1) AS for_fingerprint,
-    count(*) AS total
-FROM controlplane.pending_reports
+    count(*) AS total,
+    count(*) FILTER (WHERE instance_id = $2) AS this_one
+FROM controlplane.instances
+WHERE license_id = $1
 `
 
-type CountPendingReportsRow struct {
-	ForFingerprint int64
-	Total          int64
+type CountInstancesParams struct {
+	LicenseID  string
+	InstanceID string
 }
 
-func (q *Queries) CountPendingReports(ctx context.Context, keyFingerprint string) (CountPendingReportsRow, error) {
-	row := q.db.QueryRow(ctx, countPendingReports, keyFingerprint)
-	var i CountPendingReportsRow
-	err := row.Scan(&i.ForFingerprint, &i.Total)
+type CountInstancesRow struct {
+	Total   int64
+	ThisOne int64
+}
+
+// How many instances a license was seen on, and whether this one is among them.
+func (q *Queries) CountInstances(ctx context.Context, arg CountInstancesParams) (CountInstancesRow, error) {
+	row := q.db.QueryRow(ctx, countInstances, arg.LicenseID, arg.InstanceID)
+	var i CountInstancesRow
+	err := row.Scan(&i.Total, &i.ThisOne)
 	return i, err
+}
+
+const countPendingReportsOfFingerprint = `-- name: CountPendingReportsOfFingerprint :one
+SELECT count(*) FROM controlplane.pending_reports
+WHERE key_fingerprint = $1
+`
+
+// Read from the primary key, which starts with the fingerprint.
+func (q *Queries) CountPendingReportsOfFingerprint(ctx context.Context, keyFingerprint string) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingReportsOfFingerprint, keyFingerprint)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPendingReportsUpTo = `-- name: CountPendingReportsUpTo :one
+SELECT count(*) FROM (
+    SELECT 1 FROM controlplane.pending_reports LIMIT $1::bigint
+) AS counted
+`
+
+// How many reports are pending, counted no further than the cap it is compared with.
+func (q *Queries) CountPendingReportsUpTo(ctx context.Context, upTo int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingReportsUpTo, upTo)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countSealRejection = `-- name: CountSealRejection :exec
@@ -51,22 +85,25 @@ func (q *Queries) CountSealRejection(ctx context.Context, arg CountSealRejection
 
 const countUsageReportConflict = `-- name: CountUsageReportConflict :execrows
 UPDATE controlplane.usage_reports
-SET conflicts = conflicts + 1, last_conflict_at = $1
-WHERE instance_id = $2 AND day = $3 AND document <> $4
+SET conflicts = conflicts + 1, last_conflict_at = GREATEST(last_conflict_at, $1)
+WHERE license_id = $2 AND instance_id = $3 AND day = $4
+    AND document <> $5
 `
 
 type CountUsageReportConflictParams struct {
 	At         pgtype.Timestamptz
+	LicenseID  string
 	InstanceID string
 	Day        pgtype.Date
 	Document   string
 }
 
-// Counts a report that differs from the one already stored for its instance and day. No row is
-// touched when the document is the same: that is a repeat.
+// Counts a report that differs from the one already stored for its license, instance and day.
+// No row is touched when the document is the same: that is a repeat.
 func (q *Queries) CountUsageReportConflict(ctx context.Context, arg CountUsageReportConflictParams) (int64, error) {
 	result, err := q.db.Exec(ctx, countUsageReportConflict,
 		arg.At,
+		arg.LicenseID,
 		arg.InstanceID,
 		arg.Day,
 		arg.Document,
@@ -79,17 +116,23 @@ func (q *Queries) CountUsageReportConflict(ctx context.Context, arg CountUsageRe
 
 const deletePendingReport = `-- name: DeletePendingReport :execrows
 DELETE FROM controlplane.pending_reports
-WHERE key_fingerprint = $1 AND instance_id = $2 AND day = $3
+WHERE key_fingerprint = $1 AND instance_id = $2 AND day = $3 AND seal = $4
 `
 
 type DeletePendingReportParams struct {
 	KeyFingerprint string
 	InstanceID     string
 	Day            pgtype.Date
+	Seal           string
 }
 
 func (q *Queries) DeletePendingReport(ctx context.Context, arg DeletePendingReportParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deletePendingReport, arg.KeyFingerprint, arg.InstanceID, arg.Day)
+	result, err := q.db.Exec(ctx, deletePendingReport,
+		arg.KeyFingerprint,
+		arg.InstanceID,
+		arg.Day,
+		arg.Seal,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -99,7 +142,7 @@ func (q *Queries) DeletePendingReport(ctx context.Context, arg DeletePendingRepo
 const insertPendingReport = `-- name: InsertPendingReport :exec
 INSERT INTO controlplane.pending_reports (key_fingerprint, instance_id, day, document, seal, received_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (key_fingerprint, instance_id, day) DO NOTHING
+ON CONFLICT (key_fingerprint, instance_id, day, seal) DO NOTHING
 `
 
 type InsertPendingReportParams struct {
@@ -124,26 +167,26 @@ func (q *Queries) InsertPendingReport(ctx context.Context, arg InsertPendingRepo
 }
 
 const insertUsageReport = `-- name: InsertUsageReport :execrows
-INSERT INTO controlplane.usage_reports (instance_id, day, license_id, document, seal, received_at)
+INSERT INTO controlplane.usage_reports (license_id, instance_id, day, document, seal, received_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (instance_id, day) DO NOTHING
+ON CONFLICT (license_id, instance_id, day) DO NOTHING
 `
 
 type InsertUsageReportParams struct {
+	LicenseID  string
 	InstanceID string
 	Day        pgtype.Date
-	LicenseID  string
 	Document   string
 	Seal       string
 	ReceivedAt pgtype.Timestamptz
 }
 
-// The first report received for an instance and a day is the one that stays.
+// The first report received for a license, an instance and a day is the one that stays.
 func (q *Queries) InsertUsageReport(ctx context.Context, arg InsertUsageReportParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertUsageReport,
+		arg.LicenseID,
 		arg.InstanceID,
 		arg.Day,
-		arg.LicenseID,
 		arg.Document,
 		arg.Seal,
 		arg.ReceivedAt,
@@ -185,7 +228,7 @@ const listPendingReports = `-- name: ListPendingReports :many
 SELECT key_fingerprint, instance_id, day, document, seal, received_at
 FROM controlplane.pending_reports
 WHERE key_fingerprint = $1
-ORDER BY day, instance_id
+ORDER BY day, instance_id, received_at, seal
 `
 
 func (q *Queries) ListPendingReports(ctx context.Context, keyFingerprint string) ([]ControlplanePendingReport, error) {
@@ -218,7 +261,7 @@ func (q *Queries) ListPendingReports(ctx context.Context, keyFingerprint string)
 const pendingReportExists = `-- name: PendingReportExists :one
 SELECT EXISTS (
     SELECT 1 FROM controlplane.pending_reports
-    WHERE key_fingerprint = $1 AND instance_id = $2 AND day = $3
+    WHERE key_fingerprint = $1 AND instance_id = $2 AND day = $3 AND seal = $4
 )
 `
 
@@ -226,10 +269,16 @@ type PendingReportExistsParams struct {
 	KeyFingerprint string
 	InstanceID     string
 	Day            pgtype.Date
+	Seal           string
 }
 
 func (q *Queries) PendingReportExists(ctx context.Context, arg PendingReportExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, pendingReportExists, arg.KeyFingerprint, arg.InstanceID, arg.Day)
+	row := q.db.QueryRow(ctx, pendingReportExists,
+		arg.KeyFingerprint,
+		arg.InstanceID,
+		arg.Day,
+		arg.Seal,
+	)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -249,39 +298,42 @@ func (q *Queries) PurgePendingReports(ctx context.Context, receivedAt pgtype.Tim
 }
 
 const upsertInstance = `-- name: UpsertInstance :exec
-INSERT INTO controlplane.instances (
-    id, first_seen_at, last_seen_at, last_report_day, last_license_id, husonym_version, install_kind
+INSERT INTO controlplane.instances AS i (
+    license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version, install_kind
 ) VALUES (
-    $1, $2, $2, $3, $4,
+    $1, $2, $3, $3, $4,
     $5, $6
 )
-ON CONFLICT (id) DO UPDATE SET
-    last_seen_at = EXCLUDED.last_seen_at,
-    last_report_day = EXCLUDED.last_report_day,
-    last_license_id = EXCLUDED.last_license_id,
-    husonym_version = EXCLUDED.husonym_version,
-    install_kind = COALESCE(EXCLUDED.install_kind, controlplane.instances.install_kind)
-WHERE EXCLUDED.last_report_day > controlplane.instances.last_report_day
+ON CONFLICT (license_id, instance_id) DO UPDATE SET
+    first_seen_at = LEAST(i.first_seen_at, EXCLUDED.first_seen_at),
+    last_seen_at = CASE WHEN EXCLUDED.last_report_day > i.last_report_day
+        THEN GREATEST(i.last_seen_at, EXCLUDED.last_seen_at) ELSE i.last_seen_at END,
+    husonym_version = CASE WHEN EXCLUDED.last_report_day > i.last_report_day
+        THEN EXCLUDED.husonym_version ELSE i.husonym_version END,
+    install_kind = CASE WHEN EXCLUDED.last_report_day > i.last_report_day
+        THEN COALESCE(EXCLUDED.install_kind, i.install_kind) ELSE i.install_kind END,
+    last_report_day = GREATEST(i.last_report_day, EXCLUDED.last_report_day)
 `
 
 type UpsertInstanceParams struct {
-	ID             string
+	LicenseID      string
+	InstanceID     string
 	SeenAt         pgtype.Timestamptz
 	ReportDay      pgtype.Date
-	LicenseID      string
 	HusonymVersion string
 	InstallKind    pgtype.Text
 }
 
-// An instance keeps the moment it was first seen. What tells its latest state is only replaced
-// by the report of a later day, so that a late report of an earlier day changes nothing. A
-// report without the diagnostics does not erase the kind of installation already known.
+// An instance is first seen at the earliest reception of a report of it. What tells its latest
+// state is only replaced by the report of a later day, so that a late report of an earlier day,
+// a repeat or a conflict change nothing of it; the last news never moves backwards. A report
+// without the diagnostics does not erase the kind of installation already known.
 func (q *Queries) UpsertInstance(ctx context.Context, arg UpsertInstanceParams) error {
 	_, err := q.db.Exec(ctx, upsertInstance,
-		arg.ID,
+		arg.LicenseID,
+		arg.InstanceID,
 		arg.SeenAt,
 		arg.ReportDay,
-		arg.LicenseID,
 		arg.HusonymVersion,
 		arg.InstallKind,
 	)

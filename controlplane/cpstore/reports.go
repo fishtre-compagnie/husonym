@@ -35,6 +35,9 @@ const (
 	// ReportConflict: another document was already stored for that instance and day; it stays,
 	// and the row counts the conflict.
 	ReportConflict
+	// ReportTooManyInstances: the report is of an instance its license has not been seen on,
+	// and the license has been seen on as many instances as it may. Nothing was stored.
+	ReportTooManyInstances
 )
 
 // PendingReport is a report received under a fingerprint no issued license has, kept as received.
@@ -54,14 +57,22 @@ type PendingCaps struct {
 }
 
 // StoreReport stores a report and records what it tells of its instance, in one transaction.
+// Everything is kept under the license of the report: the same instance id under another
+// license is another instance, and neither sees the reports of the other.
+//
 // The first report of an instance for a day stays: the same document again is a repeat, another
-// one is a conflict, counted on the row. Two calls at once for the same instance and day end as
-// one row, one of them stored and the other a repeat or a conflict.
-func (s *Store) StoreReport(ctx context.Context, report *Report) (ReportOutcome, error) {
+// one is a conflict, counted on the row. Two calls at once for the same license, instance and
+// day end as one row, one of them stored and the other a repeat or a conflict.
+//
+// A license is seen on maxInstances instances at most: the report of one more is not stored.
+// The instances are counted in the transaction, without a lock: calls at once may each see room
+// and go over by a few rows. The cap bounds what the holder of a key can make the service keep;
+// it does not need to be exact.
+func (s *Store) StoreReport(ctx context.Context, report *Report, maxInstances int64) (ReportOutcome, error) {
 	var outcome ReportOutcome
 	err := s.inTx(ctx, func(queries *cpdb.Queries) error {
 		var err error
-		outcome, err = storeReport(ctx, queries, report)
+		outcome, err = storeReport(ctx, queries, report, maxInstances)
 		return err
 	})
 	if err != nil {
@@ -72,13 +83,25 @@ func (s *Store) StoreReport(ctx context.Context, report *Report) (ReportOutcome,
 
 // storeReport does what StoreReport says, inside the transaction of its caller. The instance is
 // written first, as the report refers to it; every caller takes the two rows in that order.
-func storeReport(ctx context.Context, queries *cpdb.Queries, report *Report) (ReportOutcome, error) {
+func storeReport(
+	ctx context.Context, queries *cpdb.Queries, report *Report, maxInstances int64,
+) (ReportOutcome, error) {
+	instances, err := queries.CountInstances(ctx, cpdb.CountInstancesParams{
+		LicenseID:  report.LicenseID,
+		InstanceID: report.InstanceID,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if instances.ThisOne == 0 && instances.Total >= maxInstances {
+		return ReportTooManyInstances, nil
+	}
 	day := utcDate(report.Day)
-	err := queries.UpsertInstance(ctx, cpdb.UpsertInstanceParams{
-		ID:             report.InstanceID,
+	err = queries.UpsertInstance(ctx, cpdb.UpsertInstanceParams{
+		LicenseID:      report.LicenseID,
+		InstanceID:     report.InstanceID,
 		SeenAt:         toTimestamptz(report.ReceivedAt),
 		ReportDay:      day,
-		LicenseID:      report.LicenseID,
 		HusonymVersion: report.HusonymVersion,
 		InstallKind:    pgtype.Text{String: report.InstallKind, Valid: report.InstallKind != ""},
 	})
@@ -86,9 +109,9 @@ func storeReport(ctx context.Context, queries *cpdb.Queries, report *Report) (Re
 		return 0, err
 	}
 	inserted, err := queries.InsertUsageReport(ctx, cpdb.InsertUsageReportParams{
+		LicenseID:  report.LicenseID,
 		InstanceID: report.InstanceID,
 		Day:        day,
-		LicenseID:  report.LicenseID,
 		Document:   string(report.Document),
 		Seal:       report.Seal,
 		ReceivedAt: toTimestamptz(report.ReceivedAt),
@@ -101,6 +124,7 @@ func storeReport(ctx context.Context, queries *cpdb.Queries, report *Report) (Re
 	}
 	differing, err := queries.CountUsageReportConflict(ctx, cpdb.CountUsageReportConflictParams{
 		At:         toTimestamptz(report.ReceivedAt),
+		LicenseID:  report.LicenseID,
 		InstanceID: report.InstanceID,
 		Day:        day,
 		Document:   string(report.Document),
@@ -131,8 +155,9 @@ func countSealRejection(ctx context.Context, queries *cpdb.Queries, licenseID st
 }
 
 // KeepPending keeps a report pending, unless a cap is reached: kept is then false. A report
-// already pending for the same fingerprint, instance and day is left as it is and kept is true,
-// whatever the caps.
+// already pending for the same fingerprint, instance, day and seal is left as it is and kept is
+// true, whatever the caps. Another seal is another report, kept beside the first and counted
+// like it: nothing tells yet which one the instance sent.
 //
 // The caps are counted in the transaction that inserts, without a lock: calls at once may each
 // see room and go over a cap by a few rows. The caps bound what a stranger can make the service
@@ -144,6 +169,7 @@ func (s *Store) KeepPending(ctx context.Context, pending *PendingReport, caps Pe
 			KeyFingerprint: pending.KeyFingerprint,
 			InstanceID:     pending.InstanceID,
 			Day:            day,
+			Seal:           pending.Seal,
 		})
 		if err != nil {
 			return err
@@ -152,11 +178,18 @@ func (s *Store) KeepPending(ctx context.Context, pending *PendingReport, caps Pe
 			kept = true
 			return nil
 		}
-		counts, err := queries.CountPendingReports(ctx, pending.KeyFingerprint)
+		ofFingerprint, err := queries.CountPendingReportsOfFingerprint(ctx, pending.KeyFingerprint)
 		if err != nil {
 			return err
 		}
-		if counts.ForFingerprint >= caps.PerFingerprint || counts.Total >= caps.Total {
+		if ofFingerprint >= caps.PerFingerprint {
+			return nil
+		}
+		total, err := queries.CountPendingReportsUpTo(ctx, caps.Total)
+		if err != nil {
+			return err
+		}
+		if total >= caps.Total {
 			return nil
 		}
 		kept = true
@@ -175,7 +208,8 @@ func (s *Store) KeepPending(ctx context.Context, pending *PendingReport, caps Pe
 	return kept, nil
 }
 
-// PendingReports gives the reports pending under a fingerprint, the oldest day first.
+// PendingReports gives the reports pending under a fingerprint, the oldest day first; for one
+// instance and day, the first received comes first.
 func (s *Store) PendingReports(ctx context.Context, fingerprint string) ([]PendingReport, error) {
 	rows, err := cpdb.New(s.pool).ListPendingReports(ctx, fingerprint)
 	if err != nil {
@@ -196,13 +230,16 @@ func (s *Store) PendingReports(ctx context.Context, fingerprint string) ([]Pendi
 	return pending, nil
 }
 
-// PromotePendingReport stores report, which a pending report turned out to be, and removes
-// that one from pending, in one transaction.
-func (s *Store) PromotePendingReport(ctx context.Context, pending *PendingReport, report *Report) (ReportOutcome, error) {
+// PromotePendingReport stores report, which a pending report turned out to be, as StoreReport
+// does, and removes that one from pending, in one transaction. The pending report is removed
+// whatever the outcome: one that is not stored for ReportTooManyInstances is discarded.
+func (s *Store) PromotePendingReport(
+	ctx context.Context, pending *PendingReport, report *Report, maxInstances int64,
+) (ReportOutcome, error) {
 	var outcome ReportOutcome
 	err := s.inTx(ctx, func(queries *cpdb.Queries) error {
 		var err error
-		if outcome, err = storeReport(ctx, queries, report); err != nil {
+		if outcome, err = storeReport(ctx, queries, report, maxInstances); err != nil {
 			return err
 		}
 		_, err = deletePending(ctx, queries, pending)
@@ -214,21 +251,29 @@ func (s *Store) PromotePendingReport(ctx context.Context, pending *PendingReport
 	return outcome, nil
 }
 
-// DiscardPendingReport removes a report from pending without storing it. When sealRefusedAt is
-// given, the report is discarded for its seal, and that is counted under the license on that
-// day; it is not counted when the report was no longer pending.
-func (s *Store) DiscardPendingReport(
-	ctx context.Context, pending *PendingReport, licenseID string, sealRefusedAt *time.Time,
+// DiscardPendingReport removes a report from pending without storing it.
+func (s *Store) DiscardPendingReport(ctx context.Context, pending *PendingReport) error {
+	if _, err := deletePending(ctx, cpdb.New(s.pool), pending); err != nil {
+		return fmt.Errorf("unable to discard a pending usage report: %w", err)
+	}
+	return nil
+}
+
+// DiscardPendingReportForItsSeal removes from pending a report whose seal is not the one of its
+// document under the license, and counts it as CountSealRejection does, in one transaction.
+// Nothing is counted for a report that was no longer pending.
+func (s *Store) DiscardPendingReportForItsSeal(
+	ctx context.Context, pending *PendingReport, licenseID string, at time.Time,
 ) error {
 	err := s.inTx(ctx, func(queries *cpdb.Queries) error {
 		deleted, err := deletePending(ctx, queries, pending)
-		if err != nil || deleted == 0 || sealRefusedAt == nil {
+		if err != nil || deleted == 0 {
 			return err
 		}
-		return countSealRejection(ctx, queries, licenseID, *sealRefusedAt)
+		return countSealRejection(ctx, queries, licenseID, at)
 	})
 	if err != nil {
-		return fmt.Errorf("unable to discard a pending usage report: %w", err)
+		return fmt.Errorf("unable to discard a pending usage report for its seal: %w", err)
 	}
 	return nil
 }
@@ -238,6 +283,7 @@ func deletePending(ctx context.Context, queries *cpdb.Queries, pending *PendingR
 		KeyFingerprint: pending.KeyFingerprint,
 		InstanceID:     pending.InstanceID,
 		Day:            utcDate(pending.Day),
+		Seal:           pending.Seal,
 	})
 }
 

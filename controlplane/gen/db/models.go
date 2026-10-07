@@ -18,11 +18,11 @@ type ControlplaneCustomer struct {
 }
 
 type ControlplaneInstance struct {
-	ID             string
+	LicenseID      string
+	InstanceID     string
 	FirstSeenAt    pgtype.Timestamptz
 	LastSeenAt     pgtype.Timestamptz
 	LastReportDay  pgtype.Date
-	LastLicenseID  string
 	HusonymVersion string
 	InstallKind    pgtype.Text
 }
@@ -64,9 +64,9 @@ type ControlplaneSealRejection struct {
 }
 
 type ControlplaneUsageReport struct {
+	LicenseID      string
 	InstanceID     string
 	Day            pgtype.Date
-	LicenseID      string
 	Document       string
 	Seal           string
 	ReceivedAt     pgtype.Timestamptz

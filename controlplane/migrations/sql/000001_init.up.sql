@@ -30,29 +30,37 @@ CREATE TABLE controlplane.licenses (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- An instance as seen under a license. The id is the one the instance gives itself: under
+-- another license the same id is another row, so that the holder of one license has no hold on
+-- what another one reports.
 CREATE TABLE controlplane.instances (
-    id text PRIMARY KEY,
+    license_id text NOT NULL REFERENCES controlplane.licenses (id),
+    instance_id text NOT NULL,
     first_seen_at timestamptz NOT NULL,
     last_seen_at timestamptz NOT NULL,
     last_report_day date NOT NULL,
-    last_license_id text NOT NULL REFERENCES controlplane.licenses (id),
     husonym_version text NOT NULL,
-    install_kind text
+    install_kind text,
+    PRIMARY KEY (license_id, instance_id)
 );
 
 -- The document is text, not jsonb: the seal is over the exact bytes received.
 CREATE TABLE controlplane.usage_reports (
-    instance_id text NOT NULL REFERENCES controlplane.instances (id),
+    license_id text NOT NULL,
+    instance_id text NOT NULL,
     day date NOT NULL,
-    license_id text NOT NULL REFERENCES controlplane.licenses (id),
     document text NOT NULL,
     seal text NOT NULL,
     received_at timestamptz NOT NULL,
     conflicts int NOT NULL DEFAULT 0,
     last_conflict_at timestamptz,
-    PRIMARY KEY (instance_id, day)
+    PRIMARY KEY (license_id, instance_id, day),
+    FOREIGN KEY (license_id, instance_id) REFERENCES controlplane.instances (license_id, instance_id)
 );
 
+-- A report of a fingerprint no license has cannot be verified yet. The seal is part of the key:
+-- whoever posts first under an instance and a day does not take the place of the report the
+-- instance sends. Each row is verified on its own once the license is known.
 CREATE TABLE controlplane.pending_reports (
     key_fingerprint text NOT NULL,
     instance_id text NOT NULL,
@@ -60,7 +68,7 @@ CREATE TABLE controlplane.pending_reports (
     document text NOT NULL,
     seal text NOT NULL,
     received_at timestamptz NOT NULL,
-    PRIMARY KEY (key_fingerprint, instance_id, day)
+    PRIMARY KEY (key_fingerprint, instance_id, day, seal)
 );
 
 CREATE INDEX pending_reports_received_at_idx ON controlplane.pending_reports (received_at);

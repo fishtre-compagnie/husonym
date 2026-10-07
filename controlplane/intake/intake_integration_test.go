@@ -47,6 +47,17 @@ func newBench(t *testing.T) *bench {
 	return b
 }
 
+// anotherLicense is the same bench seen by the holder of another license, which the store knows.
+// The time is the one of the bench it comes from.
+func (b *bench) anotherLicense(id string) *bench {
+	b.t.Helper()
+	other := *b
+	other.entry = b.issuer.Entry(id, "cust-"+id, "Other")
+	other.fingerprint = telemetry.KeyFingerprint(other.entry.Encoded)
+	other.addLicense()
+	return &other
+}
+
 // newBenchWithLicense is a bench whose license is known to the store.
 func newBenchWithLicense(t *testing.T) *bench {
 	t.Helper()
@@ -152,8 +163,8 @@ func Test_Receive_KnownLicense_Stored(t *testing.T) {
 	var lastDay, lastLicense, version string
 	var kind *string
 	require.NoError(t, b.pool.QueryRow(ctx,
-		`SELECT first_seen_at, last_seen_at, last_report_day::text, last_license_id, husonym_version, install_kind
-		 FROM controlplane.instances WHERE id = $1`, instanceA,
+		`SELECT first_seen_at, last_seen_at, last_report_day::text, license_id, husonym_version, install_kind
+		 FROM controlplane.instances WHERE instance_id = $1`, instanceA,
 	).Scan(&firstSeen, &lastSeen, &lastDay, &lastLicense, &version, &kind))
 	require.True(t, received.Equal(firstSeen))
 	require.True(t, received.Equal(lastSeen))
@@ -175,7 +186,7 @@ func Test_Receive_WithoutDiagnostics_TheInstallationKindIsUnknown(t *testing.T) 
 
 	var kindIsNull bool
 	require.NoError(t, b.pool.QueryRow(t.Context(),
-		`SELECT install_kind IS NULL FROM controlplane.instances WHERE id = $1`, instanceA).Scan(&kindIsNull))
+		`SELECT install_kind IS NULL FROM controlplane.instances WHERE instance_id = $1`, instanceA).Scan(&kindIsNull))
 	require.True(t, kindIsNull)
 }
 
@@ -207,18 +218,219 @@ func Test_Receive_AlreadyPending_PendingAndNothingChanges(t *testing.T) {
 	}
 	b := newBench(t)
 	first := b.document(b.report(instanceA, "2026-10-06"))
-	require.Equal(t, intake.Pending, b.post(first))
+	seal := b.seal(first)
+	require.Equal(t, intake.Pending, b.receive(first, seal, b.fingerprint))
 
+	// The same instance, day and seal again, whatever the body.
 	other := b.report(instanceA, "2026-10-06")
 	other.Sources.Count = 9
 	b.now = received.Add(time.Hour)
-	require.Equal(t, intake.Pending, b.post(b.document(other)))
+	require.Equal(t, intake.Pending, b.receive(first, seal, b.fingerprint))
+	require.Equal(t, intake.Pending, b.receive(b.document(other), seal, b.fingerprint))
 
 	pending, err := b.store.PendingReports(t.Context(), b.fingerprint)
 	require.NoError(t, err)
 	require.Len(t, pending, 1)
 	require.Equal(t, first, pending[0].Document)
 	require.True(t, received.Equal(pending[0].ReceivedAt))
+}
+
+// Someone who knows a fingerprint and an instance id, but holds no key, posts before the
+// instance does: the report of the instance is kept all the same, and it is the one stored.
+func Test_Receive_PendingCannotBeSquatted(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	b := newBench(t)
+	garbage := b.report(instanceA, "2026-10-06")
+	garbage.Sources.Count = 999
+	forgedSeal := strings.Repeat("0", 64)
+	require.Equal(t, intake.Pending, b.receive(b.document(garbage), forgedSeal, b.fingerprint))
+
+	genuine := b.document(b.report(instanceA, "2026-10-06"))
+	require.Equal(t, intake.Pending, b.post(genuine))
+	require.Equal(t, intake.Pending, b.receive(b.document(garbage), forgedSeal, b.fingerprint))
+	require.Equal(t, 2, b.count("pending_reports"))
+
+	b.addLicense()
+	stored, discarded, err := b.intake.PromotePending(ctx, b.fingerprint)
+	require.NoError(t, err)
+	require.Equal(t, 1, stored)
+	require.Equal(t, 1, discarded)
+
+	var document string
+	var conflicts int
+	require.NoError(t, b.pool.QueryRow(ctx,
+		`SELECT document, conflicts FROM controlplane.usage_reports`).Scan(&document, &conflicts))
+	require.Equal(t, string(genuine), document) //nolint:testifylint // the exact bytes received, not their meaning
+	require.Zero(t, conflicts)
+	require.Zero(t, b.count("pending_reports"))
+	require.Equal(t, 1, b.count("seal_rejections"))
+}
+
+// A license sees nothing of what another one reports, even under the same instance id.
+func Test_Receive_TwoLicenses_TheSameInstanceIdIsTwoInstances(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	a := newBenchWithLicense(t)
+	b := a.anotherLicense("lic-2")
+
+	reportA := withDiagnostics(a.report(instanceA, "2026-10-06"), "helm")
+	reportB := withDiagnostics(b.report(instanceA, "2026-10-06"), "compose")
+	reportB.Version.Husonym = "v0.9.0"
+	documents := map[string][]byte{"lic-1": a.document(reportA), "lic-2": b.document(reportB)}
+	require.Equal(t, intake.Stored, a.post(documents["lic-1"]))
+	require.Equal(t, intake.Stored, b.post(documents["lic-2"]))
+	// A later day under one license leaves the instance of the other as it was.
+	laterB := b.report(instanceA, "2026-10-07")
+	laterB.Version.Husonym = "v1.0.0"
+	require.Equal(t, intake.Stored, b.post(b.document(laterB)))
+
+	for licenseID, want := range map[string]struct{ version, kind, lastDay string }{
+		"lic-1": {"v0.3.0", "helm", "2026-10-06"},
+		"lic-2": {"v1.0.0", "compose", "2026-10-07"},
+	} {
+		var document, version, kind, lastDay string
+		var conflicts int
+		require.NoError(t, a.pool.QueryRow(ctx,
+			`SELECT r.document, r.conflicts, i.husonym_version, i.install_kind, i.last_report_day::text
+			 FROM controlplane.usage_reports r
+			 JOIN controlplane.instances i USING (license_id, instance_id)
+			 WHERE r.license_id = $1 AND r.instance_id = $2 AND r.day = '2026-10-06'`, licenseID, instanceA,
+		).Scan(&document, &conflicts, &version, &kind, &lastDay))
+		require.Equal(t, string(documents[licenseID]), document) //nolint:testifylint // the exact bytes received
+		require.Zero(t, conflicts)
+		require.Equal(t, want.version, version)
+		require.Equal(t, want.kind, kind)
+		require.Equal(t, want.lastDay, lastDay)
+	}
+	require.Equal(t, 2, a.count("instances"))
+	require.Equal(t, 3, a.count("usage_reports"))
+}
+
+func Test_Receive_DayBounds(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	// The reception is on 2026-10-07, at any hour of that UTC day.
+	for name, now := range map[string]time.Time{
+		"first second of the day": time.Date(2026, 10, 7, 0, 0, 0, 0, time.UTC),
+		"last second of the day":  time.Date(2026, 10, 7, 23, 59, 59, 0, time.UTC),
+		"told in another zone":    time.Date(2026, 10, 8, 1, 0, 0, 0, time.FixedZone("UTC+2", 2*60*60)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			b := newBenchWithLicense(t)
+			b.now = now
+
+			require.Equal(t, intake.Refused, b.post(b.document(b.report(instanceA, "2026-10-09"))), "two days ahead")
+			require.Equal(t, intake.Refused, b.post(b.document(b.report(instanceA, "2026-08-07"))), "61 days back")
+			require.Zero(t, b.count("usage_reports"))
+			require.Zero(t, b.count("instances"))
+			require.Zero(t, b.count("pending_reports"))
+			require.Zero(t, b.count("seal_rejections"))
+
+			require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-08"))), "one day ahead")
+			require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-08-08"))), "60 days back")
+		})
+	}
+}
+
+func Test_Receive_InstancesOfALicenseAreCapped(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBenchWithLicense(t)
+	_, err := b.pool.Exec(t.Context(),
+		`INSERT INTO controlplane.instances
+		   (license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version)
+		 SELECT 'lic-1', 'instance-' || n, now(), now(), '2026-10-01', 'v0.3.0' FROM generate_series(1, $1::int) n`,
+		intake.InstanceCapPerLicense-1)
+	require.NoError(t, err)
+
+	require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-05"))), "the last one under the cap")
+	require.Equal(t, intake.Refused, b.post(b.document(b.report(instanceB, "2026-10-05"))))
+	require.Equal(t, intake.InstanceCapPerLicense, b.count("instances"))
+	require.Equal(t, 1, b.count("usage_reports"))
+	require.Zero(t, b.count("seal_rejections"))
+
+	require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-06"))), "an instance already seen")
+	other := b.anotherLicense("lic-2")
+	require.Equal(t, intake.Stored, other.post(other.document(other.report(instanceB, "2026-10-05"))), "another license")
+}
+
+// The instance posted before its license was recorded, more instances than a license may have.
+func Test_PromotePending_InstancesOfALicenseAreCapped(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceA, "2026-10-05"))))
+	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceB, "2026-10-05"))))
+	b.addLicense()
+	_, err := b.pool.Exec(t.Context(),
+		`INSERT INTO controlplane.instances
+		   (license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version)
+		 SELECT 'lic-1', 'instance-' || n, now(), now(), '2026-10-01', 'v0.3.0' FROM generate_series(1, $1::int) n`,
+		intake.InstanceCapPerLicense-1)
+	require.NoError(t, err)
+
+	stored, discarded, err := b.intake.PromotePending(t.Context(), b.fingerprint)
+	require.NoError(t, err)
+	require.Equal(t, 1, stored)
+	require.Equal(t, 1, discarded)
+	require.Zero(t, b.count("pending_reports"))
+	require.Equal(t, 1, b.count("usage_reports"))
+	require.Equal(t, intake.InstanceCapPerLicense, b.count("instances"))
+	require.Zero(t, b.count("seal_rejections"))
+}
+
+// A repeat and a conflict tell nothing new of the instance.
+func Test_Receive_RepeatAndConflict_LeaveTheInstanceAsItWas(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBenchWithLicense(t)
+	document := b.document(withDiagnostics(b.report(instanceA, "2026-10-06"), "helm"))
+	require.Equal(t, intake.Stored, b.post(document))
+	instance := func() string {
+		var row string
+		require.NoError(t, b.pool.QueryRow(t.Context(),
+			`SELECT row(i.*)::text FROM controlplane.instances i WHERE instance_id = $1`, instanceA).Scan(&row))
+		return row
+	}
+	before := instance()
+
+	b.now = received.Add(time.Hour)
+	require.Equal(t, intake.Repeat, b.post(document))
+	require.Equal(t, before, instance())
+
+	other := withDiagnostics(b.report(instanceA, "2026-10-06"), "compose")
+	other.Version.Husonym = "v0.9.0"
+	b.now = received.Add(2 * time.Hour)
+	require.Equal(t, intake.Conflict, b.post(b.document(other)))
+	require.Equal(t, before, instance())
+}
+
+// The same document is the same bytes: one that only differs by a space is another one.
+func Test_Receive_SameJSONInOtherBytes_Conflict(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBenchWithLicense(t)
+	document := b.document(b.report(instanceA, "2026-10-06"))
+	spaced := []byte(strings.Replace(string(document), `{`, `{ `, 1))
+	require.JSONEq(t, string(document), string(spaced))
+	require.NoError(t, telemetry.Validate(spaced))
+
+	require.Equal(t, intake.Stored, b.post(document))
+	require.Equal(t, intake.Conflict, b.post(spaced))
+
+	var stored string
+	require.NoError(t, b.pool.QueryRow(t.Context(), `SELECT document FROM controlplane.usage_reports`).Scan(&stored))
+	require.Equal(t, string(document), stored) //nolint:testifylint // the exact bytes received, not their meaning
 }
 
 func Test_Receive_SameDocumentAgain_Repeat(t *testing.T) {
@@ -273,7 +485,17 @@ func Test_Receive_Refused(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
-	b := newBenchWithLicense(t)
+	for name, newBench := range map[string]func(*testing.T) *bench{
+		"license known":   newBenchWithLicense,
+		"license unknown": newBench,
+	} {
+		t.Run(name, func(t *testing.T) { refusals(t, newBench(t)) })
+	}
+}
+
+// refusals hands the intake what a caller can get wrong, and checks that nothing is written.
+func refusals(t *testing.T, b *bench) {
+	t.Helper()
 	good := b.document(b.report(instanceA, "2026-10-06"))
 	goodSeal := b.seal(good)
 	sealed := func(document []byte) (body []byte, seal, fingerprint string) {
@@ -281,6 +503,19 @@ func Test_Receive_Refused(t *testing.T) {
 	}
 
 	cases := map[string]func() (document []byte, seal, fingerprint string){
+		// The first "day" is not UTF-8; a JSON reader keeps the second one, so the document
+		// passes the schema.
+		"a body that is not UTF-8": func() ([]byte, string, string) {
+			document := []byte(strings.Replace(string(good), `{`, "{\"day\":\"\xff\",", 1))
+			require.NoError(t, telemetry.Validate(document))
+			return sealed(document)
+		},
+		"a day too far ahead": func() ([]byte, string, string) {
+			return sealed(b.document(b.report(instanceA, "2026-10-09")))
+		},
+		"a day too far back": func() ([]byte, string, string) {
+			return sealed(b.document(b.report(instanceA, "2026-08-07")))
+		},
 		"no seal":                  func() ([]byte, string, string) { return good, "", b.fingerprint },
 		"seal too short":           func() ([]byte, string, string) { return good, goodSeal[:63], b.fingerprint },
 		"seal in upper case":       func() ([]byte, string, string) { return good, strings.ToUpper(goodSeal), b.fingerprint },
@@ -426,7 +661,7 @@ func Test_Receive_AnEarlierDayAfterALaterOne_KeepsTheLastReportDay(t *testing.T)
 	var lastDay, version string
 	require.NoError(t, b.pool.QueryRow(t.Context(),
 		`SELECT first_seen_at, last_seen_at, last_report_day::text, husonym_version
-		 FROM controlplane.instances WHERE id = $1`, instanceA,
+		 FROM controlplane.instances WHERE instance_id = $1`, instanceA,
 	).Scan(&firstSeen, &lastSeen, &lastDay, &version))
 	require.Equal(t, "2026-10-06", lastDay)
 	require.Equal(t, "v0.3.0", version)
@@ -497,7 +732,7 @@ func Test_PromotePending_StoresWhatVerifies(t *testing.T) {
 	var kind string
 	var firstSeen time.Time
 	require.NoError(t, b.pool.QueryRow(ctx,
-		`SELECT install_kind, first_seen_at FROM controlplane.instances WHERE id = $1`, instanceA,
+		`SELECT install_kind, first_seen_at FROM controlplane.instances WHERE instance_id = $1`, instanceA,
 	).Scan(&kind, &firstSeen))
 	require.Equal(t, "compose", kind)
 	require.True(t, received.Equal(firstSeen))
