@@ -360,6 +360,12 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 	require.Equal(t, want, withoutSecond)
 	require.Contains(t, output.String(), secondId)
 
+	// What the license tells of the first account reads the job whose type cannot be read too,
+	// and its log is held to the same rule: the job by its id, and nothing of what it holds.
+	_, err = usage.Of(ctx, firstId)
+	require.NoError(t, err)
+	require.Contains(t, output.String(), "left out of what the account uses of the license")
+
 	asJSON, err := json.Marshal(partial)
 	require.NoError(t, err)
 	document := reportOf(t, now, partial)

@@ -197,11 +197,12 @@ func (r *UsageReader) markJobFeatures(ctx context.Context, accountUuid pgtype.UU
 		// query per job.
 		job, err := dtomaps.ToJobDto(dbJob, nil)
 		if err != nil {
-			// One job that cannot be read must not hide what every other one uses.
+			// One job that cannot be read must not hide what every other one uses. The error
+			// is not logged: it can quote a piece of what the job stores.
 			logger_interceptor.GetLoggerFromContextOrDefault(ctx).ErrorContext(
 				ctx,
 				"a job could not be read and is left out of what the account uses of the license",
-				"jobId", husonymdb.UUIDString(dbJob.ID), "error", err,
+				"jobId", husonymdb.UUIDString(dbJob.ID),
 			)
 			continue
 		}
