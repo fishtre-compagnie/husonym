@@ -167,7 +167,7 @@ func Test_getEventsByWorkflowId_AChildThatDidNotComplete(t *testing.T) {
 				// A run that is over is asked about the children it did not see end.
 				temporal.On("GetWorkflowExecutionById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 					Return(nil, errors.New("not asked in this test")).Maybe()
-				svc := New(&Config{}, nil, temporal, nil, nil, nil, nil, nil)
+				svc := New(&Config{}, nil, temporal, nil, nil, nil, nil, nil, nil)
 
 				resp, err := svc.getEventsByWorkflowId(t.Context(), "account-1", "run-1", slog.Default())
 				require.NoError(t, err)

@@ -26,6 +26,13 @@ type Service struct {
 	licenses               LicenseStore
 	refreshLicense         func(ctx context.Context) error
 	installations          installationMemory
+	jobgate                JobGate
+}
+
+// JobGate tells whether a job of an account may start under the license.
+// *licensegate.JobGate is one.
+type JobGate interface {
+	CheckStored(ctx context.Context, accountId, jobId string) error
 }
 
 // LicenseDescriber tells what the process holds as its license at one instant. The provider
@@ -77,6 +84,7 @@ func New(
 	// refreshLicense makes the process read its license key again, so that a key that was
 	// just stored is in force when the call that stored it answers.
 	refreshLicense func(ctx context.Context) error,
+	jobgate JobGate,
 ) *Service {
 	return &Service{
 		cfg:                    cfg,
@@ -89,6 +97,7 @@ func New(
 		licensedescriber:       licensedescriber,
 		licenses:               licenses,
 		refreshLicense:         refreshLicense,
+		jobgate:                jobgate,
 	}
 }
 

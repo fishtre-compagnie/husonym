@@ -49,6 +49,7 @@ import (
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
@@ -521,12 +522,15 @@ func serve(ctx context.Context) error {
 		return err
 	}
 
+	// One gate for the two ways a run starts: asked of the API, and fired by its schedule.
+	jobGate := licensegate.NewJobGate(db, eelicense)
+
 	useraccountService := v1alpha1_useraccountservice.New(&v1alpha1_useraccountservice.Config{
 		IsAuthEnabled:            isAuthEnabled,
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
 		WorkerOnly:               workerOnly,
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -662,6 +666,7 @@ func serve(ctx context.Context) error {
 		jobhookService,
 		userdataclient,
 		connectiondatabuilder,
+		jobGate,
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewJobServiceHandler(

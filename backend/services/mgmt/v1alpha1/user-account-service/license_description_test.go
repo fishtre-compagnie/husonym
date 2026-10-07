@@ -91,7 +91,7 @@ func newDescriptionFixture() *descriptionFixture {
 	f.service = New(&Config{}, nil, nil, nil, nil, nil, nil, f.held, f.store, func(context.Context) error {
 		f.refreshes++
 		return f.refreshErr
-	})
+	}, nil)
 	return f
 }
 

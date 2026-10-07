@@ -28,6 +28,30 @@ func Test_Datasync_ReplaysTheLicenseAnswerOfTheRun(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// Every history kept here was recorded before the account status check named the job. Naming
+// it changes what the activity is handed, not which commands the workflow issues nor in what
+// order: a run in flight at the upgrade replays as it was recorded.
+func Test_Datasync_ReplaysRunsRecordedBeforeTheJobId(t *testing.T) {
+	for _, recorded := range []struct {
+		history string
+		license *testutil.FakeEELicense
+	}{
+		{"datasync-before.json", testutil.NewFakeEELicense(testutil.WithIsValid())},
+		{"datasync-before-unlicensed.json", testutil.NewFakeEELicense()},
+		{"datasync-after.json", testutil.NewFakeEELicense()},
+	} {
+		t.Run(recorded.history, func(t *testing.T) {
+			replayer := worker.NewWorkflowReplayer()
+			replayer.RegisterWorkflow(New(recorded.license).Workflow)
+
+			err := testutil.ReplayWorkflowHistoryFile(
+				replayer, getTestLogger(), "../../shared/testdata/"+recorded.history,
+			)
+			require.NoError(t, err)
+		})
+	}
+}
+
 // The histories were recorded before the license was read through a side effect: a run in
 // flight at the upgrade replays on the path it started with.
 func Test_Datasync_ReplaysAHistoryRecordedBefore(t *testing.T) {

@@ -3,6 +3,7 @@ package v1alpha1_jobservice
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
@@ -23,6 +24,9 @@ type Service struct {
 	temporalmgr clientmanager.Interface
 
 	connectiondatabuilder connectiondata.ConnectionDataBuilder
+
+	// jobgate refuses to start a job that uses a feature the license does not include.
+	jobgate *licensegate.JobGate
 }
 
 type RunLogType string
@@ -70,6 +74,7 @@ func New(
 	jobHooks *hooks.JobService,
 	userdataclient userdata.Interface,
 	connectiondatabuilder connectiondata.ConnectionDataBuilder,
+	jobgate *licensegate.JobGate,
 ) *Service {
 	return &Service{
 		JobService:            jobHooks,
@@ -80,5 +85,6 @@ func New(
 		sqlmanager:            sqlmanager,
 		userdataclient:        userdataclient,
 		connectiondatabuilder: connectiondatabuilder,
+		jobgate:               jobgate,
 	}
 }

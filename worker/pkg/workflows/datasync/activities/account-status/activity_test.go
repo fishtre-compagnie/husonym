@@ -110,6 +110,53 @@ func Test_Activity_Success_With_RequestedRecordCount(t *testing.T) {
 	require.NotNil(t, res.Reason)
 }
 
+// The job is named to the API, which refuses a job the license does not allow; a check made
+// for no job names none, as the workers before the job was sent did.
+func Test_CheckAccountStatus_SendsTheJobId(t *testing.T) {
+	accountId := uuid.NewString()
+	jobId := uuid.NewString()
+
+	var received []*mgmtv1alpha1.IsAccountStatusValidRequest
+	mux := http.NewServeMux()
+	mux.Handle(
+		mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
+		connect.NewUnaryHandler(
+			mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
+			func(ctx context.Context, r *connect.Request[mgmtv1alpha1.IsAccountStatusValidRequest]) (*connect.Response[mgmtv1alpha1.IsAccountStatusValidResponse], error) {
+				received = append(received, r.Msg)
+				return connect.NewResponse(
+					&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true},
+				), nil
+			},
+		),
+	)
+	srv := startHTTPServer(t, mux)
+	activity := New(mgmtv1alpha1connect.NewUserAccountServiceClient(srv.Client(), srv.URL))
+
+	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(activity)
+
+	_, err := env.ExecuteActivity(
+		activity.CheckAccountStatus,
+		&CheckAccountStatusRequest{AccountId: accountId, JobId: jobId},
+	)
+	require.NoError(t, err)
+	_, err = env.ExecuteActivity(
+		activity.CheckAccountStatus,
+		&CheckAccountStatusRequest{AccountId: accountId},
+	)
+	require.NoError(t, err)
+
+	require.Len(t, received, 2)
+	require.Equal(t, accountId, received[0].GetAccountId())
+	require.NotNil(t, received[0].JobId)
+	require.Equal(t, jobId, received[0].GetJobId())
+	require.Equal(t, accountId, received[1].GetAccountId())
+	require.Nil(t, received[1].JobId)
+}
+
 func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
 	tb.Helper()
 	srv := httptest.NewUnstartedServer(h)

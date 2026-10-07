@@ -141,6 +141,7 @@ func executeWorkflow(
 		&accountstatus_activity.CheckAccountStatusRequest{
 			AccountId:            actOptResp.AccountId,
 			RequestedRecordCount: actOptResp.RequestedRecordCount,
+			JobId:                req.JobId,
 		},
 	).
 		Get(ctx, &initialCheckAccountStatusResponse)
@@ -284,6 +285,7 @@ func executeWorkflow(
 							a.CheckAccountStatus,
 							&accountstatus_activity.CheckAccountStatusRequest{
 								AccountId: actOptResp.AccountId,
+								JobId:     req.JobId,
 							},
 						).
 							Get(ctx, &result)

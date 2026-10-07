@@ -28,6 +28,9 @@ func New(
 type CheckAccountStatusRequest struct {
 	AccountId            string
 	RequestedRecordCount *uint64
+	// JobId is the job the check is made for, when it is made for a run: the API then also
+	// refuses a job that uses a feature the license does not include.
+	JobId string
 }
 
 type CheckAccountStatusResponse struct {
@@ -61,13 +64,14 @@ func (a *Activity) CheckAccountStatus(
 
 	logger.Debug("checking account status")
 
-	resp, err := a.userclient.IsAccountStatusValid(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
-			AccountId:            req.AccountId,
-			RequestedRecordCount: req.RequestedRecordCount,
-		}),
-	)
+	statusReq := &mgmtv1alpha1.IsAccountStatusValidRequest{
+		AccountId:            req.AccountId,
+		RequestedRecordCount: req.RequestedRecordCount,
+	}
+	if req.JobId != "" {
+		statusReq.JobId = &req.JobId
+	}
+	resp, err := a.userclient.IsAccountStatusValid(ctx, connect.NewRequest(statusReq))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve account status: %w", err)
 	}

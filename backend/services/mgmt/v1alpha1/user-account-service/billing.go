@@ -2,12 +2,14 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -72,6 +74,34 @@ func (s *Service) IsAccountStatusValid(
 			AccountStatus: mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE,
 			Reason:        &reason,
 		}), nil
+	}
+
+	// A run names its job. A job that uses a feature the license does not include does not
+	// start, for the same reason as above: a scheduled run is only ever stopped here. The
+	// account itself is in none of the states AccountStatus names, so the answer says why in
+	// its reason alone.
+	if req.Msg.JobId != nil {
+		err := s.jobgate.CheckStored(ctx, req.Msg.GetAccountId(), req.Msg.GetJobId())
+		var refusal *connect.Error
+		switch {
+		case err == nil:
+		case errors.As(err, &refusal) && refusal.Code() == connect.CodePermissionDenied:
+			reason := refusal.Message()
+			return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
+				IsValid: false,
+				Reason:  &reason,
+			}), nil
+		default:
+			// The gate could not answer: the job is unknown to the account, or could not be
+			// read. That is no refusal, and the license as a whole was checked above, so the
+			// run is not held back for it.
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).Error(
+				"unable to check the job against the license, answering for the account alone",
+				"jobId", req.Msg.GetJobId(),
+				"accountId", req.Msg.GetAccountId(),
+				"error", err,
+			)
+		}
 	}
 	return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
 }

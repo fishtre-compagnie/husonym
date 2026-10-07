@@ -17,6 +17,7 @@ import (
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
@@ -268,6 +269,7 @@ func (s *HusonymApiTestClient) setupMux(
 	maxAllowed := int64(10000)
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
+	jobGate := licensegate.NewJobGate(husonymDb, eelicense)
 
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
@@ -285,6 +287,7 @@ func (s *HusonymApiTestClient) setupMux(
 		eelicense,
 		s.licenseStore(pgcontainer),
 		licensing.refresh,
+		jobGate,
 	)
 	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 
@@ -344,6 +347,7 @@ func (s *HusonymApiTestClient) setupMux(
 		jobhookService,
 		userclient,
 		connectiondatabuilder,
+		jobGate,
 	)
 
 	// Free text is analyzed by the Presidio of the test, which answers what the test tells it

@@ -539,6 +539,11 @@ func (s *Service) CreateJobRun(
 	if err := user.EnforceLicense(ctx, job.GetAccountId()); err != nil {
 		return nil, err
 	}
+	// A job never runs without a feature it uses: it is refused here, before its schedule is
+	// triggered. The run checks again when it starts, which is what holds a scheduled run.
+	if err := s.jobgate.Check(ctx, job); err != nil {
+		return nil, err
+	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
 	jobRunId, err := s.temporalmgr.StartScheduledRun(ctx, job.GetAccountId(), job.GetId(), logger)
