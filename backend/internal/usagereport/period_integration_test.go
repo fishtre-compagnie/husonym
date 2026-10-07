@@ -182,7 +182,7 @@ func Test_BuildPeriod_AddsUpTheMonthsOfTheInstanceAndCarriesNoName(t *testing.T)
 
 	// July: no run, no report.
 	require.Equal(t, map[string]any{
-		"month": "2026-07", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)},
+		"month": "2026-07", "days_reported": float64(0),
 		"runs": emptyRuns, "refusals": []any{},
 	}, read[0])
 
@@ -208,9 +208,9 @@ func Test_BuildPeriod_AddsUpTheMonthsOfTheInstanceAndCarriesNoName(t *testing.T)
 	require.Len(t, august["state"], 9)
 
 	// September: the runs recorded at its two edges, the refusals of both accounts as one count,
-	// and nothing of a state, as no report was kept.
+	// and nothing of its sources nor of a state, as no report was kept.
 	require.Equal(t, map[string]any{
-		"month": "2026-09", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)},
+		"month": "2026-09", "days_reported": float64(0),
 		"runs": map[string]any{
 			"by_status":        []any{map[string]any{"kind": "sync", "status": "completed", "count": float64(2)}},
 			"duration_seconds": map[string]any{"median": float64(30), "p95": float64(30)},
@@ -230,7 +230,7 @@ func Test_BuildPeriod_AddsUpTheMonthsOfTheInstanceAndCarriesNoName(t *testing.T)
 
 	// The report that was left out is said by its day, and by nothing it holds.
 	require.Equal(t, 1, strings.Count(output.String(), `"level":"WARN"`))
-	require.Contains(t, output.String(), `"day":"2026-10-03"`)
+	require.Contains(t, output.String(), `"reports":1,"first_day":"2026-10-03","last_day":"2026-10-03"`)
 
 	for where, text := range map[string]string{"the report": string(sealed.Document), "the logs": output.String()} {
 		requireNoLeak(t, text, where)

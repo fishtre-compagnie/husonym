@@ -22762,7 +22762,7 @@
             },
             {
               "name": "to_month",
-              "description": "The last month of the period, included: not before the first, not in the future, and at most 36 months in all.",
+              "description": "The last month of the period, included: not before the first, not in the future, and at most 24 months in all.",
               "label": "",
               "type": "string",
               "longType": "string",

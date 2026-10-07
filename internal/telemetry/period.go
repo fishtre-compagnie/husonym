@@ -7,8 +7,10 @@ import (
 	"strings"
 )
 
-// MaxPeriodMonths is how many months a report for a period holds at most.
-const MaxPeriodMonths = 36
+// MaxPeriodMonths is how many months a report for a period holds at most: no more than the
+// instance keeps of its reports of the day, so that a period never tells a month the instance
+// has forgotten.
+const MaxPeriodMonths = 24
 
 // MonthLayout is how a month is written in the report for a period: YYYY-MM, UTC.
 const MonthLayout = "2006-01"
@@ -28,15 +30,18 @@ type PeriodReport struct {
 }
 
 // MonthReport is what the instance tells of a month. Runs, Refusals and State belong to the
-// diagnostic: they are absent when it is switched off.
+// diagnostic: they are absent when it is switched off. Version, Sources and State come from the
+// reports of the day: a month that has none tells none of them, as nothing is known of it, and
+// says so with zero days reported.
 type MonthReport struct {
 	Month string `json:"month"`
 	// DaysReported is how many days of the month have a report of the day.
 	DaysReported int `json:"days_reported"`
 	// Version is the one of the last report of the month, nil for a month that has none.
 	Version *Version `json:"version,omitempty"`
-	// Sources is the highest count the reports of the month hold, zero for a month that has none.
-	Sources Sources `json:"sources"`
+	// Sources is the highest count the reports of the month hold, nil for a month that has none:
+	// a count of zero would be a statement.
+	Sources *Sources `json:"sources,omitempty"`
 	// Runs counts the runs whose end the instance recorded during the month.
 	Runs *Runs `json:"runs,omitempty"`
 	// Refusals counts the refusals of the month. They are written with Runs, as an empty array

@@ -21,18 +21,18 @@ func fullPeriod() *PeriodReport {
 		Identification: daily.Identification,
 		Months: []MonthReport{
 			{
-				Month: "2026-08", DaysReported: 31, Version: &Version{Husonym: "v0.3.0"}, Sources: Sources{Count: 3},
+				Month: "2026-08", DaysReported: 31, Version: &Version{Husonym: "v0.3.0"}, Sources: &Sources{Count: 3},
 				Runs:     &daily.Diagnostics.Runs,
 				Refusals: daily.Diagnostics.Refusals,
 				State:    StateOf(daily.Diagnostics),
 			},
 			{
-				Month: "2026-09", Sources: Sources{Count: 0},
+				Month:    "2026-09",
 				Runs:     &Runs{ByStatus: []RunCount{}, RowsRead: "lt_1k", RowsDiscarded: "lt_1k"},
 				Refusals: []GateCount{},
 			},
 			{
-				Month: "2026-10", DaysReported: 6, Version: &Version{Husonym: "v0.3.1"}, Sources: Sources{Count: 4},
+				Month: "2026-10", DaysReported: 6, Version: &Version{Husonym: "v0.3.1"}, Sources: &Sources{Count: 4},
 				Runs: &Runs{
 					ByStatus: []RunCount{{Kind: "sync", Status: "completed", Count: 2}},
 					RowsRead: "lt_10k", RowsDiscarded: "lt_1k",
@@ -94,13 +94,14 @@ func Test_StateOf_KeepsTheStateBlocksOfADiagnostic(t *testing.T) {
 	}
 }
 
-// A month nothing was kept of has no version and no state; the diagnostic switched off leaves
-// the month, its days, its version and its sources.
+// A month nothing was kept of has no version, no sources and no state: it says nothing of what
+// it does not know, and zero days reported says why. The diagnostic switched off leaves the
+// month, its days, its version and its sources.
 func Test_PeriodReport_OmitsWhatAMonthHasNot(t *testing.T) {
 	r := fullPeriod()
 	tree := periodTree(t, r)
 	require.Equal(t, map[string]any{
-		"month": "2026-09", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)},
+		"month": "2026-09", "days_reported": float64(0),
 		"runs": map[string]any{
 			"by_status": []any{}, "rows_read": "lt_1k", "rows_discarded": "lt_1k",
 			"retries": float64(0), "with_uncounted_rows": float64(0),
@@ -119,9 +120,8 @@ func Test_PeriodReport_OmitsWhatAMonthHasNot(t *testing.T) {
 		"month": "2026-08", "days_reported": float64(31), "version": map[string]any{"husonym": "v0.3.0"},
 		"sources": map[string]any{"count": float64(3)},
 	}, monthOf(tree, 0))
-	require.Equal(t, map[string]any{
-		"month": "2026-09", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)},
-	}, monthOf(tree, 1))
+	require.Equal(t, map[string]any{"month": "2026-09", "days_reported": float64(0)}, monthOf(tree, 1))
+	require.NotContains(t, string(document), `"count":0`)
 }
 
 // The refusals of a month are written with its runs: an empty array when no gate refused, and
@@ -227,10 +227,10 @@ func Test_ValidatePeriod_RefusesWhatTheSchemaDoesNotKnow(t *testing.T) {
 		"a state without one of its blocks": func(tree map[string]any) {
 			delete(monthOf(tree, 0)["state"].(map[string]any), "unread")
 		},
-		"a month without its sources": func(tree map[string]any) { delete(monthOf(tree, 1), "sources") },
-		"a month without its days":    func(tree map[string]any) { delete(monthOf(tree, 1), "days_reported") },
-		"a period without its key":    func(tree map[string]any) { delete(tree, "identification") },
-		"a period without months":     func(tree map[string]any) { tree["months"] = []any{} },
+		"sources without a count":  func(tree map[string]any) { monthOf(tree, 0)["sources"] = map[string]any{} },
+		"a month without its days": func(tree map[string]any) { delete(monthOf(tree, 1), "days_reported") },
+		"a period without its key": func(tree map[string]any) { delete(tree, "identification") },
+		"a period without months":  func(tree map[string]any) { tree["months"] = []any{} },
 	} {
 		t.Run(name, func(t *testing.T) {
 			tree := periodTree(t, fullPeriod())
@@ -295,7 +295,7 @@ func Test_ValidatePeriod_RefusesMoreMonthsThanAPeriodHolds(t *testing.T) {
 		require.NoError(t, err)
 		return document
 	}
-	require.Equal(t, 36, MaxPeriodMonths)
+	require.Equal(t, 24, MaxPeriodMonths)
 	require.NoError(t, ValidatePeriod(months(MaxPeriodMonths)))
 	require.Error(t, ValidatePeriod(months(MaxPeriodMonths+1)))
 }

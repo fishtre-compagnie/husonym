@@ -225,7 +225,7 @@ func Test_BuildPeriod_AMonthTellsItsRunsAndItsRefusals(t *testing.T) {
 }
 
 // A month without a run nor a report: its counters are there and empty, it reports no day, has
-// no version and no state, and counts no source.
+// no version, no state and no sources: nothing is known of it, and it says nothing.
 func Test_BuildPeriod_AMonthWithoutRunNorReport(t *testing.T) {
 	f := newPeriodFixture(t)
 
@@ -233,7 +233,7 @@ func Test_BuildPeriod_AMonthWithoutRunNorReport(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, map[string]any{
-		"month": "2026-09", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)},
+		"month": "2026-09", "days_reported": float64(0),
 		"runs": map[string]any{
 			"by_status": []any{}, "rows_read": "lt_1k", "rows_discarded": "lt_1k",
 			"retries": float64(0), "with_uncounted_rows": float64(0),
@@ -258,7 +258,7 @@ func Test_BuildPeriod_WithoutDiagnostics(t *testing.T) {
 			"month": "2026-08", "days_reported": float64(2), "version": map[string]any{"husonym": "v0.3.0"},
 			"sources": map[string]any{"count": float64(5)},
 		},
-		{"month": "2026-09", "days_reported": float64(0), "sources": map[string]any{"count": float64(0)}},
+		{"month": "2026-09", "days_reported": float64(0)},
 		{
 			"month": "2026-10", "days_reported": float64(1), "version": map[string]any{"husonym": "v0.3.1"},
 			"sources": map[string]any{"count": float64(4)},
@@ -311,8 +311,9 @@ func Test_BuildPeriod_RefusesAPeriodThatIsNotOne(t *testing.T) {
 	}{
 		"one month":                    {periodTo, periodTo, false},
 		"the month under way":          {periodFrom, month(2026, time.October), false},
-		"thirty-six months":            {month(2023, time.November), month(2026, time.October), false},
-		"thirty-seven months":          {month(2023, time.October), month(2026, time.October), true},
+		"twenty-four months":           {month(2024, time.November), month(2026, time.October), false},
+		"twenty-five months":           {month(2024, time.October), month(2026, time.October), true},
+		"thirty-six months":            {month(2023, time.November), month(2026, time.October), true},
 		"the first month after":        {month(2026, time.September), month(2026, time.August), true},
 		"next month":                   {periodFrom, month(2026, time.November), true},
 		"a month of next year":         {periodFrom, month(2027, time.January), true},
@@ -396,8 +397,9 @@ func Test_BuildPeriod_IdentifiesTheKeyInForceNow(t *testing.T) {
 	require.NotContains(t, string(sealed.Document), telemetry.KeyFingerprint(earlier))
 }
 
-// A report that is kept and can no longer be read is left out and said by its day alone: nothing
-// of what it holds, nor of why it is refused, reaches the document or the log.
+// Reports that are kept and can no longer be read are left out and said in one line for the
+// request, by how many they are and by their first and last day: nothing of what they hold, nor
+// of why they are refused, reaches the document or the log.
 func Test_BuildPeriod_AStoredReportThatCanNoLongerBeRead(t *testing.T) {
 	f := newPeriodFixture(t)
 	valid := string(f.counters.reports[1].Document)
@@ -427,10 +429,8 @@ func Test_BuildPeriod_AStoredReportThatCanNoLongerBeRead(t *testing.T) {
 	require.Equal(t, map[string]any{"count": float64(5)}, august["sources"])
 	require.Equal(t, "helm", block(t, august, "state", "installation")["kind"])
 
-	require.Equal(t, 3, strings.Count(output.String(), `"level":"WARN"`))
-	for _, day := range []string{"2026-08-25", "2026-08-28", "2026-08-30"} {
-		require.Contains(t, output.String(), `"day":"`+day+`"`)
-	}
+	require.Equal(t, 1, strings.Count(output.String(), `"level":"WARN"`))
+	require.Contains(t, output.String(), `"reports":3,"first_day":"2026-08-25","last_day":"2026-08-30"`)
 	requireNoLeak(t, string(sealed.Document))
 	requireNoLeak(t, output.String())
 	require.NotContains(t, output.String(), "schema", "why a report is refused is not said: it may quote it")
@@ -490,12 +490,50 @@ func Test_BuildPeriod_AReadingThatFails(t *testing.T) {
 	}
 }
 
-// A document the schema refuses is an error: it is never sealed.
+// A document the schema refuses is never sealed. The caller is told so in fixed words: what the
+// schema refuses goes to the log, and the document does not.
 func Test_BuildPeriod_ADocumentTheSchemaRefuses(t *testing.T) {
 	f := newPeriodFixture(t)
 	f.counters.instanceId = "not-an-instance-id"
+	ctx, output := logged(t)
 
-	sealed, err := f.builder().BuildPeriod(t.Context(), periodFrom, periodTo, reportNow)
-	require.ErrorContains(t, err, "does not match its schema")
+	sealed, err := f.builder().BuildPeriod(ctx, periodFrom, periodTo, reportNow)
+	require.ErrorIs(t, err, ErrPeriodNotBuilt)
+	require.Equal(t, "the report for the period could not be built", err.Error())
 	require.Nil(t, sealed)
+
+	require.Equal(t, 1, strings.Count(output.String(), `"level":"WARN"`))
+	require.Contains(t, output.String(), "does not match its schema")
+	require.NotContains(t, output.String(), `"months"`)
+	require.NotContains(t, output.String(), testLicense)
+}
+
+// The months of a period follow one another across a new year, each from its first day to the
+// first of the next.
+func Test_BuildPeriod_AYearEndsBetweenTwoMonths(t *testing.T) {
+	f := newPeriodFixture(t)
+
+	sealed, err := f.builder().BuildPeriod(t.Context(), month(2025, time.November), month(2026, time.February), reportNow)
+	require.NoError(t, err)
+
+	want := []span{
+		{month(2025, time.November), month(2025, time.December)},
+		{month(2025, time.December), month(2026, time.January)},
+		{month(2026, time.January), month(2026, time.February)},
+		{month(2026, time.February), month(2026, time.March)},
+	}
+	require.Equal(t, want, f.counters.runSpans)
+	require.Equal(t, want, f.counters.refusalSpans)
+	require.Equal(t, []span{{month(2025, time.November), month(2026, time.March)}}, f.counters.reportSpans)
+	var told []any
+	for _, m := range months(t, sealed.Document) {
+		told = append(told, m["month"])
+	}
+	require.Equal(t, []any{"2025-11", "2025-12", "2026-01", "2026-02"}, told)
+}
+
+// A period never holds more months than the instance keeps of its reports of the day: beyond
+// them a month would be told as one the instance knows nothing of, next to its runs.
+func Test_APeriodHoldsNoMoreMonthsThanTheReportsAreKept(t *testing.T) {
+	require.LessOrEqual(t, telemetry.MaxPeriodMonths, keptMonths)
 }

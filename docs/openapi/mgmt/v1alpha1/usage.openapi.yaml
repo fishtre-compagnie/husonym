@@ -159,7 +159,7 @@ components:
           type: string
           title: to_month
           pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
-          description: 'The last month of the period, included: not before the first, not in the future, and at most 36 months in all.'
+          description: 'The last month of the period, included: not before the first, not in the future, and at most 24 months in all.'
       title: GetUsagePeriodReportRequest
       additionalProperties: false
     mgmt.v1alpha1.GetUsagePeriodReportResponse:

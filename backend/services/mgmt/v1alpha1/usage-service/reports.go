@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagereport"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
@@ -24,6 +25,9 @@ const (
 	reportDays = 30
 	// waitBeforeFirst is how long an instance that starts sending waits before it sends anything.
 	waitBeforeFirst = 24 * time.Hour
+	// periodBuildTimeout bounds the making of the report for a period: a database that does not
+	// answer does not hold the caller.
+	periodBuildTimeout = 30 * time.Second
 )
 
 // reportStore is what the service reads the usage reports and their sending from:
@@ -138,6 +142,15 @@ func (s *Service) GetUsageReport(
 // GetUsagePeriodReport makes the usage report of the instance for a period of months and seals
 // it with the license key in force, whatever the mode the report of the day is sent under. The
 // document is the one the seal is of, byte for byte.
+//
+// A period is telemetry.MaxPeriodMonths months at most. The longest one reads the license key,
+// the id of the instance, the reports of the day kept for those months in one query (some 730
+// documents of a few kilobytes), and the runs and the refusals of each month in three queries a
+// month, each over an index: some seventy-five queries in all. The whole is given
+// periodBuildTimeout; past it the caller is answered DeadlineExceeded.
+//
+// A report that cannot be made is answered in fixed words, and why is logged: an error of the
+// database or of the schema may quote what it read.
 func (s *Service) GetUsagePeriodReport(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetUsagePeriodReportRequest],
@@ -150,14 +163,27 @@ func (s *Service) GetUsagePeriodReport(
 	if errFrom != nil || errTo != nil {
 		return nil, husonymerrors.NewBadRequest("a month of the period is not a month of the calendar, written as 2026-01")
 	}
-	sealed, err := s.periods.BuildPeriod(ctx, from, to, s.now())
+	buildCtx, cancel := context.WithTimeout(ctx, s.periodTimeout)
+	defer cancel()
+	sealed, err := s.periods.BuildPeriod(buildCtx, from, to, s.now())
 	switch {
+	case err == nil:
 	case errors.Is(err, usagereport.ErrNoLicenseInForce):
 		return nil, husonymerrors.NewFailedPrecondition("no license key is in force: no usage report is made")
 	case errors.Is(err, usagereport.ErrPeriod):
 		return nil, husonymerrors.NewBadRequest(err.Error())
-	case err != nil:
-		return nil, fmt.Errorf("unable to make the usage report of the period: %w", err)
+	case errors.Is(buildCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil:
+		return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf(
+			"the report for the period was not built within %s", s.periodTimeout,
+		))
+	default:
+		// The builder already logged what the schema refuses of a document.
+		if !errors.Is(err, usagereport.ErrPeriodNotBuilt) {
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+				ctx, "the usage report for a period could not be built", "error", err,
+			)
+		}
+		return nil, husonymerrors.NewInternalError(usagereport.ErrPeriodNotBuilt.Error())
 	}
 	return connect.NewResponse(&mgmtv1alpha1.GetUsagePeriodReportResponse{
 		Document:       string(sealed.Document),

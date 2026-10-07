@@ -292,7 +292,7 @@ func reportRequest(year, month, dayOfMonth uint32) *connect.Request[mgmtv1alpha1
 
 func Test_GetUsageReport_GivesTheStoredBytes(t *testing.T) {
 	f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
-	// The document is ASCII JSON; its escapes must come back as they were kept.
+	// Escaped quotes and a letter outside ASCII: both must come back as they were kept.
 	document := `{"name":"café \"bar\"","runs":3}`
 	f.reports.stored[day(1)] = &usagestore.StoredReport{
 		Day: day(1), Document: []byte(document), Seal: "a-seal", KeyFingerprint: "a-fingerprint",

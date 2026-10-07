@@ -133,7 +133,7 @@ message GetUsagePeriodReportRequest {
   string account_id = 1 [(buf.validate.field).string.uuid = true];
   // The first month of the period, as "2026-01", in UTC.
   string from_month = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-(0[1-9]|1[0-2])$"];
-  // The last month of the period, included: not before the first, not in the future, and at most 36 months in all.
+  // The last month of the period, included: not before the first, not in the future, and at most 24 months in all.
   string to_month = 3 [(buf.validate.field).string.pattern = "^[0-9]{4}-(0[1-9]|1[0-2])$"];
 }
 message GetUsagePeriodReportResponse {

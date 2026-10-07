@@ -812,7 +812,7 @@ type GetUsagePeriodReportRequest struct {
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	// The first month of the period, as "2026-01", in UTC.
 	FromMonth string `protobuf:"bytes,2,opt,name=from_month,json=fromMonth,proto3" json:"from_month,omitempty"`
-	// The last month of the period, included: not before the first, not in the future, and at most 36 months in all.
+	// The last month of the period, included: not before the first, not in the future, and at most 24 months in all.
 	ToMonth       string `protobuf:"bytes,3,opt,name=to_month,json=toMonth,proto3" json:"to_month,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

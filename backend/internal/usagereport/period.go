@@ -15,6 +15,10 @@ import (
 // ErrPeriod says that the months asked are not a period a report is made for.
 var ErrPeriod = errors.New("the period is not one a usage report is made for")
 
+// ErrPeriodNotBuilt says that the report made for a period is not one its schema takes. It says
+// no more: what the schema refuses is in the log of the instance.
+var ErrPeriodNotBuilt = errors.New("the report for the period could not be built")
+
 // BuildPeriod returns the sealed usage report of the instance for the months from the one of
 // from to the one of to, both included and both taken in UTC, or ErrPeriod, or
 // ErrNoLicenseInForce. now is the moment the report is made: the month under way may be asked
@@ -22,10 +26,12 @@ var ErrPeriod = errors.New("the period is not one a usage report is made for")
 //
 // The counters of a month are added up from the runs and the refusals the instance recorded
 // during it. Its state is not read from the instance, which only knows the present one: it is
-// the state the last report of the day kept for that month tells. A kept report that can no
-// longer be read is left out and logged by its day.
+// the state the last report of the day kept for that month tells. Kept reports that can no
+// longer be read are left out, and logged by their days. A period is no longer than the reports
+// are kept (keptMonths).
 //
-// A document its schema refuses is an error: nothing is sealed.
+// A document its schema refuses is ErrPeriodNotBuilt: nothing is sealed, and what the schema
+// refuses is logged, without the document.
 func (b *Builder) BuildPeriod(ctx context.Context, from, to, now time.Time) (*Sealed, error) {
 	first, last, err := periodOf(from, to, now)
 	if err != nil {
@@ -80,7 +86,10 @@ func (b *Builder) BuildPeriod(ctx context.Context, from, to, now time.Time) (*Se
 		return nil, fmt.Errorf("unable to write the usage report of the period: %w", err)
 	}
 	if err := telemetry.ValidatePeriod(document); err != nil {
-		return nil, err
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+			ctx, "the usage report made for a period is not sealed", "error", err,
+		)
+		return nil, ErrPeriodNotBuilt
 	}
 	seal, err := telemetry.Seal(keyValue, document)
 	if err != nil {
@@ -113,22 +122,29 @@ func firstOfMonth(at time.Time) time.Time {
 }
 
 // reportsByMonth reads the reports that are kept, the oldest first, and gives them by their
-// month, in the same order. One that is no longer JSON, or that the schema refuses, is left out
-// and logged by its day and nothing else: why it is refused may quote what it holds.
+// month, in the same order. Those that are no longer JSON, or that the schema refuses, are left
+// out and said in one line: how many they are, and the first and the last of their days. Why
+// one is refused is not said, as it may quote what the report holds.
 func reportsByMonth(ctx context.Context, stored []usagestore.StoredReport) map[string][]*telemetry.Report {
 	kept := make(map[string][]*telemetry.Report)
+	var unread []time.Time
 	for i := range stored {
 		day := stored[i].Day.UTC()
 		report, ok := readReport(stored[i].Document)
 		if !ok {
-			logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
-				ctx, "a usage report that is kept can no longer be read: the report of the period is made without it",
-				"day", day.Format(time.DateOnly),
-			)
+			unread = append(unread, day)
 			continue
 		}
 		month := day.Format(telemetry.MonthLayout)
 		kept[month] = append(kept[month], report)
+	}
+	if len(unread) > 0 {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+			ctx, "usage reports that are kept can no longer be read: the report of the period is made without them",
+			"reports", len(unread),
+			"first_day", unread[0].Format(time.DateOnly),
+			"last_day", unread[len(unread)-1].Format(time.DateOnly),
+		)
 	}
 	return kept
 }
@@ -147,13 +163,15 @@ func readReport(document []byte) (*telemetry.Report, bool) {
 
 // monthOf says what the reports kept for a month, the oldest first, tell of it: how many days
 // they are, the most sources one of them counts, and the version and the state of the last one.
-// A last report made with the diagnostic switched off tells no state, and none is told when the
-// diagnostic is switched off now.
+// A month without a report tells none of the three: nothing is known of it, and a count of zero
+// would say otherwise. A last report made with the diagnostic switched off tells no state, and
+// none is told when the diagnostic is switched off now.
 func monthOf(month time.Time, reports []*telemetry.Report, diagnostics bool) telemetry.MonthReport {
 	told := telemetry.MonthReport{Month: month.Format(telemetry.MonthLayout), DaysReported: len(reports)}
 	if len(reports) == 0 {
 		return told
 	}
+	told.Sources = &telemetry.Sources{}
 	for _, report := range reports {
 		told.Sources.Count = max(told.Sources.Count, report.Sources.Count)
 	}

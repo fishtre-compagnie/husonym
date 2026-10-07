@@ -76,9 +76,10 @@ of months (`PeriodReport`, `schema/usage-period-report.v1.schema.json`). It foll
 the report of a day: numbers, booleans, dates and members of the closed lists, a schema closed at
 each level, and no counter per table, per database, per job or per account.
 
-- A period is whole months, `from` to `to` included, written `YYYY-MM` and taken in UTC: 36 months
-  at most, none of them in the future. The month under way may be asked, and is told as far as it
-  went.
+- A period is whole months, `from` to `to` included, written `YYYY-MM` and taken in UTC: 24 months
+  at most, none of them in the future. That is as long as the instance keeps its reports of the
+  day, so a period never reaches back to months it has forgotten. The month under way may be
+  asked, and is told as far as it went.
 - `identification` is the one of the license key in force when the document is made, with
   `days_to_expiry` counted from that moment.
 - `runs` and `refusals` of a month are added up from the rows the instance keeps, not from the
@@ -91,8 +92,12 @@ each level, and no counter per table, per database, per job or per account.
   of them, and `state` the blocks of its diagnostic that tell a state (`installation`,
   `configuration`, `connections`, `jobs`, `transformers`, `column_types`, `features`, `users`,
   `unread`). The source versions and the errors of a day are not part of it.
-- A month without such a report has `days_reported` 0, `sources.count` 0, and neither `version`
-  nor `state`. A month whose last report was made with the diagnostic switched off has no `state`.
+- A month without such a report has `days_reported` 0 and no `sources`, `version` nor `state`.
+  An absent block means that nothing is known, never that there was nothing: the instance
+  prepared no report that month, or keeps it no longer, and a count of zero would be a statement
+  it cannot make. `days_reported` is always there and tells how much of a month the three blocks
+  stand on: a month the instance reported in part has them from the days it did report.
+- A month whose last report was made with the diagnostic switched off has no `state`.
 - With the diagnostic switched off, `runs`, `refusals` and `state` are absent from every month;
   `runs` and `refusals` are there together or not at all.
 

@@ -34,6 +34,7 @@ type Service struct {
 	reports        reportStore
 	key            usagereport.KeyModeSource
 	periods        periodBuilder
+	periodTimeout  time.Duration
 	now            func() time.Time
 }
 
@@ -70,6 +71,7 @@ func newService(
 	now func() time.Time,
 ) *Service {
 	return &Service{
-		cfg: cfg, db: db, userdataclient: userdataclient, store: store, reports: reports, key: key, periods: periods, now: now,
+		cfg: cfg, db: db, userdataclient: userdataclient, store: store, reports: reports, key: key,
+		periods: periods, periodTimeout: periodBuildTimeout, now: now,
 	}
 }

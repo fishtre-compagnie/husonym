@@ -369,7 +369,7 @@ export type GetUsagePeriodReportRequest = Message<"mgmt.v1alpha1.GetUsagePeriodR
   fromMonth: string;
 
   /**
-   * The last month of the period, included: not before the first, not in the future, and at most 36 months in all.
+   * The last month of the period, included: not before the first, not in the future, and at most 24 months in all.
    *
    * @generated from field: string to_month = 3;
    */

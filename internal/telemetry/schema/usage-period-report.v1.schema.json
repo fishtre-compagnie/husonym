@@ -677,12 +677,11 @@
         },
         "required": [
           "month",
-          "days_reported",
-          "sources"
+          "days_reported"
         ],
         "type": "object"
       },
-      "maxItems": 36,
+      "maxItems": 24,
       "minItems": 1,
       "type": "array"
     },
