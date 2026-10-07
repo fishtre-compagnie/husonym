@@ -1,7 +1,7 @@
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { useRunLogsHidden } from '@/libs/hooks/useLicense';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService, LogLevel, LogWindow } from '@husonym/sdk';
 import { ReloadIcon } from '@radix-ui/react-icons';
@@ -23,7 +23,7 @@ export default function JobRunLogs({
   runId,
   isRunning,
 }: JobRunLogsProps): ReactElement {
-  const { allowed } = useLicenseFeature('run_logs');
+  const hidden = useRunLogsHidden();
   const [selectedLogLevel, setSelectedLogLevel] = useState<LogLevel>(
     LogLevel.UNSPECIFIED
   );
@@ -44,8 +44,9 @@ export default function JobRunLogs({
       window: LogWindow.ONE_DAY,
     },
     {
-      // The API refuses the logs of a license without the feature: do not ask.
-      enabled: !!runId && !!accountId && allowed,
+      // The API refuses the logs under a license in force that lacks the feature: do
+      // not ask then. Under a license that has lapsed, or none, it serves them.
+      enabled: !!runId && !!accountId && !hidden,
       refetchInterval(query) {
         return query.state.data && isRunning ? TEN_SECONDS : 0;
       },
@@ -59,7 +60,7 @@ export default function JobRunLogs({
     }
   }
 
-  if (!allowed) {
+  if (hidden) {
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Logs</h2>

@@ -144,8 +144,8 @@ assigned, an identity provider that is already declared and API keys that alread
 keep working. An account that has already declared its identity provider can always replace
 it, for instance when the provider changes its issuer or its client id, whatever the
 license; only declaring the first one needs `sso`. Likewise `scheduling` is checked when a schedule is set or resumed: a schedule
-that already runs keeps running. The logs of a run are not served when `run_logs` is not
-included, while the run, its status and its events stay readable.
+that already runs keeps running. The logs of a run are not served when the license in force
+does not include `run_logs`, while the run, its status and its events stay readable.
 
 ## As your license approaches expiry
 
@@ -181,7 +181,8 @@ included while the license is in force: once it is not, none of them is.
 
 **Keeps working:**
 
-- viewing every job, run, connection, hook and mapping in your history
+- viewing every job, run, connection, hook and mapping in your history, and the logs of
+  your runs
 - pausing a schedule, and turning a hook off
 - cancelling or terminating a run that is already going
 - deleting jobs, hooks and connections
@@ -189,9 +190,6 @@ included while the license is in force: once it is not, none of them is.
 Runs already in progress when the license expires are not interrupted. One exception: a
 run that maps the PII text transformer asks the API to rewrite each value, and the API
 refuses once the license has expired, so that run fails.
-
-The logs of a run are the one read that needs the license in force: they are served only
-while it is, and the `run_logs` feature is included.
 
 Nothing is deleted, and no configuration is lost. Installing a renewed license restores
 everything immediately — no data migration, no re-setup.

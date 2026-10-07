@@ -823,9 +823,16 @@ func (s *Service) streamLogs(
 		return err
 	}
 	// The one read the license can close: serving the logs of a run is the feature, while the
-	// run itself, its status and its events stay readable.
-	if err := user.EnforceFeature(ctx, req.GetAccountId(), license.FeatureRunLogs); err != nil {
+	// run itself, its status and its events stay readable. Only a license in force that does
+	// not include it closes it. A license that has lapsed, or an instance without one, still
+	// allows consulting, the logs like the rest: this does not go through EnforceFeature, which
+	// asks for a license in force first.
+	licensed, err := user.IsLicensed(ctx, req.GetAccountId())
+	if err != nil {
 		return err
+	}
+	if licensed && !user.HasFeature(license.FeatureRunLogs) {
+		return husonymerrors.NewForbidden(license.NotIncludedMessage(license.FeatureRunLogs))
 	}
 
 	switch *s.cfg.RunLogConfig.RunLogType {

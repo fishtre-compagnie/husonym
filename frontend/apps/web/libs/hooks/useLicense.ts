@@ -1,4 +1,4 @@
-import { isFeatureAvailable } from '@/libs/license/license';
+import { areRunLogsHidden, isFeatureAvailable } from '@/libs/license/license';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
 
@@ -16,4 +16,11 @@ export function useLicenseFeature(name: string): {
     allowed: isFeatureAvailable(data !== undefined, data?.license, name),
     isLoading,
   };
+}
+
+// Whether the logs of a run are hidden: only under a license in force that does not
+// include them. A license that has lapsed, or none at all, leaves them readable.
+export function useRunLogsHidden(): boolean {
+  const { data } = useQuery(UserAccountService.method.getSystemInformation);
+  return areRunLogsHidden(data !== undefined, data?.license);
 }

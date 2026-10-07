@@ -158,7 +158,8 @@ Server destination. The bulk anonymization call and the PII text transformer nee
 
 **Deliberately not gated** — this half matters as much:
 
-- every `Get*`, except `GetJobRunLogsStream`, which the `run_logs` feature closes
+- every `Get*`: a license that has lapsed, or an instance without one, closes no read (the
+  logs of a run included)
 - `DeleteJob`, `DeleteJobDestinationConnection`
 - `CancelJobRun`, `TerminateJobRun`
 - pausing a schedule (only *resuming* is gated)
@@ -200,7 +201,7 @@ license: a feature is never granted by a license that is not in force.
 | `mcp` | none: the gate is in the CLI's MCP server | tool calls of the MCP server are refused |
 | `rbac` | giving a member a role other than administrator | none: existing roles keep applying |
 | `sso` | declaring, or trying, the OIDC provider of an account that has none yet | none: a declared provider keeps signing in, and can be replaced and tried whatever the license |
-| `run_logs` | none | the logs of a run are not served |
+| `run_logs` | none | under a license in force that lacks it, the logs of a run are not served (`GetJobRunLogs` and `GetJobRunLogsStream`); under no license in force they are served |
 
 The semantics of the list in a key (`Key.HasFeature`):
 
@@ -225,8 +226,8 @@ The semantics of the list in a key (`Key.HasFeature`):
   is requested (`CreateJobRun`) and when a run is about to start (`IsAccountStatusValid`
   with the job id, which also holds a scheduled run). The job starts whole or not at all.
 - **Reads, stops, deletes and turning off always work**, with the one exception of the
-  run logs below. A closed feature never refuses anything else that only reads, cancels,
-  terminates or removes, as with an expired license.
+  run logs below, under a license in force. A closed feature never refuses anything else
+  that only reads, cancels, terminates or removes, as with an expired license.
   Deleting a hook or an API key, pausing a schedule, turning a hook off and deleting a job
   that uses the feature are all open.
 
@@ -239,11 +240,13 @@ account that already holds a provider replaces it and tries it (`TestAccountSett
 whatever the license says, in force or not, feature or not: an identity provider that
 changes its issuer or its client id must not leave an account unable to repair its sign-in.
 Only an account with no provider stored is asked for `sso`. `run_logs` closes a
-read instead: the logs are not served, while the run, its status and its events stay
-readable. Like every feature it goes through `EnforceFeature`, which asks for a license in
-force first, so run logs are no longer served once the license is frozen or absent: this
-is the one read that the lapse of a license closes, and a change from when only
-configuration was gated.
+read instead: under a license **in force** that does not include it, the logs are not
+served, by the unary read (`GetJobRunLogs`) or by the streaming one
+(`GetJobRunLogsStream`), while the run, its status and its events stay readable. It is the
+one gate that does not go through `EnforceFeature`: that helper asks for a license in
+force first, and a license that has lapsed must still allow consulting. With no license,
+or a frozen one, the logs are served as they were before features existed. The web app
+follows the same rule (`areRunLogsHidden`).
 
 Connectors are not features. What a license allows in connections is
 `limits.allowed_connection_types`, below.
@@ -269,7 +272,8 @@ Said plainly, so nobody relies on more than is there:
 
 ### Where the gates are
 
-A feature is closed in one place per entry point, never by a `Get*`:
+A feature is closed in one place per entry point, never by a `Get*` other than the run
+logs under a license in force:
 `User.EnforceFeature` (which refuses `this license does not include <feature>` and asks for
 a valid license first) in the services, `hooks` for the hook procedures, `licensegate`
 for what a job uses, and the worker for the two reads below. The worker reads the license

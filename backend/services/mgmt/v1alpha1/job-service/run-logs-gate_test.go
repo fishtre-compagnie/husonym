@@ -70,6 +70,22 @@ func Test_JobRunLogs_AreServedUnderTheDefaultLicense(t *testing.T) {
 	require.ErrorContains(t, err, "must provide a labels query")
 }
 
+// A license that has lapsed, or an instance without one, still allows consulting: the logs of a
+// run are refused only by a license in force that does not include them. As above, the call goes
+// past the check and is stopped by the labels query the test leaves out.
+func Test_JobRunLogs_AreServedWhenNoLicenseIsInForce(t *testing.T) {
+	for name, eelicense := range map[string]*testutil.FakeEELicense{
+		"a license not in force that named no feature list": testutil.NewFakeEELicense(),
+		"a license not in force that did not list run_logs": testutil.NewFakeEELicense(testutil.WithFeatures(license.FeatureRbac)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := getRunLogs(t, runLogsService(t, eelicense))
+
+			require.ErrorContains(t, err, "must provide a labels query")
+		})
+	}
+}
+
 // Logs that are not configured are answered as they were, whatever the license includes: the
 // answer comes before the user is asked for, so no license is read.
 func Test_JobRunLogs_NotConfiguredIsAnsweredFirst(t *testing.T) {

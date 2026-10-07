@@ -73,6 +73,19 @@ export function isFeatureAvailable(
   return !wasRead || isFeatureAllowed(license, name);
 }
 
+// Whether the logs of a run are hidden. Reading keeps working when a license has lapsed
+// or is absent, the logs like the rest: only a license that was read, is in force and
+// does not include run_logs hides them, as the API refuses them then.
+export function areRunLogsHidden(
+  wasRead: boolean,
+  license: SystemLicense | undefined
+): boolean {
+  if (!wasRead || !license?.isValid) {
+    return false;
+  }
+  return !isFeatureAllowed(license, 'run_logs');
+}
+
 // Without the rbac feature, a member can be given the administrator role and no other.
 export function isRoleSelectable(
   rbacAllowed: boolean,

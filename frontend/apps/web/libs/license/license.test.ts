@@ -8,6 +8,7 @@ import {
   SystemLicenseSchema,
 } from '@husonym/sdk';
 import {
+  areRunLogsHidden,
   featureLabel,
   featureRows,
   isFeatureAllowed,
@@ -140,6 +141,48 @@ describe('isFeatureAvailable', () => {
       allFeatures: true,
     });
     expect(isFeatureAvailable(true, frozen, 'subsetting')).toBe(false);
+  });
+});
+
+describe('areRunLogsHidden', () => {
+  it('shows the logs while the license is being read', () => {
+    expect(areRunLogsHidden(false, undefined)).toBe(false);
+  });
+
+  it('shows the logs when the license could not be read', () => {
+    // A failed request leaves nothing read: the API has the last word.
+    expect(areRunLogsHidden(false, undefined)).toBe(false);
+  });
+
+  it('shows the logs under a license in force that includes run_logs', () => {
+    expect(areRunLogsHidden(true, listLicense(['run_logs']))).toBe(false);
+    const everything = create(SystemLicenseSchema, {
+      isValid: true,
+      state: 'valid',
+      allFeatures: true,
+    });
+    expect(areRunLogsHidden(true, everything)).toBe(false);
+  });
+
+  it('hides the logs under a license in force that lacks run_logs', () => {
+    expect(areRunLogsHidden(true, listLicense(['subsetting']))).toBe(true);
+    expect(areRunLogsHidden(true, listLicense([]))).toBe(true);
+  });
+
+  it('shows the logs under a frozen license, whatever it listed', () => {
+    // A license that has lapsed still allows consulting, the logs like the rest.
+    const frozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+      features: ['subsetting'],
+    });
+    expect(areRunLogsHidden(true, frozen)).toBe(false);
+  });
+
+  it('shows the logs when the instance has no license', () => {
+    expect(areRunLogsHidden(true, undefined)).toBe(false);
+    const none = create(SystemLicenseSchema, { isValid: false, state: 'none' });
+    expect(areRunLogsHidden(true, none)).toBe(false);
   });
 });
 
