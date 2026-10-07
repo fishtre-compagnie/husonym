@@ -14,6 +14,8 @@ import (
 	"go.temporal.io/api/serviceerror"
 	workflowpb "go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -144,6 +146,63 @@ func Test_TemporalFate_UnknownWorkflowIsNotFound(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, found)
 	}
+}
+
+func Test_TemporalFate_ANotFoundThatIsNotTheWorkflowIsAnError(t *testing.T) {
+	for _, notWorkflow := range []error{
+		serviceerror.NewNamespaceNotFound("ns"),
+		status.Error(codes.NotFound, "something else"),
+	} {
+		describe := func(context.Context, string, string, *slog.Logger) (*workflowservice.DescribeWorkflowExecutionResponse, error) {
+			return nil, notWorkflow
+		}
+		_, _, found, err := TemporalFate(describe, slog.Default())(t.Context(), "acc", "run")
+		require.ErrorIs(t, err, notWorkflow)
+		require.False(t, found)
+	}
+}
+
+func Test_SettleOnce_ANamespaceThatIsMissingLeavesTheRun(t *testing.T) {
+	describe := func(context.Context, string, string, *slog.Logger) (*workflowservice.DescribeWorkflowExecutionResponse, error) {
+		return nil, serviceerror.NewNamespaceNotFound("ns")
+	}
+	runs := &fakeRuns{open: []usagestore.OpenRun{{RunId: "a"}}}
+	require.NoError(t, New(runs, TemporalFate(describe, slog.Default()), slog.Default()).SettleOnce(t.Context(), time.Now()))
+	require.Empty(t, runs.settled)
+}
+
+func Test_SettleOnce_ACallThatHangsLeavesTheRunAndTheNextIsSettled(t *testing.T) {
+	runs := &fakeRuns{open: []usagestore.OpenRun{{RunId: "a"}, {RunId: "b"}}}
+	fate := func(ctx context.Context, _, runId string) (usagestore.Status, *time.Time, bool, error) {
+		if runId == "a" {
+			<-ctx.Done()
+			return "", nil, false, ctx.Err()
+		}
+		return usagestore.StatusCompleted, nil, true, nil
+	}
+	s := New(runs, fate, slog.Default())
+	s.fateTimeout = 20 * time.Millisecond
+	require.NoError(t, s.SettleOnce(t.Context(), time.Now()))
+	require.Equal(t, []settled{{"b", usagestore.StatusCompleted, nil}}, runs.settled)
+}
+
+type failingSettle struct{ fakeRuns }
+
+func (f *failingSettle) Settle(ctx context.Context, runId string, status usagestore.Status, endedAt *time.Time) error {
+	if runId == "a" {
+		return errors.New("database is down")
+	}
+	return f.fakeRuns.Settle(ctx, runId, status, endedAt)
+}
+
+func Test_SettleOnce_ASettleThatFailsIsLoggedAndTheNextIsSettled(t *testing.T) {
+	runs := &failingSettle{fakeRuns{open: []usagestore.OpenRun{{RunId: "a"}, {RunId: "b"}}}}
+	answers := map[string]answer{
+		"a": {status: usagestore.StatusFailed, found: true},
+		"b": {status: usagestore.StatusFailed, found: true},
+	}
+	require.NoError(t, New(runs, fateOf(answers), slog.Default()).SettleOnce(t.Context(), time.Now()))
+	require.Equal(t, []settled{{"b", usagestore.StatusFailed, nil}}, runs.settled)
 }
 
 func Test_TemporalFate_OtherErrorsAreReturned(t *testing.T) {

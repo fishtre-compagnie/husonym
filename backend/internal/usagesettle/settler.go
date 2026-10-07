@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/api/workflowservice/v1"
@@ -18,6 +18,10 @@ import (
 
 // settleAfter is how long a run may stay open before the orchestrator is asked about it.
 const settleAfter = 24 * time.Hour
+
+// fateTimeout bounds one question to the orchestrator, so that a call that hangs does not
+// hold up the other runs.
+const fateTimeout = 30 * time.Second
 
 // Runs is the part of the usage store the settler uses.
 type Runs interface {
@@ -38,10 +42,12 @@ type Settler struct {
 	runs   Runs
 	fate   Fate
 	logger *slog.Logger
+
+	fateTimeout time.Duration
 }
 
 func New(runs Runs, fate Fate, logger *slog.Logger) *Settler {
-	return &Settler{runs: runs, fate: fate, logger: logger}
+	return &Settler{runs: runs, fate: fate, logger: logger, fateTimeout: fateTimeout}
 }
 
 // SettleOnce settles the runs still open that started more than a day before now. A run whose
@@ -55,7 +61,9 @@ func (s *Settler) SettleOnce(ctx context.Context, now time.Time) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		status, endedAt, found, err := s.fate(ctx, run.AccountId, run.RunId)
+		fateCtx, cancel := context.WithTimeout(ctx, s.fateTimeout)
+		status, endedAt, found, err := s.fate(fateCtx, run.AccountId, run.RunId)
+		cancel()
 		if err != nil {
 			s.logger.Warn("could not tell what became of a run", "run_id", run.RunId, "error", err)
 			continue
@@ -95,8 +103,7 @@ func TemporalFate(describe DescribeFunc, logger *slog.Logger) Fate {
 	return func(ctx context.Context, accountId, runId string) (usagestore.Status, *time.Time, bool, error) {
 		resp, err := describe(ctx, accountId, runId, logger)
 		if err != nil {
-			var notFound *serviceerror.NotFound
-			if errors.As(err, &notFound) || husonymerrors.IsNotFound(err) {
+			if isUnknownWorkflow(err) {
 				return "", nil, false, nil
 			}
 			return "", nil, false, err
@@ -132,4 +139,17 @@ func translate(status enumspb.WorkflowExecutionStatus) (usagestore.Status, bool)
 	default:
 		return "", false
 	}
+}
+
+// isUnknownWorkflow tells that the workflow does not exist, and nothing broader: a namespace
+// that is missing is also a not-found, and must not end the runs of an account. The two shapes
+// are Temporal's own answer, and the one the client manager gives when no execution is listed
+// for the workflow id.
+func isUnknownWorkflow(err error) bool {
+	var notFound *serviceerror.NotFound
+	if errors.As(err, &notFound) {
+		return true
+	}
+	var connectErr *connect.Error
+	return errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound
 }
