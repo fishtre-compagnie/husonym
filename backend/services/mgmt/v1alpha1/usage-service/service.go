@@ -6,6 +6,7 @@ package v1alpha1_usageservice
 
 import (
 	"context"
+	"time"
 
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
@@ -17,6 +18,10 @@ import (
 type runStore interface {
 	RunStarted(ctx context.Context, run usagestore.RunStart) error
 	RunEnded(ctx context.Context, run usagestore.RunEnd) error
+	CloseRun(
+		ctx context.Context, runId string, status usagestore.Status, endedAt time.Time,
+		rowsRead, rowsDiscarded, retries int64,
+	) error
 }
 
 type Service struct {

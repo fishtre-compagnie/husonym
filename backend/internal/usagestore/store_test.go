@@ -2,6 +2,7 @@ package usagestore
 
 import (
 	"testing"
+	"time"
 
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,14 @@ func Test_RunEnded_RefusesAStatusThatIsNotAnEnd(t *testing.T) {
 			RunId: "r", AccountId: "00000000-0000-0000-0000-000000000001",
 			JobId: "00000000-0000-0000-0000-000000000002", Status: status,
 		})
+		require.ErrorContains(t, err, "cannot end", "status %q", status)
+	}
+}
+
+func Test_CloseRun_RefusesAStatusThatIsNotAnEnd(t *testing.T) {
+	s := New(nil)
+	for _, status := range []Status{StatusRunning, StatusTerminated, StatusTimedOut, "", "bogus"} {
+		err := s.CloseRun(t.Context(), "r", status, time.Now(), 0, 0, 0)
 		require.ErrorContains(t, err, "cannot end", "status %q", status)
 	}
 }

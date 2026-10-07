@@ -127,6 +127,31 @@ func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocri
 	})
 }
 
+// CloseRun closes the row of a run that is still running, with the status, the end and the counts
+// the worker told. It creates nothing: a run with no row, or whose row finished, is left as it
+// is. It serves a run whose job is gone, of which nothing else is known.
+func (s *Store) CloseRun(
+	ctx context.Context,
+	runId string,
+	status Status,
+	endedAt time.Time,
+	rowsRead, rowsDiscarded, retries int64,
+) error {
+	switch status {
+	case StatusCompleted, StatusFailed, StatusCanceled:
+	default:
+		return fmt.Errorf("a run cannot end with the status %q", status)
+	}
+	return s.db.Q.CloseRunUsage(ctx, s.db.Db, db_queries.CloseRunUsageParams{
+		RunID:         runId,
+		Status:        string(status),
+		EndedAt:       toTimestamptz(endedAt),
+		RowsRead:      rowsRead,
+		RowsDiscarded: rowsDiscarded,
+		Retries:       retries,
+	})
+}
+
 // OpenRunsStartedBefore gives the runs still open that started before the given time.
 func (s *Store) OpenRunsStartedBefore(ctx context.Context, before time.Time) ([]OpenRun, error) {
 	rows, err := s.db.Q.ListOpenRunUsageStartedBefore(ctx, s.db.Db, toTimestamptz(before))

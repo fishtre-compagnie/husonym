@@ -43,7 +43,8 @@ func (s *Service) RecordRunStarted(
 	return connect.NewResponse(&mgmtv1alpha1.RecordRunStartedResponse{}), nil
 }
 
-// RecordRunEnded keeps a run that has ended. The row is created when the start was never told.
+// RecordRunEnded keeps a run that has ended. The row is created when the start was never told,
+// unless the job is gone: the row of such a run is closed if it exists, and not created.
 func (s *Service) RecordRunEnded(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.RecordRunEndedRequest],
@@ -56,8 +57,20 @@ func (s *Service) RecordRunEnded(
 		return nil, husonymerrors.NewBadRequest("the outcome of the run is not one the service knows")
 	}
 	job, found, err := s.jobOf(ctx, req.Msg.GetJobId())
-	if err != nil || !found {
-		return connect.NewResponse(&mgmtv1alpha1.RecordRunEndedResponse{}), err
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		// The job was deleted while the run ran. The account and the kind are not known, so no
+		// row is created, but a row already there is closed.
+		err = s.store.CloseRun(
+			ctx, req.Msg.GetRunId(), status, req.Msg.GetEndedAt().AsTime(),
+			req.Msg.GetRowsRead(), req.Msg.GetRowsDiscarded(), req.Msg.GetRetries(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unable to close the run of a job that is gone: %w", err)
+		}
+		return connect.NewResponse(&mgmtv1alpha1.RecordRunEndedResponse{}), nil
 	}
 
 	err = s.store.RunEnded(ctx, usagestore.RunEnd{
@@ -97,7 +110,7 @@ func (s *Service) jobOf(ctx context.Context, jobId string) (db_queries.HusonymAp
 	if husonymdb.IsNoRows(err) {
 		logger_interceptor.GetLoggerFromContextOrDefault(ctx).InfoContext(
 			ctx,
-			"the job of a run is gone, so nothing is kept of the run",
+			"the job of a run is gone",
 			"jobId", jobId,
 		)
 		return db_queries.HusonymApiJob{}, false, nil

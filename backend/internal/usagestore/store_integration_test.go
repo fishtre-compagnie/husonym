@@ -192,6 +192,39 @@ func Test_Settle_OnlyTouchesARunStillOpen(t *testing.T) {
 	require.Nil(t, lost.endedAt)
 }
 
+func Test_CloseRun_ClosesOnlyARunningRowThatExists(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, store.RunStarted(ctx, RunStart{
+		RunId: "open", AccountId: accountA, JobId: jobA, Kind: JobKindSync, StartedAt: now,
+	}))
+	require.NoError(t, store.RunEnded(ctx, RunEnd{
+		RunId: "done", AccountId: accountA, JobId: jobA, Kind: JobKindSync,
+		StartedAt: now, EndedAt: now, Status: StatusCompleted, RowsRead: 5,
+	}))
+
+	ended := now.Add(time.Minute)
+	require.NoError(t, store.CloseRun(ctx, "open", StatusFailed, ended, 120, 3, 2))
+	require.NoError(t, store.CloseRun(ctx, "done", StatusFailed, ended, 999, 9, 9))
+	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 1, 1, 1))
+
+	open := readRun(ctx, t, container, "open")
+	require.Equal(t, "failed", open.status)
+	require.True(t, ended.Equal(*open.endedAt))
+	require.Equal(t, int64(120), open.rowsRead)
+	require.Equal(t, int64(3), open.rowsDiscarded)
+	require.Equal(t, int64(2), open.retries)
+	done := readRun(ctx, t, container, "done")
+	require.Equal(t, "completed", done.status)
+	require.Equal(t, int64(5), done.rowsRead)
+	require.Equal(t, 2, countRows(ctx, t, container, "run_usage"))
+}
+
 func Test_OpenRunsStartedBefore_OnlyOldRunningOnes(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return

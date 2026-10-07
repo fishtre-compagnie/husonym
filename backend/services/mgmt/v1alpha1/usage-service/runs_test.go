@@ -33,6 +33,26 @@ const (
 type fakeStore struct {
 	started []usagestore.RunStart
 	ended   []usagestore.RunEnd
+	// running holds the runs the store has a running row for; CloseRun closes only those.
+	running map[string]bool
+	closed  []string
+	closure usagestore.RunEnd
+}
+
+func (f *fakeStore) CloseRun(
+	_ context.Context, runId string, status usagestore.Status, endedAt time.Time,
+	rowsRead, rowsDiscarded, retries int64,
+) error {
+	if !f.running[runId] {
+		return nil
+	}
+	delete(f.running, runId)
+	f.closed = append(f.closed, runId)
+	f.closure = usagestore.RunEnd{
+		RunId: runId, Status: status, EndedAt: endedAt,
+		RowsRead: rowsRead, RowsDiscarded: rowsDiscarded, Retries: retries,
+	}
+	return nil
 }
 
 func (f *fakeStore) RunStarted(_ context.Context, run usagestore.RunStart) error {
@@ -206,6 +226,42 @@ func TestRecordRunOfAnUnknownJobKeepsNothing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp2.Msg)
 	require.Empty(t, f.store.started)
+	require.Empty(t, f.store.ended)
+}
+
+// The end of a run whose job is gone still closes the row that exists for the run.
+func TestRecordRunEndedOfAGoneJobClosesTheRowThatExists(t *testing.T) {
+	f := newFixture(t, userdata.WorkerOnly{})
+	f.store.running = map[string]bool{"run-1": true}
+	jobUuid, err := husonymdb.ToUuid(aJobId)
+	require.NoError(t, err)
+	f.querier.On("GetJobById", mock.Anything, mock.Anything, jobUuid).
+		Return(db_queries.HusonymApiJob{}, pgx.ErrNoRows)
+
+	_, err = f.svc.RecordRunEnded(context.Background(), finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED))
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"run-1"}, f.store.closed)
+	require.Equal(t, usagestore.RunEnd{
+		RunId: "run-1", Status: usagestore.StatusFailed, EndedAt: ended,
+		RowsRead: 120, RowsDiscarded: 3, Retries: 2,
+	}, f.store.closure)
+	require.Empty(t, f.store.ended, "no row is created for a job that is gone")
+}
+
+// With no row for the run, the end of a run whose job is gone keeps nothing and is no error.
+func TestRecordRunEndedOfAGoneJobWithoutARowKeepsNothing(t *testing.T) {
+	f := newFixture(t, userdata.WorkerOnly{})
+	jobUuid, err := husonymdb.ToUuid(aJobId)
+	require.NoError(t, err)
+	f.querier.On("GetJobById", mock.Anything, mock.Anything, jobUuid).
+		Return(db_queries.HusonymApiJob{}, pgx.ErrNoRows)
+
+	resp, err := f.svc.RecordRunEnded(context.Background(), finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_COMPLETED))
+
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg)
+	require.Empty(t, f.store.closed)
 	require.Empty(t, f.store.ended)
 }
 

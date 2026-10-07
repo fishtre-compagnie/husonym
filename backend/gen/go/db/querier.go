@@ -17,6 +17,8 @@ type Querier interface {
 	// means somebody got there first, which the caller reads as "look again".
 	AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)
 	AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error)
+	// Closes the row of a run still running, and creates nothing.
+	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error
 	ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)
 	// Whether an issuer is declared by an account other than the one given. Two accounts
 	// sharing an issuer share the subject space it mints, so the second one to claim it would

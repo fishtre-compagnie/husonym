@@ -11,6 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const closeRunUsage = `-- name: CloseRunUsage :exec
+UPDATE husonym_api.run_usage
+SET status = $2, ended_at = $3, rows_read = $4, rows_discarded = $5, retries = $6
+WHERE run_id = $1 AND status = 'running'
+`
+
+type CloseRunUsageParams struct {
+	RunID         string
+	Status        string
+	EndedAt       pgtype.Timestamptz
+	RowsRead      int64
+	RowsDiscarded int64
+	Retries       int64
+}
+
+// Closes the row of a run still running, and creates nothing.
+func (q *Queries) CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error {
+	_, err := db.Exec(ctx, closeRunUsage,
+		arg.RunID,
+		arg.Status,
+		arg.EndedAt,
+		arg.RowsRead,
+		arg.RowsDiscarded,
+		arg.Retries,
+	)
+	return err
+}
+
 const getInstanceId = `-- name: GetInstanceId :one
 
 SELECT id

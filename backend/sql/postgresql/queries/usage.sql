@@ -31,6 +31,12 @@ ON CONFLICT (run_id) DO UPDATE SET
   retries = EXCLUDED.retries
 WHERE husonym_api.run_usage.status = 'running';
 
+-- Closes the row of a run still running, and creates nothing.
+-- name: CloseRunUsage :exec
+UPDATE husonym_api.run_usage
+SET status = $2, ended_at = $3, rows_read = $4, rows_discarded = $5, retries = $6
+WHERE run_id = $1 AND status = 'running';
+
 -- name: ListOpenRunUsageStartedBefore :many
 SELECT run_id, account_id, started_at
 FROM husonym_api.run_usage
