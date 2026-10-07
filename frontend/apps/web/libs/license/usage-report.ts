@@ -1,3 +1,4 @@
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { UsageReportingMode, UsageReportStatus } from '@husonym/sdk';
 import type {
   GetUsageReportingResponse,
@@ -158,4 +159,19 @@ export function periodFileContent(
 
 export function periodFileName(fromMonth: string, toMonth: string): string {
   return `usage-report-${fromMonth}-${toMonth}.json`;
+}
+
+// The moment the first report may leave, while it is ahead. The field is the earliest
+// moment the oldest report still to be sent may leave: once past, the report has not
+// left yet, and a date under "First report" would read as the day it did. Only an
+// instance that sends has one.
+export function firstReportAt(
+  reporting: Pick<GetUsageReportingResponse, 'mode' | 'firstSendAt'>,
+  now: Date
+): Date | undefined {
+  if (reporting.mode !== UsageReportingMode.ONLINE || !reporting.firstSendAt) {
+    return undefined;
+  }
+  const at = timestampDate(reporting.firstSendAt);
+  return at.getTime() > now.getTime() ? at : undefined;
 }

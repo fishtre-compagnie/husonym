@@ -28,6 +28,7 @@ import {
   periodFileContent,
   periodFileName,
   prettyDocument,
+  firstReportAt,
   reportDayLabel,
   reportingLabel,
   reportingNotice,
@@ -129,7 +130,7 @@ function ReportingDetails({
   );
   const sends = reporting.mode === UsageReportingMode.ONLINE;
   const next = nextReport(reporting.reports);
-  const firstAt = formatTimestamp(reporting.firstSendAt);
+  const firstAt = formatOptionalDate(firstReportAt(reporting, new Date()));
 
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm">
@@ -154,10 +155,10 @@ function ReportingDetails({
           </dd>
         </>
       )}
-      {/* The API sets first_send_at while the instance has a report to send and has
-          sent none since it started sending: 24 hours after that report was
-          prepared. Its presence is the whole condition. */}
-      {sends && firstAt && (
+      {/* first_send_at is the earliest moment the oldest report still to be sent may
+          leave. It can be past while that report has not left, so it is shown only
+          while it is ahead (firstReportAt). */}
+      {firstAt && (
         <>
           <dt className="text-muted-foreground">First report</dt>
           <dd>{firstAt}</dd>
@@ -445,6 +446,10 @@ function refusalMessage(err: unknown): string {
     return err.rawMessage;
   }
   return getErrorMessage(err);
+}
+
+function formatOptionalDate(date: Date | undefined): string | undefined {
+  return date ? formatDate(date) : undefined;
 }
 
 function formatTimestamp(timestamp: Timestamp | undefined): string | undefined {

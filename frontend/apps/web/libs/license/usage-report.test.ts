@@ -1,4 +1,5 @@
 import { create } from '@bufbuild/protobuf';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import {
   GetUsageReportingResponseSchema,
   UsageReportingMode,
@@ -6,6 +7,7 @@ import {
   UsageReportSummarySchema,
 } from '@husonym/sdk';
 import {
+  firstReportAt,
   licensedReportingLabel,
   nextReport,
   periodFileContent,
@@ -253,4 +255,35 @@ describe('periodFileName', () => {
       'usage-report-2026-08-2026-10.json'
     );
   });
+});
+
+describe('firstReportAt', () => {
+  const now = new Date('2026-10-07T12:00:00Z');
+  const at = (hours: number) =>
+    timestampFromDate(new Date(now.getTime() + hours * 3600 * 1000));
+
+  it('is the moment when it is ahead', () => {
+    expect(
+      firstReportAt(reporting({ mode: ONLINE, firstSendAt: at(3) }), now)
+    ).toEqual(new Date('2026-10-07T15:00:00Z'));
+  });
+
+  it('is nothing once the moment is past, the report not having left', () => {
+    expect(
+      firstReportAt(reporting({ mode: ONLINE, firstSendAt: at(-3) }), now)
+    ).toBeUndefined();
+  });
+
+  it('is nothing when the moment is absent', () => {
+    expect(firstReportAt(reporting({ mode: ONLINE }), now)).toBeUndefined();
+  });
+
+  it.each([OFFLINE_REPORT, NONE, UNSPECIFIED])(
+    'is nothing when the mode in force is %s',
+    (mode) => {
+      expect(
+        firstReportAt(reporting({ mode, firstSendAt: at(3) }), now)
+      ).toBeUndefined();
+    }
+  );
 });
