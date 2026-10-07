@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
@@ -17,7 +18,11 @@ import (
 )
 
 // recorder is a usage client that keeps what it is sent, and answers with its error.
+// It embeds the client interface, so a call to a method it does not define fails loudly
+// and the fake keeps compiling when the service gains a procedure.
 type recorder struct {
+	mgmtv1alpha1connect.UsageServiceClient
+
 	started []*mgmtv1alpha1.RecordRunStartedRequest
 	ended   []*mgmtv1alpha1.RecordRunEndedRequest
 	err     error
