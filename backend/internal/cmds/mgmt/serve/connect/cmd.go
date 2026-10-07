@@ -52,6 +52,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagesettle"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
@@ -97,6 +98,9 @@ import (
 // licenseRefreshInterval is how often an instance reads the license key in force again, and
 // how often it looks at the license file for a new one.
 const licenseRefreshInterval = time.Minute
+
+// usageSettleInterval is how often the runs left open without an end are looked at.
+const usageSettleInterval = time.Hour
 
 // licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
 // so that a read that hangs has ended before the next one is due.
@@ -539,6 +543,11 @@ func serve(ctx context.Context) error {
 		temporalConfigProvider,
 		clientmanager.NewTemporalClientFactory(),
 	)
+	go usagesettle.New(
+		usageStore,
+		usagesettle.TemporalFate(tfwfmgr.DescribeWorklowExecution, slogger),
+		slogger,
+	).Every(licenseCtx, usageSettleInterval)
 
 	authadminclient, err := getAuthAdminClient(ctx, authclient, slogger)
 	if err != nil {
