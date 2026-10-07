@@ -23,6 +23,17 @@ func piiText(anonymizers ...*mgmtv1alpha1.TransformerConfig) *mgmtv1alpha1.Trans
 	}}
 }
 
+// piiTextWithDefault is a PII-text whose default anonymizer runs config.
+func piiTextWithDefault(config *mgmtv1alpha1.TransformerConfig) *mgmtv1alpha1.TransformerConfig {
+	return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+		TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{
+			DefaultAnonymizer: &mgmtv1alpha1.PiiAnonymizer{Config: &mgmtv1alpha1.PiiAnonymizer_Transform_{
+				Transform: &mgmtv1alpha1.PiiAnonymizer_Transform{Config: config},
+			}},
+		},
+	}}
+}
+
 func userDefined(id string) *mgmtv1alpha1.TransformerConfig {
 	return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
 		UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: id},
@@ -155,8 +166,23 @@ func Test_FeaturesUsedBy(t *testing.T) {
 			want:  []license.Feature{license.FeaturePiiText, license.FeatureCustomTransformers},
 		},
 		{
-			name:  "pii text through a user-defined transformer nested in the anonymizers of a pii text",
+			name:  "pii text whose entity anonymizer is a non-pii user-defined transformer",
 			facts: JobFacts{Job: &mgmtv1alpha1.Job{Mappings: mappingWith(piiText(userDefined("plain")))}},
+			want:  []license.Feature{license.FeaturePiiText, license.FeatureCustomTransformers},
+		},
+		{
+			name:  "pii text whose entity anonymizer is a javascript transform",
+			facts: JobFacts{Job: &mgmtv1alpha1.Job{Mappings: mappingWith(piiText(transformJavascript()))}},
+			want:  []license.Feature{license.FeaturePiiText, license.FeatureCustomTransformers},
+		},
+		{
+			name:  "pii text whose default anonymizer is a javascript generate",
+			facts: JobFacts{Job: &mgmtv1alpha1.Job{Mappings: mappingWith(piiTextWithDefault(generateJavascript()))}},
+			want:  []license.Feature{license.FeaturePiiText, license.FeatureCustomTransformers},
+		},
+		{
+			name:  "pii text whose default anonymizer is a user-defined transformer",
+			facts: JobFacts{Job: &mgmtv1alpha1.Job{Mappings: mappingWith(piiTextWithDefault(userDefined("plain")))}},
 			want:  []license.Feature{license.FeaturePiiText, license.FeatureCustomTransformers},
 		},
 		{
@@ -368,4 +394,14 @@ func Test_RefusalMessage(t *testing.T) {
 		"this job uses features the license does not include: pii_text",
 		RefusalMessage([]license.Feature{license.FeaturePiiText}),
 	)
+}
+
+func Test_FeaturesUsedBy_LooksUpAUserDefinedTransformerOfTheDefaultAnonymizer(t *testing.T) {
+	job := &mgmtv1alpha1.Job{Mappings: mappingWith(piiTextWithDefault(userDefined("a")))}
+	calls := map[string]int{}
+
+	_, err := FeaturesUsedBy(context.Background(), JobFacts{Job: job}, lookupOf(map[string]*mgmtv1alpha1.TransformerConfig{}, calls))
+
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{"a": 1}, calls)
 }

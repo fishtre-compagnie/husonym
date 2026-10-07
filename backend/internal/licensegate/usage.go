@@ -38,14 +38,20 @@ func FeaturesUsedBy(ctx context.Context, facts JobFacts, lookup TransformerLooku
 	}
 
 	stored := map[string]*mgmtv1alpha1.TransformerConfig{}
-	for _, config := range transformerConfigsOf(job) {
-		if config.GetTransformPiiTextConfig() != nil {
-			used[license.FeaturePiiText] = true
-		}
-		if config.GetTransformJavascriptConfig() != nil || config.GetGenerateJavascriptConfig() != nil {
-			used[license.FeatureCustomTransformers] = true
-		}
-		for _, id := range job_util.UserDefinedTransformerIds(config) {
+	for _, mapped := range transformerConfigsOf(job) {
+		// The anonymizers of a PII text may run any transformer but a PII text, JavaScript and
+		// user-defined ones included.
+		for _, config := range job_util.TransformerConfigsRun(mapped) {
+			if config.GetTransformPiiTextConfig() != nil {
+				used[license.FeaturePiiText] = true
+			}
+			if config.GetTransformJavascriptConfig() != nil || config.GetGenerateJavascriptConfig() != nil {
+				used[license.FeatureCustomTransformers] = true
+			}
+			if config.GetUserDefinedTransformerConfig() == nil {
+				continue
+			}
+			id := config.GetUserDefinedTransformerConfig().GetId()
 			used[license.FeatureCustomTransformers] = true
 			if lookup == nil {
 				continue
