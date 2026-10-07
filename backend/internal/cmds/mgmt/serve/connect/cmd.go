@@ -95,6 +95,10 @@ import (
 // how often it looks at the license file for a new one.
 const licenseRefreshInterval = time.Minute
 
+// licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
+// so that a read that hangs has ended before the next one is due.
+const licenseLoadTimeout = 10 * time.Second
+
 func NewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "connect",
@@ -237,18 +241,34 @@ func serve(ctx context.Context) error {
 	licenseStore := licensestore.New(db, licenseRing)
 	// The variables no longer hold the key in force: what they name is offered to the
 	// database, which keeps it when it is newer than the one it holds.
-	licensestore.OfferFromEnvironment(ctx, licenseStore, slogger)
+	environmentAnswered := licensestore.OfferFromEnvironment(ctx, licenseStore, slogger)
 
 	// The license never stops the start: a key that cannot be read is logged by the
 	// refresh and leaves the instance without one. The key is then read again in the
 	// background, so that a key stored by another instance is picked up without a restart.
-	eelicense := license.NewProviderWithKeyring(licenseStore.Current, licenseRing, slogger)
+	// Every load is bound in time: a database that accepts the connection and says nothing
+	// hangs neither the start nor a refresh, behind which a key just installed would wait.
+	eelicense := license.NewProviderWithKeyring(
+		license.LoadWithin(licenseStore.Current, licenseLoadTimeout), licenseRing, slogger,
+	)
 	_ = eelicense.Refresh(ctx)
 	// The context of the command never ends, so the background work gets its own,
 	// which ends when serve returns.
 	licenseCtx, stopLicenseRefresh := context.WithCancel(ctx)
 	defer stopLicenseRefresh()
 	go eelicense.RefreshEvery(licenseCtx, licenseRefreshInterval)
+	if !environmentAnswered {
+		// EE_LICENSE is read once. A database that did not answer for it at the start would
+		// leave an instance that had a license without one until its next restart, so the
+		// value is offered until the database has answered.
+		go licensestore.OfferEnvironmentUntilAnswered(
+			licenseCtx,
+			licenseStore,
+			licenseRefreshInterval,
+			func() { _ = eelicense.Refresh(licenseCtx) },
+			slogger,
+		)
+	}
 	if licenseFile := viper.GetString("EE_LICENSE_FILE"); licenseFile != "" {
 		// A key written to the file is offered without a restart, and is in force in this
 		// instance as soon as the database took it.

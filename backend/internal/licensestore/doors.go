@@ -12,10 +12,18 @@ import (
 // The environment no longer holds the key in force: EE_LICENSE and EE_LICENSE_FILE are doors
 // through which a key is offered to the store, whose rule decides like for any other offer.
 
+// offerTimeout bounds one offer made through a door, so that a database that accepts the
+// connection and says nothing can neither hang a start nor keep a door busy.
+const offerTimeout = 10 * time.Second
+
 // OfferFromEnvironment offers the key of the file EE_LICENSE_FILE names and the key EE_LICENSE
 // holds, both when both are set. Nothing here stops a start: what was done with each key is
 // logged, and so is a file that cannot be read or a database that does not answer.
-func OfferFromEnvironment(ctx context.Context, store *Store, logger *slog.Logger) {
+//
+// It tells whether the store answered for the variable, which is also true when the variable
+// is not set. The variable is read once, so a caller told false keeps offering it with
+// OfferEnvironmentUntilAnswered. The file needs no such care: WatchFile offers it again.
+func OfferFromEnvironment(ctx context.Context, store *Store, logger *slog.Logger) bool {
 	if path := viper.GetString("EE_LICENSE_FILE"); path != "" {
 		raw, err := os.ReadFile(path)
 		if err != nil {
@@ -24,8 +32,47 @@ func OfferFromEnvironment(ctx context.Context, store *Store, logger *slog.Logger
 			_, _ = offer(ctx, store, string(raw), OriginFile, logger)
 		}
 	}
-	if value := viper.GetString("EE_LICENSE"); value != "" {
-		_, _ = offer(ctx, store, value, OriginEnvironment, logger)
+	_, err := offerEnvironmentValue(ctx, store, logger)
+	return err == nil
+}
+
+// offerEnvironmentValue offers the key EE_LICENSE holds. Without one there is nothing to
+// offer, which is no error either.
+func offerEnvironmentValue(ctx context.Context, store *Store, logger *slog.Logger) (*Result, error) {
+	value := viper.GetString("EE_LICENSE")
+	if value == "" {
+		return nil, nil
+	}
+	return offer(ctx, store, value, OriginEnvironment, logger)
+}
+
+// OfferEnvironmentUntilAnswered offers the key EE_LICENSE holds at the given interval until
+// the store has answered for it once, then returns: accepted, unchanged, older and invalid
+// are all answers, a database that does not answer is not. onAccepted is called when the key
+// was accepted. It also returns when ctx is done.
+func OfferEnvironmentUntilAnswered(
+	ctx context.Context,
+	store *Store,
+	every time.Duration,
+	onAccepted func(),
+	logger *slog.Logger,
+) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		result, err := offerEnvironmentValue(ctx, store, logger)
+		if err != nil {
+			continue
+		}
+		if result != nil && result.Outcome == Accepted {
+			onAccepted()
+		}
+		return
 	}
 }
 
@@ -92,6 +139,8 @@ func offer(
 	logger *slog.Logger,
 ) (*Result, error) {
 	logger = logger.With("origin", string(origin))
+	ctx, cancel := context.WithTimeout(ctx, offerTimeout)
+	defer cancel()
 	result, err := store.Offer(ctx, value, origin, nil)
 	if err != nil {
 		logger.Error("the license key could not be offered to the database", "error", err)

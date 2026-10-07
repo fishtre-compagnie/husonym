@@ -23,6 +23,17 @@ type EEInterface interface {
 // none to give.
 type Loader func(ctx context.Context) (string, error)
 
+// LoadWithin gives a loader that lets load answer within the given time and fails past it,
+// for a store that may accept a connection and then say nothing. A refresh holds the others
+// back for as long as its load lasts.
+func LoadWithin(load Loader, timeout time.Duration) Loader {
+	return func(ctx context.Context) (string, error) {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return load(ctx)
+	}
+}
+
 // ErrKeyNotLoaded is the problem of a refresh whose loader failed. The loader's own error
 // is wrapped next to it: it may name a host, a user or a database, so a caller that shows
 // the problem to someone tells this one apart and keeps the detail for the log.

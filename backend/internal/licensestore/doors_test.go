@@ -3,6 +3,7 @@ package licensestore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -37,6 +38,15 @@ type memoryTable struct {
 	rows []db_queries.InsertLicenseKeyParams
 	// reads counts the offers that reached the database.
 	reads int
+	// failures is how many of the next reads the database does not answer.
+	failures int
+}
+
+// failsNext makes the database fail the next n offers that reach it.
+func (m *memoryTable) failsNext(n int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failures = n
 }
 
 func newMemoryTable(f *fixture) *memoryTable {
@@ -46,6 +56,10 @@ func newMemoryTable(f *fixture) *memoryTable {
 			table.mu.Lock()
 			defer table.mu.Unlock()
 			table.reads++
+			if table.failures > 0 {
+				table.failures--
+				return db_queries.HusonymApiLicenseKey{}, errors.New("the database does not answer")
+			}
 			if len(table.rows) == 0 {
 				return db_queries.HusonymApiLicenseKey{}, pgx.ErrNoRows
 			}
@@ -202,6 +216,108 @@ func Test_OfferFromEnvironment(t *testing.T) {
 
 		require.Empty(t, logs.String())
 		// The doubles fail the test on any call: the database was not touched.
+	})
+}
+
+// EE_LICENSE is read once: when the database did not answer for it at the start, nothing else
+// would offer it again, and an instance that had a license would run without one.
+func Test_OfferFromEnvironment_TellsWhenTheVariableWasNotAnswered(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("a database that does not answer leaves the variable to be offered again", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		table.failsNext(1)
+		setEnvironment(t, signedKey(t, f.priv, now, now.Add(time.Hour)), "")
+
+		require.False(t, OfferFromEnvironment(t.Context(), f.store, quiet))
+		require.Empty(t, table.stored())
+	})
+
+	t.Run("an accepted key is an answer", func(t *testing.T) {
+		f := newFixture(t, true)
+		newMemoryTable(f)
+		setEnvironment(t, signedKey(t, f.priv, now, now.Add(time.Hour)), "")
+
+		require.True(t, OfferFromEnvironment(t.Context(), f.store, quiet))
+	})
+
+	t.Run("a refused key is an answer", func(t *testing.T) {
+		f := newFixture(t, false)
+		setEnvironment(t, "not-a-key", "")
+
+		require.True(t, OfferFromEnvironment(t.Context(), f.store, quiet))
+	})
+
+	t.Run("no variable leaves nothing to offer", func(t *testing.T) {
+		f := newFixture(t, false)
+		setEnvironment(t, "", "")
+
+		require.True(t, OfferFromEnvironment(t.Context(), f.store, quiet))
+	})
+}
+
+func Test_OfferEnvironmentUntilAnswered(t *testing.T) {
+	const every = time.Millisecond
+	now := time.Now().UTC().Truncate(time.Second)
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("the key is stored once the database answers, and offered no more", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		table.failsNext(2)
+		value := signedKey(t, f.priv, now, now.Add(time.Hour))
+		setEnvironment(t, value, "")
+
+		accepted := 0
+		OfferEnvironmentUntilAnswered(t.Context(), f.store, every, func() { accepted++ }, quiet)
+
+		stored := table.stored()
+		require.Len(t, stored, 1)
+		require.Equal(t, value, stored[0].Key)
+		require.Equal(t, "environment", stored[0].Origin)
+		require.Equal(t, 1, accepted, "the provider is refreshed at once")
+		// Two attempts failed, the third was answered: there is no fourth.
+		require.Equal(t, 3, table.offersSeen())
+	})
+
+	t.Run("an answer that is not an acceptance ends it too", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		current := signedKey(t, f.priv, now, now.Add(time.Hour))
+		_, err := f.store.Offer(t.Context(), current, OriginInterface, nil)
+		require.NoError(t, err)
+		table.failsNext(1)
+		setEnvironment(t, signedKey(t, f.priv, now.Add(-time.Hour), now.Add(time.Hour)), "")
+
+		accepted := 0
+		OfferEnvironmentUntilAnswered(t.Context(), f.store, every, func() { accepted++ }, quiet)
+
+		require.Len(t, table.stored(), 1)
+		require.Zero(t, accepted)
+		require.Equal(t, 3, table.offersSeen())
+	})
+
+	t.Run("it returns when its context is done", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		table.failsNext(1 << 30)
+		setEnvironment(t, signedKey(t, f.priv, now, now.Add(time.Hour)), "")
+
+		ctx, cancel := context.WithCancel(t.Context())
+		returned := make(chan struct{})
+		go func() {
+			defer close(returned)
+			OfferEnvironmentUntilAnswered(ctx, f.store, every, func() {}, quiet)
+		}()
+		require.Eventually(t, func() bool { return table.offersSeen() > 1 }, 5*time.Second, every)
+		cancel()
+		select {
+		case <-returned:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the offers did not stop once the context was done")
+		}
 	})
 }
 

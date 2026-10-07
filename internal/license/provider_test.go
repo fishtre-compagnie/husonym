@@ -316,6 +316,33 @@ func Test_Provider_ALoaderErrorPastItsDeadlineIsAProblem(t *testing.T) {
 	require.Equal(t, 1, f.errorLogs())
 }
 
+// A store that accepts the connection and says nothing must not hold a refresh for ever: the
+// load is cut at its deadline, which is recorded, and the next refresh is not behind it.
+func Test_LoadWithin_ALoadPastItsDeadlineIsAProblemAndDoesNotBlockTheNext(t *testing.T) {
+	f := newProviderFixture(t)
+	value := f.issue(t, 90*day, 1)
+	var hangs atomic.Bool
+	hangs.Store(true)
+	load := LoadWithin(func(ctx context.Context) (string, error) {
+		if hangs.Load() {
+			<-ctx.Done()
+			return "", ctx.Err()
+		}
+		return value, nil
+	}, 10*time.Millisecond)
+	logger := slog.New(slog.NewTextHandler(f.logs, nil))
+	p := newProvider(load, Keyring{LegacyKid: f.pub}, f.clock.Now, logger)
+
+	require.ErrorIs(t, p.Refresh(t.Context()), context.DeadlineExceeded)
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
+	require.Equal(t, 1, f.errorLogs())
+
+	hangs.Store(false)
+	require.NoError(t, p.Refresh(t.Context()))
+	require.NoError(t, p.Problem())
+	require.Equal(t, StateValid, p.State())
+}
+
 func Test_Provider_AnInvalidKeyKeepsTheKeyInPlace(t *testing.T) {
 	cases := map[string]func(t *testing.T) string{
 		"unreadable content": func(*testing.T) string {

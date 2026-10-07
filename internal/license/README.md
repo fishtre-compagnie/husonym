@@ -56,7 +56,12 @@ There are two ways to offer a key:
   restart. A variable that holds an older key than the one in the database is simply
   refused, and logged: **the newest key wins, not the file**. A key that is refused, a file
   that cannot be read or a database that does not answer is logged and never stops the
-  start.
+  start. When the database did not answer for the variable at the start, its value is
+  offered again once a minute until the database has answered once (accepted, unchanged,
+  older and invalid are all answers), then no more; a key accepted that way is in force at
+  once. Each offer through a door, and each read of the key in force, is bound to ten
+  seconds, so a database that accepts the connection and says nothing hangs neither the
+  start nor a refresh.
 - **The License page** of the web app, and the RPC behind it,
   `UserAccountService.SetSystemLicense`, with origin `interface`. The call is not gated by
   the license itself: it is how an instance without a valid one gets one.

@@ -32,7 +32,9 @@ environment:
 ```
 
 These variables do not hold the key in force: the API reads them and offers what they hold
-to its database, which keeps the key. `EE_LICENSE` is read once, when the API starts. The
+to its database, which keeps the key. `EE_LICENSE` is read once, when the API starts; if the
+database does not answer at that moment, the API offers the key again every minute until it
+does. The
 file named by `EE_LICENSE_FILE` is read when the API starts and again at most once a minute,
 so a renewed key is picked up **without a restart**: replace the content of the file and the
 new key takes effect within about a minute. When both variables are set, both are offered
