@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
@@ -249,7 +250,7 @@ func Test_JobPiiDetect_ScansTheTablesOfTheJob(t *testing.T) {
 	// The entries of the index are in the order of their names.
 	requireReport(t, &report.JobReport{SuccessfulTableReports: []*report.TableEntry{entry("customers"), entry("orders")}}, *saved)
 	require.Equal(t, []string{createdKind, succeededKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1"}, versions.all())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1"}, versions.all())
 	run.env.AssertExpectations(t)
 }
 
@@ -262,6 +263,81 @@ func Test_JobPiiDetect_WithoutALicense(t *testing.T) {
 	require.ErrorContains(t, run.env.GetWorkflowError(), "ee license is not valid, unable to run pii detect")
 	run.env.AssertNotCalled(t, "GetPiiDetectJobDetails", mock.Anything, mock.Anything)
 	require.Empty(t, run.started())
+}
+
+// PII detection is a feature of its own. A run under a valid license that lacks it fails
+// before it asks for anything, and names the feature: this workflow never asks the API
+// whether the job may run, so that a run a schedule starts is held here and nowhere else.
+func Test_PiiDetect_FailsWithoutTheFeature(t *testing.T) {
+	run := newJobRunUnder(t, testutil.NewFakeEELicense(
+		testutil.WithIsValid(),
+		testutil.WithFeatures(license.FeatureAccountHooks, license.FeaturePiiText),
+	), 3)
+
+	run.execute()
+
+	require.True(t, run.env.IsWorkflowCompleted())
+	var appErr *temporal.ApplicationError
+	require.ErrorAs(t, run.env.GetWorkflowError(), &appErr)
+	require.Equal(t, "this license does not include pii_detection", appErr.Message())
+	run.env.AssertNotCalled(t, "GetPiiDetectJobDetails", mock.Anything, mock.Anything)
+	run.env.AssertNotCalled(t, "GetLastSuccessfulWorkflowId", mock.Anything, mock.Anything)
+	run.env.AssertNotCalled(t, "GetTablesToPiiScan", mock.Anything, mock.Anything)
+	run.env.AssertNotCalled(t, "SaveJobPiiDetectReport", mock.Anything, mock.Anything)
+	require.Empty(t, run.tables, "no table is scanned")
+	require.Empty(t, run.started(), "no event is announced")
+}
+
+// A run under a license that includes PII detection scans its tables. Its events are
+// announced when the license includes the account hooks too, which are another feature.
+func Test_PiiDetect_RunsWithTheFeature(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		features []license.Feature
+		// earlier says the run started before the features were asked.
+		earlier bool
+		events  []string
+	}{
+		{
+			name:     "PII detection without the account hooks",
+			features: []license.Feature{license.FeaturePiiDetection},
+			events:   []string{},
+		},
+		{
+			name:     "PII detection and the account hooks",
+			features: []license.Feature{license.FeaturePiiDetection, license.FeatureAccountHooks},
+			events:   []string{createdKind, succeededKind},
+		},
+		{
+			// It ran and announced its events under a valid license, whatever the license
+			// included: it goes on as it started.
+			name:     "neither, the run started before they were asked",
+			features: []license.Feature{},
+			earlier:  true,
+			events:   []string{createdKind, succeededKind},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			run := newJobRunUnder(t, testutil.NewFakeEELicense(
+				testutil.WithIsValid(), testutil.WithFeatures(tt.features...),
+			), 3)
+			if tt.earlier {
+				run.env.OnGetVersion("license-feature-read-recorded", workflow.DefaultVersion, 1).
+					Return(workflow.DefaultVersion)
+			}
+			run.scanTables(scanned)
+			run.withDetails(plainDetails())
+			run.withTables("orders")
+			saved := run.savesReport()
+
+			run.execute()
+
+			require.True(t, run.env.IsWorkflowCompleted())
+			require.NoError(t, run.env.GetWorkflowError())
+			requireReport(t, &report.JobReport{SuccessfulTableReports: []*report.TableEntry{entry("orders")}}, *saved)
+			require.Equal(t, tt.events, run.started())
+		})
+	}
 }
 
 // A job whose details cannot be read has no account to tell: the run fails before any
@@ -469,7 +545,7 @@ func Test_JobPiiDetect_ATableThatFailsFailsTheRunOnceTheIndexIsSaved(t *testing.
 	}, *saved)
 	require.Len(t, run.tables, 4, "every table is attempted")
 	require.Equal(t, []string{createdKind, failedKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1", "pii-detect-incomplete-run-fails-1"}, versions.all())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "pii-detect-incomplete-run-fails-1"}, versions.all())
 }
 
 // Runs started before an incomplete scan failed the run replay as they ran: they
@@ -580,5 +656,5 @@ func Test_JobPiiDetect_Canceled(t *testing.T) {
 	require.Len(t, run.tables, 3, "the fourth table never starts")
 	require.Zero(t, saves.Load())
 	require.Equal(t, []string{createdKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1"}, versions.all())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1"}, versions.all())
 }

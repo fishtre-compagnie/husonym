@@ -83,13 +83,20 @@ func Test_JobPiiDetect_ReplaysARecordedRun(t *testing.T) {
 			eelicense := testutil.NewFakeEELicense()
 			eelicense.SetValid(history.licensed)
 
-			replayer := worker.NewWorkflowReplayer()
-			replayer.RegisterWorkflow(piidetect.NewJobWorkflow(eelicense, viper.GetInt(tablesAtOnceKey)).JobPiiDetect)
+			replay := func() error {
+				replayer := worker.NewWorkflowReplayer()
+				replayer.RegisterWorkflow(piidetect.NewJobWorkflow(eelicense, viper.GetInt(tablesAtOnceKey)).JobPiiDetect)
+				return testutil.ReplayWorkflowHistoryFileToItsResult(
+					replayer, logger, filepath.Join("testdata", history.name+".json"),
+				)
+			}
+			require.NoError(t, replay())
 
-			err := testutil.ReplayWorkflowHistoryFileToItsResult(
-				replayer, logger, filepath.Join("testdata", history.name+".json"),
-			)
-			require.NoError(t, err)
+			// Every history kept here was recorded before the run asked the license for its
+			// features: it replays on what it acted on then, the validity of the license,
+			// under a license that includes no feature at all.
+			eelicense.SetFeatures()
+			require.NoError(t, replay(), "under a license that includes no feature")
 		})
 	}
 }

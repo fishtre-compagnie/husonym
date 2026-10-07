@@ -86,6 +86,9 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 	logger := workflow.GetLogger(ctx)
 	// Read once, before anything else: the run keeps this answer to its end.
 	licensed := workflow_shared.LicenseIsValid(ctx, w.eelicense)
+	// The account hooks are a feature of their own. A run started before the feature was
+	// asked announced its events under a valid license: it keeps to that.
+	accountHooksAllowed := workflow_shared.LicenseAllows(ctx, w.eelicense, license.FeatureAccountHooks, licensed)
 	getAccountId := func() (string, error) {
 		actOptResp, err := retrieveActivityOptions(ctx, req.JobId, logger)
 		if err != nil {
@@ -99,7 +102,7 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 	wfinfo := workflow.GetInfo(ctx)
 	return workflow_shared.HandleWorkflowEventLifecycle(
 		ctx,
-		licensed,
+		accountHooksAllowed,
 		req.JobId,
 		wfinfo.WorkflowExecution.ID,
 		logger,

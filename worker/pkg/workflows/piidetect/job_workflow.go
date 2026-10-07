@@ -52,8 +52,18 @@ func NewJobWorkflow(lic license.EEInterface, tablesAtOnce int) *JobWorkflow {
 // stores the index of their reports.
 func (w *JobWorkflow) JobPiiDetect(ctx workflow.Context, req *JobPiiDetectRequest) (*JobPiiDetectResponse, error) {
 	licensed := workflow_shared.LicenseIsValid(ctx, w.license)
+	// PII detection and the account hooks are each a feature of their own. Both are read
+	// here, on every path, before anything is decided: a run started before the features
+	// were asked ran and announced its events under a valid license, and keeps to that.
+	detectionAllowed := workflow_shared.LicenseAllows(ctx, w.license, license.FeaturePiiDetection, licensed)
+	accountHooksAllowed := workflow_shared.LicenseAllows(ctx, w.license, license.FeatureAccountHooks, licensed)
 	if !licensed {
 		return nil, errors.New("ee license is not valid, unable to run pii detect")
+	}
+	// Nothing else holds a run that a schedule starts: this workflow does not ask the API
+	// whether the job may run.
+	if !detectionAllowed {
+		return nil, fmt.Errorf("this license does not include %s", license.FeaturePiiDetection)
 	}
 	logger := log.With(workflow.GetLogger(ctx), "jobId", req.JobId)
 
@@ -70,7 +80,7 @@ func (w *JobWorkflow) JobPiiDetect(ctx workflow.Context, req *JobPiiDetectReques
 
 	return workflow_shared.HandleWorkflowEventLifecycle(
 		ctx,
-		licensed,
+		accountHooksAllowed,
 		req.JobId,
 		workflow.GetInfo(ctx).WorkflowExecution.ID,
 		logger,

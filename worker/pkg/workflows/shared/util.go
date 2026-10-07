@@ -20,19 +20,20 @@ const lifecycleHookStartToleratedChangeId = "lifecycle-hook-start-tolerated"
 // Utility function that handles spawning job run lifecycle hooks: created, success, failed
 // Should only be used by root workflows that are responsible for handling the lifecycle of a job run
 //
-// licensed is the answer the run got from LicenseIsValid at its start: the hooks of its end
-// follow it, whatever became of the license meanwhile.
+// accountHooksAllowed is the answer the run got from LicenseAllows at its start, for the
+// feature of the account hooks: the hooks of its end follow it, whatever became of the
+// license meanwhile.
 func HandleWorkflowEventLifecycle[T any](
 	ctx workflow.Context,
-	licensed bool,
+	accountHooksAllowed bool,
 	jobId,
 	runId string, // typically the temporal workflow execution id
 	logger log.Logger,
 	getAccountId func() (string, error),
 	fn func(ctx workflow.Context, logger log.Logger) (*T, error),
 ) (*T, error) {
-	if !licensed {
-		logger.Debug("ee license is not valid, skipping event lifecycle")
+	if !accountHooksAllowed {
+		logger.Debug("the license does not allow account hooks, skipping event lifecycle")
 		return fn(ctx, logger)
 	}
 

@@ -52,6 +52,30 @@ func Test_Datasync_ReplaysRunsRecordedBeforeTheJobId(t *testing.T) {
 	}
 }
 
+// Every history kept here was recorded before the run asked the license for the feature of
+// its account hooks: each replays on what it acted on then, the validity of the license,
+// under a license that includes no feature at all.
+func Test_Datasync_ReplaysRunsRecordedBeforeTheFeatureWasAsked(t *testing.T) {
+	for _, recorded := range []struct {
+		history string
+		license *testutil.FakeEELicense
+	}{
+		{"datasync-before.json", testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures())},
+		{"datasync-before-unlicensed.json", testutil.NewFakeEELicense(testutil.WithFeatures())},
+		{"datasync-after.json", testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures())},
+	} {
+		t.Run(recorded.history, func(t *testing.T) {
+			replayer := worker.NewWorkflowReplayer()
+			replayer.RegisterWorkflow(New(recorded.license).Workflow)
+
+			err := testutil.ReplayWorkflowHistoryFile(
+				replayer, getTestLogger(), "../../shared/testdata/"+recorded.history,
+			)
+			require.NoError(t, err)
+		})
+	}
+}
+
 // The histories were recorded before the license was read through a side effect: a run in
 // flight at the upgrade replays on the path it started with.
 func Test_Datasync_ReplaysAHistoryRecordedBefore(t *testing.T) {
