@@ -41,6 +41,14 @@ type handler struct {
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	defer func() {
+		if recover() != nil {
+			// Fixed words only: what a panic carries, and its stack, may hold something of the
+			// request. Left to net/http, the line would name the address of the caller as well.
+			h.logger.Error("the handler of the public server panicked", "status", http.StatusServiceUnavailable)
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}()
 	switch r.URL.Path {
 	case healthPath:
 		if r.Method != http.MethodGet {
@@ -70,7 +78,17 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 		h.reply(w, reportPath, http.StatusBadRequest, "missing_header")
 		return
 	}
+	// What can be refused without the body is refused before it is read.
+	if !intake.HexShaped(seal) || !intake.HexShaped(fingerprint) {
+		h.reply(w, reportPath, http.StatusBadRequest, "malformed_header")
+		return
+	}
+	if r.ContentLength > MaxBodyBytes {
+		h.reply(w, reportPath, http.StatusRequestEntityTooLarge, "too_large")
+		return
+	}
 
+	// A body that does not tell its length is cut at the cap.
 	document, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxBodyBytes))
 	if err != nil {
 		var tooLarge *http.MaxBytesError

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -45,6 +47,32 @@ func Test_ServePublic_UnreachableDatabase_FailsAndNeverListens(t *testing.T) {
 		_ = conn.Close()
 	}
 	require.Error(t, err, "nothing listens on the address")
+}
+
+// Without a logger of its own, net/http writes the panic of a handler, with the address of the
+// caller, to the standard logger.
+func Test_PublicServer_NetHTTPLogsNothing(t *testing.T) {
+	var standard bytes.Buffer
+	log.SetOutput(&standard)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	server := newPublicServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("SECRET") }))
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		_ = server.Serve(listener)
+	}()
+
+	resp, err := http.Get("http://" + listener.Addr().String() + "/") //nolint:noctx // a local test server
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	require.Error(t, err, "the connection is cut")
+	require.NoError(t, server.Close())
+	<-served
+
+	require.Empty(t, standard.String())
 }
 
 func Test_ServePublic_ReceivesAReportAndStopsWhenItsContextEnds(t *testing.T) {

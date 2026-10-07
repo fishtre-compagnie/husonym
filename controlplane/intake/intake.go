@@ -56,6 +56,11 @@ const (
 // hexShape is the one spelling of a seal and of a fingerprint: 32 bytes in lowercase hex.
 var hexShape = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
+// HexShaped says whether value is spelled as a seal and a fingerprint are.
+func HexShaped(value string) bool {
+	return hexShape.MatchString(value)
+}
+
 // Intake receives usage reports.
 type Intake struct {
 	store *cpstore.Store
@@ -71,7 +76,7 @@ func New(store *cpstore.Store, now func() time.Time) *Intake {
 // What the caller got wrong is told by Refused, never by an error: a non-nil error is a failure
 // of ours, and the outcome that comes with it is Full, as the caller may try again in both cases.
 func (i *Intake) Receive(ctx context.Context, document []byte, seal, fingerprint string) (Outcome, error) {
-	if !hexShape.MatchString(seal) || !hexShape.MatchString(fingerprint) {
+	if !HexShaped(seal) || !HexShaped(fingerprint) {
 		return Refused, nil
 	}
 	receivedAt := i.now()

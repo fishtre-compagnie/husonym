@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -70,6 +72,20 @@ func newServeCmd() *cobra.Command {
 	return serve
 }
 
+// newPublicServer is the server of the public API around handler. What net/http logs by itself
+// is dropped: its lines name the remote address of the caller, and the line of a panic carries
+// what was panicked with. The handler says in its own words what there is to say.
+func newPublicServer(handler http.Handler) *http.Server {
+	return &http.Server{
+		Handler:           handler,
+		ErrorLog:          log.New(io.Discard, "", 0),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+}
+
 // servePublic serves the public API on listener and runs the maintenance of the pending reports,
 // until ctx ends; it then stops the server gracefully, within shutdownTimeout.
 func servePublic(
@@ -77,13 +93,7 @@ func servePublic(
 ) error {
 	store := cpstore.New(pool)
 	receiver := intake.New(store, time.Now)
-	server := &http.Server{
-		Handler:           publicapi.NewHandler(receiver, logger),
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
-	}
+	server := newPublicServer(publicapi.NewHandler(receiver, logger))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)
 	defer cancelMaintenance()

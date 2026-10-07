@@ -144,6 +144,26 @@ func Test_Handler_RejectsBeforeReadingTheBody(t *testing.T) {
 			mutate: func(r *http.Request) { r.Header.Del("Husonym-Key-Fingerprint") },
 			status: http.StatusBadRequest,
 		},
+		"seal too short": {
+			mutate: func(r *http.Request) { r.Header.Set("Husonym-Seal", seal[:63]) },
+			status: http.StatusBadRequest,
+		},
+		"seal in upper case": {
+			mutate: func(r *http.Request) { r.Header.Set("Husonym-Seal", strings.ToUpper(seal)) },
+			status: http.StatusBadRequest,
+		},
+		"fingerprint too long": {
+			mutate: func(r *http.Request) { r.Header.Set("Husonym-Key-Fingerprint", fingerprint+"b") },
+			status: http.StatusBadRequest,
+		},
+		"fingerprint not hex": {
+			mutate: func(r *http.Request) { r.Header.Set("Husonym-Key-Fingerprint", strings.Repeat("g", 64)) },
+			status: http.StatusBadRequest,
+		},
+		"a length over the cap": {
+			mutate: func(r *http.Request) { r.ContentLength = publicapi.MaxBodyBytes + 1 },
+			status: http.StatusRequestEntityTooLarge,
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -200,6 +220,44 @@ func Test_Handler_BodyOfCapPlusOneByte_Answers413(t *testing.T) {
 
 	require.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 	require.Zero(t, r.receiver.calls)
+}
+
+func Test_Handler_ALengthOfExactlyTheCap_Passes(t *testing.T) {
+	r := newRig(intake.Stored, nil)
+	req := post(&countingReader{reader: bytes.NewReader(bytes.Repeat([]byte("x"), publicapi.MaxBodyBytes))})
+	req.ContentLength = publicapi.MaxBodyBytes
+
+	require.Equal(t, http.StatusNoContent, r.do(req).Code)
+	require.Len(t, r.receiver.gotBody, publicapi.MaxBodyBytes)
+}
+
+func Test_MaxBodyBytes_Is128KiB(t *testing.T) {
+	require.Equal(t, 128<<10, publicapi.MaxBodyBytes)
+}
+
+type panickingReceiver struct{}
+
+func (panickingReceiver) Receive(context.Context, []byte, string, string) (intake.Outcome, error) {
+	panic("SECRET")
+}
+
+func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
+	logs := &bytes.Buffer{}
+	handler := publicapi.NewHandler(panickingReceiver{}, slog.New(slog.NewTextHandler(logs, nil)))
+	req := post(strings.NewReader("{}"))
+	require.Equal(t, "192.0.2.1:1234", req.RemoteAddr)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Empty(t, rec.Body.String())
+	logged := logs.String()
+	require.Equal(t, 1, strings.Count(logged, "\n"), "one line")
+	require.Contains(t, logged, "level=ERROR")
+	require.NotContains(t, logged, "SECRET")
+	require.NotContains(t, logged, "192.0.2.1")
+	require.NotContains(t, logged, "goroutine")
 }
 
 func Test_Handler_CancelledRequest_IsNotLoggedAsAnError(t *testing.T) {
