@@ -21,7 +21,8 @@ const (
 	PendingCapTotal = 10000
 	// PendingKept is how long a report is kept pending.
 	PendingKept = 45 * 24 * time.Hour
-	// InstanceCapPerLicense is on how many instances a license may be seen.
+	// InstanceCapPerLicense is on how many instances a license may be seen at a time: the ones
+	// whose last report is of one of the last MaxDaysBehind days.
 	InstanceCapPerLicense = 50
 	// MaxDaysAhead is how many days after the UTC day of its reception the day of a report may
 	// be: one, for the clock of an instance that runs ahead.
@@ -47,10 +48,13 @@ const (
 	// Refused: the caller got something wrong. The seal or the fingerprint is malformed, the
 	// document is outside the schema, its day is too far from the day it is received, the seal
 	// does not match, the fingerprint given aside is not the one the document tells, or the
-	// license is already seen on as many instances as it may.
+	// license id the document states is not the one of the license it is sealed under.
 	Refused
 	// Full: a cap on the pending reports is reached; the caller may try again later.
 	Full
+	// TooManyInstances: the report is sound, but its license was seen on as many instances as
+	// it may within the last MaxDaysBehind days, and this instance is not one of them.
+	TooManyInstances
 )
 
 // hexShape is the one spelling of a seal and of a fingerprint: 32 bytes in lowercase hex.
@@ -73,8 +77,9 @@ func New(store *cpstore.Store, now func() time.Time) *Intake {
 }
 
 // Receive checks a report and stores it, or keeps it pending when its license is not known.
-// What the caller got wrong is told by Refused, never by an error: a non-nil error is a failure
-// of ours, and the outcome that comes with it is Full, as the caller may try again in both cases.
+// What the caller got wrong is told by Refused or TooManyInstances, never by an error: a non-nil
+// error is a failure of ours, and the outcome that comes with it is Full, as the caller may try
+// again in both cases.
 func (i *Intake) Receive(ctx context.Context, document []byte, seal, fingerprint string) (Outcome, error) {
 	if !HexShaped(seal) || !HexShaped(fingerprint) {
 		return Refused, nil
@@ -99,7 +104,10 @@ func (i *Intake) Receive(ctx context.Context, document []byte, seal, fingerprint
 		}
 		return Refused, nil
 	}
-	outcome, err := i.store.StoreReport(ctx, told.report(issued, document, seal, receivedAt), InstanceCapPerLicense)
+	if !told.says(issued) {
+		return Refused, nil
+	}
+	outcome, err := i.store.StoreReport(ctx, told.report(issued, document, seal, receivedAt), instanceCap(receivedAt))
 	if err != nil {
 		return Full, err
 	}
@@ -109,7 +117,7 @@ func (i *Intake) Receive(ctx context.Context, document []byte, seal, fingerprint
 	case cpstore.ReportConflict:
 		return Conflict, nil
 	case cpstore.ReportTooManyInstances:
-		return Refused, nil
+		return TooManyInstances, nil
 	default:
 		return Stored, nil
 	}
@@ -142,7 +150,8 @@ func (i *Intake) keepPending(
 // removed from pending, one report per transaction: a report discarded does not hold the others
 // back. Several may be pending for one instance and day, under different seals: the one the
 // instance sealed is stored, the others are discarded. A report discarded for its seal is
-// counted under the license, on the day of the promotion.
+// counted under the license, on the day of the promotion. A report that states another license
+// than the one it is sealed under, or that the license has no room for, is discarded as well.
 //
 // stored counts the reports that verify and that the license has room for, including one that
 // turns out to be a repeat of, or in conflict with, a report already stored. A report stored
@@ -186,12 +195,21 @@ func (i *Intake) promote(
 	if !sealed(issued, pending.Document, pending.Seal) {
 		return false, i.store.DiscardPendingReportForItsSeal(ctx, pending, issued.Id, i.now())
 	}
+	if !told.says(issued) {
+		return false, i.store.DiscardPendingReport(ctx, pending)
+	}
 	outcome, err := i.store.PromotePendingReport(ctx, pending,
-		told.report(issued, pending.Document, pending.Seal, pending.ReceivedAt), InstanceCapPerLicense)
+		told.report(issued, pending.Document, pending.Seal, pending.ReceivedAt), instanceCap(i.now()))
 	if err != nil {
 		return false, err
 	}
 	return outcome != cpstore.ReportTooManyInstances, nil
+}
+
+// instanceCap is the cap on the instances of a license at the moment at: the instances that
+// count are those whose last report is of a day a report received at that moment may be of.
+func instanceCap(at time.Time) cpstore.InstanceCap {
+	return cpstore.InstanceCap{Max: InstanceCapPerLicense, SeenSince: earliestDay(at)}
 }
 
 // sealed says whether seal is the seal of document under the license. A key the seal cannot be
@@ -204,8 +222,10 @@ func sealed(issued *cpstore.License, document []byte, seal string) bool {
 type reading struct {
 	day         time.Time
 	fingerprint string
-	instanceID  string
-	version     string
+	// licenseID is the id of its license as the document states it.
+	licenseID  string
+	instanceID string
+	version    string
 	// installKind is empty when the document carries no diagnostics.
 	installKind string
 }
@@ -223,6 +243,7 @@ func read(document []byte, receivedAt time.Time) (told *reading, ok bool) {
 		Day            string `json:"day"`
 		Identification struct {
 			KeyFingerprint string `json:"key_fingerprint"`
+			LicenseID      string `json:"license_id"`
 			InstanceID     string `json:"instance_id"`
 		} `json:"identification"`
 		Version struct {
@@ -245,6 +266,7 @@ func read(document []byte, receivedAt time.Time) (told *reading, ok bool) {
 	told = &reading{
 		day:         day,
 		fingerprint: report.Identification.KeyFingerprint,
+		licenseID:   report.Identification.LicenseID,
 		instanceID:  report.Identification.InstanceID,
 		version:     report.Version.Husonym,
 	}
@@ -258,9 +280,24 @@ func read(document []byte, receivedAt time.Time) (told *reading, ok bool) {
 // would stay the last day of its instance for ever, and no later report would tell its state;
 // a day far back is of no use, as an instance stops trying long before.
 func withinBounds(day, receivedAt time.Time) bool {
-	at := receivedAt.UTC()
-	today := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, time.UTC)
-	return !day.After(today.AddDate(0, 0, MaxDaysAhead)) && !day.Before(today.AddDate(0, 0, -MaxDaysBehind))
+	return !day.After(utcDay(receivedAt).AddDate(0, 0, MaxDaysAhead)) && !day.Before(earliestDay(receivedAt))
+}
+
+// earliestDay is the earliest day a report received at receivedAt may be of.
+func earliestDay(receivedAt time.Time) time.Time {
+	return utcDay(receivedAt).AddDate(0, 0, -MaxDaysBehind)
+}
+
+// utcDay is the UTC day of at, at midnight.
+func utcDay(at time.Time) time.Time {
+	utc := at.UTC()
+	return time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// says tells whether the document states the license it is sealed under: the id of that
+// license, as the product writes it.
+func (r *reading) says(issued *cpstore.License) bool {
+	return r.licenseID == telemetry.LicenseId(issued.Id)
 }
 
 // report is the report to store for a document that was read and whose seal was verified.

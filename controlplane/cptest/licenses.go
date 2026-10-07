@@ -3,6 +3,8 @@ package cptest
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -48,6 +50,30 @@ func (i *Issuer) Key(entry *license.RegistryEntry) *license.Key {
 	key, err := license.ParseWith(entry.Encoded, i.Keyring())
 	require.NoError(i.t, err)
 	return key
+}
+
+// EntryOf signs key as it is and returns its registry entry: for a key Issue would not mint.
+func (i *Issuer) EntryOf(key *license.Key) license.RegistryEntry {
+	i.t.Helper()
+	content, err := json.Marshal(key)
+	require.NoError(i.t, err)
+	signed, err := json.Marshal(map[string]string{
+		"license":   base64.StdEncoding.EncodeToString(content),
+		"signature": base64.StdEncoding.EncodeToString(ed25519.Sign(i.priv, content)),
+		"kid":       license.LegacyKid,
+	})
+	require.NoError(i.t, err)
+	return license.RegistryEntry{
+		Id:             key.Id,
+		IssuedTo:       key.IssuedTo,
+		CustomerId:     key.CustomerId,
+		IssuedAt:       key.IssuedAt,
+		ExpiresAt:      key.ExpiresAt,
+		Encoded:        base64.StdEncoding.EncodeToString(signed),
+		Kid:            license.LegacyKid,
+		Telemetry:      key.Telemetry,
+		KeyFingerprint: license.PublicKeyFingerprint(i.pub),
+	}
 }
 
 // EntryFor mints the license req describes and returns its registry entry.

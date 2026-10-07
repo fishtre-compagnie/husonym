@@ -81,7 +81,7 @@ func (b *bench) report(instance, day string) *telemetry.Report {
 		GeneratedAt:   "2026-10-07T00:05:12Z",
 		Identification: telemetry.Identification{
 			KeyFingerprint: b.fingerprint,
-			LicenseID:      "0123456789abcdef",
+			LicenseID:      telemetry.LicenseId(b.entry.Id),
 			InstanceID:     instance,
 			LicenseState:   "valid",
 			DaysToExpiry:   212,
@@ -338,20 +338,26 @@ func Test_Receive_DayBounds(t *testing.T) {
 	}
 }
 
+// seedInstances records n instances of the license of the bench, last seen on lastDay.
+func (b *bench) seedInstances(n int, lastDay string) {
+	b.t.Helper()
+	_, err := b.pool.Exec(b.t.Context(),
+		`INSERT INTO controlplane.instances
+		   (license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version)
+		 SELECT $1, 'instance-' || n, now(), now(), $2::date, 'v0.3.0' FROM generate_series(1, $3::int) n`,
+		b.entry.Id, lastDay, n)
+	require.NoError(b.t, err)
+}
+
 func Test_Receive_InstancesOfALicenseAreCapped(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
 	b := newBenchWithLicense(t)
-	_, err := b.pool.Exec(t.Context(),
-		`INSERT INTO controlplane.instances
-		   (license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version)
-		 SELECT 'lic-1', 'instance-' || n, now(), now(), '2026-10-01', 'v0.3.0' FROM generate_series(1, $1::int) n`,
-		intake.InstanceCapPerLicense-1)
-	require.NoError(t, err)
+	b.seedInstances(intake.InstanceCapPerLicense-1, "2026-10-01")
 
 	require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-05"))), "the last one under the cap")
-	require.Equal(t, intake.Refused, b.post(b.document(b.report(instanceB, "2026-10-05"))))
+	require.Equal(t, intake.TooManyInstances, b.post(b.document(b.report(instanceB, "2026-10-05"))))
 	require.Equal(t, intake.InstanceCapPerLicense, b.count("instances"))
 	require.Equal(t, 1, b.count("usage_reports"))
 	require.Zero(t, b.count("seal_rejections"))
@@ -359,6 +365,82 @@ func Test_Receive_InstancesOfALicenseAreCapped(t *testing.T) {
 	require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-06"))), "an instance already seen")
 	other := b.anotherLicense("lic-2")
 	require.Equal(t, intake.Stored, other.post(other.document(other.report(instanceB, "2026-10-05"))), "another license")
+}
+
+// The cap counts the instances last seen within the days a report may go back, as the clock of
+// the intake tells them: the reception is on 2026-10-07, and the window opens on 2026-08-08.
+func Test_Receive_TheInstanceCapCountsTheLast60Days(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBenchWithLicense(t)
+	b.seedInstances(intake.InstanceCapPerLicense, "2026-08-07")
+	require.Equal(t, intake.Stored, b.post(b.document(b.report(instanceA, "2026-10-05"))), "50 last seen 61 days ago")
+
+	edge := b.anotherLicense("lic-2")
+	edge.seedInstances(intake.InstanceCapPerLicense, "2026-08-08")
+	require.Equal(t, intake.TooManyInstances, edge.post(edge.document(edge.report(instanceA, "2026-10-05"))),
+		"50 last seen 60 days ago")
+
+	// A day later the window has moved, and those 50 are out of it.
+	// The clock is the one of the bench both come from.
+	b.now = received.AddDate(0, 0, 1)
+	require.Equal(t, intake.Stored, edge.post(edge.document(edge.report(instanceA, "2026-10-05"))))
+}
+
+// A report states the license that seals it: the id of the license whose key has the
+// fingerprint, as the product writes it.
+func Test_Receive_ALicenseIdThatIsNotTheOneOfTheKey_Refused(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	chosen := newBenchWithLicense(t)
+	generated := chosen.anotherLicense("8f2a41c09b7e63d5")
+
+	// An id someone chose is told as "other"; an id the license tool generates is told as it is.
+	require.Equal(t, "other", chosen.report(instanceA, "2026-10-06").Identification.LicenseID)
+	require.Equal(t, "8f2a41c09b7e63d5", generated.report(instanceA, "2026-10-06").Identification.LicenseID)
+
+	for name, tc := range map[string]struct {
+		bench  *bench
+		stated string
+	}{
+		"a generated id under a license whose id was chosen": {chosen, "8f2a41c09b7e63d5"},
+		"other under a license whose id is generated":        {generated, "other"},
+		"the generated id of another license":                {generated, "0123456789abcdef"},
+	} {
+		report := tc.bench.report(instanceA, "2026-10-06")
+		report.Identification.LicenseID = tc.stated
+		require.Equal(t, intake.Refused, tc.bench.post(tc.bench.document(report)), name)
+	}
+	require.Zero(t, chosen.count("usage_reports"))
+	require.Zero(t, chosen.count("instances"))
+	require.Zero(t, chosen.count("pending_reports"))
+	require.Zero(t, chosen.count("seal_rejections"), "the seal is the right one: nothing is counted against it")
+
+	require.Equal(t, intake.Stored, chosen.post(chosen.document(chosen.report(instanceA, "2026-10-06"))))
+	require.Equal(t, intake.Stored, generated.post(generated.document(generated.report(instanceA, "2026-10-06"))))
+}
+
+func Test_PromotePending_ALicenseIdThatIsNotTheOneOfTheKey_Discarded(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	wrong := b.report(instanceA, "2026-10-05")
+	wrong.Identification.LicenseID = "0123456789abcdef"
+	require.Equal(t, intake.Pending, b.post(b.document(wrong)), "nothing tells yet which license it is")
+	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceB, "2026-10-06"))))
+	b.addLicense()
+
+	stored, discarded, err := b.intake.PromotePending(t.Context(), b.fingerprint)
+	require.NoError(t, err)
+	require.Equal(t, 1, stored)
+	require.Equal(t, 1, discarded)
+	require.Zero(t, b.count("pending_reports"))
+	require.Equal(t, 1, b.count("usage_reports"))
+	require.Equal(t, 1, b.count("instances"))
+	require.Zero(t, b.count("seal_rejections"))
 }
 
 // The instance posted before its license was recorded, more instances than a license may have.
@@ -370,12 +452,7 @@ func Test_PromotePending_InstancesOfALicenseAreCapped(t *testing.T) {
 	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceA, "2026-10-05"))))
 	require.Equal(t, intake.Pending, b.post(b.document(b.report(instanceB, "2026-10-05"))))
 	b.addLicense()
-	_, err := b.pool.Exec(t.Context(),
-		`INSERT INTO controlplane.instances
-		   (license_id, instance_id, first_seen_at, last_seen_at, last_report_day, husonym_version)
-		 SELECT 'lic-1', 'instance-' || n, now(), now(), '2026-10-01', 'v0.3.0' FROM generate_series(1, $1::int) n`,
-		intake.InstanceCapPerLicense-1)
-	require.NoError(t, err)
+	b.seedInstances(intake.InstanceCapPerLicense-1, "2026-10-01")
 
 	stored, discarded, err := b.intake.PromotePending(t.Context(), b.fingerprint)
 	require.NoError(t, err)

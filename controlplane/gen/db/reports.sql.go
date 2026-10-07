@@ -14,14 +14,15 @@ import (
 const countInstances = `-- name: CountInstances :one
 SELECT
     count(*) AS total,
-    count(*) FILTER (WHERE instance_id = $2) AS this_one
+    count(*) FILTER (WHERE instance_id = $1) AS this_one
 FROM controlplane.instances
-WHERE license_id = $1
+WHERE license_id = $2 AND last_report_day >= $3
 `
 
 type CountInstancesParams struct {
-	LicenseID  string
 	InstanceID string
+	LicenseID  string
+	SeenSince  pgtype.Date
 }
 
 type CountInstancesRow struct {
@@ -29,9 +30,10 @@ type CountInstancesRow struct {
 	ThisOne int64
 }
 
-// How many instances a license was seen on, and whether this one is among them.
+// How many instances a license was seen on lately, and whether this one is among them. An
+// instance whose last report is of a day before seen_since is not counted.
 func (q *Queries) CountInstances(ctx context.Context, arg CountInstancesParams) (CountInstancesRow, error) {
-	row := q.db.QueryRow(ctx, countInstances, arg.LicenseID, arg.InstanceID)
+	row := q.db.QueryRow(ctx, countInstances, arg.InstanceID, arg.LicenseID, arg.SeenSince)
 	var i CountInstancesRow
 	err := row.Scan(&i.Total, &i.ThisOne)
 	return i, err

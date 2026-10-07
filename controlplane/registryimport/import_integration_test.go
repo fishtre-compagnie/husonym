@@ -76,6 +76,37 @@ func Test_Import_RefusesAKeyThatDoesNotVerify(t *testing.T) {
 	require.Equal(t, []string{"lic-1", "lic-2"}, ids)
 }
 
+// The issuer never mints such a key; one that is there all the same has no customer to go under.
+func Test_Import_RefusesAKeyWithoutACustomer(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	issuer := cptest.NewIssuer(t)
+	orphan := issuer.EntryOf(&license.Key{
+		Version:   "v1",
+		Id:        "lic-orphan",
+		IssuedTo:  "Nobody",
+		IssuedAt:  time.Now().UTC().Truncate(time.Second),
+		ExpiresAt: time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second),
+	})
+	// The entry names a customer; the key, which is what counts, does not.
+	orphan.CustomerId = "cust-9"
+	registry := &license.Registry{Entries: []license.RegistryEntry{orphan, issuer.Entry("lic-1", "cust-1", "Acme")}}
+
+	result, err := registryimport.Run(ctx, store, intake.New(store, time.Now), registry, issuer.Keyring())
+
+	require.NoError(t, err)
+	require.Equal(t, registryimport.Result{Added: 1, Refused: 1}, result)
+	var licenses, customers int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM controlplane.licenses`).Scan(&licenses))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM controlplane.customers`).Scan(&customers))
+	require.Equal(t, 1, licenses)
+	require.Equal(t, 1, customers)
+}
+
 const instance = "123e4567-e89b-12d3-a456-426614174000"
 
 func Test_Import_PromotesThePendingReportsOfTheLicensesItAdds(t *testing.T) {

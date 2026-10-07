@@ -35,10 +35,20 @@ const (
 	// ReportConflict: another document was already stored for that instance and day; it stays,
 	// and the row counts the conflict.
 	ReportConflict
-	// ReportTooManyInstances: the report is of an instance its license has not been seen on,
-	// and the license has been seen on as many instances as it may. Nothing was stored.
+	// ReportTooManyInstances: the report is of an instance its license has not been seen on
+	// lately, and the license has lately been seen on as many instances as it may. Nothing was
+	// stored.
 	ReportTooManyInstances
 )
+
+// InstanceCap bounds on how many instances a license is seen at a time.
+type InstanceCap struct {
+	// Max is how many instances count at most.
+	Max int64
+	// SeenSince is the first day that counts: an instance whose last report is of an earlier
+	// day is not counted, and is held by the cap like an instance never seen.
+	SeenSince time.Time
+}
 
 // PendingReport is a report received under a fingerprint no issued license has, kept as received.
 type PendingReport struct {
@@ -64,15 +74,15 @@ type PendingCaps struct {
 // one is a conflict, counted on the row. Two calls at once for the same license, instance and
 // day end as one row, one of them stored and the other a repeat or a conflict.
 //
-// A license is seen on maxInstances instances at most: the report of one more is not stored.
-// The instances are counted in the transaction, without a lock: calls at once may each see room
-// and go over by a few rows. The cap bounds what the holder of a key can make the service keep;
-// it does not need to be exact.
-func (s *Store) StoreReport(ctx context.Context, report *Report, maxInstances int64) (ReportOutcome, error) {
+// A license is seen on limit.Max instances at most since limit.SeenSince: the report of one more
+// is not stored. The instances are counted in the transaction, without a lock: calls at once may
+// each see room and go over by a few rows. The cap bounds what the holder of a key can make the
+// service keep at a time; it does not need to be exact.
+func (s *Store) StoreReport(ctx context.Context, report *Report, limit InstanceCap) (ReportOutcome, error) {
 	var outcome ReportOutcome
 	err := s.inTx(ctx, func(queries *cpdb.Queries) error {
 		var err error
-		outcome, err = storeReport(ctx, queries, report, maxInstances)
+		outcome, err = storeReport(ctx, queries, report, limit)
 		return err
 	})
 	if err != nil {
@@ -84,16 +94,17 @@ func (s *Store) StoreReport(ctx context.Context, report *Report, maxInstances in
 // storeReport does what StoreReport says, inside the transaction of its caller. The instance is
 // written first, as the report refers to it; every caller takes the two rows in that order.
 func storeReport(
-	ctx context.Context, queries *cpdb.Queries, report *Report, maxInstances int64,
+	ctx context.Context, queries *cpdb.Queries, report *Report, limit InstanceCap,
 ) (ReportOutcome, error) {
 	instances, err := queries.CountInstances(ctx, cpdb.CountInstancesParams{
 		LicenseID:  report.LicenseID,
 		InstanceID: report.InstanceID,
+		SeenSince:  utcDate(limit.SeenSince),
 	})
 	if err != nil {
 		return 0, err
 	}
-	if instances.ThisOne == 0 && instances.Total >= maxInstances {
+	if instances.ThisOne == 0 && instances.Total >= limit.Max {
 		return ReportTooManyInstances, nil
 	}
 	day := utcDate(report.Day)
@@ -234,12 +245,12 @@ func (s *Store) PendingReports(ctx context.Context, fingerprint string) ([]Pendi
 // does, and removes that one from pending, in one transaction. The pending report is removed
 // whatever the outcome: one that is not stored for ReportTooManyInstances is discarded.
 func (s *Store) PromotePendingReport(
-	ctx context.Context, pending *PendingReport, report *Report, maxInstances int64,
+	ctx context.Context, pending *PendingReport, report *Report, limit InstanceCap,
 ) (ReportOutcome, error) {
 	var outcome ReportOutcome
 	err := s.inTx(ctx, func(queries *cpdb.Queries) error {
 		var err error
-		if outcome, err = storeReport(ctx, queries, report, maxInstances); err != nil {
+		if outcome, err = storeReport(ctx, queries, report, limit); err != nil {
 			return err
 		}
 		_, err = deletePending(ctx, queries, pending)

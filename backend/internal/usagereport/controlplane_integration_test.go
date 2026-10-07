@@ -29,10 +29,11 @@ func sealedByTheProduct(t *testing.T, key string, day time.Time) *usagestore.Sto
 		GeneratedAt:   day.UTC().Format(time.RFC3339),
 		Identification: telemetry.Identification{
 			KeyFingerprint: fingerprint,
-			LicenseID:      "0123456789abcdef",
-			InstanceID:     "123e4567-e89b-12d3-a456-426614174000",
-			LicenseState:   "valid",
-			DaysToExpiry:   212,
+			// The licenses of this test have an id someone chose.
+			LicenseID:    telemetry.LicenseId("lic-1"),
+			InstanceID:   "123e4567-e89b-12d3-a456-426614174000",
+			LicenseState: "valid",
+			DaysToExpiry: 212,
 		},
 		Version: telemetry.Version{Husonym: "v0.3.0"},
 		Sources: telemetry.Sources{Count: 3},

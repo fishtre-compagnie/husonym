@@ -27,8 +27,8 @@ type Promoter interface {
 }
 
 // Run records every entry of registry in store. An entry whose encoded key does not verify
-// against ring, or whose id differs from the one inside the key, is refused and counted; the
-// other entries are still imported. What is stored comes from the verified key, not from the
+// against ring, whose id differs from the one inside the key, or whose key names no customer,
+// is refused and counted; the other entries are still imported. What is stored comes from the verified key, not from the
 // entry. Nothing about a refused entry is reported but the count.
 //
 // Once the entries are in, the reports pending under the license of each entry added are
@@ -42,7 +42,7 @@ func Run(
 	for i := range registry.Entries {
 		entry := &registry.Entries[i]
 		key, err := license.ParseWith(entry.Encoded, ring)
-		if err != nil || key.Id != entry.Id {
+		if err != nil || key.Id != entry.Id || key.CustomerId == "" {
 			result.Refused++
 			continue
 		}

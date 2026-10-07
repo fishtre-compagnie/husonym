@@ -75,7 +75,10 @@ func Test_Handler_OutcomesBecomeStatuses(t *testing.T) {
 		"conflict": {outcome: intake.Conflict, status: http.StatusNoContent},
 		"refused":  {outcome: intake.Refused, status: http.StatusBadRequest},
 		"full":     {outcome: intake.Full, status: http.StatusServiceUnavailable},
-		"failure":  {outcome: intake.Stored, err: errors.New("boom"), status: http.StatusServiceUnavailable},
+		"too_many_instances": {
+			outcome: intake.TooManyInstances, status: http.StatusBadRequest,
+		},
+		"failure": {outcome: intake.Stored, err: errors.New("boom"), status: http.StatusServiceUnavailable},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -84,6 +87,10 @@ func Test_Handler_OutcomesBecomeStatuses(t *testing.T) {
 			rec := r.do(post(strings.NewReader(`{"a":1}`)))
 
 			require.Equal(t, tt.status, rec.Code)
+			if tt.err == nil {
+				// The name of the case is the word of its outcome in the log.
+				require.Contains(t, r.logs.String(), "outcome="+name+"\n")
+			}
 			require.Empty(t, rec.Body.String())
 			require.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 			require.Equal(t, 1, r.receiver.calls)

@@ -27,7 +27,7 @@ func ReportFor(t *testing.T, entry *license.RegistryEntry, instanceID string, da
 		GeneratedAt:   day.UTC().Format(time.RFC3339),
 		Identification: telemetry.Identification{
 			KeyFingerprint: fingerprint,
-			LicenseID:      "0123456789abcdef",
+			LicenseID:      telemetry.LicenseId(entry.Id),
 			InstanceID:     instanceID,
 			LicenseState:   "valid",
 			DaysToExpiry:   212,

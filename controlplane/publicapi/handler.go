@@ -132,6 +132,8 @@ func describe(outcome intake.Outcome) (status int, name string) {
 		return http.StatusNoContent, "conflict"
 	case intake.Refused:
 		return http.StatusBadRequest, "refused"
+	case intake.TooManyInstances:
+		return http.StatusBadRequest, "too_many_instances"
 	case intake.Full:
 		return http.StatusServiceUnavailable, "full"
 	default:

@@ -1,10 +1,11 @@
 -- name: CountInstances :one
--- How many instances a license was seen on, and whether this one is among them.
+-- How many instances a license was seen on lately, and whether this one is among them. An
+-- instance whose last report is of a day before seen_since is not counted.
 SELECT
     count(*) AS total,
-    count(*) FILTER (WHERE instance_id = $2) AS this_one
+    count(*) FILTER (WHERE instance_id = sqlc.arg(instance_id)) AS this_one
 FROM controlplane.instances
-WHERE license_id = $1;
+WHERE license_id = sqlc.arg(license_id) AND last_report_day >= sqlc.arg(seen_since);
 
 -- name: UpsertInstance :exec
 -- An instance is first seen at the earliest reception of a report of it. What tells its latest

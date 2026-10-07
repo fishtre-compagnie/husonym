@@ -11,7 +11,8 @@ import (
 )
 
 type Querier interface {
-	// How many instances a license was seen on, and whether this one is among them.
+	// How many instances a license was seen on lately, and whether this one is among them. An
+	// instance whose last report is of a day before seen_since is not counted.
 	CountInstances(ctx context.Context, arg CountInstancesParams) (CountInstancesRow, error)
 	// Read from the primary key, which starts with the fingerprint.
 	CountPendingReportsOfFingerprint(ctx context.Context, keyFingerprint string) (int64, error)

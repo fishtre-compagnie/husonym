@@ -13,14 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	instanceA    = "123e4567-e89b-12d3-a456-426614174000"
-	maxInstances = 50
-)
+const instanceA = "123e4567-e89b-12d3-a456-426614174000"
 
 var (
 	received = time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 	caps     = cpstore.PendingCaps{PerFingerprint: 3, Total: 5}
+	// seenSince is the first day whose instances count.
+	seenSince    = time.Date(2026, 8, 8, 0, 0, 0, 0, time.UTC)
+	maxInstances = cpstore.InstanceCap{Max: 50, SeenSince: seenSince}
 )
 
 func day(t *testing.T, value string) time.Time {
@@ -166,7 +166,7 @@ func Test_StoreReport_InstancesOfALicenseAreCapped(t *testing.T) {
 	put := func(instance, reportDay string) cpstore.ReportOutcome {
 		report := reportOf(t, reportDay, `{"n":1}`)
 		report.InstanceID = instance
-		outcome, err := store.StoreReport(ctx, report, 2)
+		outcome, err := store.StoreReport(ctx, report, cpstore.InstanceCap{Max: 2, SeenSince: seenSince})
 		require.NoError(t, err)
 		return outcome
 	}
@@ -179,6 +179,32 @@ func Test_StoreReport_InstancesOfALicenseAreCapped(t *testing.T) {
 
 	require.Equal(t, cpstore.ReportStored, put("i-1", "2026-10-06"), "an instance already seen is not held by the cap")
 	require.Equal(t, cpstore.ReportRepeat, put("i-2", "2026-10-05"))
+}
+
+// The cap counts the instances last seen since a day: an older one leaves its place, and has to
+// find one again like an instance never seen.
+func Test_StoreReport_TheInstanceCapCountsAWindow(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	store, pool := storeWithLicense(t)
+	put := func(instance, reportDay string) cpstore.ReportOutcome {
+		report := reportOf(t, reportDay, `{"n":1}`)
+		report.InstanceID = instance
+		outcome, err := store.StoreReport(ctx, report, cpstore.InstanceCap{Max: 2, SeenSince: seenSince})
+		require.NoError(t, err)
+		return outcome
+	}
+
+	require.Equal(t, cpstore.ReportStored, put("old-1", "2026-08-07"), "the day before the window")
+	require.Equal(t, cpstore.ReportStored, put("old-2", "2026-08-07"))
+	require.Equal(t, cpstore.ReportStored, put("edge", "2026-08-08"), "the first day of the window")
+	require.Equal(t, cpstore.ReportStored, put("new", "2026-10-05"), "the two old ones do not count")
+	require.Equal(t, cpstore.ReportTooManyInstances, put("one-more", "2026-10-05"))
+	require.Equal(t, cpstore.ReportTooManyInstances, put("old-1", "2026-10-05"), "an old one coming back needs room")
+	require.Equal(t, cpstore.ReportStored, put("edge", "2026-10-05"), "one that counts is not held by the cap")
+	require.Equal(t, 4, count(t, pool, "instances"))
 }
 
 func Test_StoreReport_FirstSeenIsTheEarliestReception(t *testing.T) {
