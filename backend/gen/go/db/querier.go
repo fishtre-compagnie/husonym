@@ -17,6 +17,12 @@ type Querier interface {
 	// means somebody got there first, which the caller reads as "look again".
 	AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)
 	AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error)
+	// One statement takes the oldest report that is due and marks the attempt: a report another
+	// call holds is skipped, so two calls never get the same one. When a bound is given on the
+	// preparation, a report prepared after it is not due yet. When the reports are to leave without
+	// the diagnostics, a report whose document carries them is not due at all. Nothing is due once
+	// the instance was told not to send: a call that still believes it sends gets no report.
+	ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error)
 	// Closes the row of a run still running, and creates nothing.
 	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error
 	ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)
@@ -30,8 +36,9 @@ type Querier interface {
 	CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)
 	// A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 	// it: nothing recorded after midnight belongs to the day before. A run still running counts for
-	// no day.
-	CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)
+	// no day. The days counted run from the first given to the day before the second: a day and the
+	// next one for the runs of a day, the first days of two months for the runs of a month.
+	CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error)
 	// The types of the columns the runs saw, counted by type. The schema, the table and the column
 	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
 	// could not read, which it leaves out of every count.
@@ -131,6 +138,7 @@ type Querier interface {
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
+	GetLastUsageReportSentAt(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)
 	// The row of one license, by the id its key carries. A license stored twice under two values
 	// has two rows: the latest stored is the one told.
 	GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error)
@@ -139,11 +147,12 @@ type Querier interface {
 	GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error)
 	GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (HusonymApiRuncontext, error)
 	GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX, arg GetRunContextsByExternalIdSuffixParams) ([]HusonymApiRuncontext, error)
+	GetSendingSince(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)
 	GetSlackAccessToken(ctx context.Context, db DBTX, accountID pgtype.UUID) (string, error)
 	GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]HusonymApiAccount, error)
 	GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.TemporalConfig, error)
 	GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)
-	GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error)
+	GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (GetUsageReportRow, error)
 	GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)
 	// Looks an identity up by the pair that identifies it. The empty issuer is accepted in
 	// the same breath because a row recorded before issuers were has not been adopted yet:
@@ -196,6 +205,10 @@ type Querier interface {
 	// decoded is then left out on its own instead of failing the whole list.
 	ListJobsOfInstanceForUsage(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error)
 	ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)
+	// Tells of each report whether its document carries the diagnostics, as the claim reads it.
+	ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error)
+	// The reports of the days from the first given to the day before the second, the oldest first.
+	ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
 	// Held until the transaction ends, so that two changes of the role of one member in one
@@ -222,6 +235,8 @@ type Querier interface {
 	// NO KEY UPDATE, not UPDATE: a row that references the user (an account association, an
 	// API key) can still be written meanwhile, only another holder waits.
 	LockUser(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error)
+	// A report already sent keeps the date it was sent on.
+	MarkUsageReportSent(ctx context.Context, db DBTX, arg MarkUsageReportSentParams) error
 	RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error
@@ -273,10 +288,14 @@ type Querier interface {
 	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
 	// Only a run still open is settled.
 	SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error
-	SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)
+	// Only an instance that does not send yet starts: the first date stays.
+	StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error
+	StopUsageSending(ctx context.Context, db DBTX) error
+	// The days counted run from the first given to the day before the second, as for the runs.
+	SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error)
 	// Durations come from the runs that have an end only, and are never negative: an end told
 	// before its start counts for nothing.
-	SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)
+	SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error)
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)

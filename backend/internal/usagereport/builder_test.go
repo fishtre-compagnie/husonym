@@ -98,6 +98,9 @@ type fakeCounters struct {
 	days       []time.Time
 
 	instanceErr, runsErr, versionsErr, refusalsErr error
+
+	// What the store holds over several days: see period_test.go.
+	fakeMonths
 }
 
 func (f *fakeCounters) InstanceId(context.Context) (string, error) {

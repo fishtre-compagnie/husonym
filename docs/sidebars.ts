@@ -76,6 +76,11 @@ const sidebars: SidebarsConfig = {
           label: 'whoami',
         },
         {
+          type: 'doc',
+          id: 'cli/usage-report',
+          label: 'usage-report',
+        },
+        {
           type: 'category',
           label: 'accounts',
           collapsible: true,
@@ -160,6 +165,11 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'deploy/licensing',
       label: 'Licensing',
+    },
+    {
+      type: 'doc',
+      id: 'deploy/usage-report',
+      label: 'Usage report',
     },
     {
       type: 'doc',

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 	"time"
 
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -22,7 +21,8 @@ var ErrNoLicenseInForce = errors.New("no license is in force: the usage report i
 // does not answer delays the report and never holds it.
 const optionalReadTimeout = 10 * time.Second
 
-// Sealed is the usage report of a day, as it is kept.
+// Sealed is a usage report with its seal: the one of a day, as it is kept, or the one for a
+// period, as it is handed over.
 type Sealed struct {
 	// Document is the exact JSON the seal is of, byte for byte.
 	Document []byte
@@ -32,12 +32,17 @@ type Sealed struct {
 	KeyFingerprint string
 }
 
-// Counters is what the usage store counted on a day. *usagestore.Store is one.
+// Counters is what the usage store counted on a day, or over the days from one to the day before
+// another, and the reports of the day it keeps. *usagestore.Store is one.
 type Counters interface {
 	InstanceId(ctx context.Context) (string, error)
 	RunsOfDay(ctx context.Context, day time.Time) (*usagestore.DayRuns, error)
 	SourceVersionsOfDay(ctx context.Context, day time.Time) ([]usagestore.SourceEngineRuns, error)
 	RefusalsOfDay(ctx context.Context, day time.Time) ([]usagestore.GateCount, error)
+
+	RunsBetween(ctx context.Context, from, before time.Time) (*usagestore.DayRuns, error)
+	RefusalsBetween(ctx context.Context, from, before time.Time) ([]usagestore.GateCount, error)
+	ReportsBetween(ctx context.Context, from, before time.Time) ([]usagestore.StoredReport, error)
 }
 
 // InventorySource gives what the instance holds. *InventoryReader is one.
@@ -68,8 +73,7 @@ type Builder struct {
 	inventory InventorySource
 	instance  Instance
 	license   license.EEInterface
-	keys      KeySource
-	ring      license.Keyring
+	key       *InstanceKey
 	facts     Facts
 }
 
@@ -87,7 +91,7 @@ func NewBuilder(
 ) *Builder {
 	return &Builder{
 		counters: counters, inventory: inventory, instance: instance,
-		license: lic, keys: keys, ring: ring, facts: facts,
+		license: lic, key: NewInstanceKey(keys, ring), facts: facts,
 	}
 }
 
@@ -155,26 +159,14 @@ func (b *Builder) Build(ctx context.Context, day, now time.Time) (*Sealed, error
 // the id, the state and the days left all come from that one value, which is the one the report
 // is then sealed with: they never tell of two keys. Nothing here cites the key.
 func (b *Builder) identify(ctx context.Context, now time.Time) (string, *telemetry.Identification, error) {
-	keyValue, err := b.keys.Current(ctx)
+	keyValue, key, err := b.key.inForce(ctx, now)
 	if err != nil {
-		return "", nil, fmt.Errorf("unable to read the license key: %w", err)
-	}
-	keyValue = strings.TrimSpace(keyValue)
-	if keyValue == "" {
-		return "", nil, ErrNoLicenseInForce
-	}
-	key, err := license.ParseWith(keyValue, b.ring)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to verify the license key: %w", err)
-	}
-	state := key.StateAt(now)
-	if state == license.StateFrozen {
-		return "", nil, ErrNoLicenseInForce
+		return "", nil, err
 	}
 	return keyValue, &telemetry.Identification{
 		KeyFingerprint: telemetry.KeyFingerprint(keyValue),
 		LicenseID:      telemetry.LicenseId(key.Id),
-		LicenseState:   telemetry.LicenseState(string(state)),
+		LicenseState:   telemetry.LicenseState(string(key.StateAt(now))),
 		DaysToExpiry:   daysBetween(now, key.ExpiresAt),
 	}, nil
 }

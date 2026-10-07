@@ -7,6 +7,8 @@ import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Date } from "./metrics_pb.js";
+import { file_mgmt_v1alpha1_metrics } from "./metrics_pb.js";
 import { file_mgmt_v1alpha1_permission } from "./permission_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/usage.proto.
  */
 export const file_mgmt_v1alpha1_usage: GenFile = /*@__PURE__*/
-  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKvAwoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kIhgKFlJlY29yZFJ1bkVuZGVkUmVzcG9uc2UqdgoKUnVuT3V0Y29tZRIbChdSVU5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhkKFVJVTl9PVVRDT01FX0NPTVBMRVRFRBABEhYKElJVTl9PVVRDT01FX0ZBSUxFRBACEhgKFFJVTl9PVVRDT01FX0NBTkNFTEVEEAMy4gEKDFVzYWdlU2VydmljZRJrChBSZWNvcmRSdW5TdGFydGVkEiYubWdtdC52MWFscGhhMS5SZWNvcmRSdW5TdGFydGVkUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlc3BvbnNlIgaStRgCEAESZQoOUmVjb3JkUnVuRW5kZWQSJC5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVxdWVzdBolLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuRW5kZWRSZXNwb25zZSIGkrUYAhABQssBChFjb20ubWdtdC52MWFscGhhMUIKVXNhZ2VQcm90b1ABWlVnaXRodWIuY29tL2Zpc2h0cmUtY29tcGFnbmllL2h1c29ueW0vYmFja2VuZC9nZW4vZ28vcHJvdG9zL21nbXQvdjFhbHBoYTE7bWdtdHYxYWxwaGExogIDTVhYqgINTWdtdC5WMWFscGhhMcoCDU1nbXRcVjFhbHBoYTHiAhlNZ210XFYxYWxwaGExXEdQQk1ldGFkYXRh6gIOTWdtdDo6VjFhbHBoYTFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_permission]);
+  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKvAwoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kIhgKFlJlY29yZFJ1bkVuZGVkUmVzcG9uc2UiOAoYR2V0VXNhZ2VSZXBvcnRpbmdSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBIo0DChlHZXRVc2FnZVJlcG9ydGluZ1Jlc3BvbnNlEjcKDGxpY2Vuc2VfbW9kZRgBIAEoDjIhLm1nbXQudjFhbHBoYTEuVXNhZ2VSZXBvcnRpbmdNb2RlEi8KBG1vZGUYAiABKA4yIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0aW5nTW9kZRIVCg1iZWxvd19saWNlbnNlGAMgASgIEhMKC2RpYWdub3N0aWNzGAQgASgIEjEKDXNlbmRpbmdfc2luY2UYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDWZpcnN0X3NlbmRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGxhc3Rfc2VudF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGc2lsZW50GAggASgIEjIKB3JlcG9ydHMYCSADKAsyIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0U3VtbWFyeSKnAQoSVXNhZ2VSZXBvcnRTdW1tYXJ5EiAKA2RheRgBIAEoCzITLm1nbXQudjFhbHBoYTEuRGF0ZRIwCgZzdGF0dXMYAiABKA4yIC5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0U3RhdHVzEisKB3NlbnRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGF0dGVtcHRzGAQgASgFIl8KFUdldFVzYWdlUmVwb3J0UmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARIoCgNkYXkYAiABKAsyEy5tZ210LnYxYWxwaGExLkRhdGVCBrpIA8gBASJRChZHZXRVc2FnZVJlcG9ydFJlc3BvbnNlEhAKCGRvY3VtZW50GAEgASgJEgwKBHNlYWwYAiABKAkSFwoPa2V5X2ZpbmdlcnByaW50GAMgASgJIqcBChtHZXRVc2FnZVBlcmlvZFJlcG9ydFJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESNQoKZnJvbV9tb250aBgCIAEoCUIhukgechwyGl5bMC05XXs0fS0oMFsxLTldfDFbMC0yXSkkEjMKCHRvX21vbnRoGAMgASgJQiG6SB5yHDIaXlswLTldezR9LSgwWzEtOV18MVswLTJdKSQiVwocR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXNwb25zZRIQCghkb2N1bWVudBgBIAEoCRIMCgRzZWFsGAIgASgJEhcKD2tleV9maW5nZXJwcmludBgDIAEoCSp2CgpSdW5PdXRjb21lEhsKF1JVTl9PVVRDT01FX1VOU1BFQ0lGSUVEEAASGQoVUlVOX09VVENPTUVfQ09NUExFVEVEEAESFgoSUlVOX09VVENPTUVfRkFJTEVEEAISGAoUUlVOX09VVENPTUVfQ0FOQ0VMRUQQAyqjAQoSVXNhZ2VSZXBvcnRpbmdNb2RlEiQKIFVTQUdFX1JFUE9SVElOR19NT0RFX1VOU1BFQ0lGSUVEEAASHwobVVNBR0VfUkVQT1JUSU5HX01PREVfT05MSU5FEAESJwojVVNBR0VfUkVQT1JUSU5HX01PREVfT0ZGTElORV9SRVBPUlQQAhIdChlVU0FHRV9SRVBPUlRJTkdfTU9ERV9OT05FEAMqugEKEVVzYWdlUmVwb3J0U3RhdHVzEiMKH1VTQUdFX1JFUE9SVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhVU0FHRV9SRVBPUlRfU1RBVFVTX0tFUFQQARIiCh5VU0FHRV9SRVBPUlRfU1RBVFVTX1RPX0JFX1NFTlQQAhIcChhVU0FHRV9SRVBPUlRfU1RBVFVTX1NFTlQQAxIgChxVU0FHRV9SRVBPUlRfU1RBVFVTX05PVF9TRU5UEAQyvgQKDFVzYWdlU2VydmljZRJrChBSZWNvcmRSdW5TdGFydGVkEiYubWdtdC52MWFscGhhMS5SZWNvcmRSdW5TdGFydGVkUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlc3BvbnNlIgaStRgCEAESZQoOUmVjb3JkUnVuRW5kZWQSJC5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVxdWVzdBolLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuRW5kZWRSZXNwb25zZSIGkrUYAhABEnIKEUdldFVzYWdlUmVwb3J0aW5nEicubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydGluZ1JlcXVlc3QaKC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0aW5nUmVzcG9uc2UiCpACAZK1GAMKAQESaQoOR2V0VXNhZ2VSZXBvcnQSJC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0UmVxdWVzdBolLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VSZXBvcnRSZXNwb25zZSIKkAIBkrUYAwoBARJ7ChRHZXRVc2FnZVBlcmlvZFJlcG9ydBIqLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0GisubWdtdC52MWFscGhhMS5HZXRVc2FnZVBlcmlvZFJlcG9ydFJlc3BvbnNlIgqQAgGStRgDCgEBQssBChFjb20ubWdtdC52MWFscGhhMUIKVXNhZ2VQcm90b1ABWlVnaXRodWIuY29tL2Zpc2h0cmUtY29tcGFnbmllL2h1c29ueW0vYmFja2VuZC9nZW4vZ28vcHJvdG9zL21nbXQvdjFhbHBoYTE7bWdtdHYxYWxwaGExogIDTVhYqgINTWdtdC5WMWFscGhhMcoCDU1nbXRcVjFhbHBoYTHiAhlNZ210XFYxYWxwaGExXEdQQk1ldGFkYXRh6gIOTWdtdDo6VjFhbHBoYTFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_metrics, file_mgmt_v1alpha1_permission]);
 
 /**
  * @generated from message mgmt.v1alpha1.RecordRunStartedRequest
@@ -158,6 +160,263 @@ export const RecordRunEndedResponseSchema: GenMessage<RecordRunEndedResponse> = 
   messageDesc(file_mgmt_v1alpha1_usage, 3);
 
 /**
+ * @generated from message mgmt.v1alpha1.GetUsageReportingRequest
+ */
+export type GetUsageReportingRequest = Message<"mgmt.v1alpha1.GetUsageReportingRequest"> & {
+  /**
+   * The unique identifier of the account that asks.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsageReportingRequest.
+ * Use `create(GetUsageReportingRequestSchema)` to create a new message.
+ */
+export const GetUsageReportingRequestSchema: GenMessage<GetUsageReportingRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 4);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetUsageReportingResponse
+ */
+export type GetUsageReportingResponse = Message<"mgmt.v1alpha1.GetUsageReportingResponse"> & {
+  /**
+   * What the license key provides for the usage report. Unspecified when no key is in force.
+   *
+   * @generated from field: mgmt.v1alpha1.UsageReportingMode license_mode = 1;
+   */
+  licenseMode: UsageReportingMode;
+
+  /**
+   * The mode in force. Unspecified when no key is in force.
+   *
+   * @generated from field: mgmt.v1alpha1.UsageReportingMode mode = 2;
+   */
+  mode: UsageReportingMode;
+
+  /**
+   * Whether the operator lowered the mode below what the key provides.
+   *
+   * @generated from field: bool below_license = 3;
+   */
+  belowLicense: boolean;
+
+  /**
+   * Whether the part of the report that describes the instance is on.
+   *
+   * @generated from field: bool diagnostics = 4;
+   */
+  diagnostics: boolean;
+
+  /**
+   * Since when the instance sends its report. Absent when it does not.
+   *
+   * @generated from field: google.protobuf.Timestamp sending_since = 5;
+   */
+  sendingSince?: Timestamp | undefined;
+
+  /**
+   * When the first report is sent at the earliest: 24 hours after it was prepared. Present while the instance sends, has a report to send and has sent none since it started sending.
+   *
+   * @generated from field: google.protobuf.Timestamp first_send_at = 6;
+   */
+  firstSendAt?: Timestamp | undefined;
+
+  /**
+   * When a report was last sent. Absent when none ever was.
+   *
+   * @generated from field: google.protobuf.Timestamp last_sent_at = 7;
+   */
+  lastSentAt?: Timestamp | undefined;
+
+  /**
+   * Whether the instance sends its report and nothing was sent for 30 days.
+   *
+   * @generated from field: bool silent = 8;
+   */
+  silent: boolean;
+
+  /**
+   * What became of the reports of the last 30 days, the newest first.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.UsageReportSummary reports = 9;
+   */
+  reports: UsageReportSummary[];
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsageReportingResponse.
+ * Use `create(GetUsageReportingResponseSchema)` to create a new message.
+ */
+export const GetUsageReportingResponseSchema: GenMessage<GetUsageReportingResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 5);
+
+/**
+ * @generated from message mgmt.v1alpha1.UsageReportSummary
+ */
+export type UsageReportSummary = Message<"mgmt.v1alpha1.UsageReportSummary"> & {
+  /**
+   * The UTC day the report counts.
+   *
+   * @generated from field: mgmt.v1alpha1.Date day = 1;
+   */
+  day?: Date | undefined;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.UsageReportStatus status = 2;
+   */
+  status: UsageReportStatus;
+
+  /**
+   * When the report was sent. Absent while it was not.
+   *
+   * @generated from field: google.protobuf.Timestamp sent_at = 3;
+   */
+  sentAt?: Timestamp | undefined;
+
+  /**
+   * How many times the report was tried.
+   *
+   * @generated from field: int32 attempts = 4;
+   */
+  attempts: number;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.UsageReportSummary.
+ * Use `create(UsageReportSummarySchema)` to create a new message.
+ */
+export const UsageReportSummarySchema: GenMessage<UsageReportSummary> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 6);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetUsageReportRequest
+ */
+export type GetUsageReportRequest = Message<"mgmt.v1alpha1.GetUsageReportRequest"> & {
+  /**
+   * The unique identifier of the account that asks.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * The UTC day of the report: a day of the calendar that is not in the future.
+   *
+   * @generated from field: mgmt.v1alpha1.Date day = 2;
+   */
+  day?: Date | undefined;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsageReportRequest.
+ * Use `create(GetUsageReportRequestSchema)` to create a new message.
+ */
+export const GetUsageReportRequestSchema: GenMessage<GetUsageReportRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 7);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetUsageReportResponse
+ */
+export type GetUsageReportResponse = Message<"mgmt.v1alpha1.GetUsageReportResponse"> & {
+  /**
+   * The report as it is kept, byte for byte.
+   *
+   * @generated from field: string document = 1;
+   */
+  document: string;
+
+  /**
+   * The seal of the document.
+   *
+   * @generated from field: string seal = 2;
+   */
+  seal: string;
+
+  /**
+   * The fingerprint of the key that sealed it.
+   *
+   * @generated from field: string key_fingerprint = 3;
+   */
+  keyFingerprint: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsageReportResponse.
+ * Use `create(GetUsageReportResponseSchema)` to create a new message.
+ */
+export const GetUsageReportResponseSchema: GenMessage<GetUsageReportResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 8);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetUsagePeriodReportRequest
+ */
+export type GetUsagePeriodReportRequest = Message<"mgmt.v1alpha1.GetUsagePeriodReportRequest"> & {
+  /**
+   * The unique identifier of the account that asks.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * The first month of the period, as "2026-01", in UTC.
+   *
+   * @generated from field: string from_month = 2;
+   */
+  fromMonth: string;
+
+  /**
+   * The last month of the period, included: not before the first, not in the future, and at most 24 months in all.
+   *
+   * @generated from field: string to_month = 3;
+   */
+  toMonth: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsagePeriodReportRequest.
+ * Use `create(GetUsagePeriodReportRequestSchema)` to create a new message.
+ */
+export const GetUsagePeriodReportRequestSchema: GenMessage<GetUsagePeriodReportRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 9);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetUsagePeriodReportResponse
+ */
+export type GetUsagePeriodReportResponse = Message<"mgmt.v1alpha1.GetUsagePeriodReportResponse"> & {
+  /**
+   * The report for the period, as it was sealed, byte for byte.
+   *
+   * @generated from field: string document = 1;
+   */
+  document: string;
+
+  /**
+   * The seal of the document.
+   *
+   * @generated from field: string seal = 2;
+   */
+  seal: string;
+
+  /**
+   * The fingerprint of the key that sealed it.
+   *
+   * @generated from field: string key_fingerprint = 3;
+   */
+  keyFingerprint: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetUsagePeriodReportResponse.
+ * Use `create(GetUsagePeriodReportResponseSchema)` to create a new message.
+ */
+export const GetUsagePeriodReportResponseSchema: GenMessage<GetUsagePeriodReportResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 10);
+
+/**
  * How a run ended.
  *
  * @generated from enum mgmt.v1alpha1.RunOutcome
@@ -197,6 +456,91 @@ export const RunOutcomeSchema: GenEnum<RunOutcome> = /*@__PURE__*/
   enumDesc(file_mgmt_v1alpha1_usage, 0);
 
 /**
+ * What the instance does with its usage report.
+ *
+ * @generated from enum mgmt.v1alpha1.UsageReportingMode
+ */
+export enum UsageReportingMode {
+  /**
+   * @generated from enum value: USAGE_REPORTING_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The report is prepared and sent.
+   *
+   * @generated from enum value: USAGE_REPORTING_MODE_ONLINE = 1;
+   */
+  ONLINE = 1,
+
+  /**
+   * The report is prepared and kept, to be given as a file.
+   *
+   * @generated from enum value: USAGE_REPORTING_MODE_OFFLINE_REPORT = 2;
+   */
+  OFFLINE_REPORT = 2,
+
+  /**
+   * The report is prepared and kept. Nothing is sent.
+   *
+   * @generated from enum value: USAGE_REPORTING_MODE_NONE = 3;
+   */
+  NONE = 3,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.UsageReportingMode.
+ */
+export const UsageReportingModeSchema: GenEnum<UsageReportingMode> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_usage, 1);
+
+/**
+ * What became of the usage report of a day.
+ *
+ * @generated from enum mgmt.v1alpha1.UsageReportStatus
+ */
+export enum UsageReportStatus {
+  /**
+   * @generated from enum value: USAGE_REPORT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The report is kept, and is not to be sent.
+   *
+   * @generated from enum value: USAGE_REPORT_STATUS_KEPT = 1;
+   */
+  KEPT = 1,
+
+  /**
+   * The report is waiting to be sent, and no attempt was made yet.
+   *
+   * @generated from enum value: USAGE_REPORT_STATUS_TO_BE_SENT = 2;
+   */
+  TO_BE_SENT = 2,
+
+  /**
+   * The report was sent.
+   *
+   * @generated from enum value: USAGE_REPORT_STATUS_SENT = 3;
+   */
+  SENT = 3,
+
+  /**
+   * The report was tried and could not be sent; it is tried again later.
+   *
+   * @generated from enum value: USAGE_REPORT_STATUS_NOT_SENT = 4;
+   */
+  NOT_SENT = 4,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.UsageReportStatus.
+ */
+export const UsageReportStatusSchema: GenEnum<UsageReportStatus> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_usage, 2);
+
+/**
  * Holds the counters of what the instance runs.
  *
  * @generated from service mgmt.v1alpha1.UsageService
@@ -221,6 +565,36 @@ export const UsageService: GenService<{
     methodKind: "unary";
     input: typeof RecordRunEndedRequestSchema;
     output: typeof RecordRunEndedResponseSchema;
+  },
+  /**
+   * Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+   *
+   * @generated from rpc mgmt.v1alpha1.UsageService.GetUsageReporting
+   */
+  getUsageReporting: {
+    methodKind: "unary";
+    input: typeof GetUsageReportingRequestSchema;
+    output: typeof GetUsageReportingResponseSchema;
+  },
+  /**
+   * Gives the usage report of a day, as it is kept.
+   *
+   * @generated from rpc mgmt.v1alpha1.UsageService.GetUsageReport
+   */
+  getUsageReport: {
+    methodKind: "unary";
+    input: typeof GetUsageReportRequestSchema;
+    output: typeof GetUsageReportResponseSchema;
+  },
+  /**
+   * Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+   *
+   * @generated from rpc mgmt.v1alpha1.UsageService.GetUsagePeriodReport
+   */
+  getUsagePeriodReport: {
+    methodKind: "unary";
+    input: typeof GetUsagePeriodReportRequestSchema;
+    output: typeof GetUsagePeriodReportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_mgmt_v1alpha1_usage, 0);

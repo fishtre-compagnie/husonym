@@ -19,10 +19,6 @@ const buildTimeout = 2 * time.Minute
 // one of the database by seconds: a run recorded at 23:59:59 must be in the report.
 const closedAfter = 5 * time.Minute
 
-// firstPassAfter is how long after it starts the loop makes its first pass, so that a process
-// restarted more often than the interval still prepares its report.
-const firstPassAfter = 2 * time.Minute
-
 // keptMonths is how long a prepared report is kept, counted from the day just prepared.
 const keptMonths = 24
 
@@ -44,15 +40,12 @@ type Preparer struct {
 	store   ReportStore
 	logger  *slog.Logger
 
-	buildTimeout   time.Duration
-	firstPassAfter time.Duration
-	now            func() time.Time
+	buildTimeout time.Duration
 }
 
 func NewPreparer(builder ReportBuilder, store ReportStore, logger *slog.Logger) *Preparer {
 	return &Preparer{
-		builder: builder, store: store, logger: logger,
-		buildTimeout: buildTimeout, firstPassAfter: firstPassAfter, now: time.Now,
+		builder: builder, store: store, logger: logger, buildTimeout: buildTimeout,
 	}
 }
 
@@ -115,41 +108,4 @@ func (p *Preparer) PrepareDue(ctx context.Context, now time.Time) error {
 		p.logger.WarnContext(ctx, "could not drop the old usage reports", "error", err)
 	}
 	return nil
-}
-
-// Every prepares soon after it starts, then at the given interval, until ctx is done. A pass
-// that fails is logged and the next one tries again.
-func (p *Preparer) Every(ctx context.Context, every time.Duration) {
-	first := time.NewTimer(p.firstPassAfter)
-	defer first.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-first.C:
-		p.pass(ctx)
-	}
-
-	ticker := time.NewTicker(every)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			p.pass(ctx)
-		}
-	}
-}
-
-// pass makes one pass of the loop. A panic ends the pass and not the process: the usage report
-// never takes the instance down. The value of the panic is not logged, it may hold anything.
-func (p *Preparer) pass(ctx context.Context) {
-	defer func() {
-		if recover() != nil {
-			p.logger.ErrorContext(ctx, "could not prepare the usage report of the day", "panicked", true)
-		}
-	}()
-	if err := p.PrepareDue(ctx, p.now()); err != nil && ctx.Err() == nil {
-		p.logger.WarnContext(ctx, "could not prepare the usage report of the day", "error", err)
-	}
 }

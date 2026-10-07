@@ -24,10 +24,11 @@ _sym_db = _symbol_database.Default()
 
 from buf.validate import validate_pb2 as buf_dot_validate_dot_validate__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from mgmt.v1alpha1 import metrics_pb2 as mgmt_dot_v1alpha1_dot_metrics__pb2
 from mgmt.v1alpha1 import permission_pb2 as mgmt_dot_v1alpha1_dot_permission__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n\x17RecordRunStartedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n\x18RecordRunStartedResponse\"\xa1\x04\n\x15RecordRunEndedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\x12=\n\x08\x65nded_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\x07\x65ndedAt\x12?\n\x07outcome\x18\x05 \x01(\x0e\x32\x19.mgmt.v1alpha1.RunOutcomeB\n\xbaH\x07\x82\x01\x04\x10\x01 \x00R\x07outcome\x12$\n\trows_read\x18\x06 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x08rowsRead\x12.\n\x0erows_discarded\x18\x07 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\rrowsDiscarded\x12!\n\x07retries\x18\x08 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x07retries\x12\x32\n\x10tables_uncounted\x18\t \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n\x14source_version_major\x18\n \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\"\x18\n\x16RecordRunEndedResponse*v\n\nRunOutcome\x12\x1b\n\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n\x15RUN_OUTCOME_COMPLETED\x10\x01\x12\x16\n\x12RUN_OUTCOME_FAILED\x10\x02\x12\x18\n\x14RUN_OUTCOME_CANCELED\x10\x03\x32\xe2\x01\n\x0cUsageService\x12k\n\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a\'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x65\n\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x42\xcb\x01\n\x11\x63om.mgmt.v1alpha1B\nUsageProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmgmt/v1alpha1/metrics.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n\x17RecordRunStartedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n\x18RecordRunStartedResponse\"\xa1\x04\n\x15RecordRunEndedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\x12=\n\x08\x65nded_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\x07\x65ndedAt\x12?\n\x07outcome\x18\x05 \x01(\x0e\x32\x19.mgmt.v1alpha1.RunOutcomeB\n\xbaH\x07\x82\x01\x04\x10\x01 \x00R\x07outcome\x12$\n\trows_read\x18\x06 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x08rowsRead\x12.\n\x0erows_discarded\x18\x07 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\rrowsDiscarded\x12!\n\x07retries\x18\x08 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x07retries\x12\x32\n\x10tables_uncounted\x18\t \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n\x14source_version_major\x18\n \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\"\x18\n\x16RecordRunEndedResponse\"C\n\x18GetUsageReportingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"\xf3\x03\n\x19GetUsageReportingResponse\x12\x44\n\x0clicense_mode\x18\x01 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x0blicenseMode\x12\x35\n\x04mode\x18\x02 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x04mode\x12#\n\rbelow_license\x18\x03 \x01(\x08R\x0c\x62\x65lowLicense\x12 \n\x0b\x64iagnostics\x18\x04 \x01(\x08R\x0b\x64iagnostics\x12?\n\rsending_since\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0csendingSince\x12>\n\rfirst_send_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0b\x66irstSendAt\x12<\n\x0clast_sent_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nlastSentAt\x12\x16\n\x06silent\x18\x08 \x01(\x08R\x06silent\x12;\n\x07reports\x18\t \x03(\x0b\x32!.mgmt.v1alpha1.UsageReportSummaryR\x07reports\"\xc6\x01\n\x12UsageReportSummary\x12%\n\x03\x64\x61y\x18\x01 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateR\x03\x64\x61y\x12\x38\n\x06status\x18\x02 \x01(\x0e\x32 .mgmt.v1alpha1.UsageReportStatusR\x06status\x12\x33\n\x07sent_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x06sentAt\x12\x1a\n\x08\x61ttempts\x18\x04 \x01(\x05R\x08\x61ttempts\"o\n\x15GetUsageReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12-\n\x03\x64\x61y\x18\x02 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x03\x64\x61y\"q\n\x16GetUsageReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xc6\x01\n\x1bGetUsagePeriodReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12@\n\nfrom_month\x18\x02 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\tfromMonth\x12<\n\x08to_month\x18\x03 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\x07toMonth\"w\n\x1cGetUsagePeriodReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint*v\n\nRunOutcome\x12\x1b\n\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n\x15RUN_OUTCOME_COMPLETED\x10\x01\x12\x16\n\x12RUN_OUTCOME_FAILED\x10\x02\x12\x18\n\x14RUN_OUTCOME_CANCELED\x10\x03*\xa3\x01\n\x12UsageReportingMode\x12$\n USAGE_REPORTING_MODE_UNSPECIFIED\x10\x00\x12\x1f\n\x1bUSAGE_REPORTING_MODE_ONLINE\x10\x01\x12\'\n#USAGE_REPORTING_MODE_OFFLINE_REPORT\x10\x02\x12\x1d\n\x19USAGE_REPORTING_MODE_NONE\x10\x03*\xba\x01\n\x11UsageReportStatus\x12#\n\x1fUSAGE_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n\x18USAGE_REPORT_STATUS_KEPT\x10\x01\x12\"\n\x1eUSAGE_REPORT_STATUS_TO_BE_SENT\x10\x02\x12\x1c\n\x18USAGE_REPORT_STATUS_SENT\x10\x03\x12 \n\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x04\x32\xbe\x04\n\x0cUsageService\x12k\n\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a\'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x65\n\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n\x11GetUsageReporting\x12\'.mgmt.v1alpha1.GetUsageReportingRequest\x1a(.mgmt.v1alpha1.GetUsageReportingResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12i\n\x0eGetUsageReport\x12$.mgmt.v1alpha1.GetUsageReportRequest\x1a%.mgmt.v1alpha1.GetUsageReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12{\n\x14GetUsagePeriodReport\x12*.mgmt.v1alpha1.GetUsagePeriodReportRequest\x1a+.mgmt.v1alpha1.GetUsagePeriodReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x42\xcb\x01\n\x11\x63om.mgmt.v1alpha1B\nUsageProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -61,20 +62,56 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_RECORDRUNENDEDREQUEST'].fields_by_name['tables_uncounted']._serialized_options = b'\272H\004\"\002(\000'
   _globals['_RECORDRUNENDEDREQUEST'].fields_by_name['source_version_major']._loaded_options = None
   _globals['_RECORDRUNENDEDREQUEST'].fields_by_name['source_version_major']._serialized_options = b'\272H\"r 2\036^([0-9]{1,3}(\\.[0-9]{1,3})?)?$'
+  _globals['_GETUSAGEREPORTINGREQUEST'].fields_by_name['account_id']._loaded_options = None
+  _globals['_GETUSAGEREPORTINGREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETUSAGEREPORTREQUEST'].fields_by_name['account_id']._loaded_options = None
+  _globals['_GETUSAGEREPORTREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETUSAGEREPORTREQUEST'].fields_by_name['day']._loaded_options = None
+  _globals['_GETUSAGEREPORTREQUEST'].fields_by_name['day']._serialized_options = b'\272H\003\310\001\001'
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['account_id']._loaded_options = None
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['from_month']._loaded_options = None
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['from_month']._serialized_options = b'\272H\036r\0342\032^[0-9]{4}-(0[1-9]|1[0-2])$'
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['to_month']._loaded_options = None
+  _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['to_month']._serialized_options = b'\272H\036r\0342\032^[0-9]{4}-(0[1-9]|1[0-2])$'
   _globals['_USAGESERVICE'].methods_by_name['RecordRunStarted']._loaded_options = None
   _globals['_USAGESERVICE'].methods_by_name['RecordRunStarted']._serialized_options = b'\222\265\030\002\020\001'
   _globals['_USAGESERVICE'].methods_by_name['RecordRunEnded']._loaded_options = None
   _globals['_USAGESERVICE'].methods_by_name['RecordRunEnded']._serialized_options = b'\222\265\030\002\020\001'
-  _globals['_RUNOUTCOME']._serialized_start=900
-  _globals['_RUNOUTCOME']._serialized_end=1018
-  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_start=139
-  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_end=296
-  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_start=298
-  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_end=324
-  _globals['_RECORDRUNENDEDREQUEST']._serialized_start=327
-  _globals['_RECORDRUNENDEDREQUEST']._serialized_end=872
-  _globals['_RECORDRUNENDEDRESPONSE']._serialized_start=874
-  _globals['_RECORDRUNENDEDRESPONSE']._serialized_end=898
-  _globals['_USAGESERVICE']._serialized_start=1021
-  _globals['_USAGESERVICE']._serialized_end=1247
+  _globals['_USAGESERVICE'].methods_by_name['GetUsageReporting']._loaded_options = None
+  _globals['_USAGESERVICE'].methods_by_name['GetUsageReporting']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
+  _globals['_USAGESERVICE'].methods_by_name['GetUsageReport']._loaded_options = None
+  _globals['_USAGESERVICE'].methods_by_name['GetUsageReport']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
+  _globals['_USAGESERVICE'].methods_by_name['GetUsagePeriodReport']._loaded_options = None
+  _globals['_USAGESERVICE'].methods_by_name['GetUsagePeriodReport']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
+  _globals['_RUNOUTCOME']._serialized_start=2251
+  _globals['_RUNOUTCOME']._serialized_end=2369
+  _globals['_USAGEREPORTINGMODE']._serialized_start=2372
+  _globals['_USAGEREPORTINGMODE']._serialized_end=2535
+  _globals['_USAGEREPORTSTATUS']._serialized_start=2538
+  _globals['_USAGEREPORTSTATUS']._serialized_end=2724
+  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_start=168
+  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_end=325
+  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_start=327
+  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_end=353
+  _globals['_RECORDRUNENDEDREQUEST']._serialized_start=356
+  _globals['_RECORDRUNENDEDREQUEST']._serialized_end=901
+  _globals['_RECORDRUNENDEDRESPONSE']._serialized_start=903
+  _globals['_RECORDRUNENDEDRESPONSE']._serialized_end=927
+  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_start=929
+  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_end=996
+  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_start=999
+  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_end=1498
+  _globals['_USAGEREPORTSUMMARY']._serialized_start=1501
+  _globals['_USAGEREPORTSUMMARY']._serialized_end=1699
+  _globals['_GETUSAGEREPORTREQUEST']._serialized_start=1701
+  _globals['_GETUSAGEREPORTREQUEST']._serialized_end=1812
+  _globals['_GETUSAGEREPORTRESPONSE']._serialized_start=1814
+  _globals['_GETUSAGEREPORTRESPONSE']._serialized_end=1927
+  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_start=1930
+  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_end=2128
+  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_start=2130
+  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_end=2249
+  _globals['_USAGESERVICE']._serialized_start=2727
+  _globals['_USAGESERVICE']._serialized_end=3301
 # @@protoc_insertion_point(module_scope)

@@ -68,18 +68,19 @@ SET count = husonym_api.gate_refusals_daily.count + 1;
 
 -- A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 -- it: nothing recorded after midnight belongs to the day before. A run still running counts for
--- no day.
--- name: CountRunUsageByStatusOfDay :many
+-- no day. The days counted run from the first given to the day before the second: a day and the
+-- next one for the runs of a day, the first days of two months for the runs of a month.
+-- name: CountRunUsageByStatusBetween :many
 SELECT job_kind, status, count(*)::bigint AS runs
 FROM husonym_api.run_usage
-WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+WHERE recorded_at >= (sqlc.arg(from_day)::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (sqlc.arg(before_day)::date)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_kind, status
 ORDER BY job_kind, status;
 
 -- Durations come from the runs that have an end only, and are never negative: an end told
 -- before its start counts for nothing.
--- name: SumRunUsageOfDay :one
+-- name: SumRunUsageBetween :one
 SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
@@ -93,8 +94,8 @@ SELECT
   COALESCE(sum(retries), 0)::bigint AS retries,
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows
 FROM husonym_api.run_usage
-WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC';
+WHERE recorded_at >= (sqlc.arg(from_day)::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (sqlc.arg(before_day)::date)::timestamp AT TIME ZONE 'UTC';
 
 -- name: CountRunUsageBySourceVersionOfDay :many
 SELECT job_id, source_version_major, count(*)::bigint AS runs
@@ -105,10 +106,11 @@ WHERE source_version_major IS NOT NULL
 GROUP BY job_id, source_version_major
 ORDER BY job_id, source_version_major;
 
--- name: SumGateRefusalsOfDay :many
+-- The days counted run from the first given to the day before the second, as for the runs.
+-- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
 FROM husonym_api.gate_refusals_daily
-WHERE day = $1
+WHERE day >= sqlc.arg(from_day)::date AND day < sqlc.arg(before_day)::date
 GROUP BY gate
 ORDER BY gate;
 
@@ -137,6 +139,68 @@ SELECT day, document, seal, key_fingerprint, prepared_at
 FROM husonym_api.usage_reports
 WHERE day = $1;
 
+-- The reports of the days from the first given to the day before the second, the oldest first.
+-- name: ListUsageReportsBetween :many
+SELECT day, document, seal, key_fingerprint, prepared_at
+FROM husonym_api.usage_reports
+WHERE day >= sqlc.arg(from_day)::date AND day < sqlc.arg(before_day)::date
+ORDER BY day;
+
 -- name: DeleteUsageReportsBefore :exec
 DELETE FROM husonym_api.usage_reports
 WHERE day < $1;
+
+-- name: GetSendingSince :one
+SELECT sending_since
+FROM husonym_api.instance;
+
+-- Only an instance that does not send yet starts: the first date stays.
+-- name: StartUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = $1
+WHERE sending_since IS NULL;
+
+-- name: StopUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = NULL;
+
+-- One statement takes the oldest report that is due and marks the attempt: a report another
+-- call holds is skipped, so two calls never get the same one. When a bound is given on the
+-- preparation, a report prepared after it is not due yet. When the reports are to leave without
+-- the diagnostics, a report whose document carries them is not due at all. Nothing is due once
+-- the instance was told not to send: a call that still believes it sends gets no report.
+-- name: ClaimUsageReport :one
+UPDATE husonym_api.usage_reports
+SET attempts = attempts + 1, last_attempt_at = sqlc.arg(now)
+WHERE day = (
+  SELECT r.day
+  FROM husonym_api.usage_reports r
+  WHERE r.sent_at IS NULL
+    AND EXISTS (SELECT 1 FROM husonym_api.instance i WHERE i.sending_since IS NOT NULL)
+    AND r.day >= sqlc.arg(from_day) AND r.day <= sqlc.arg(to_day)
+    AND (r.last_attempt_at IS NULL OR r.last_attempt_at < sqlc.arg(not_attempted_since))
+    AND (sqlc.narg(prepared_by)::timestamptz IS NULL OR r.prepared_at <= sqlc.narg(prepared_by)::timestamptz)
+    AND NOT (sqlc.arg(without_diagnostics)::boolean AND r.document::jsonb ? 'diagnostics')
+  ORDER BY r.day
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING day, document, seal, key_fingerprint, prepared_at;
+
+-- A report already sent keeps the date it was sent on.
+-- name: MarkUsageReportSent :exec
+UPDATE husonym_api.usage_reports
+SET sent_at = $2
+WHERE day = $1 AND sent_at IS NULL;
+
+-- Tells of each report whether its document carries the diagnostics, as the claim reads it.
+-- name: ListUsageReportSendings :many
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts,
+  (document::jsonb ? 'diagnostics')::boolean AS carries_diagnostics
+FROM husonym_api.usage_reports
+WHERE day >= $1 AND day <= $2
+ORDER BY day DESC;
+
+-- name: GetLastUsageReportSentAt :one
+SELECT max(sent_at)::timestamptz AS sent_at
+FROM husonym_api.usage_reports;

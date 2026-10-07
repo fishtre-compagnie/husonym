@@ -10,13 +10,16 @@ import {
   licenseState,
   missingKeyMessage,
 } from '@/libs/license/license';
+import { licensedReportingLabel } from '@/libs/license/usage-report';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { SystemLicense } from '@husonym/sdk';
+import { SystemLicense, UsageReportingMode } from '@husonym/sdk';
 import { ReactElement, ReactNode } from 'react';
 
 interface Props {
   license?: SystemLicense;
   isLoading: boolean;
+  // What the key provides for the usage report, once read.
+  licenseReportingMode?: UsageReportingMode;
 }
 
 const STATE_LABELS: Record<LicenseState, string> = {
@@ -54,7 +57,7 @@ const ORIGIN_LABELS: Record<string, string> = {
 };
 
 export default function LicenseStatusCard(props: Props): ReactElement {
-  const { license, isLoading } = props;
+  const { license, isLoading, licenseReportingMode } = props;
 
   if (isLoading) {
     return <Skeleton className="w-full h-32" />;
@@ -78,7 +81,11 @@ export default function LicenseStatusCard(props: Props): ReactElement {
           </Alert>
         )}
         {license && state !== 'none' ? (
-          <LicenseDetails license={license} state={state} />
+          <LicenseDetails
+            license={license}
+            state={state}
+            reportingMode={licenseReportingMode}
+          />
         ) : (
           <p className="text-sm">{missingKeyMessage(license)}</p>
         )}
@@ -90,13 +97,19 @@ export default function LicenseStatusCard(props: Props): ReactElement {
 function LicenseDetails({
   license,
   state,
+  reportingMode,
 }: {
   license: SystemLicense;
   state: LicenseState;
+  reportingMode?: UsageReportingMode;
 }): ReactElement {
   const expiresOn = formatTimestamp(license.expiresAt);
   const graceEndsOn = formatTimestamp(license.graceEndsAt);
   const installedOn = formatTimestamp(license.installedAt);
+  const reporting =
+    reportingMode === undefined
+      ? undefined
+      : licensedReportingLabel(reportingMode);
   const origin = ORIGIN_LABELS[license.origin] ?? license.origin;
 
   return (
@@ -124,6 +137,7 @@ function LicenseDetails({
             .join(', ')}
         </Detail>
       )}
+      {reporting && <Detail term="Usage report">{reporting}</Detail>}
     </dl>
   );
 }

@@ -1,6 +1,7 @@
 package usagereport
 
 import (
+	"log/slog"
 	"runtime"
 	"strings"
 
@@ -15,7 +16,40 @@ const (
 	// diagnosticsVariable switches off the part of the report that describes the instance, when
 	// it holds false. Any other value, or none, leaves it on.
 	diagnosticsVariable = "HUSONYM_TELEMETRY_DIAGNOSTICS"
+	// modeVariable lowers what the instance does with its usage report below what its license
+	// provides: offline keeps the report for a report file, off keeps it. Any other value, or
+	// none, leaves what the license provides.
+	modeVariable = "HUSONYM_TELEMETRY"
+	// reportURLVariable replaces the address the report is sent to, for a trial.
+	reportURLVariable = "HUSONYM_TELEMETRY_URL"
 )
+
+// ModeSettingFromEnvironment gives the value of HUSONYM_TELEMETRY as it is written: what it
+// means is told by telemetry.EffectiveMode, with what the license provides.
+func ModeSettingFromEnvironment() string {
+	return viper.GetString(modeVariable)
+}
+
+// ReportURLFromEnvironment gives the address the report is sent to: the one of
+// HUSONYM_TELEMETRY_URL when it is one a report can be sent to, the default one otherwise. A
+// value that is in force is logged by its host alone, and one that is refused without the
+// value: it may hold credentials.
+func ReportURLFromEnvironment(logger *slog.Logger) string {
+	address := strings.TrimSpace(viper.GetString(reportURLVariable))
+	if address == "" {
+		return DefaultReportURL
+	}
+	target, err := checkReportURL(address)
+	if err != nil {
+		logger.Warn(
+			"the usage report is sent to its default address: the one given cannot be used",
+			"variable", reportURLVariable, "error", err,
+		)
+		return DefaultReportURL
+	}
+	logger.Info("the usage report is sent to the address given", "variable", reportURLVariable, "host", target.Host)
+	return address
+}
 
 // Facts is what the process knows of itself, read once at startup. Every text in it is already
 // a member of its closed list of the telemetry package.

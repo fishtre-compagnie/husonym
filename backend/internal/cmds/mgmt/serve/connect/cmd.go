@@ -106,7 +106,7 @@ const licenseRefreshInterval = time.Minute
 const usageSettleInterval = time.Hour
 
 // usageReportInterval is how often the usage report of the day before is looked for, and
-// prepared when it is not there yet.
+// prepared when it is not there yet, and how often the reports that are due are sent.
 const usageReportInterval = time.Hour
 
 // licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
@@ -633,22 +633,6 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	usageService := v1alpha1_usageservice.New(
-		&v1alpha1_usageservice.Config{WorkerOnly: workerOnly},
-		db,
-		userdataclient,
-		usageStore,
-	)
-	api.Handle(
-		mgmtv1alpha1connect.NewUsageServiceHandler(
-			usageService,
-			connect.WithInterceptors(stdInterceptors...),
-			connect.WithInterceptors(stdAuthInterceptors...),
-			connect.WithInterceptors(handlerBookendInterceptor),
-			connect.WithRecover(recoverHandler),
-		),
-	)
-
 	apiKeyService := v1alpha1_apikeyservice.New(&v1alpha1_apikeyservice.Config{
 		IsAuthEnabled: isAuthEnabled,
 	}, db, userdataclient)
@@ -752,6 +736,10 @@ func serve(ctx context.Context) error {
 	// The usage report of the instance is assembled from what the usage store counted, what
 	// the instance holds and what this start resolved. The one of the day before is prepared once a
 	// day, whichever replica gets to it first.
+	usageFacts := getUsageFacts(isAuthEnabled, presidioClients, runLogConfig)
+	usageKey := usagereport.NewInstanceKey(licenseStore, licenseRing)
+	usageModeSetting := usagereport.ModeSettingFromEnvironment()
+
 	usageReports := usagereport.NewBuilder(
 		usageStore,
 		usagereport.NewInventoryReader(db, licenseUsage, rbacclient, usageStore, isAuthEnabled),
@@ -759,9 +747,50 @@ func serve(ctx context.Context) error {
 		eelicense,
 		licenseStore,
 		licenseRing,
-		getUsageFacts(isAuthEnabled, presidioClients, runLogConfig),
+		usageFacts,
 	)
-	go usagereport.NewPreparer(usageReports, usageStore, slogger).Every(licenseCtx, usageReportInterval)
+	// Each pass then sends the reports that are due, when the license provides for it and the
+	// operator did not set otherwise. It runs apart from every request and every run, and the
+	// API starts whatever becomes of it: without a transport the report is prepared and not sent.
+	var usageSender *usagereport.Sender
+	usageReportTransport, err := usagereport.NewHTTPTransport(
+		usagereport.ReportURLFromEnvironment(slogger), version.Get().GitVersion,
+	)
+	if err != nil {
+		slogger.Error("the usage report of the instance is prepared and not sent", "error", err)
+	} else {
+		usageSender = usagereport.NewSender(
+			usageStore, eelicense, usageKey, usageModeSetting, usageFacts.Diagnostics, usageReportTransport, slogger,
+		)
+	}
+	go usagereport.NewDaily(
+		usagereport.NewPreparer(usageReports, usageStore, slogger), usageSender, slogger,
+	).Every(licenseCtx, usageReportInterval)
+
+	// The interface and the CLI read the mode the report is sent under from the same key, setting
+	// and facts the daily pass works from, and the report for a period is made by the builder of
+	// the report of the day.
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{
+			WorkerOnly:  workerOnly,
+			ModeSetting: usageModeSetting,
+			Diagnostics: usageFacts.Diagnostics,
+		},
+		db,
+		userdataclient,
+		usageStore,
+		usageKey,
+		usageReports,
+	)
+	api.Handle(
+		mgmtv1alpha1connect.NewUsageServiceHandler(
+			usageService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,

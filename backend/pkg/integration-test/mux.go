@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagereport"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
@@ -408,11 +409,26 @@ func (s *HusonymApiTestClient) setupMux(
 		settingsEncryptor,
 	)
 
+	// The usage reports are made the way a deployment makes them, but for what is asked of the
+	// orchestrator, which the tests do not run: only the report of a day asks it anything.
+	usageStore := usagestore.New(husonymDb)
 	usageService := v1alpha1_usageservice.New(
 		&v1alpha1_usageservice.Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled}},
 		husonymDb,
 		userclient,
-		usagestore.New(husonymDb),
+		usageStore,
+		usagereport.NewInstanceKey(s.licenseStore(pgcontainer), s.LicenseKeyring),
+		usagereport.NewBuilder(
+			usageStore,
+			usagereport.NewInventoryReader(
+				husonymDb, licensegate.NewUsageReader(husonymDb, rbacClient), rbacClient, usageStore, isAuthEnabled,
+			),
+			usagereport.NewInstanceReader(husonymDb, nil),
+			eelicense,
+			s.licenseStore(pgcontainer),
+			s.LicenseKeyring,
+			usagereport.Facts{Diagnostics: true},
+		),
 	)
 
 	mux := http.NewServeMux()

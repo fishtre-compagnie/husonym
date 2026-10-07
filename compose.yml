@@ -76,6 +76,7 @@ services:
       - AUTH_ENABLED=false
 
       - HUSONYM_INSTALL_KIND=compose
+      # - HUSONYM_TELEMETRY=offline # what the instance does with its usage report: offline or off (not set: what the license provides)
 
     # Carries EE_LICENSE. Creating a job refuses without it, so this stack is unusable
     # unless the license reaches the container. Optional so the stack still starts and the

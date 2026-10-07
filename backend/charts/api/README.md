@@ -102,5 +102,6 @@ A Helm chart for the Husonym Backend API
 | tolerations | list | `[]` | Any tolerations that should be applied to the deployment |
 | updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |
 | usageReport.diagnostics | bool | `true` | Whether the usage report of the instance describes the instance beyond its identification, its version and its number of sources: how it is installed and configured, and counts of what it holds and runs. Set to false to leave that part out (sets HUSONYM_TELEMETRY_DIAGNOSTICS=false). |
+| usageReport.mode | string | `""` | What the instance does with its usage report: sends it daily as the license provides (default, empty), keeps it for a report file (`offline`), or keeps it (`off`). Sets HUSONYM_TELEMETRY. |
 | volumeMounts | list | `[]` | Volumes that will be mounted to the deployment |
 | volumes | list | `[]` | Volumes that will be attached to the deployment |

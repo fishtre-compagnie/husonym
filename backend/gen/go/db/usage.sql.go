@@ -11,6 +11,67 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimUsageReport = `-- name: ClaimUsageReport :one
+UPDATE husonym_api.usage_reports
+SET attempts = attempts + 1, last_attempt_at = $1
+WHERE day = (
+  SELECT r.day
+  FROM husonym_api.usage_reports r
+  WHERE r.sent_at IS NULL
+    AND EXISTS (SELECT 1 FROM husonym_api.instance i WHERE i.sending_since IS NOT NULL)
+    AND r.day >= $2 AND r.day <= $3
+    AND (r.last_attempt_at IS NULL OR r.last_attempt_at < $4)
+    AND ($5::timestamptz IS NULL OR r.prepared_at <= $5::timestamptz)
+    AND NOT ($6::boolean AND r.document::jsonb ? 'diagnostics')
+  ORDER BY r.day
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING day, document, seal, key_fingerprint, prepared_at
+`
+
+type ClaimUsageReportParams struct {
+	Now                pgtype.Timestamptz
+	FromDay            pgtype.Date
+	ToDay              pgtype.Date
+	NotAttemptedSince  pgtype.Timestamptz
+	PreparedBy         pgtype.Timestamptz
+	WithoutDiagnostics bool
+}
+
+type ClaimUsageReportRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+// One statement takes the oldest report that is due and marks the attempt: a report another
+// call holds is skipped, so two calls never get the same one. When a bound is given on the
+// preparation, a report prepared after it is not due yet. When the reports are to leave without
+// the diagnostics, a report whose document carries them is not due at all. Nothing is due once
+// the instance was told not to send: a call that still believes it sends gets no report.
+func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
+	row := db.QueryRow(ctx, claimUsageReport,
+		arg.Now,
+		arg.FromDay,
+		arg.ToDay,
+		arg.NotAttemptedSince,
+		arg.PreparedBy,
+		arg.WithoutDiagnostics,
+	)
+	var i ClaimUsageReportRow
+	err := row.Scan(
+		&i.Day,
+		&i.Document,
+		&i.Seal,
+		&i.KeyFingerprint,
+		&i.PreparedAt,
+	)
+	return i, err
+}
+
 const closeRunUsage = `-- name: CloseRunUsage :exec
 UPDATE husonym_api.run_usage
 SET status = $1, ended_at = $2, rows_read = $3,
@@ -83,16 +144,21 @@ func (q *Queries) CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX
 	return items, nil
 }
 
-const countRunUsageByStatusOfDay = `-- name: CountRunUsageByStatusOfDay :many
+const countRunUsageByStatusBetween = `-- name: CountRunUsageByStatusBetween :many
 SELECT job_kind, status, count(*)::bigint AS runs
 FROM husonym_api.run_usage
 WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < ($2::date)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_kind, status
 ORDER BY job_kind, status
 `
 
-type CountRunUsageByStatusOfDayRow struct {
+type CountRunUsageByStatusBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type CountRunUsageByStatusBetweenRow struct {
 	JobKind string
 	Status  string
 	Runs    int64
@@ -100,16 +166,17 @@ type CountRunUsageByStatusOfDayRow struct {
 
 // A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 // it: nothing recorded after midnight belongs to the day before. A run still running counts for
-// no day.
-func (q *Queries) CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error) {
-	rows, err := db.Query(ctx, countRunUsageByStatusOfDay, dollar_1)
+// no day. The days counted run from the first given to the day before the second: a day and the
+// next one for the runs of a day, the first days of two months for the runs of a month.
+func (q *Queries) CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error) {
+	rows, err := db.Query(ctx, countRunUsageByStatusBetween, arg.FromDay, arg.BeforeDay)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountRunUsageByStatusOfDayRow
+	var items []CountRunUsageByStatusBetweenRow
 	for rows.Next() {
-		var i CountRunUsageByStatusOfDayRow
+		var i CountRunUsageByStatusBetweenRow
 		if err := rows.Scan(&i.JobKind, &i.Status, &i.Runs); err != nil {
 			return nil, err
 		}
@@ -159,15 +226,47 @@ func (q *Queries) GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, erro
 	return id, err
 }
 
+const getLastUsageReportSentAt = `-- name: GetLastUsageReportSentAt :one
+SELECT max(sent_at)::timestamptz AS sent_at
+FROM husonym_api.usage_reports
+`
+
+func (q *Queries) GetLastUsageReportSentAt(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	row := db.QueryRow(ctx, getLastUsageReportSentAt)
+	var sent_at pgtype.Timestamptz
+	err := row.Scan(&sent_at)
+	return sent_at, err
+}
+
+const getSendingSince = `-- name: GetSendingSince :one
+SELECT sending_since
+FROM husonym_api.instance
+`
+
+func (q *Queries) GetSendingSince(ctx context.Context, db DBTX) (pgtype.Timestamptz, error) {
+	row := db.QueryRow(ctx, getSendingSince)
+	var sending_since pgtype.Timestamptz
+	err := row.Scan(&sending_since)
+	return sending_since, err
+}
+
 const getUsageReport = `-- name: GetUsageReport :one
 SELECT day, document, seal, key_fingerprint, prepared_at
 FROM husonym_api.usage_reports
 WHERE day = $1
 `
 
-func (q *Queries) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error) {
+type GetUsageReportRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (GetUsageReportRow, error) {
 	row := db.QueryRow(ctx, getUsageReport, day)
-	var i HusonymApiUsageReport
+	var i GetUsageReportRow
 	err := row.Scan(
 		&i.Day,
 		&i.Document,
@@ -288,6 +387,120 @@ func (q *Queries) ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, st
 	return items, nil
 }
 
+const listUsageReportSendings = `-- name: ListUsageReportSendings :many
+SELECT day, prepared_at, sent_at, last_attempt_at, attempts,
+  (document::jsonb ? 'diagnostics')::boolean AS carries_diagnostics
+FROM husonym_api.usage_reports
+WHERE day >= $1 AND day <= $2
+ORDER BY day DESC
+`
+
+type ListUsageReportSendingsParams struct {
+	Day   pgtype.Date
+	Day_2 pgtype.Date
+}
+
+type ListUsageReportSendingsRow struct {
+	Day                pgtype.Date
+	PreparedAt         pgtype.Timestamptz
+	SentAt             pgtype.Timestamptz
+	LastAttemptAt      pgtype.Timestamptz
+	Attempts           int32
+	CarriesDiagnostics bool
+}
+
+// Tells of each report whether its document carries the diagnostics, as the claim reads it.
+func (q *Queries) ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error) {
+	rows, err := db.Query(ctx, listUsageReportSendings, arg.Day, arg.Day_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsageReportSendingsRow
+	for rows.Next() {
+		var i ListUsageReportSendingsRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.PreparedAt,
+			&i.SentAt,
+			&i.LastAttemptAt,
+			&i.Attempts,
+			&i.CarriesDiagnostics,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsageReportsBetween = `-- name: ListUsageReportsBetween :many
+SELECT day, document, seal, key_fingerprint, prepared_at
+FROM husonym_api.usage_reports
+WHERE day >= $1::date AND day < $2::date
+ORDER BY day
+`
+
+type ListUsageReportsBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type ListUsageReportsBetweenRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+// The reports of the days from the first given to the day before the second, the oldest first.
+func (q *Queries) ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error) {
+	rows, err := db.Query(ctx, listUsageReportsBetween, arg.FromDay, arg.BeforeDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsageReportsBetweenRow
+	for rows.Next() {
+		var i ListUsageReportsBetweenRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Document,
+			&i.Seal,
+			&i.KeyFingerprint,
+			&i.PreparedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markUsageReportSent = `-- name: MarkUsageReportSent :exec
+UPDATE husonym_api.usage_reports
+SET sent_at = $2
+WHERE day = $1 AND sent_at IS NULL
+`
+
+type MarkUsageReportSentParams struct {
+	Day    pgtype.Date
+	SentAt pgtype.Timestamptz
+}
+
+// A report already sent keeps the date it was sent on.
+func (q *Queries) MarkUsageReportSent(ctx context.Context, db DBTX, arg MarkUsageReportSentParams) error {
+	_, err := db.Exec(ctx, markUsageReportSent, arg.Day, arg.SentAt)
+	return err
+}
+
 const settleRunUsage = `-- name: SettleRunUsage :exec
 UPDATE husonym_api.run_usage
 SET status = $2, ended_at = $3, recorded_at = CURRENT_TIMESTAMP
@@ -306,28 +519,56 @@ func (q *Queries) SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsag
 	return err
 }
 
-const sumGateRefusalsOfDay = `-- name: SumGateRefusalsOfDay :many
+const startUsageSending = `-- name: StartUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = $1
+WHERE sending_since IS NULL
+`
+
+// Only an instance that does not send yet starts: the first date stays.
+func (q *Queries) StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error {
+	_, err := db.Exec(ctx, startUsageSending, sendingSince)
+	return err
+}
+
+const stopUsageSending = `-- name: StopUsageSending :exec
+UPDATE husonym_api.instance
+SET sending_since = NULL
+`
+
+func (q *Queries) StopUsageSending(ctx context.Context, db DBTX) error {
+	_, err := db.Exec(ctx, stopUsageSending)
+	return err
+}
+
+const sumGateRefusalsBetween = `-- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
 FROM husonym_api.gate_refusals_daily
-WHERE day = $1
+WHERE day >= $1::date AND day < $2::date
 GROUP BY gate
 ORDER BY gate
 `
 
-type SumGateRefusalsOfDayRow struct {
+type SumGateRefusalsBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumGateRefusalsBetweenRow struct {
 	Gate     string
 	Refusals int64
 }
 
-func (q *Queries) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error) {
-	rows, err := db.Query(ctx, sumGateRefusalsOfDay, day)
+// The days counted run from the first given to the day before the second, as for the runs.
+func (q *Queries) SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error) {
+	rows, err := db.Query(ctx, sumGateRefusalsBetween, arg.FromDay, arg.BeforeDay)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SumGateRefusalsOfDayRow
+	var items []SumGateRefusalsBetweenRow
 	for rows.Next() {
-		var i SumGateRefusalsOfDayRow
+		var i SumGateRefusalsBetweenRow
 		if err := rows.Scan(&i.Gate, &i.Refusals); err != nil {
 			return nil, err
 		}
@@ -339,7 +580,7 @@ func (q *Queries) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.
 	return items, nil
 }
 
-const sumRunUsageOfDay = `-- name: SumRunUsageOfDay :one
+const sumRunUsageBetween = `-- name: SumRunUsageBetween :one
 SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
@@ -354,10 +595,15 @@ SELECT
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows
 FROM husonym_api.run_usage
 WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < ($2::date)::timestamp AT TIME ZONE 'UTC'
 `
 
-type SumRunUsageOfDayRow struct {
+type SumRunUsageBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumRunUsageBetweenRow struct {
 	RunsWithEnd       int64
 	DurationMedian    int64
 	DurationP95       int64
@@ -369,9 +615,9 @@ type SumRunUsageOfDayRow struct {
 
 // Durations come from the runs that have an end only, and are never negative: an end told
 // before its start counts for nothing.
-func (q *Queries) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error) {
-	row := db.QueryRow(ctx, sumRunUsageOfDay, dollar_1)
-	var i SumRunUsageOfDayRow
+func (q *Queries) SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error) {
+	row := db.QueryRow(ctx, sumRunUsageBetween, arg.FromDay, arg.BeforeDay)
+	var i SumRunUsageBetweenRow
 	err := row.Scan(
 		&i.RunsWithEnd,
 		&i.DurationMedian,
