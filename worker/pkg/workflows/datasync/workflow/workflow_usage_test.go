@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -255,6 +256,18 @@ func Test_Workflow_ReportsARunThatIsCanceled(t *testing.T) {
 func Test_Workflow_EarlierRunsReportNothing(t *testing.T) {
 	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
 	env.OnGetVersion("run-usage-reported", workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	var reports atomic.Int32
+	var usage *runusage.Activities
+	env.OnActivity(usage.RecordRunStarted, mock.Anything, mock.Anything).
+		Return(func(context.Context, *runusage.RunStartedRequest) error {
+			reports.Add(1)
+			return nil
+		}).Maybe()
+	env.OnActivity(usage.RecordRunEnded, mock.Anything, mock.Anything).
+		Return(func(context.Context, *runusage.RunEndedRequest) error {
+			reports.Add(1)
+			return nil
+		}).Maybe()
 	mockRunOfTables(env, []*benthosbuilder.BenthosConfigResponse{usageTestConfig("users")},
 		func(workflow.Context, *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
 			return &tablesync_workflow.TableSyncResponse{RowsRead: 35}, nil
@@ -267,6 +280,5 @@ func Test_Workflow_EarlierRunsReportNothing(t *testing.T) {
 
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())
-	env.AssertNotCalled(t, "RecordRunStarted", mock.Anything, mock.Anything)
-	env.AssertNotCalled(t, "RecordRunEnded", mock.Anything, mock.Anything)
+	require.Zero(t, reports.Load(), "neither the start nor the end is reported")
 }

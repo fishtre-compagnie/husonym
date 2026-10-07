@@ -152,9 +152,8 @@ func Test_Activities_ReturnTheFailureOfTheAPI(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "the API is away")
 	var applicationErr *temporal.ApplicationError
-	if errors.As(err, &applicationErr) {
-		require.False(t, applicationErr.NonRetryable())
-	}
+	require.ErrorAs(t, err, &applicationErr)
+	require.False(t, applicationErr.NonRetryable())
 }
 
 // The serialized form of the requests is in the histories of the runs: a count that is zero

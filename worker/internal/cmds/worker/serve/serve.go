@@ -374,6 +374,8 @@ func serve(ctx context.Context) error {
 		husonymurl,
 		connectInterceptorOption,
 	)
+	// Every kind of run reports through the same two activities.
+	runUsageActivities := runusage.New(usageclient)
 
 	// The key is the one the API holds, which the provider verifies itself. It is asked for
 	// below, once everything is registered and before the worker takes work.
@@ -464,7 +466,7 @@ func serve(ctx context.Context) error {
 
 	datasync_workflow_register.Register(
 		w,
-		userclient, jobclient, connclient, transformerclient, usageclient,
+		userclient, jobclient, connclient, transformerclient, runUsageActivities,
 		sqlmanager, sqlconnmanager, engineConfig.Policy, eelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
@@ -512,7 +514,7 @@ func serve(ctx context.Context) error {
 			piidetectClassifier,
 			&piidetectConfig,
 		),
-		runusage.New(usageclient),
+		runUsageActivities,
 		&piidetectConfig,
 	)
 

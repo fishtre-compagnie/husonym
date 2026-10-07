@@ -27,8 +27,8 @@ import (
 
 type Worker interface {
 	RegisterWorkflow(workflow any)
-	RegisterActivity(activity any)
-	RegisterActivityWithOptions(activity any, options activity.RegisterOptions)
+	RegisterActivity(a any)
+	RegisterActivityWithOptions(a any, options activity.RegisterOptions)
 }
 
 func Register(
@@ -37,7 +37,7 @@ func Register(
 	jobclient mgmtv1alpha1connect.JobServiceClient,
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
-	usageclient mgmtv1alpha1connect.UsageServiceClient,
+	usage *runusage.Activities,
 	sqlmanager *sql_manager.SqlManager,
 	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 	athanor shared.AthanorPolicy,
@@ -89,7 +89,7 @@ func Register(
 	w.RegisterActivity(preflightActivity.CheckPreflight)
 	w.RegisterActivity(genbenthosActivity.PlanPreflight)
 	// The start and the end of a run, told to the API.
-	runusage.Register(w, runusage.New(usageclient))
+	runusage.Register(w, usage)
 
 	// The pre-flight check of a job, before any run: the same activities as a run's start.
 	w.RegisterWorkflow(preflight_workflow.New().JobPreflight)

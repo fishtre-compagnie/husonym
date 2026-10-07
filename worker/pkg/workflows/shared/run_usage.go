@@ -77,13 +77,18 @@ func TrackRunUsage[T any](
 	return resp, fnErr
 }
 
-// runOutcome names what became of a run that ended on err. A canceled run is one whatever
-// error its cancellation surfaced as.
+// runOutcome names what became of a run that ended on err. A run is canceled when someone
+// asked for it: the context it was given is canceled then, whatever error the run returns.
+// A run that cancels a context of its own, to stop what is left of it once something went
+// wrong, has failed, even when the error it returns is the cancellation it caused.
+//
+// The outcome tells what became of the run, which can differ from the status Temporal
+// closes it with: Temporal goes by the error alone.
 func runOutcome(ctx workflow.Context, err error) string {
 	switch {
 	case err == nil:
 		return runusage.OutcomeCompleted
-	case temporal.IsCanceledError(err) || errors.Is(ctx.Err(), workflow.ErrCanceled):
+	case errors.Is(ctx.Err(), workflow.ErrCanceled):
 		return runusage.OutcomeCanceled
 	default:
 		return runusage.OutcomeFailed
@@ -92,7 +97,9 @@ func runOutcome(ctx workflow.Context, err error) string {
 
 func withRunUsageActivityOptions(ctx workflow.Context) workflow.Context {
 	return workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		StartToCloseTimeout: 1 * time.Minute,
+		// The start is waited for before the run works: an API that does not answer must
+		// not hold a run for long.
+		StartToCloseTimeout: 15 * time.Second,
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 3,
 		},
