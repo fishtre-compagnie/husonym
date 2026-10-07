@@ -358,6 +358,88 @@ func Test_Analyzer_French_NameOfSeveralWords_AroundAChunkBoundary(t *testing.T) 
 	}
 }
 
+func Test_Analyzer_French_NameWithParticle_SweptAcrossAChunkBoundary(t *testing.T) {
+	baseURL := startAnalyzer(t)
+
+	cases := []struct {
+		name          string
+		person        string
+		filler        string
+		before, after string
+	}{
+		{
+			name:   "four words in compact JSON",
+			person: "Mathilde Rousseau de Kerbrat",
+			filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`,
+		},
+		{
+			name:   "de La in compact JSON",
+			person: "Corentin de La Brosse",
+			filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`,
+		},
+	}
+	for _, tc := range cases {
+		filler := strings.Repeat(tc.filler, 120)
+		// Every third position of a window wider than a chunk's end can move: the first chunk
+		// ends before the name, on each of its spaces, or after it.
+		for offset := 300; offset < 480; offset += 3 {
+			t.Run(fmt.Sprintf("%s, name at %d", tc.name, offset), func(t *testing.T) {
+				prefix := filler[:offset-len(tc.before)] + tc.before
+				text := prefix + tc.person + tc.after + filler[:600]
+
+				findings := analyze(t, baseURL, langFr, text)
+
+				person := requirePerson(t, text, tc.person, findings)
+				require.Equal(t, offset, person.Start)
+			})
+		}
+	}
+}
+
+// Two chunks can each return a part of the passage where two persons follow each other, and
+// findings of two chunks that overlap come back as one: the two names may be one finding or
+// two. What is checked is that every character of both names is in a finding.
+func Test_Analyzer_French_TwoPersonsSideBySide_AroundAChunkBoundary(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	sentence := "Le colis a été déposé au guichet avant midi. "
+	shifts := []string{"", "Vu. ", "Bien reçu. ", "Dossier complet. ", "Rien à signaler ce jour. "}
+	first, second := "Corentin Delaunay", "Mathilde Rousseau"
+
+	for _, shift := range shifts {
+		prefix := strings.Repeat(sentence, 8) + shift + "Le dossier a été validé par "
+		offset := utf8.RuneCountInString(prefix)
+		t.Run(fmt.Sprintf("names at %d", offset), func(t *testing.T) {
+			text := prefix + first + ", " + second + " hier soir. " + strings.Repeat(sentence, 12)
+
+			persons := ofType(analyze(t, baseURL, langFr, text), entityPerson)
+
+			requireCovered(t, persons, offset, offset+utf8.RuneCountInString(first))
+			secondStart := offset + utf8.RuneCountInString(first+", ")
+			requireCovered(t, persons, secondStart, secondStart+utf8.RuneCountInString(second))
+			for _, person := range persons {
+				require.Equal(t, personRecognizer, person.Explanation.Recognizer)
+				require.GreaterOrEqual(t, person.Start, offset)
+				require.LessOrEqual(t, person.End, secondStart+utf8.RuneCountInString(second))
+			}
+		})
+	}
+}
+
+// requireCovered checks that every character from start to end is in one of the findings.
+func requireCovered(t *testing.T, findings []finding, start, end int) {
+	t.Helper()
+	for position := start; position < end; position++ {
+		covered := false
+		for _, f := range findings {
+			if f.Start <= position && position < f.End {
+				covered = true
+				break
+			}
+		}
+		require.Truef(t, covered, "character %d is in no finding: %+v", position, findings)
+	}
+}
+
 func Test_Analyzer_French_Names_InProse_AroundAChunkBoundary(t *testing.T) {
 	baseURL := startAnalyzer(t)
 	sentence := "Le colis a été déposé au guichet avant midi. "

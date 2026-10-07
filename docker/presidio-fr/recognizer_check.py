@@ -5,8 +5,9 @@ base image, see the README.
 """
 
 import random
-from typing import Dict, List
+from typing import Dict, List, Set, Tuple
 
+from presidio_analyzer import RecognizerResult
 from presidio_analyzer.chunkers import TextChunk
 
 from mapped_ner_recognizer import BoundedTextChunker, MappedLabelsNerRecognizer
@@ -18,10 +19,15 @@ NAMES = ["Corentin Le Guével", "Mathilde De La Roche"]
 
 def check_chunks(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[TextChunk]:
     """Chunk text and check what holds for any text."""
-    chunks = BoundedTextChunker(chunk_size=size, chunk_overlap=overlap).chunk(text)
+    chunker = BoundedTextChunker(chunk_size=size, chunk_overlap=overlap)
+    chunks = chunker.chunk(text)
     if not text:
         assert chunks == [], chunks
         return chunks
+    # Two chunks in a row move the end forward by at least this many characters: the number
+    # of chunks of a text is bounded by its length.
+    step = size - overlap - chunker.start_reach
+    assert len(chunks) <= 2 * (len(text) // step + 1) + 1, (len(chunks), len(text), size, overlap)
     assert chunks[0].start == 0, chunks[0]
     assert chunks[-1].end == len(text), chunks[-1]
     for chunk in chunks:
@@ -107,8 +113,10 @@ class FakeTokenizer:
 class FakePipeline:
     """Finds the names as PER, « Besançon » as LOC and « Faible » as a PER of low score.
 
-    The first or last words of a name, where the text it is given ends or starts within the
-    name, are found as a PER of a higher score than the whole name.
+    Where the text it is given ends or starts within a name, a part of the name is found as
+    a PER of a higher score than the whole name: its last words at the start of the text; at
+    the end of the text its first word, or its first words without the last one the text
+    holds, which then stops short of the end of the text.
     """
 
     tokenizer = FakeTokenizer()
@@ -138,9 +146,9 @@ class FakePipeline:
             for count in range(1, len(words)):
                 first, last = " ".join(words[:count]), " ".join(words[count:])
                 if text.endswith(first):
-                    found.append(
-                        {"entity_group": "PER", "score": 0.999, "start": len(text) - len(first), "end": len(text)}
-                    )
+                    part = " ".join(words[: max(count - 1, 1)])
+                    start = len(text) - len(first)
+                    found.append({"entity_group": "PER", "score": 0.999, "start": start, "end": start + len(part)})
                 if text.startswith(last):
                     found.append({"entity_group": "PER", "score": 0.999, "start": 0, "end": len(last)})
         return found
@@ -175,7 +183,7 @@ def check_predictions() -> None:
     assert results[0].analysis_explanation.recognizer == recognizer.name
 
     # A name around a cut is returned once and whole, although the chunk that holds a part
-    # of it scores that part higher.
+    # of it scores that part higher, whether the part reaches the end of its chunk or not.
     for several_words in NAMES:
         for offset in range(280, 480):
             text = ("ref-0001;" * 60)[:offset] + several_words + ";" + "ref-0002;" * 60
@@ -198,9 +206,102 @@ def check_predictions() -> None:
         raise AssertionError("a failed inference returned findings")
 
 
+def person(start: int, end: int, score: float, entity_type: str = "PERSON") -> RecognizerResult:
+    return RecognizerResult(entity_type=entity_type, start=start, end=end, score=score)
+
+
+def merged(found: List[Tuple[int, RecognizerResult]]) -> List[tuple]:
+    return [(r.start, r.end, r.score) for r in BoundedTextChunker.merge_across_chunks(found)]
+
+
+def covered(results: List[RecognizerResult]) -> Dict[str, Set[int]]:
+    """The characters the findings designate, per entity type."""
+    characters: Dict[str, Set[int]] = {}
+    for result in results:
+        characters.setdefault(result.entity_type, set()).update(range(result.start, result.end))
+    return characters
+
+
+def check_named_merges() -> None:
+    # A part of a name that stops short of the end of its chunk, and the whole name.
+    assert merged([(0, person(376, 397, 0.999)), (1, person(376, 404, 0.99))]) == [(376, 404, 0.999)]
+    # A long finding and a short one at its tail.
+    assert merged([(0, person(340, 400, 0.99)), (1, person(390, 398, 0.9))]) == [(340, 400, 0.99)]
+    # Two halves of a name.
+    assert merged([(0, person(376, 390, 0.9)), (1, person(385, 404, 0.95))]) == [(376, 404, 0.95)]
+    # A chain over three chunks, given in any order.
+    chain = [(2, person(28, 40, 0.9)), (0, person(10, 20, 0.97)), (1, person(18, 30, 0.85))]
+    assert merged(chain) == [(10, 40, 0.97)]
+    # The same finding from two chunks.
+    assert merged([(0, person(376, 404, 0.99)), (1, person(376, 404, 0.98))]) == [(376, 404, 0.99)]
+    # A finding at the end of its chunk that no other chunk returns is kept.
+    assert merged([(0, person(380, 400, 0.9))]) == [(380, 400, 0.9)]
+    assert merged([(0, person(380, 400, 0.9)), (1, person(500, 510, 0.9))]) == [(380, 400, 0.9), (500, 510, 0.9)]
+    # Neighbours that do not overlap stay two, and so does a person named in two places.
+    assert merged([(0, person(380, 390, 0.9)), (1, person(390, 400, 0.95))]) == [(380, 390, 0.9), (390, 400, 0.95)]
+    assert merged([(0, person(10, 27, 0.99)), (3, person(1210, 1227, 0.99))]) == [(10, 27, 0.99), (1210, 1227, 0.99)]
+    # Findings of one chunk are left as they are, and so are findings of two entity types.
+    assert merged([(0, person(10, 20, 0.9)), (0, person(15, 25, 0.95))]) == [(10, 20, 0.9), (15, 25, 0.95)]
+    assert merged([(0, person(10, 20, 0.9)), (1, person(15, 25, 0.95, "LOCATION"))]) == [
+        (10, 20, 0.9),
+        (15, 25, 0.95),
+    ]
+
+    # Through the chunker: positions are those of the text, not of the chunk.
+    text = "x" * 395 + "Corentin Le Guével" + "x" * 300
+
+    def predict(chunk_text: str) -> List[RecognizerResult]:
+        position = chunk_text.find("Corentin")
+        if position == -1:
+            return []
+        end = min(position + len("Corentin Le Guével"), len(chunk_text))
+        return [person(position, end, 0.9)]
+
+    results = BoundedTextChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP).predict_with_chunking(text, predict)
+    assert [(r.start, r.end) for r in results] == [(395, 413)], results
+
+
+def check_random_merges() -> int:
+    """No character a chunk designated is dropped, none is added, and nothing is left to merge."""
+    rng = random.Random(20261007)
+    for _ in range(2000):
+        found = []
+        for _ in range(rng.randint(0, 12)):
+            start = rng.randint(0, 120)
+            found.append(
+                (
+                    rng.randint(0, 3),
+                    person(start, start + rng.randint(1, 30), rng.random(), rng.choice(["PERSON", "PERSON", "LOCATION"])),
+                )
+            )
+        results = BoundedTextChunker.merge_across_chunks(found)
+        assert covered(results) == covered([result for _, result in found]), found
+        assert [r.start for r in results] == sorted(r.start for r in results)
+        for entity_type in ("PERSON", "LOCATION"):
+            given = [(chunk, r) for chunk, r in found if r.entity_type == entity_type]
+            kept = [r for r in results if r.entity_type == entity_type]
+            if given:
+                assert max(r.score for r in kept) == max(r.score for _, r in given)
+            for index, a in enumerate(kept):
+                for b in kept[index + 1 :]:
+                    if a.start < b.end and b.start < a.end:
+                        # What still overlaps is two findings of one chunk, as it returned them.
+                        assert any(
+                            {(a.start, a.end, a.score), (b.start, b.end, b.score)}
+                            <= {(r.start, r.end, r.score) for chunk, r in given if chunk == index_of_chunk}
+                            for index_of_chunk in range(4)
+                        ), (a, b, found)
+    return 2000
+
+
 if __name__ == "__main__":
     random_texts = check_random_texts()
     names = check_names_in_text_with_little_whitespace()
     check_named_texts()
+    check_named_merges()
+    merges = check_random_merges()
     check_predictions()
-    print(f"recognizer checks passed: {random_texts} random texts, {names} name positions")
+    print(
+        f"recognizer checks passed: {random_texts} random texts, {names} name positions, "
+        f"{merges} random merges"
+    )

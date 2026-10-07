@@ -8,13 +8,13 @@ Four things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
   the model reads a fixed number of tokens and the pipeline truncates what exceeds it. Here
   a chunk never exceeds `chunk_size` characters, and a chunk whose tokens still exceed the
   model's window is split again before it is handed to the model.
-- Presidio settles two overlapping findings of two chunks by score alone. Here a finding
-  that touches the edge where its chunk was cut first yields to one another chunk saw whole.
+- Presidio keeps, of two overlapping findings of two chunks, the one of the higher score.
+  Here they become one finding that covers both.
 - Presidio returns no finding for a chunk the pipeline raises on. Here the error is raised.
 """
 
 import inspect
-from typing import List
+from typing import List, Optional, Set, Tuple
 
 from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.chunkers import (
@@ -61,55 +61,92 @@ class BoundedTextChunker(CharacterBasedTextChunker):
             chunks.append(TextChunk(text=text[start:end], start=start, end=end))
             if end >= len(text):
                 break
-            start = end - self.chunk_overlap
-            before_word = self._last_boundary(text, start - self.start_reach - 1, start)
+            following = end - self.chunk_overlap
+            before_word = self._last_boundary(
+                text, following - self.start_reach - 1, following
+            )
             if before_word != -1:
-                start = before_word + 1
+                following = before_word + 1
+            if following <= start:
+                raise RuntimeError("the chunks of the text do not advance")
+            start = following
         return chunks
 
     def _last_boundary(self, text: str, low: int, high: int) -> int:
         return max(text.rfind(char, low, high) for char in self.boundary_chars)
 
     def predict_with_chunking(self, text, predict_func) -> List[RecognizerResult]:
-        """Predict each chunk and merge the findings, at their positions in the text.
-
-        A finding that touches an edge where its chunk was cut may be a part of a longer
-        one: it is kept only if no finding of its type seen whole by another chunk overlaps
-        it. Other duplicates are settled by score, as Presidio does.
-        """
+        """Predict each chunk and merge the findings, at their positions in the text."""
         chunks = self.chunk(text)
         if len(chunks) <= 1:
             return predict_func(text) if chunks else []
 
-        whole, touching_a_cut = [], []
-        for chunk in chunks:
-            for found in predict_func(chunk.text):
-                at_cut = (found.start == 0 and chunk.start > 0) or (
-                    found.end == len(chunk.text) and chunk.end < len(text)
+        found = []
+        for index, chunk in enumerate(chunks):
+            for result in predict_func(chunk.text):
+                found.append(
+                    (index, _span(result, result.start + chunk.start, result.end + chunk.start))
                 )
-                (touching_a_cut if at_cut else whole).append(
-                    RecognizerResult(
-                        entity_type=found.entity_type,
-                        start=found.start + chunk.start,
-                        end=found.end + chunk.start,
-                        score=found.score,
-                        analysis_explanation=found.analysis_explanation,
-                        recognition_metadata=found.recognition_metadata,
-                    )
-                )
+        return self.merge_across_chunks(found)
 
-        kept = self.deduplicate_overlapping_entities(whole)
-        kept += [
-            cut
-            for cut in self.deduplicate_overlapping_entities(touching_a_cut)
-            if not any(
-                cut.entity_type == seen.entity_type
-                and cut.start < seen.end
-                and seen.start < cut.end
-                for seen in kept
+    @staticmethod
+    def merge_across_chunks(
+        found: List[Tuple[int, RecognizerResult]],
+    ) -> List[RecognizerResult]:
+        """Replace the findings of different chunks that overlap by their union.
+
+        Two chunks share a part of the text and each reads a name there with its own
+        context: one may return it whole and the other a part of it. No winner is chosen.
+        Findings of one entity type that come from different chunks and overlap become one,
+        from the smallest start to the largest end, with the highest score; this repeats
+        until no two of them overlap. Findings of one chunk are returned as the model gave
+        them. No character a chunk designated is dropped.
+
+        :param found: pairs of a chunk's index and one of its findings, at its position in
+            the text.
+        """
+        merged = [({index}, result) for index, result in found]
+        pair = _first_pair_to_merge(merged)
+        while pair:
+            first, second = pair
+            (first_chunks, a), (second_chunks, b) = merged[first], merged[second]
+            best = a if a.score >= b.score else b
+            merged[first] = (
+                first_chunks | second_chunks,
+                _span(best, min(a.start, b.start), max(a.end, b.end)),
             )
-        ]
-        return sorted(kept, key=lambda found: found.start)
+            del merged[second]
+            pair = _first_pair_to_merge(merged)
+        return sorted((result for _, result in merged), key=lambda result: result.start)
+
+
+def _span(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
+    """Copy a finding to other positions."""
+    return RecognizerResult(
+        entity_type=result.entity_type,
+        start=start,
+        end=end,
+        score=result.score,
+        analysis_explanation=result.analysis_explanation,
+        recognition_metadata=result.recognition_metadata,
+    )
+
+
+def _first_pair_to_merge(
+    merged: List[Tuple[Set[int], RecognizerResult]],
+) -> Optional[Tuple[int, int]]:
+    """Find two findings of one entity type, not both of the same single chunk, that overlap."""
+    for first, (first_chunks, a) in enumerate(merged):
+        for second in range(first + 1, len(merged)):
+            second_chunks, b = merged[second]
+            if (
+                a.entity_type == b.entity_type
+                and a.start < b.end
+                and b.start < a.end
+                and len(first_chunks | second_chunks) > 1
+            ):
+                return first, second
+    return None
 
 
 class MappedLabelsNerRecognizer(HuggingFaceNerRecognizer):
@@ -191,9 +228,8 @@ _require(
     "the text_chunker parameter of HuggingFaceNerRecognizer",
 )
 _require(
-    callable(getattr(BaseTextChunker, "predict_with_chunking", None))
-    and callable(getattr(BaseTextChunker, "deduplicate_overlapping_entities", None)),
-    "BaseTextChunker.predict_with_chunking and deduplicate_overlapping_entities",
+    callable(getattr(BaseTextChunker, "predict_with_chunking", None)),
+    "BaseTextChunker.predict_with_chunking",
 )
 _require(
     all(

@@ -82,14 +82,26 @@ différences près :
    - un morceau dont les tokens dépassent encore la fenêtre (certains caractères
      valent plusieurs tokens : « ½ », « ﷺ ») est redécoupé en deux, autant de
      fois qu'il le faut.
-3. **Le nom entier l'emporte sur un nom coupé.** Quand une coupe tombe dans un
-   nom, le morceau qui s'arrête là en rend le début (« Corentin Le »), parfois
-   avec un meilleur score que le nom entier vu par le morceau voisin, et
-   Presidio départage deux trouvailles qui se chevauchent par le score seul.
-   Ici, une trouvaille qui touche le bord où son morceau a été coupé n'est
-   gardée que si aucune trouvaille du même type, vue entière par un autre
-   morceau, ne la chevauche. Les autres doublons restent départagés par le
-   score.
+3. **Les trouvailles de deux morceaux qui se chevauchent sont réunies.** Deux
+   morceaux partagent une portion du texte et chacun y lit un nom avec son
+   propre contexte : l'un peut le rendre entier, l'autre n'en rendre qu'une
+   partie (« Corentin Le »), parfois avec un meilleur score. Presidio garde
+   alors la trouvaille au meilleur score. Ici aucune n'est choisie : des
+   trouvailles du même type, venues de morceaux différents, qui se chevauchent
+   dans le texte sont remplacées par une seule, du plus petit début à la plus
+   grande fin, avec le meilleur score ; et ainsi de suite tant qu'il en reste
+   qui se chevauchent. Les trouvailles d'un même morceau sont rendues telles
+   que le modèle les a données. Aucun caractère désigné par un morceau n'est
+   perdu.
+
+   Ce que cela implique pour l'appelant : une trouvaille `PERSON` désigne un
+   passage, pas forcément une seule personne. Deux personnes nommées l'une à
+   la suite de l'autre de part et d'autre d'une coupe peuvent revenir en une
+   seule trouvaille si les lectures des deux morceaux se chevauchent.
+
+   Ce qui reste la limite du modèle, et que la réunion ne corrige pas : un nom
+   que le modèle ne voit dans aucun morceau ; une trouvaille à laquelle il
+   manque sa première lettre, vue après un guillemet ou un chiffre.
 4. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
    « aucune trouvaille » pour le morceau ; ici l'erreur remonte, et le serveur
    répond par une erreur au lieu d'une liste incomplète.
@@ -105,9 +117,17 @@ Ces points s'appuient sur des noms internes de Presidio. Le module les vérifie 
 l'import : s'il en manque un, la construction échoue et l'image ne démarre pas.
 
 `recognizer_check.py` contrôle le découpage (sur des textes aléatoires avec et
-sans blancs, et sur des noms de plusieurs mots placés autour des coupes), le
-filtre des étiquettes et l'erreur d'inférence, avec un faux modèle. La
-construction l'exécute. Pour le lancer seul, sans construire l'image :
+sans blancs, et sur des noms de plusieurs mots placés autour des coupes), la
+réunion des trouvailles, le filtre des étiquettes et l'erreur d'inférence, avec
+un faux modèle. La construction l'exécute, et il reste dans l'image : il se
+relance sur une image construite, sans réseau ni modèle chargé :
+
+```bash
+docker run --rm --network none --entrypoint python <image> -B /app/recognizer_check.py
+```
+
+Pour le lancer pendant qu'on modifie `mapped_ner_recognizer.py`, sans construire
+l'image :
 
 ```bash
 docker run --rm --network none -e PYTHONPATH=/app \
