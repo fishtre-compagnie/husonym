@@ -266,7 +266,7 @@
    "Use reinforced packaging for the Jetline 450 printer."
   ]},
   {"name": "maintenance_log", "type": "text", "expected": "personal", "persons": [2, 9, 16, 24, 31, 38, 46],
-   "names": {"2": ["PATEL Grace"], "9": ["Priya Carver"], "16": ["Megan Fairchild"], "24": ["Nathan Patel"], "31": ["Draper"], "38": ["Naomi", "Samuel Thornton"], "46": ["Kessler"]}, "values": [
+   "names": {"2": ["PATEL Grace"], "9": ["Priya Carver"], "16": ["Megan Thornbury"], "24": ["Nathan Patel"], "31": ["Draper"], "38": ["Naomi", "Samuel Thornton"], "46": ["Kessler"]}, "values": [
    "Oil topped up on the workshop compressor.",
    "Compressed air leak sealed near the packing station.",
    "PATEL Grace replaced the limit switch.",
@@ -283,7 +283,7 @@
    "Check scale calibrated, deviation of 6 grams.",
    "Dry run conclusive after the motor change.",
    "Part received on 05/02/2026, fitting planned during the night stop.",
-   "Megan Fairchild worked on the drive of line 13.",
+   "Megan Thornbury worked on the drive of line 13.",
    "Unusual vibration on the conveyor, bearing to be ordered.",
    "Housing fasteners checked to torque.",
    "Guides lubricated according to the plan.",

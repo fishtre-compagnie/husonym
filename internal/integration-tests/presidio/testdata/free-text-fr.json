@@ -1,7 +1,7 @@
 {"language": "fr", "tables": [
  {"name": "textes", "columns": [
   {"name": "suivi_ticket", "type": "text", "expected": "personal", "persons": [3, 14, 22, 37, 45],
-   "names": {"3": ["Poirier"], "14": ["Lemoine"], "22": ["Sophie Poirier"], "37": ["Antoine Roussel"], "45": ["Mathieu Lefèvre"]}, "values": [
+   "names": {"3": ["Poirier"], "14": ["Lemoine"], "22": ["Sophie Poirier"], "37": ["Antoine Vauclin"], "45": ["Mathieu Kervégan"]}, "values": [
    "Remboursement de 3 183,90 € validé, dossier clos.",
    "Demande transmise au service technique le 08/03/2026.",
    "En attente de la photo du produit endommagé.",
@@ -39,7 +39,7 @@
    "Livraison reprogrammée au 16/11/2026 à la demande du client.",
    "Doublon du ticket #40079, fusion effectuée.",
    "Échange accepté sous garantie pour l'article écran Lumira 27.",
-   "Antoine Roussel a appelé : toujours pas de nouvelles de son colis.",
+   "Antoine Vauclin a appelé : toujours pas de nouvelles de son colis.",
    "Remboursement de 2 478,00 € validé, dossier clos.",
    "Deuxième relance sans réponse, clôture automatique dans 15 jours.",
    "L'imprimante Jetline 450 ne démarre plus depuis la dernière mise à jour.",
@@ -47,7 +47,7 @@
    "Bon de retour émis pour la commande CMD-2026-007090.",
    "Deuxième relance sans réponse, clôture automatique dans 3 jours.",
    "La cafetière Aromia Plus ne démarre plus depuis la dernière mise à jour.",
-   "Rappeler Mathieu Lefèvre demain matin avant 10 h.",
+   "Rappeler Mathieu Kervégan demain matin avant 10 h.",
    "Geste commercial de 543,20 € accordé sur la commande CMD-2026-008083.",
    "Facture FA-2603-0332 renvoyée à la demande du client.",
    "Doublon du ticket #39891, fusion effectuée.",
@@ -107,7 +107,7 @@
    "Palette de 333 kg livrée avec hayon, sans difficulté."
   ]},
   {"name": "journal_appels", "type": "text", "expected": "personal", "persons": [1, 6, 12, 17, 23, 28, 34, 39, 44, 48],
-   "names": {"1": ["Roussel"], "6": ["Julien Vasseur"], "12": ["BESSON Thibault"], "17": ["Thibault Poirier"], "23": ["Élodie Benali"], "28": ["Sophie Lemoine"], "34": ["Fontaine"], "39": ["Élodie Poirier"], "44": ["Thibault"], "48": ["Gaël Morel"]}, "values": [
+   "names": {"1": ["Roussel"], "6": ["Julien Vasseur"], "12": ["BESSON Thibault"], "17": ["Thibault Poirier"], "23": ["Élodie Benali"], "28": ["Sophie Lemoine"], "34": ["Fontaine"], "39": ["Élodie Poirier"], "44": ["Thibault"], "48": ["Gaël Tissandier"]}, "values": [
    "Le client veut modifier la commande CMD-2026-008663 avant l'expédition.",
    "Mme Roussel conteste le montant de 961,90 €.",
    "Messagerie",
@@ -156,11 +156,11 @@
    "Le client veut modifier la commande CMD-2026-009881 avant l'expédition.",
    "Relance pour le règlement de 3 170,00 €, paiement annoncé cette semaine.",
    "Appel sortant de suivi après la livraison du 20/02/2026.",
-   "Transfert de l'appel à Gaël Morel, responsable du compte.",
+   "Transfert de l'appel à Gaël Tissandier, responsable du compte.",
    "Appel entrant au sujet de la facture FA-2602-0868, explication donnée."
   ]},
   {"name": "compte_rendu", "type": "text", "expected": "personal", "persons": [8, 19, 30, 41],
-   "names": {"8": ["Aurélie Poirier"], "19": ["Julien Dumas"], "30": ["Benali"], "41": ["Lefèvre"]}, "values": [
+   "names": {"8": ["Aurélie Poirier"], "19": ["Julien Charmoille"], "30": ["Benali"], "41": ["Lefèvre"]}, "values": [
    "Intervention réalisée sur site, remplacement du joint défectueux.",
    "Remplacement du filtre et purge du circuit effectués.",
    "Reporté",
@@ -180,7 +180,7 @@
    "Pose du nouvel appareil terminée en 2 heures.",
    "Réglage de la pression effectué, valeur relevée à 14 bars.",
    "Deuxième passage nécessaire, pièce manquante au camion.",
-   "Clés rendues à Julien Dumas à la fin de l'intervention.",
+   "Clés rendues à Julien Charmoille à la fin de l'intervention.",
    "Client absent au rendez-vous de 14 h 00, avis laissé.",
    "Le local technique était encombré, accès dégagé avant travaux.",
    "Reporté",
