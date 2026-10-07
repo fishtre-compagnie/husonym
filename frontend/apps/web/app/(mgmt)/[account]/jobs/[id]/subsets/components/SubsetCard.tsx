@@ -4,6 +4,7 @@ import {
 } from '@/app/(mgmt)/[account]/connections/util';
 import { SubsetFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
 import SubsetOptionsForm from '@/components/jobs/Form/SubsetOptionsForm';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import EditItem from '@/components/jobs/subsets/edit/EditItem';
 import EditItemDialog from '@/components/jobs/subsets/edit/EditItemDialog';
 import EditItems from '@/components/jobs/subsets/edit/EditItems';
@@ -17,6 +18,7 @@ import {
 } from '@/components/jobs/subsets/SubsetTable/Columns';
 import SubsetTable from '@/components/jobs/subsets/SubsetTable/SubsetTable';
 import {
+  addsWhereClause,
   buildRowKey,
   buildTableRowData,
   getBulkColumnsForSqlAutocomplete,
@@ -26,6 +28,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { create } from '@bufbuild/protobuf';
 import {
@@ -57,6 +60,7 @@ interface Props {
 
 export default function SubsetCard(props: Props): ReactElement {
   const { jobId } = props;
+  const { allowed } = useLicenseFeature('subsetting');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 
@@ -317,6 +321,7 @@ export default function SubsetCard(props: Props): ReactElement {
     <div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
+          <LicenseFeatureNotice feature="subsetting" className="mb-4" />
           {showSubsetOptions(connectionType) && (
             <SubsetOptionsForm maxColNum={2} />
           )}
@@ -377,7 +382,12 @@ export default function SubsetCard(props: Props): ReactElement {
               }
             />
             <div className="flex flex-row pt-10 justify-end">
-              <Button key="submit" type="submit">
+              {/* Saving subsets with no WHERE clause is what clears them: it stays possible. */}
+              <Button
+                key="submit"
+                type="submit"
+                disabled={!allowed && addsWhereClause(formSubsets)}
+              >
                 Save
               </Button>
             </div>

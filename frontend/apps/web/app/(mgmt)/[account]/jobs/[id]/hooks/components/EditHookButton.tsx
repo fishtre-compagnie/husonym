@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { Connection, JobHook, JobService } from '@husonym/sdk';
@@ -27,6 +28,7 @@ export default function EditHookButton(props: Props): ReactElement {
     JobService.method.updateJobHook
   );
   const [open, setOpen] = useState(false);
+  const { allowed } = useLicenseFeature('job_hooks');
 
   async function onUpdate(values: Partial<JobHook>): Promise<void> {
     try {
@@ -52,7 +54,7 @@ export default function EditHookButton(props: Props): ReactElement {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" type="button">
+        <Button variant="outline" type="button" disabled={!allowed}>
           <Pencil1Icon />
         </Button>
       </DialogTrigger>

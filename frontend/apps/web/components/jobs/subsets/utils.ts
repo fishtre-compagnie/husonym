@@ -40,6 +40,15 @@ export function buildTableRowData(
   return tableMap;
 }
 
+// Whether saving these subsets gives a table a WHERE clause: what the API counts as
+// subsetting. A blank clause is none, and a save with none is what clears the subsets of
+// a job.
+export function addsWhereClause(
+  subsets: Pick<SubsetFormValues['subsets'][number], 'whereClause'>[]
+): boolean {
+  return subsets.some((subset) => !!subset.whereClause?.trim());
+}
+
 export function buildRowKey(schema: string, table: string): string {
   return `${schema}.${table}`;
 }

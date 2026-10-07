@@ -1,7 +1,9 @@
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import {
+  AccountRole,
   GetLicenseUsageResponseSchema,
+  LicenseLimitsSchema,
   SystemLicense,
   SystemLicenseSchema,
 } from '@husonym/sdk';
@@ -9,9 +11,12 @@ import {
   featureLabel,
   featureRows,
   isFeatureAllowed,
+  invitationRole,
   isFeatureAvailable,
+  isRoleSelectable,
   LICENSE_FEATURES,
   licenseState,
+  limitsInForce,
   sourceUsage,
 } from './license';
 
@@ -324,5 +329,52 @@ describe('licenseState', () => {
       });
       expect(licenseState(license)).toBe('frozen');
     });
+  });
+});
+
+describe('limitsInForce', () => {
+  const limits = create(LicenseLimitsSchema, { maxSources: 3, maxJobs: 10 });
+
+  it('gives the caps of a license in force', () => {
+    const license = create(SystemLicenseSchema, {
+      isValid: true,
+      state: 'valid',
+      limits,
+    });
+    expect(limitsInForce(license)).toBe(limits);
+  });
+
+  it('gives none for a key that is not in force, whatever it caps', () => {
+    const frozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+      limits,
+    });
+    expect(limitsInForce(frozen)).toBeUndefined();
+    expect(limitsInForce(undefined)).toBeUndefined();
+  });
+});
+
+describe('roles without the rbac feature', () => {
+  it('lets only the administrator role be chosen', () => {
+    expect(isRoleSelectable(false, AccountRole.ADMIN)).toBe(true);
+    expect(isRoleSelectable(false, AccountRole.JOB_DEVELOPER)).toBe(false);
+    expect(isRoleSelectable(false, AccountRole.JOB_EXECUTOR)).toBe(false);
+    expect(isRoleSelectable(false, AccountRole.JOB_VIEWER)).toBe(false);
+  });
+
+  it('lets every role be chosen with the feature', () => {
+    expect(isRoleSelectable(true, AccountRole.JOB_VIEWER)).toBe(true);
+    expect(isRoleSelectable(true, AccountRole.ADMIN)).toBe(true);
+  });
+
+  it('names no role in an invitation for a role that cannot be chosen', () => {
+    expect(invitationRole(false, AccountRole.JOB_VIEWER)).toBe(
+      AccountRole.UNSPECIFIED
+    );
+    expect(invitationRole(false, AccountRole.ADMIN)).toBe(AccountRole.ADMIN);
+    expect(invitationRole(true, AccountRole.JOB_VIEWER)).toBe(
+      AccountRole.JOB_VIEWER
+    );
   });
 });

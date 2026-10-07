@@ -1,6 +1,7 @@
 'use client';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation } from '@connectrpc/connect-query';
 import {
@@ -51,6 +53,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const router = useRouter();
   const { account } = useAccount();
+  const { allowed: isSchedulingAllowed } = useLicenseFeature('scheduling');
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -167,6 +170,8 @@ export default function Page(props: PageProps): ReactElement {
                   <FormLabel>Schedule</FormLabel>
                   <Switch
                     checked={isScheduleEnabled}
+                    // Turning a schedule off stays possible without the feature.
+                    disabled={!isSchedulingAllowed && !isScheduleEnabled}
                     onCheckedChange={(isChecked) => {
                       setIsScheduleEnabled(isChecked);
                       if (!isChecked) {
@@ -177,6 +182,7 @@ export default function Page(props: PageProps): ReactElement {
                     }}
                   />
                 </div>
+                <LicenseFeatureNotice feature="scheduling" />
                 <FormDescription>
                   Define a cron schedule to run this job. If disabled, the job
                   will be paused and a default cron will be set
@@ -185,7 +191,7 @@ export default function Page(props: PageProps): ReactElement {
                   <Input
                     placeholder={DEFAULT_CRON_STRING}
                     {...field}
-                    disabled={!isScheduleEnabled}
+                    disabled={!isScheduleEnabled || !isSchedulingAllowed}
                   />
                 </FormControl>
                 <FormMessage />

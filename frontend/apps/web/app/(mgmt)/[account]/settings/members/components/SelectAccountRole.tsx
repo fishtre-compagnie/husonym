@@ -5,6 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { isRoleSelectable } from '@/libs/license/license';
 import { getAccountRoleString } from '@/util/util';
 import { AccountRole } from '@husonym/sdk';
 import { ReactElement } from 'react';
@@ -16,6 +18,7 @@ interface Props {
 
 export default function SelectAccountRole(props: Props): ReactElement {
   const { role, onChange } = props;
+  const { allowed } = useLicenseFeature('rbac');
 
   return (
     <Select
@@ -40,6 +43,7 @@ export default function SelectAccountRole(props: Props): ReactElement {
             key={role}
             className="cursor-pointer"
             value={role.toString()}
+            disabled={!isRoleSelectable(allowed, role)}
           >
             {getAccountRoleString(role)}
           </SelectItem>

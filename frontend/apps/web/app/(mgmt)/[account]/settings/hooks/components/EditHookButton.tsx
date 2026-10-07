@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHook, AccountHookService } from '@husonym/sdk';
@@ -26,6 +27,7 @@ export default function EditHookButton(props: Props): ReactElement {
     AccountHookService.method.updateAccountHook
   );
   const [open, setOpen] = useState(false);
+  const { allowed } = useLicenseFeature('account_hooks');
 
   async function onUpdate(values: Partial<AccountHook>): Promise<void> {
     try {
@@ -51,7 +53,7 @@ export default function EditHookButton(props: Props): ReactElement {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" type="button">
+        <Button variant="outline" type="button" disabled={!allowed}>
           <Pencil1Icon />
         </Button>
       </DialogTrigger>

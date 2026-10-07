@@ -1,5 +1,7 @@
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService, LogLevel, LogWindow } from '@husonym/sdk';
 import { ReloadIcon } from '@radix-ui/react-icons';
@@ -21,6 +23,7 @@ export default function JobRunLogs({
   runId,
   isRunning,
 }: JobRunLogsProps): ReactElement {
+  const { allowed } = useLicenseFeature('run_logs');
   const [selectedLogLevel, setSelectedLogLevel] = useState<LogLevel>(
     LogLevel.UNSPECIFIED
   );
@@ -41,7 +44,8 @@ export default function JobRunLogs({
       window: LogWindow.ONE_DAY,
     },
     {
-      enabled: !!runId && !!accountId,
+      // The API refuses the logs of a license without the feature: do not ask.
+      enabled: !!runId && !!accountId && allowed,
       refetchInterval(query) {
         return query.state.data && isRunning ? TEN_SECONDS : 0;
       },
@@ -53,6 +57,15 @@ export default function JobRunLogs({
     if (!isLogsValidating) {
       logsMutate();
     }
+  }
+
+  if (!allowed) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Logs</h2>
+        <LicenseFeatureNotice feature="run_logs" />
+      </div>
+    );
   }
 
   return (

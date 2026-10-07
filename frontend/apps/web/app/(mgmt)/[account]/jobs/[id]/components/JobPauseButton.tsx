@@ -2,6 +2,7 @@
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { JobService, JobStatus } from '@husonym/sdk';
@@ -20,6 +21,7 @@ export default function JobPauseButton({
   onNewStatus,
   jobId,
 }: Props): ReactElement {
+  const { allowed } = useLicenseFeature('scheduling');
   const { mutateAsync: setJobPaused } = useMutation(JobService.method.pauseJob);
   const [buttonText, setButtonText] = useState(
     status === JobStatus.PAUSED ? 'Resume Job' : 'Pause Job'
@@ -64,6 +66,8 @@ export default function JobPauseButton({
     <div className="max-w-[300px]">
       <Button
         variant="outline"
+        // Pausing stays possible without the feature, resuming does not.
+        disabled={!allowed && status === JobStatus.PAUSED}
         onClick={async () => {
           const isCurrentlyPaused = status === JobStatus.PAUSED;
           updateJobStatus(!isCurrentlyPaused);

@@ -1,5 +1,10 @@
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import type { GetLicenseUsageResponse, SystemLicense } from '@husonym/sdk';
+import { AccountRole } from '@husonym/sdk';
+import type {
+  GetLicenseUsageResponse,
+  LicenseLimits,
+  SystemLicense,
+} from '@husonym/sdk';
 
 // The features a license key can allow, by the names the API uses, in the order they
 // are shown.
@@ -68,6 +73,23 @@ export function isFeatureAvailable(
   return !wasRead || isFeatureAllowed(license, name);
 }
 
+// Without the rbac feature, a member can be given the administrator role and no other.
+export function isRoleSelectable(
+  rbacAllowed: boolean,
+  role: AccountRole
+): boolean {
+  return rbacAllowed || role === AccountRole.ADMIN;
+}
+
+// The role an invitation names. One that cannot be chosen is not named: the invitation then
+// names no role, and the member is given the viewer role when accepting it.
+export function invitationRole(
+  rbacAllowed: boolean,
+  role: AccountRole
+): AccountRole {
+  return isRoleSelectable(rbacAllowed, role) ? role : AccountRole.UNSPECIFIED;
+}
+
 export type FeatureRow = {
   name: string;
   allowed: boolean;
@@ -87,6 +109,14 @@ export function featureRows(
     const used = inUse.includes(name);
     return { name, allowed, inUse: used, blocking: used && !allowed };
   });
+}
+
+// The caps of the license in force. A key that is not in force (frozen, or none at all)
+// caps nothing, whatever it lists.
+export function limitsInForce(
+  license: SystemLicense | undefined
+): LicenseLimits | undefined {
+  return license?.isValid ? license.limits : undefined;
 }
 
 export type SourceUsage = {

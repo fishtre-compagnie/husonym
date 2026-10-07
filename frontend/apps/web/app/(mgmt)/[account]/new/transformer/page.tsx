@@ -3,6 +3,7 @@
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectTrigger } from '@/components/ui/select';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { cn } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
 import {
@@ -59,6 +61,7 @@ function getTransformerSource(sourceStr: string): TransformerSource {
 
 export default function NewTransformer(): ReactElement {
   const { account } = useAccount();
+  const { allowed } = useLicenseFeature('custom_transformers');
 
   const { data, isLoading } = useQuery(
     TransformersService.method.getSystemTransformers
@@ -173,6 +176,7 @@ export default function NewTransformer(): ReactElement {
       Header={<PageHeader header="Create a New Transformer" />}
       containerClassName="px-12 md:px-24 lg:px-32"
     >
+      <LicenseFeatureNotice feature="custom_transformers" className="mb-4" />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <FormField
@@ -312,7 +316,10 @@ export default function NewTransformer(): ReactElement {
             />
           </div>
           <div className="flex flex-row justify-end pt-10">
-            <Button type="submit" disabled={!form.formState.isValid}>
+            <Button
+              type="submit"
+              disabled={!allowed || !form.formState.isValid}
+            >
               Submit
             </Button>
           </div>

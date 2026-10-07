@@ -9,7 +9,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SourceUsage, sourceUsage } from '@/libs/license/license';
+import {
+  limitsInForce,
+  SourceUsage,
+  sourceUsage,
+} from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import {
   GetLicenseUsageResponse,
@@ -33,7 +37,7 @@ export default function LicenseLimitsCard(props: Props): ReactElement {
     return <Skeleton className="w-full h-48" />;
   }
 
-  const limits = license?.limits;
+  const limits = limitsInForce(license);
 
   return (
     <Card>

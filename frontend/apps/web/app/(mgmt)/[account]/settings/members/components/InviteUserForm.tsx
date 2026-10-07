@@ -2,6 +2,7 @@
 
 import ButtonText from '@/components/ButtonText';
 import { CopyButton } from '@/components/CopyButton';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,6 +24,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { invitationRole } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import { InviteMembersForm } from '@/yup-validations/invite-members';
 import { useMutation } from '@connectrpc/connect-query';
@@ -43,6 +46,7 @@ export default function InviteUserForm(props: Props): ReactElement {
   const { accountId, onInvited } = props;
   const { data: systemAppData } = useGetSystemAppConfig();
   const isRbacEnabled = systemAppData?.isRbacEnabled ?? false;
+  const { allowed: isRbacAllowed } = useLicenseFeature('rbac');
   const [showNewInviteDialog, setShowNewinviteDialog] = useState(false);
   const [newInviteToken, setNewInviteToken] = useState('');
   const [openInviteCreated, setOpenInviteCreated] = useState(false);
@@ -63,7 +67,9 @@ export default function InviteUserForm(props: Props): ReactElement {
       const invite = await mutateAsync({
         accountId: accountId,
         email: values.email,
-        role: values.role,
+        // A role the license does not allow is not named: the member is given the viewer
+        // role when accepting the invitation.
+        role: invitationRole(isRbacAllowed, values.role),
       });
       setShowNewinviteDialog(false);
       if (invite?.invite?.token) {
@@ -103,6 +109,7 @@ export default function InviteUserForm(props: Props): ReactElement {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+              {isRbacEnabled && <LicenseFeatureNotice feature="rbac" />}
               <FormField
                 control={form.control}
                 name="email"

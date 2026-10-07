@@ -1,5 +1,6 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { cn } from '@/libs/utils';
 import {
   changeLabel,
@@ -63,6 +65,7 @@ interface Props {
 export default function MappingChangesCard(props: Props): ReactElement {
   const { jobId } = props;
   const { account } = useAccount();
+  const { allowed } = useLicenseFeature('mapping_review');
   const accountId = account?.id ?? '';
 
   const { data, isLoading } = useQuery(
@@ -226,6 +229,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <LicenseFeatureNotice feature="mapping_review" />
         {pending.length === 0 ? (
           <div className="flex flex-row items-center gap-2 text-sm rounded-xl p-4 bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-200">
             <CheckCircledIcon />
@@ -284,6 +288,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
               type="button"
               size="sm"
               variant="secondary"
+              disabled={!allowed}
               onClick={() => setReviewing(selectedChanges)}
             >
               Mark reviewed…
