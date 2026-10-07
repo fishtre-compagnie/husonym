@@ -47,10 +47,13 @@ import (
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
 	authlogging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth_logging"
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
+	"github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/licenserefusal"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagesettle"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -67,6 +70,7 @@ import (
 	v1alpha1_jobservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/job-service"
 	v1alpha1_metricsservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/metrics-service"
 	v1alpha1_transformerservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
+	v1alpha1_usageservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/usage-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
@@ -94,6 +98,9 @@ import (
 // licenseRefreshInterval is how often an instance reads the license key in force again, and
 // how often it looks at the license file for a new one.
 const licenseRefreshInterval = time.Minute
+
+// usageSettleInterval is how often the runs left open without an end are looked at.
+const usageSettleInterval = time.Hour
 
 // licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
 // so that a read that hangs has ended before the next one is due.
@@ -162,7 +169,7 @@ func serve(ctx context.Context) error {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
+	services = append(services, mgmtv1alpha1connect.AccountHookServiceName, mgmtv1alpha1connect.UsageServiceName)
 
 	// The settings of an account carry secrets, so they are only held where the deployment
 	// can encrypt one. Without a password the handler answers Unimplemented, and health and
@@ -204,6 +211,7 @@ func serve(ctx context.Context) error {
 
 	querier := db_queries.New()
 	db := husonymdb.New(pool, querier)
+	usageStore := usagestore.New(db)
 
 	if viper.GetBool("DB_AUTO_MIGRATE") {
 		schemaDir := viper.GetString("DB_SCHEMA_DIR")
@@ -393,6 +401,9 @@ func serve(ctx context.Context) error {
 		loggerInterceptor,
 		validateInterceptor,
 		loggerAccountIdInterceptor,
+		// Last of the standard ones, so that it sees what the services and the auth interceptors
+		// below it answer.
+		licenserefusal.NewInterceptor(usageStore),
 	)
 
 	// standard auth interceptors that should be applied to most services
@@ -532,6 +543,11 @@ func serve(ctx context.Context) error {
 		temporalConfigProvider,
 		clientmanager.NewTemporalClientFactory(),
 	)
+	go usagesettle.New(
+		usageStore,
+		usagesettle.TemporalFate(tfwfmgr.DescribeWorklowExecution, slogger),
+		slogger,
+	).Every(licenseCtx, usageSettleInterval)
 
 	authadminclient, err := getAuthAdminClient(ctx, authclient, slogger)
 	if err != nil {
@@ -550,7 +566,7 @@ func serve(ctx context.Context) error {
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
 		WorkerOnly:               workerOnly,
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient))
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient), usageStore)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -600,6 +616,22 @@ func serve(ctx context.Context) error {
 	api.Handle(
 		mgmtv1alpha1connect.NewAccountHookServiceHandler(
 			accountHookService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
+
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{WorkerOnly: workerOnly},
+		db,
+		userdataclient,
+		usageStore,
+	)
+	api.Handle(
+		mgmtv1alpha1connect.NewUsageServiceHandler(
+			usageService,
 			connect.WithInterceptors(stdInterceptors...),
 			connect.WithInterceptors(stdAuthInterceptors...),
 			connect.WithInterceptors(handlerBookendInterceptor),
@@ -723,7 +755,7 @@ func serve(ctx context.Context) error {
 	anonymizationService := v1alpha1_anonymizationservice.New(&v1alpha1_anonymizationservice.Config{
 		IsAuthEnabled: isAuthEnabled,
 		WorkerOnly:    workerOnly,
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense)
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense, usageStore)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,

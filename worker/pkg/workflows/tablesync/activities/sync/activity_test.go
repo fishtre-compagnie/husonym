@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -29,7 +31,9 @@ import (
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.temporal.io/sdk/log"
 	tmprl_mocks "go.temporal.io/sdk/mocks"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/workflow"
 )
 
 func Test_Sync_RunContext_Success(t *testing.T) {
@@ -123,6 +127,90 @@ output:
 	res := &SyncResponse{}
 	err = val.Get(res)
 	require.NoError(t, err)
+}
+
+// The response says which attempt answered: the first attempt fails, the second answers.
+func Test_Sync_Response_CarriesTheRetries(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+	env := testSuite.NewTestWorkflowEnvironment()
+
+	benthosConfig := strings.TrimSpace(`
+input:
+  generate:
+    count: 1
+    interval: ""
+    mapping: 'root = { "id": uuid_v4() }'
+output:
+  label: ""
+  stdout:
+    codec: lines
+`)
+	accountId := uuid.NewString()
+	var configReads atomic.Int32
+
+	mux := http.NewServeMux()
+	mux.Handle(mgmtv1alpha1connect.JobServiceGetRunContextProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.JobServiceGetRunContextProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetRunContextRequest]) (*connect.Response[mgmtv1alpha1.GetRunContextResponse], error) {
+			switch r.Msg.GetId().GetExternalId() {
+			case shared.GetBenthosConfigExternalId("test"):
+				if configReads.Add(1) == 1 {
+					return nil, errors.New("first attempt fails")
+				}
+				return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: []byte(benthosConfig)}), nil
+			case shared.GetConnectionIdsExternalId():
+				return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: []byte(`["conn-id-1"]`)}), nil
+			}
+			return nil, errors.New("unexpected run context")
+		},
+	))
+	mux.Handle(mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
+			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
+				Connection: &mgmtv1alpha1.Connection{Id: "conn-id-1", AccountId: accountId},
+			}), nil
+		},
+	))
+	srv := startHTTPServer(t, mux)
+
+	var meter metric.Meter
+	act := New(
+		mgmtv1alpha1connect.NewConnectionServiceClient(srv.Client(), srv.URL),
+		mgmtv1alpha1connect.NewJobServiceClient(srv.Client(), srv.URL),
+		connectionmanager.NewConnectionManager(
+			sqlprovider.NewProvider(&sqlconnect.SqlOpenConnector{}),
+			connectionmanager.WithCloseOnRelease(),
+		),
+		connectionmanager.NewConnectionManager(mongoprovider.NewProvider(), connectionmanager.WithCloseOnRelease()),
+		meter,
+		benthosstream.NewBenthosStreamManager(),
+		tmprl_mocks.NewClient(t),
+		nil, nil, nil,
+		engineConfigWithoutAccountSettings(t),
+	)
+
+	run := func(ctx workflow.Context) (*SyncTableResponse, error) {
+		ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2, InitialInterval: time.Millisecond},
+		})
+		var resp *SyncTableResponse
+		err := workflow.ExecuteActivity(ctx, act.SyncTable, &SyncTableRequest{
+			Id: "test", AccountId: accountId, JobRunId: "job-run-id",
+		}, &SyncMetadata{Schema: "public", Table: "test"}).Get(ctx, &resp)
+		return resp, err
+	}
+	env.RegisterWorkflowWithOptions(run, workflow.RegisterOptions{Name: "retries"})
+	env.RegisterActivity(act.SyncTable)
+
+	env.ExecuteWorkflow("retries")
+	require.True(t, env.IsWorkflowCompleted())
+	require.NoError(t, env.GetWorkflowError())
+	var resp *SyncTableResponse
+	require.NoError(t, env.GetWorkflowResult(&resp))
+	require.EqualValues(t, 1, resp.Retries)
 }
 
 func Test_Sync_RunContext_WithContinuationToken(t *testing.T) {

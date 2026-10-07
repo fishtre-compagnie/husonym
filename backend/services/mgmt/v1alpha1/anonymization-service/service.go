@@ -2,6 +2,7 @@ package v1alpha_anonymizationservice
 
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -19,6 +20,8 @@ type Service struct {
 	piiText *piitext.Engine
 	db      *husonymdb.HusonymDb
 	license license.EEInterface
+	// refusals counts the refusals that are answered as a status and not as an error.
+	refusals licenserefusal.Counter
 }
 
 type Config struct {
@@ -37,6 +40,7 @@ func New(
 	piiText *piitext.Engine,
 	db *husonymdb.HusonymDb,
 	licenseClient license.EEInterface,
+	refusals licenserefusal.Counter,
 ) *Service {
 	return &Service{
 		cfg:                cfg,
@@ -47,5 +51,6 @@ func New(
 		piiText:            piiText,
 		db:                 db,
 		license:            licenseClient,
+		refusals:           refusals,
 	}
 }

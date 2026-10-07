@@ -329,7 +329,7 @@ func Test_previewAnonymized_PiiTextWithoutAnEngineSaysItIsNotEnabled(t *testing.
 	}
 	s := &Service{cfg: &Config{}, transformers: Transformers{License: testutil.NewFakeEELicense(testutil.WithIsValid())}}
 
-	require.NoError(t, s.refusePiiTextPreview(piiText), "the license is not the cause")
+	require.NoError(t, s.refusePiiTextPreview("an-account", piiText), "the license is not the cause")
 	resp, err := s.previewAnonymized(t.Context(), "an-account", []any{"Hello"}, piiText, nil, testutil.GetTestLogger(t))
 
 	require.Nil(t, resp)

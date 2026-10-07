@@ -99,9 +99,10 @@ func Test_Anonymize_CustomTransformersNeedTheirFeature(t *testing.T) {
 
 			t.Run("AnonymizeMany refuses "+kind+" "+place, func(t *testing.T) {
 				s := service(t, withoutCustomTransformers(), presidiotest.New(t), nil)
+				accountId := uuid.NewString()
 
 				resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
-					AccountId:           uuid.NewString(),
+					AccountId:           accountId,
 					InputData:           []string{`{"note":"appeler Zoé demain"}`},
 					TransformerMappings: mappings,
 					DefaultTransformers: defaults,
@@ -111,6 +112,7 @@ func Test_Anonymize_CustomTransformersNeedTheirFeature(t *testing.T) {
 				// The code AnonymizeMany answers a license that lacks pii_text with.
 				require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
 				require.ErrorContains(t, err, "this license does not include custom_transformers")
+				require.Equal(t, []string{accountId + " custom_transformers"}, s.refusals.(*refusalLog).counted)
 			})
 		}
 	}

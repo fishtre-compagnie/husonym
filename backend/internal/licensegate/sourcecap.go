@@ -9,6 +9,7 @@ import (
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -87,10 +88,14 @@ func (g *JobGate) SourceGuard(candidate *SourceCandidate) func(ctx context.Conte
 		if !addsSource {
 			return nil
 		}
-		return husonymerrors.NewForbidden(fmt.Sprintf(
-			"this license allows %d source(s) and this change would bring the instance to %d; contact us to raise the limit",
-			maxSources, len(after),
-		))
+		return license.NewRefusal(
+			husonymdb.UUIDString(candidate.AccountId),
+			husonymerrors.NewForbidden(fmt.Sprintf(
+				"this license allows %d source(s) and this change would bring the instance to %d; contact us to raise the limit",
+				maxSources, len(after),
+			)),
+			license.GateSourceCap,
+		)
 	}
 }
 

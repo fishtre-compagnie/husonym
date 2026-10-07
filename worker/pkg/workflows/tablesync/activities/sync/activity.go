@@ -93,6 +93,12 @@ type SyncTableRequest struct {
 
 type SyncTableResponse struct {
 	ContinuationToken *string
+
+	// What this page counted. Members are only ever added and left out when empty.
+	RowsRead      int64 `json:",omitempty"`
+	RowsDiscarded int64 `json:",omitempty"`
+	// attempt - 1 of the attempt that answered
+	Retries int64 `json:",omitempty"`
 }
 
 type SyncMetadata struct {
@@ -141,8 +147,14 @@ func (a *Activity) SyncTable(
 	ctx context.Context,
 	req *SyncTableRequest,
 	metadata *SyncMetadata,
-) (*SyncTableResponse, error) {
+) (resp *SyncTableResponse, retErr error) {
 	info := activity.GetInfo(ctx)
+	// Whichever engine answers, the response says which attempt it was.
+	defer func() {
+		if resp != nil {
+			resp.Retries = int64(info.Attempt) - 1
+		}
+	}()
 
 	session := connectionmanager.NewUniqueSession(connectionmanager.WithSessionGroup(req.JobRunId))
 	loggerKeyVals := []any{
@@ -217,12 +229,12 @@ func (a *Activity) SyncTable(
 			return nil, perr
 		}
 		if plan != nil {
-			resp, aerr := a.runAthanor(ctx, req, plan, job, consistencyKey, info.Attempt, session, getConnectionById, logger)
+			aresp, aerr := a.runAthanor(ctx, req, plan, job, consistencyKey, info.Attempt, session, getConnectionById, logger)
 			if aerr != nil {
 				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
 			}
-			logger.Info("sync complete (athanor)", "hasMorePages", resp.ContinuationToken != nil)
-			return resp, nil
+			logger.Info("sync complete (athanor)", "hasMorePages", aresp.ContinuationToken != nil)
+			return aresp, nil
 		}
 		logger.Info("moteur=athanor demandé, mais aucun plan pour cette table (source non SQL) : Benthos exécute la synchro")
 	}

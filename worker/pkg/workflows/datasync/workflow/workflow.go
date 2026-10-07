@@ -96,18 +96,29 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 		}
 		return actOptResp.AccountId, nil
 	}
-	runWorkflow := func(ctx workflow.Context, logger log.Logger) (*WorkflowResponse, error) {
-		return executeWorkflow(ctx, req, licensed)
+	totals := &workflow_shared.RunTotals{}
+	runWorkflow := func(ctx workflow.Context, _ log.Logger) (*WorkflowResponse, error) {
+		return executeWorkflow(ctx, req, licensed, totals)
 	}
 	wfinfo := workflow.GetInfo(ctx)
-	return workflow_shared.HandleWorkflowEventLifecycle(
+	// The start and the end of the run are told to the API around everything it does, the
+	// account hooks of its events included.
+	return workflow_shared.TrackRunUsage(
 		ctx,
-		accountHooksAllowed,
 		req.JobId,
 		wfinfo.WorkflowExecution.ID,
-		logger,
-		getAccountId,
-		runWorkflow,
+		func() workflow_shared.RunTotals { return *totals },
+		func(ctx workflow.Context) (*WorkflowResponse, error) {
+			return workflow_shared.HandleWorkflowEventLifecycle(
+				ctx,
+				accountHooksAllowed,
+				req.JobId,
+				wfinfo.WorkflowExecution.ID,
+				logger,
+				getAccountId,
+				runWorkflow,
+			)
+		},
 	)
 }
 
@@ -117,6 +128,7 @@ func executeWorkflow(
 	wfctx workflow.Context,
 	req *WorkflowRequest,
 	licensed bool,
+	totals *workflow_shared.RunTotals,
 ) (*WorkflowResponse, error) {
 	ctx, cancelHandler := workflow.WithCancel(wfctx)
 	logger := workflow.GetLogger(ctx)
@@ -410,6 +422,10 @@ func executeWorkflow(
 				}
 				return
 			}
+			// Only a table that finished adds: a failed one leaves what the others counted.
+			totals.RowsRead += wfResult.RowsRead
+			totals.RowsDiscarded += wfResult.RowsDiscarded
+			totals.Retries += wfResult.Retries
 			logger.Info("config sync completed", "name", bc.Name)
 			err = runPostTableSyncActivity(ctx, logger, actOptResp, bc.Name)
 			if err != nil {

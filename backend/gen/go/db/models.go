@@ -109,6 +109,21 @@ type HusonymApiConnection struct {
 	UpdatedByID      pgtype.UUID
 }
 
+// Stores the daily count of license refusals per account and gate
+type HusonymApiGateRefusalsDaily struct {
+	Day       pgtype.Date
+	AccountID pgtype.UUID
+	Gate      string
+	Count     int64
+}
+
+// Stores the identity of the instance: a single row
+type HusonymApiInstance struct {
+	ID        pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Singleton bool
+}
+
 type HusonymApiJob struct {
 	ID                 pgtype.UUID
 	CreatedAt          pgtype.Timestamp
@@ -189,6 +204,20 @@ type HusonymApiLicenseKey struct {
 	Origin          string
 	CreatedAt       pgtype.Timestamptz
 	CreatedByUserID pgtype.UUID
+}
+
+// Stores the usage of each run: counts and times, nothing a customer entered
+type HusonymApiRunUsage struct {
+	RunID         string
+	AccountID     pgtype.UUID
+	JobID         pgtype.UUID
+	JobKind       string
+	Status        string
+	StartedAt     pgtype.Timestamptz
+	EndedAt       pgtype.Timestamptz
+	RowsRead      int64
+	RowsDiscarded int64
+	Retries       int64
 }
 
 type HusonymApiRuncontext struct {

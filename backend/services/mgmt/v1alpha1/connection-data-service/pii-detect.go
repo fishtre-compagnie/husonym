@@ -75,7 +75,9 @@ func (s *Service) DetectPiiInConnectionData(
 	}
 	// The connection service has answered, so the caller may use the connection. This service
 	// holds no user to ask about the account: it reads the license as the column preview does.
-	if err := userdata.FeatureRefusal(s.transformers.License, license.FeaturePiiDetection); err != nil {
+	if err := userdata.FeatureRefusal(
+		s.transformers.License, connResp.Msg.GetConnection().GetAccountId(), license.FeaturePiiDetection,
+	); err != nil {
 		return nil, err
 	}
 	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connResp.Msg.GetConnection())

@@ -12,9 +12,11 @@ import (
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -69,6 +71,10 @@ func (s *Service) IsAccountStatusValid(
 	//
 	// IsValid() spans the grace period, so this only bites once grace is over.
 	if s.licenseclient != nil && !s.licenseclient.IsValid() {
+		// Only a run asking whether it may go on is a refusal; a bare status question is not.
+		if req.Msg.JobId != nil {
+			licenserefusal.Count(ctx, s.refusals, req.Msg.GetAccountId(), []license.Gate{license.GateNotInForce})
+		}
 		reason := "License has expired. Renew it to resume running jobs; existing configuration and run history remain available."
 		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
 			IsValid:       false,
@@ -105,11 +111,12 @@ func (s *Service) jobStatus(
 	accountId, jobId string,
 ) (*mgmtv1alpha1.IsAccountStatusValidResponse, error) {
 	err := s.jobgate.CheckStored(ctx, accountId, jobId)
-	var refusal *licensegate.Refusal
+	var refusal *license.Refusal
 	switch {
 	case err == nil:
 		return nil, nil
 	case errors.As(err, &refusal):
+		licenserefusal.Count(ctx, s.refusals, accountId, refusal.Gates)
 		reason := refusal.Message()
 		return &mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: false, Reason: &reason}, nil
 	case errors.Is(err, licensegate.ErrJobNotFound):

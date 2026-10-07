@@ -265,6 +265,7 @@ func (a *Activity) runAthanor(
 	}
 
 	resp := &SyncTableResponse{}
+	countPage(resp, plan, res)
 	if res.HasMore {
 		token, terr := continuation_token.NewFromContents(continuation_token.NewContents(res.LastOrderValues)).Encode()
 		if terr != nil {
@@ -273,6 +274,16 @@ func (a *Activity) runAthanor(
 		resp.ContinuationToken = &token
 	}
 	return resp, nil
+}
+
+// countPage puts on resp what the page counted. An update pass re-reads the rows the insert
+// pass already counted: it counts none.
+func countPage(resp *SyncTableResponse, plan *tableplan.TablePlan, res *runner.PageResult) {
+	if plan.RunType == runconfigs.RunTypeUpdate {
+		return
+	}
+	resp.RowsRead = int64(res.RowsRead)
+	resp.RowsDiscarded = int64(res.RowsDiscarded)
 }
 
 // sourceConnectionID extracts the source connection id for the job's dialect.

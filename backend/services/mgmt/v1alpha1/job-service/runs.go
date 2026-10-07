@@ -832,7 +832,11 @@ func (s *Service) streamLogs(
 		return err
 	}
 	if licensed && !user.HasFeature(license.FeatureRunLogs) {
-		return husonymerrors.NewForbidden(license.NotIncludedMessage(license.FeatureRunLogs))
+		return license.NewRefusal(
+			req.GetAccountId(),
+			husonymerrors.NewForbidden(license.NotIncludedMessage(license.FeatureRunLogs)),
+			license.FeatureGate(license.FeatureRunLogs),
+		)
 	}
 
 	switch *s.cfg.RunLogConfig.RunLogType {

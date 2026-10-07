@@ -39,6 +39,7 @@ func newOneTableRun() *oneTableRun {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	run := &oneTableRun{env: testSuite.NewTestWorkflowEnvironment()}
 	env := run.env
+	expectRunUsage(env)
 
 	var activityOpts *syncactivityopts_activity.Activity
 	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).

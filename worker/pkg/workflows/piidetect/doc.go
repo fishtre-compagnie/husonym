@@ -19,14 +19,17 @@
 //     TablePiiDetect, GetPiiDetectJobDetails, GetLastSuccessfulWorkflowId,
 //     GetTablesToPiiScan, SaveJobPiiDetectReport, GetColumnData, DetectPiiRegex,
 //     DetectPiiLLM, SaveTablePiiDetectReport. The API starts JobPiiDetect by its name
-//     and decodes the input of TablePiiDetect from the history of a run;
+//     and decodes the input of TablePiiDetect from the history of a run. A run also
+//     asks for RecordRunStarted and RecordRunEnded, of the package runusage;
 //   - the serialized form of the requests and responses, whose keys are the names of
 //     their Go fields. A member is only ever added, and left out when it is empty: a
 //     run replays to the result it recorded, which holds none of the later members;
-//   - the commands of JobPiiDetect: the license read, GetPiiDetectJobDetails, the
-//     account hooks of the start, GetLastSuccessfulWorkflowId for an incremental job,
-//     GetTablesToPiiScan, the children as scanTables arranges them, with their ids,
-//     SaveJobPiiDetectReport, the account hooks of the end;
+//   - the commands of JobPiiDetect: the license read, the report of its start to the
+//     API, GetPiiDetectJobDetails, the account hooks of the start,
+//     GetLastSuccessfulWorkflowId for an incremental job, GetTablesToPiiScan, the
+//     children as scanTables arranges them, with their ids, SaveJobPiiDetectReport, the
+//     account hooks of the end, the report of its end to the API. A run started before
+//     it reported its start and its end has neither of the two reports;
 //   - the commands of TablePiiDetect: GetColumnData, DetectPiiRegex, DetectPiiLLM,
 //     SaveTablePiiDetectReport, one after the other;
 //   - the keys and the JSON of the stored reports.

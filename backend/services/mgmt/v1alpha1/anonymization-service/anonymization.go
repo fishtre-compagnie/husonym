@@ -12,6 +12,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -57,6 +58,27 @@ func carriesPiiText(msg transformerMsgToValidate) bool {
 	return false
 }
 
+// countRefusal counts the refusal of the feature that AnonymizeMany answers as not implemented,
+// and so not as a license refusal that an interceptor would see. The gate is the one the reason
+// says: no license in force, or the feature the license does not include. The refusal is counted
+// only once the caller is known to reach the account, so that no caller counts against an account
+// of someone else; a caller that does not reach it gets the answer of the access check.
+func (s *Service) countRefusal(ctx context.Context, accountId string, f license.Feature, reason string) error {
+	user, err := s.userdataclient.GetUser(ctx)
+	if err != nil {
+		return err
+	}
+	if err := user.EnforceAccountAccess(ctx, accountId); err != nil {
+		return err
+	}
+	gate := license.FeatureGate(f)
+	if reason == license.NotInForceMessage {
+		gate = license.GateNotInForce
+	}
+	licenserefusal.Count(ctx, s.refusals, accountId, []license.Gate{gate})
+	return nil
+}
+
 func (s *Service) AnonymizeMany(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.AnonymizeManyRequest],
@@ -76,10 +98,17 @@ func (s *Service) AnonymizeMany(
 	}
 	// A license that is not in force is said as such, as every gated call says it: it includes
 	// no feature, and naming one as missing would name the wrong cause.
+	// The refusal is counted once access to the account is verified, which comes before it is told.
 	if reason := license.FeatureRefusal(s.license, license.FeaturePiiText); reason != "" {
+		if err := s.countRefusal(ctx, req.Msg.GetAccountId(), license.FeaturePiiText, reason); err != nil {
+			return nil, err
+		}
 		return nil, notImplemented(reason)
 	}
 	if reason := s.customTransformersRefusal(req.Msg); reason != "" {
+		if err := s.countRefusal(ctx, req.Msg.GetAccountId(), license.FeatureCustomTransformers, reason); err != nil {
+			return nil, err
+		}
 		return nil, notImplemented(reason)
 	}
 
@@ -227,13 +256,13 @@ func (s *Service) AnonymizeSingle(
 
 	licensed := s.license.HasFeature(license.FeaturePiiText)
 	if !licensed && carriesPiiText(req.Msg) {
-		return nil, userdata.FeatureRefusal(s.license, license.FeaturePiiText)
+		return nil, userdata.FeatureRefusal(s.license, req.Msg.GetAccountId(), license.FeaturePiiText)
 	}
 	// The worker calls this during a run for a PII text whose anonymizers may be user-defined.
 	// Such a job does not start without custom_transformers (the job gate counts what the
 	// anonymizers of a PII text run), so a licensed run is never refused here.
 	if s.customTransformersRefusal(req.Msg) != "" {
-		return nil, userdata.FeatureRefusal(s.license, license.FeatureCustomTransformers)
+		return nil, userdata.FeatureRefusal(s.license, req.Msg.GetAccountId(), license.FeatureCustomTransformers)
 	}
 
 	for cfg := range getTransformerConfigsToValidate(req.Msg) {

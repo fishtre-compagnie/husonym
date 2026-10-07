@@ -2,6 +2,7 @@ package userdata
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -59,13 +60,48 @@ func Test_FeatureRefusal(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			user, err := NewClient(fakeUserService{userId: uuid.NewString()}, allowsEverything{}, lic).GetUser(ctx)
 			require.NoError(t, err)
-			require.Equal(t, user.EnforceFeature(ctx, accountId, license.FeatureMcp), FeatureRefusal(lic, license.FeatureMcp))
+			require.Equal(t, user.EnforceFeature(ctx, accountId, license.FeatureMcp), FeatureRefusal(lic, accountId, license.FeatureMcp))
 		})
 	}
 
 	t.Run("no license at all is not in force", func(t *testing.T) {
-		err := FeatureRefusal(nil, license.FeatureMcp)
+		err := FeatureRefusal(nil, accountId, license.FeatureMcp)
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 		require.ErrorContains(t, err, "account does not have an active license")
 	})
+}
+
+// Every refusal of a feature is a typed one that names its gate and the account, so that what
+// counts refusals needs no list of the messages.
+func Test_User_EnforceFeature_RefusalNamesItsGate(t *testing.T) {
+	ctx := context.Background()
+	accountId := uuid.NewString()
+	userWith := func(t *testing.T, lic license.EEInterface) *User {
+		t.Helper()
+		user, err := NewClient(fakeUserService{userId: uuid.NewString()}, allowsEverything{}, lic).GetUser(ctx)
+		require.NoError(t, err)
+		return user
+	}
+
+	for _, f := range license.AllFeatures() {
+		t.Run(string(f), func(t *testing.T) {
+			var refusal *license.Refusal
+
+			// A license in force that includes nothing else than another feature.
+			other := license.FeatureMcp
+			if f == other {
+				other = license.FeatureSso
+			}
+			user := userWith(t, testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(other)))
+			require.True(t, errors.As(user.EnforceFeature(ctx, accountId, f), &refusal))
+			require.Equal(t, accountId, refusal.AccountId)
+			require.Equal(t, []license.Gate{license.FeatureGate(f)}, refusal.Gates)
+
+			// No license in force.
+			user = userWith(t, testutil.NewFakeEELicense(testutil.WithFeatures(f)))
+			require.True(t, errors.As(user.EnforceFeature(ctx, accountId, f), &refusal))
+			require.Equal(t, accountId, refusal.AccountId)
+			require.Equal(t, []license.Gate{license.GateNotInForce}, refusal.Gates)
+		})
+	}
 }

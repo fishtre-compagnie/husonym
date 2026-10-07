@@ -48,6 +48,7 @@ import (
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	piidetect_model "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -368,6 +369,13 @@ func serve(ctx context.Context) error {
 		husonymurl,
 		connectInterceptorOption,
 	)
+	usageclient := mgmtv1alpha1connect.NewUsageServiceClient(
+		httpclient,
+		husonymurl,
+		connectInterceptorOption,
+	)
+	// Every kind of run reports through the same two activities.
+	runUsageActivities := runusage.New(usageclient)
 
 	// The key is the one the API holds, which the provider verifies itself. It is asked for
 	// below, once everything is registered and before the worker takes work.
@@ -458,7 +466,7 @@ func serve(ctx context.Context) error {
 
 	datasync_workflow_register.Register(
 		w,
-		userclient, jobclient, connclient, transformerclient,
+		userclient, jobclient, connclient, transformerclient, runUsageActivities,
 		sqlmanager, sqlconnmanager, engineConfig.Policy, eelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
@@ -506,6 +514,7 @@ func serve(ctx context.Context) error {
 			piidetectClassifier,
 			&piidetectConfig,
 		),
+		runUsageActivities,
 		&piidetectConfig,
 	)
 

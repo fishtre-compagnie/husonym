@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,4 +85,19 @@ func TestPiiTextHashKey_FollowsTheScope(t *testing.T) {
 	require.NotEqual(t, keyOf(perRun, "run-1"), keyOf(perRun, "run-2"), "two runs do not, under the run scope")
 	require.Equal(t, keyOf(perJob, "run-1"), keyOf(perJob, "run-2"), "two runs share the key under the job scope")
 	require.NotEqual(t, keyOf(perJob, "run-1"), seedOf(t, perJob, "run-1"), "the key is no seed of the scope")
+}
+
+func TestCountPage(t *testing.T) {
+	page := &runner.PageResult{RowsRead: 10, RowsDiscarded: 1}
+
+	insert := &SyncTableResponse{}
+	countPage(insert, &tableplan.TablePlan{RunType: runconfigs.RunTypeInsert}, page)
+	require.EqualValues(t, 10, insert.RowsRead)
+	require.EqualValues(t, 1, insert.RowsDiscarded)
+
+	// The update pass reads the rows of the insert pass again.
+	update := &SyncTableResponse{}
+	countPage(update, &tableplan.TablePlan{RunType: runconfigs.RunTypeUpdate}, page)
+	require.Zero(t, update.RowsRead)
+	require.Zero(t, update.RowsDiscarded)
 }

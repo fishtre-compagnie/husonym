@@ -23,6 +23,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/rules"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/testsuite"
@@ -180,7 +181,7 @@ func newScanner(t *testing.T, datasets []Dataset, classifier *model.Classifier) 
 	ts.SetLogger(silent{})
 	env := ts.NewTestActivityEnvironment()
 	activities := piidetect.NewActivities(nil, db, db.builder(t), nil, classifier, &piidetect.Config{})
-	piidetect.Register(piitest.ActivityRegistry{Env: env}, nil, activities, &piidetect.Config{})
+	piidetect.Register(piitest.ActivityRegistry{Env: env}, nil, activities, runusage.New(nil), &piidetect.Config{})
 	return &scanner{t: t, env: env}
 }
 

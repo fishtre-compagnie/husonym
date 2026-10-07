@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -30,6 +31,7 @@ import (
 	v1alpha1_connectionservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-service"
 	v1alpha1_jobservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/job-service"
 	v1alpha1_transformersservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
+	v1alpha1_usageservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/usage-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
@@ -289,6 +291,7 @@ func (s *HusonymApiTestClient) setupMux(
 		licensing.refresh,
 		jobGate,
 		licensegate.NewUsageReader(husonymDb, rbacClient),
+		usagestore.New(husonymDb),
 	)
 	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 
@@ -370,6 +373,7 @@ func (s *HusonymApiTestClient) setupMux(
 		piiText,
 		husonymDb,
 		eelicense,
+		usagestore.New(husonymDb),
 	)
 
 	connectionDataService := v1alpha1_connectiondataservice.New(
@@ -402,6 +406,13 @@ func (s *HusonymApiTestClient) setupMux(
 		husonymDb,
 		userclient,
 		settingsEncryptor,
+	)
+
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled}},
+		husonymDb,
+		userclient,
+		usagestore.New(husonymDb),
 	)
 
 	mux := http.NewServeMux()
@@ -438,6 +449,11 @@ func (s *HusonymApiTestClient) setupMux(
 	))
 	mux.Handle(mgmtv1alpha1connect.NewAccountSettingServiceHandler(
 		accountSettingService,
+		connect.WithInterceptors(interceptors...),
+	))
+
+	mux.Handle(mgmtv1alpha1connect.NewUsageServiceHandler(
+		usageService,
 		connect.WithInterceptors(interceptors...),
 	))
 

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 )
 
@@ -150,3 +151,7 @@ type ActivityRegistry struct {
 func (r ActivityRegistry) RegisterWorkflow(any) {}
 
 func (r ActivityRegistry) RegisterActivity(a any) { r.Env.RegisterActivity(a) }
+
+func (r ActivityRegistry) RegisterActivityWithOptions(a any, options activity.RegisterOptions) {
+	r.Env.RegisterActivityWithOptions(a, options)
+}

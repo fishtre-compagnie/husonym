@@ -24,6 +24,7 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/google/uuid"
@@ -811,10 +812,14 @@ func (s *Service) enforceConnectionLimits(
 	}
 
 	if !limits.Allows(connectionTypeName(cfg)) {
-		return husonymerrors.NewForbidden(fmt.Sprintf(
-			"this license does not include %s connections; contact us to add it",
-			connectionTypeName(cfg),
-		))
+		return license.NewRefusal(
+			husonymdb.UUIDString(accountUuid),
+			husonymerrors.NewForbidden(fmt.Sprintf(
+				"this license does not include %s connections; contact us to add it",
+				connectionTypeName(cfg),
+			)),
+			license.GateConnectionType,
+		)
 	}
 
 	if limits.MaxConnections == nil {
@@ -825,10 +830,14 @@ func (s *Service) enforceConnectionLimits(
 		return fmt.Errorf("unable to count existing connections against the license limit: %w", err)
 	}
 	if len(conns) >= *limits.MaxConnections {
-		return husonymerrors.NewForbidden(fmt.Sprintf(
-			"this license allows %d connection(s) and %d already exist; contact us to raise the limit",
-			*limits.MaxConnections, len(conns),
-		))
+		return license.NewRefusal(
+			husonymdb.UUIDString(accountUuid),
+			husonymerrors.NewForbidden(fmt.Sprintf(
+				"this license allows %d connection(s) and %d already exist; contact us to raise the limit",
+				*limits.MaxConnections, len(conns),
+			)),
+			license.GateConnectionCap,
+		)
 	}
 	return nil
 }

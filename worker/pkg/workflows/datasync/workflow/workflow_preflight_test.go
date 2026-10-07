@@ -30,6 +30,7 @@ import (
 func Test_Workflow_PreflightStopsTheRun(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 	accountID := uuid.NewString()
 
 	var activityOpts *syncactivityopts_activity.Activity

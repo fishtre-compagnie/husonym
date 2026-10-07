@@ -138,7 +138,7 @@ func licenseWith(features ...license.Feature) *testutil.FakeEELicense {
 	return testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(features...))
 }
 
-func requireRefusal(t *testing.T, err error, features string) {
+func requireRefusal(t *testing.T, err error, accountId, features string) {
 	t.Helper()
 	require.Error(t, err)
 	// A handler that returns it to a caller answers permission-denied, with the sentence alone.
@@ -147,16 +147,17 @@ func requireRefusal(t *testing.T, err error, features string) {
 	require.ErrorAs(t, err, &answered)
 	require.Equal(t, "this job uses features the license does not include: "+features, answered.Message())
 	// What starts a run tells it apart by its type, and reads the features from it.
-	var refusal *Refusal
+	var refusal *license.Refusal
 	require.ErrorAs(t, err, &refusal)
-	require.Equal(t, features, joinFeatures(refusal.Missing))
+	require.Equal(t, features, joinGates(refusal.Gates))
+	require.Equal(t, accountId, refusal.AccountId)
 	require.Equal(t, "this job uses features the license does not include: "+features, refusal.Message())
 }
 
-func joinFeatures(features []license.Feature) string {
-	names := make([]string, 0, len(features))
-	for _, feature := range features {
-		names = append(names, string(feature))
+func joinGates(gates []license.Gate) string {
+	names := make([]string, 0, len(gates))
+	for _, gate := range gates {
+		names = append(names, string(gate))
 	}
 	return strings.Join(names, ", ")
 }
@@ -187,12 +188,12 @@ func Test_JobGate_Check_RefusesWhatIsMissing(t *testing.T) {
 
 	t.Run("one feature", func(t *testing.T) {
 		gate := newGate(newGateStore(), licenseWith(license.FeatureCustomTransformers))
-		requireRefusal(t, gate.Check(context.Background(), job), "subsetting")
+		requireRefusal(t, gate.Check(context.Background(), job), job.GetAccountId(), "subsetting")
 	})
 
 	t.Run("every one of them is named", func(t *testing.T) {
 		gate := newGate(newGateStore(), licenseWith())
-		requireRefusal(t, gate.Check(context.Background(), job), "custom_transformers, subsetting")
+		requireRefusal(t, gate.Check(context.Background(), job), job.GetAccountId(), "custom_transformers, subsetting")
 	})
 }
 
@@ -203,7 +204,7 @@ func Test_JobGate_Check_Hooks(t *testing.T) {
 		store.addHook(job.GetId(), false)
 		store.addHook(job.GetId(), true)
 
-		requireRefusal(t, newGate(store, licenseWith()).Check(context.Background(), job), "job_hooks")
+		requireRefusal(t, newGate(store, licenseWith()).Check(context.Background(), job), job.GetAccountId(), "job_hooks")
 	})
 
 	t.Run("disabled hooks alone do not", func(t *testing.T) {
@@ -244,7 +245,7 @@ func Test_JobGate_Check_AJobThatIsNotStoredYet(t *testing.T) {
 		job.Source = postgresWhere(ptr("id > 10"))
 		job.Mappings = mappingWith(userDefined(store.addTransformer(t, job.GetAccountId(), piiText())))
 
-		requireRefusal(t, gate(licenseWith()).Check(context.Background(), job),
+		requireRefusal(t, gate(licenseWith()).Check(context.Background(), job), job.GetAccountId(),
 			"pii_text, custom_transformers, subsetting")
 		require.NoError(t, gate(licenseWith(
 			license.FeaturePiiText, license.FeatureCustomTransformers, license.FeatureSubsetting,
@@ -306,7 +307,7 @@ func Test_JobGate_CheckIn_ReadsThroughTheGivenHandle(t *testing.T) {
 		store, job := newRecorder()
 		gate := NewJobGate(husonymdb.New(pool, store), licenseWith())
 
-		requireRefusal(t, gate.CheckIn(context.Background(), tx, job), "job_hooks, pii_text, custom_transformers")
+		requireRefusal(t, gate.CheckIn(context.Background(), tx, job), job.GetAccountId(), "job_hooks, pii_text, custom_transformers")
 		require.Len(t, store.handles, 3)
 		for _, handle := range store.handles {
 			require.Same(t, tx, handle)
@@ -317,7 +318,7 @@ func Test_JobGate_CheckIn_ReadsThroughTheGivenHandle(t *testing.T) {
 		store, job := newRecorder()
 		gate := NewJobGate(husonymdb.New(pool, store), licenseWith())
 
-		requireRefusal(t, gate.Check(context.Background(), job), "job_hooks, pii_text, custom_transformers")
+		requireRefusal(t, gate.Check(context.Background(), job), job.GetAccountId(), "job_hooks, pii_text, custom_transformers")
 		require.Len(t, store.handles, 3)
 		for _, handle := range store.handles {
 			require.Same(t, pool, handle)
@@ -332,7 +333,7 @@ func Test_JobGate_Check_UserDefinedTransformers(t *testing.T) {
 		job.Mappings = mappingWith(userDefined(store.addTransformer(t, job.GetAccountId(), piiText())))
 
 		gate := newGate(store, licenseWith(license.FeatureCustomTransformers))
-		requireRefusal(t, gate.Check(context.Background(), job), "pii_text")
+		requireRefusal(t, gate.Check(context.Background(), job), job.GetAccountId(), "pii_text")
 	})
 
 	t.Run("one that stores something else does not", func(t *testing.T) {
@@ -350,7 +351,7 @@ func Test_JobGate_Check_UserDefinedTransformers(t *testing.T) {
 
 		require.NoError(t, newGate(newGateStore(), licenseWith(license.FeatureCustomTransformers)).
 			Check(context.Background(), job))
-		requireRefusal(t, newGate(newGateStore(), licenseWith()).Check(context.Background(), job),
+		requireRefusal(t, newGate(newGateStore(), licenseWith()).Check(context.Background(), job), job.GetAccountId(),
 			"custom_transformers")
 	})
 
@@ -409,7 +410,7 @@ func Test_JobGate_CheckStored(t *testing.T) {
 		store.addHook(jobId, true)
 
 		err := newGate(store, licenseWith()).CheckStored(context.Background(), subsetting.GetAccountId(), jobId)
-		requireRefusal(t, err, "job_hooks, subsetting")
+		requireRefusal(t, err, subsetting.GetAccountId(), "job_hooks, subsetting")
 
 		allowed := newGate(store, licenseWith(license.FeatureJobHooks, license.FeatureSubsetting))
 		require.NoError(t, allowed.CheckStored(context.Background(), subsetting.GetAccountId(), jobId))

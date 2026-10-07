@@ -45,6 +45,7 @@ func getTestLogger() log.Logger {
 func Test_Workflow_BenthosConfigsFails(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var activityOpts *syncactivityopts_activity.Activity
 	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
@@ -93,6 +94,7 @@ func Test_Workflow_BenthosConfigsFails(t *testing.T) {
 func Test_Workflow_Succeeds_Zero_BenthosConfigs(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var activityOpts *syncactivityopts_activity.Activity
 	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
@@ -142,6 +144,7 @@ func Test_Workflow_Succeeds_Zero_BenthosConfigs(t *testing.T) {
 func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var activityOpts *syncactivityopts_activity.Activity
 	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
@@ -212,6 +215,7 @@ func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
 
@@ -295,6 +299,7 @@ func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
 func Test_Workflow_Follows_Synchronous_DependentFlow(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var accStatsActivity *accountstatus_activity.Activity
 	var privilegesActivity *preflight_activity.Activity
@@ -403,6 +408,7 @@ func Test_Workflow_Follows_Synchronous_DependentFlow(t *testing.T) {
 func Test_Workflow_Follows_Multiple_Dependents(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var accStatsActivity *accountstatus_activity.Activity
 	var privilegesActivity *preflight_activity.Activity
@@ -537,6 +543,7 @@ func Test_Workflow_Follows_Multiple_Dependents(t *testing.T) {
 func Test_Workflow_Follows_Multiple_Dependent_Redis_Cleanup(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var accStatsActivity *accountstatus_activity.Activity
 	var privilegesActivity *preflight_activity.Activity
@@ -698,6 +705,7 @@ func Test_Workflow_Follows_Multiple_Dependent_Redis_Cleanup(t *testing.T) {
 func Test_Workflow_Halts_Activities_OnError(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var genact *genbenthosconfigs_activity.Activity
 	env.OnActivity(genact.GenerateBenthosConfigs, mock.Anything, mock.Anything).
@@ -814,6 +822,7 @@ func Test_Workflow_Halts_Activities_OnError(t *testing.T) {
 func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var genact *genbenthosconfigs_activity.Activity
 	env.OnActivity(genact.GenerateBenthosConfigs, mock.Anything, mock.Anything).
@@ -938,6 +947,7 @@ func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 func Test_Workflow_Cleans_Up_Redis_OnError(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var genact *genbenthosconfigs_activity.Activity
 	env.OnActivity(genact.GenerateBenthosConfigs, mock.Anything, mock.Anything).
@@ -1071,6 +1081,7 @@ func Test_Workflow_Cleans_Up_Redis_OnError(t *testing.T) {
 func Test_Workflow_Max_InFlight(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	// Atomic counters to track the current and maximum in-flight child workflows.
 	currentInFlight := atomic.NewInt32(0)
@@ -1178,6 +1189,7 @@ func Test_Workflow_Max_InFlight(t *testing.T) {
 func Test_Workflow_Initial_AccountStatus(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
+	expectRunUsage(env)
 
 	var activityOptsActivity *syncactivityopts_activity.Activity
 	env.OnActivity(activityOptsActivity.RetrieveActivityOptions, mock.Anything, mock.Anything).

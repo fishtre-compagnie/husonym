@@ -26,6 +26,7 @@ import (
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"github.com/redis/go-redis/v9"
@@ -116,6 +117,7 @@ func NewTestDataSyncWorkflowEnv(
 	accounthookclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountHooks()
 	anonymizationclient := husonymApi.OSSUnauthenticatedLicensedClients.Anonymize()
 	accountsettingclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountSettings()
+	runUsageActivities := runusage.New(husonymApi.OSSUnauthenticatedLicensedClients.Usage())
 
 	// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
 	// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
@@ -138,6 +140,7 @@ func NewTestDataSyncWorkflowEnv(
 		jobclient,
 		connclient,
 		transformerclient,
+		runUsageActivities,
 		dbManagers.SqlManager,
 		dbManagers.SqlConnManager,
 		// chemin Benthos par défaut dans les tests d'intégration

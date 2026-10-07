@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -72,7 +73,18 @@ func service(
 		engine,
 		nil,
 		eelicense,
+		&refusalLog{},
 	)
+}
+
+// refusalLog is a counter that remembers the gates it was asked to count, with their account.
+type refusalLog struct{ counted []string }
+
+func (l *refusalLog) CountRefusal(_ context.Context, accountId string, gates []license.Gate, _ time.Time) error {
+	for _, gate := range gates {
+		l.counted = append(l.counted, accountId+" "+string(gate))
+	}
+	return nil
 }
 
 func licensed() *testutil.FakeEELicense {
@@ -302,29 +314,34 @@ func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
 	for name, tc := range map[string]struct {
 		eelicense *testutil.FakeEELicense
 		refusal   string
+		gate      license.Gate
 	}{
 		"a license that lacks pii_text": {
 			eelicense: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
 			refusal:   "this license does not include pii_text",
+			gate:      license.FeatureGate(license.FeaturePiiText),
 		},
 		// No feature is included then: the refusal says that no license is in force, not that
 		// this one is missing from it.
 		"a license that is not in force": {
 			eelicense: testutil.NewFakeEELicense(),
 			refusal:   "account does not have an active license",
+			gate:      license.GateNotInForce,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := service(t, tc.eelicense, presidiotest.New(t), nil)
+			accountId := uuid.NewString()
 
 			resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
-				AccountId: uuid.NewString(),
+				AccountId: accountId,
 			}))
 
 			require.Nil(t, resp)
 			require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
 			require.ErrorContains(t, err, tc.refusal)
 			require.Equal(t, 1, strings.Count(err.Error(), "license"), "one cause is told: %v", err)
+			require.Equal(t, []string{accountId + " " + string(tc.gate)}, s.refusals.(*refusalLog).counted)
 		})
 	}
 }
@@ -349,4 +366,52 @@ func Test_AnonymizeSingle_WithoutALicenseInForceSaysSo(t *testing.T) {
 			require.NotContains(t, err.Error(), "does not include")
 		})
 	}
+}
+
+// A counter that cannot count changes nothing to what AnonymizeMany answers.
+func Test_AnonymizeMany_ACounterThatFailsChangesNothing(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+	counter := &failingCounter{}
+	s.refusals = counter
+
+	resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+		AccountId: uuid.NewString(),
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "account does not have an active license")
+	require.Equal(t, 1, counter.asked)
+}
+
+type failingCounter struct{ asked int }
+
+func (c *failingCounter) CountRefusal(context.Context, string, []license.Gate, time.Time) error {
+	c.asked++
+	return errors.New("the usage database is down")
+}
+
+// strangers answers for a user account service whose caller is a member of no account.
+type strangers struct{ accounts }
+
+func (strangers) IsUserInAccount(
+	context.Context, *connect.Request[mgmtv1alpha1.IsUserInAccountRequest],
+) (*connect.Response[mgmtv1alpha1.IsUserInAccountResponse], error) {
+	return connect.NewResponse(&mgmtv1alpha1.IsUserInAccountResponse{Ok: false}), nil
+}
+
+// A refusal is counted against an account the caller may reach: a caller that is not a member of
+// the account gets the answer of the access check, and nothing is counted.
+func Test_AnonymizeMany_DoesNotCountAnAccountTheCallerCannotReach(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+	users := strangers{accounts{userId: uuid.NewString()}}
+	s.userdataclient = userdata.NewClient(users, nil, testutil.NewFakeEELicense())
+
+	resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+		AccountId: uuid.NewString(),
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.Empty(t, s.refusals.(*refusalLog).counted)
 }

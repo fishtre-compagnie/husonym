@@ -71,6 +71,11 @@ func requireCapRefusal(t *testing.T, err error, message string) {
 	var refusal *connect.Error
 	require.ErrorAs(t, err, &refusal)
 	require.Equal(t, message, refusal.Message())
+	// The refusal names its gate and the account of the candidate, for what counts it.
+	var typed *license.Refusal
+	require.ErrorAs(t, err, &typed)
+	require.Equal(t, []license.Gate{license.GateSourceCap}, typed.Gates)
+	require.NotEmpty(t, typed.AccountId)
 }
 
 // newJobOn is a synchronization job being created on the connection.
