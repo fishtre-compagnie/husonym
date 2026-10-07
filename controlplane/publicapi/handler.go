@@ -29,7 +29,8 @@ type Receiver interface {
 
 // NewHandler returns the handler of the public server: POST /v1/usage-reports and GET /healthz.
 // Replies have no body. At most one line is logged per request, made of the path, the status
-// and a fixed word for the outcome: never what the caller sent.
+// and a fixed word for the outcome, never of what the caller sent; a failure of ours adds the
+// text of our own error.
 func NewHandler(receiver Receiver, logger *slog.Logger) http.Handler {
 	return &handler{receiver: receiver, logger: logger}
 }
@@ -118,8 +119,9 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 	h.reply(w, reportPath, status, name)
 }
 
-// describe gives the status and the fixed word of an outcome. Stored and pending answer the
-// same, so that a reply never tells whether the license is known.
+// describe gives the status and the fixed word of an outcome. A stored report and a pending one
+// answer the same. That is all that is promised: the other answers differ with the license, as a
+// wrong seal is only refused under a license that is known.
 func describe(outcome intake.Outcome) (status int, name string) {
 	switch outcome {
 	case intake.Stored:
