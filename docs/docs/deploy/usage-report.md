@@ -40,11 +40,11 @@ affected: no job is delayed or refused.
 
 ## Reducing or stopping it
 
-| Variable | Effect |
-| --- | --- |
-| `HUSONYM_TELEMETRY_DIAGNOSTICS=false` | Leaves the diagnostics out of the report. |
-| `HUSONYM_TELEMETRY=offline` | Sends nothing. You hand over a report file instead. |
-| `HUSONYM_TELEMETRY=off` | Sends nothing. |
+| Variable                              | Effect                                              |
+| ------------------------------------- | --------------------------------------------------- |
+| `HUSONYM_TELEMETRY_DIAGNOSTICS=false` | Leaves the diagnostics out of the report.           |
+| `HUSONYM_TELEMETRY=offline`           | Sends nothing. You hand over a report file instead. |
+| `HUSONYM_TELEMETRY=off`               | Sends nothing.                                      |
 
 With the Helm chart, set `usageReport.mode` and `usageReport.diagnostics` instead
 (`api.usageReport.mode` and `api.usageReport.diagnostics` in the `husonym` chart).
