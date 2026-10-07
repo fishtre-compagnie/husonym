@@ -104,13 +104,13 @@ func Test_Interceptor(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Run("a wrapped refusal is counted once with its account and gates, and the error is unchanged", func(t *testing.T) {
 				counter := &recorder{}
-				refusal := refusalOf("an-account", license.FeatureGate(license.FeatureRbac), license.GateJobCap)
+				refusal := refusalOf("00000000-0000-0000-0000-0000000000ac", license.FeatureGate(license.FeatureRbac), license.GateJobCap)
 
 				err := do(t, counter, &bytes.Buffer{}, fmt.Errorf("checking: %w", refusal))
 
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 				require.Equal(t, []counted{{
-					accountId: "an-account",
+					accountId: "00000000-0000-0000-0000-0000000000ac",
 					gates:     []license.Gate{license.FeatureGate(license.FeatureRbac), license.GateJobCap},
 				}}, counter.count())
 			})
@@ -135,7 +135,7 @@ func Test_Interceptor(t *testing.T) {
 				counter := &recorder{fail: errors.New("the usage database is down")}
 				var logs bytes.Buffer
 
-				err := do(t, counter, &logs, refusalOf("an-account", license.GateNotInForce))
+				err := do(t, counter, &logs, refusalOf("00000000-0000-0000-0000-0000000000ac", license.GateNotInForce))
 
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 				require.Len(t, counter.count(), 1)
@@ -147,7 +147,7 @@ func Test_Interceptor(t *testing.T) {
 
 				err := do(t, counter, &bytes.Buffer{}, refusalOf("", license.GateNotInForce))
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-				err = do(t, counter, &bytes.Buffer{}, refusalOf("an-account"))
+				err = do(t, counter, &bytes.Buffer{}, refusalOf("00000000-0000-0000-0000-0000000000ac"))
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
 				require.Empty(t, counter.count())

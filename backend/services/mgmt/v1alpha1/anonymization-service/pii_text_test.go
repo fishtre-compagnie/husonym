@@ -390,3 +390,28 @@ func (c *failingCounter) CountRefusal(context.Context, string, []license.Gate, t
 	c.asked++
 	return errors.New("the usage database is down")
 }
+
+// strangers answers for a user account service whose caller is a member of no account.
+type strangers struct{ accounts }
+
+func (strangers) IsUserInAccount(
+	context.Context, *connect.Request[mgmtv1alpha1.IsUserInAccountRequest],
+) (*connect.Response[mgmtv1alpha1.IsUserInAccountResponse], error) {
+	return connect.NewResponse(&mgmtv1alpha1.IsUserInAccountResponse{Ok: false}), nil
+}
+
+// A refusal is counted against an account the caller may reach: a caller that is not a member of
+// the account gets the answer of the access check, and nothing is counted.
+func Test_AnonymizeMany_DoesNotCountAnAccountTheCallerCannotReach(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+	users := strangers{accounts{userId: uuid.NewString()}}
+	s.userdataclient = userdata.NewClient(users, nil, testutil.NewFakeEELicense())
+
+	resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+		AccountId: uuid.NewString(),
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.Empty(t, s.refusals.(*refusalLog).counted)
+}

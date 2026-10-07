@@ -26,6 +26,9 @@ import (
 // answeringGate is a job gate that answers every job the same.
 type answeringGate struct{ answer error }
 
+// anAccount is an account id, a uuid as a refusal counted for an account carries.
+const anAccount = "00000000-0000-0000-0000-0000000000ac"
+
 func (g answeringGate) CheckStored(context.Context, string, string) error { return g.answer }
 
 // refusalLog is a counter that remembers the gates it was asked to count, with their account.
@@ -51,7 +54,7 @@ func Test_JobStatus(t *testing.T) {
 		ctx, logs := logged()
 		s := &Service{jobgate: answeringGate{}}
 
-		refused, err := s.jobStatus(ctx, "an-account", "a-job")
+		refused, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.NoError(t, err)
 		require.Nil(t, refused)
@@ -61,20 +64,20 @@ func Test_JobStatus(t *testing.T) {
 	t.Run("a refusal is recognised by its type, wherever it is wrapped", func(t *testing.T) {
 		ctx, _ := logged()
 		refusal := license.NewRefusal(
-			"an-account",
+			anAccount,
 			husonymerrors.NewForbidden(licensegate.RefusalMessage([]license.Feature{license.FeatureJobHooks, license.FeatureSubsetting})),
 			license.FeatureGate(license.FeatureJobHooks), license.FeatureGate(license.FeatureSubsetting),
 		)
 		counter := &refusalLog{}
 		s := &Service{jobgate: answeringGate{answer: fmt.Errorf("checking the job: %w", refusal)}, refusals: counter}
 
-		refused, err := s.jobStatus(ctx, "an-account", "a-job")
+		refused, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.NoError(t, err)
 		require.NotNil(t, refused)
 		require.False(t, refused.GetIsValid())
 		require.Equal(t, "this job uses features the license does not include: job_hooks, subsetting", refused.GetReason())
-		require.Equal(t, []string{"an-account job_hooks", "an-account subsetting"}, counter.counted)
+		require.Equal(t, []string{anAccount + " job_hooks", anAccount + " subsetting"}, counter.counted)
 	})
 
 	t.Run("a job the license allows counts nothing", func(t *testing.T) {
@@ -82,7 +85,7 @@ func Test_JobStatus(t *testing.T) {
 		counter := &refusalLog{}
 		s := &Service{jobgate: answeringGate{}, refusals: counter}
 
-		_, err := s.jobStatus(ctx, "an-account", "a-job")
+		_, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.NoError(t, err)
 		require.Empty(t, counter.counted)
@@ -93,7 +96,7 @@ func Test_JobStatus(t *testing.T) {
 		denied := connect.NewError(connect.CodePermissionDenied, errors.New("the database role may not read this table"))
 		s := &Service{jobgate: answeringGate{answer: denied}}
 
-		refused, err := s.jobStatus(ctx, "an-account", "a-job")
+		refused, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.Nil(t, refused)
 		require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err), "%v", err)
@@ -103,7 +106,7 @@ func Test_JobStatus(t *testing.T) {
 		ctx, logs := logged()
 		s := &Service{jobgate: answeringGate{answer: licensegate.ErrJobNotFound}}
 
-		refused, err := s.jobStatus(ctx, "an-account", "a-job")
+		refused, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.NoError(t, err)
 		require.Nil(t, refused)
@@ -116,7 +119,7 @@ func Test_JobStatus(t *testing.T) {
 		down := errors.New("the database is down")
 		s := &Service{jobgate: answeringGate{answer: fmt.Errorf("unable to get the enabled hooks of job a-job: %w", down)}}
 
-		refused, err := s.jobStatus(ctx, "an-account", "a-job")
+		refused, err := s.jobStatus(ctx, anAccount, "a-job")
 
 		require.Nil(t, refused)
 		require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err), "%v", err)
@@ -192,14 +195,14 @@ func Test_IsAccountStatusValid_CountsAnExpiredLicenseForARun(t *testing.T) {
 
 func Test_JobStatus_ACounterThatFailsChangesNothing(t *testing.T) {
 	refusal := license.NewRefusal(
-		"an-account",
+		anAccount,
 		husonymerrors.NewForbidden("this job uses features the license does not include: subsetting"),
 		license.FeatureGate(license.FeatureSubsetting),
 	)
 	counter := &failingRefusalCounter{}
 	s := &Service{jobgate: answeringGate{answer: refusal}, refusals: counter}
 
-	refused, err := s.jobStatus(context.Background(), "an-account", "a-job")
+	refused, err := s.jobStatus(context.Background(), anAccount, "a-job")
 
 	require.NoError(t, err)
 	require.False(t, refused.GetIsValid())
