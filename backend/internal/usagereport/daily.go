@@ -21,6 +21,7 @@ type Daily struct {
 	now            func() time.Time
 }
 
+// NewDaily takes a nil sender for an instance that only prepares its report.
 func NewDaily(preparer *Preparer, sender *Sender, logger *slog.Logger) *Daily {
 	return &Daily{
 		preparer: preparer, sender: sender, logger: logger,
@@ -59,6 +60,9 @@ func (d *Daily) Pass(ctx context.Context) {
 	d.attempt(ctx, "could not prepare the usage report of the day", func() error {
 		return d.preparer.PrepareDue(ctx, now)
 	})
+	if d.sender == nil {
+		return
+	}
 	d.attempt(ctx, "could not send the usage report of the instance", func() error {
 		return d.sender.SendDue(ctx, now)
 	})

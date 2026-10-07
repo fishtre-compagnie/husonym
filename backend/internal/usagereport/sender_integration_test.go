@@ -52,10 +52,10 @@ func Test_SendDue_TwoReplicasAtOnceSendAReportOnce(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			errs[i] = NewSender(
+			errs[i] = sendDueAt(ctx, NewSender(
 				store, &fakeLicense{inForce: true}, &fakeKeyMode{mode: license.TelemetryOnline}, "",
 				transportTo(t, destination.URL), logger,
-			).SendDue(ctx, sendNow)
+			), sendNow)
 		}()
 	}
 	wg.Wait()
@@ -76,9 +76,9 @@ func Test_SendDue_TwoReplicasAtOnceSendAReportOnce(t *testing.T) {
 	require.EqualValues(t, 1, sendings[0].Attempts)
 
 	// A later pass has nothing left to send.
-	require.NoError(t, NewSender(
+	require.NoError(t, sendDueAt(ctx, NewSender(
 		store, &fakeLicense{inForce: true}, &fakeKeyMode{mode: license.TelemetryOnline}, "",
 		transportTo(t, destination.URL), logger,
-	).SendDue(ctx, sendNow.Add(7*time.Hour)))
+	), sendNow.Add(7*time.Hour)))
 	require.Len(t, destination.got(), 1)
 }

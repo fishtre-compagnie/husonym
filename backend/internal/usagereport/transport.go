@@ -3,11 +3,17 @@ package usagereport
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/textproto"
 	"net/url"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
@@ -92,8 +98,10 @@ func newHTTPTransport(target *url.URL, version string, timeout time.Duration) *H
 }
 
 // Post sends the document of the report as it is stored, byte for byte, with its seal and the
-// fingerprint of its key in headers. A nil error means the answer was a 2xx status. An error
-// names the host and never quotes the address nor the answer.
+// fingerprint of its key in headers. A nil error means the answer was a 2xx status.
+//
+// An error is made of the host, of a status, and of words of this file: nothing the address,
+// a proxy or the destination wrote is quoted in it, whatever went wrong.
 func (t *HTTPTransport) Post(ctx context.Context, report *usagestore.StoredReport) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.target.String(), bytes.NewReader(report.Document))
 	if err != nil {
@@ -111,12 +119,7 @@ func (t *HTTPTransport) Post(ctx context.Context, report *usagestore.StoredRepor
 
 	resp, err := t.client.Do(req)
 	if err != nil {
-		// The error of the client quotes the address: only what it wraps is kept.
-		var urlErr *url.Error
-		if errors.As(err, &urlErr) {
-			err = urlErr.Err
-		}
-		return fmt.Errorf("unable to reach %s: %w", t.host, err)
+		return fmt.Errorf("unable to send to %s: %s", t.host, failureOf(err))
 	}
 	defer resp.Body.Close()
 	// Read and dropped: an answer has nothing the instance acts on.
@@ -126,4 +129,57 @@ func (t *HTTPTransport) Post(ctx context.Context, report *usagestore.StoredRepor
 		return fmt.Errorf("%s answered with the status %d", t.host, resp.StatusCode)
 	}
 	return nil
+}
+
+// What a request that got no answer is told as. The error of the client is never copied: it
+// quotes the address, and it may quote what a proxy or the destination sent, at any length.
+const (
+	failureInterrupted = "the request was interrupted"
+	failureTimedOut    = "timed out"
+	failureTLS         = "TLS verification failed"
+	failureUnresolved  = "name not resolved"
+	failureRefused     = "connection refused"
+	failureClosed      = "connection reset or closed"
+	failureNotHTTP     = "not an HTTP answer"
+	failureOther       = "the request failed"
+)
+
+// failureOf tells what went wrong in one of the fixed texts above, chosen by the kind of the
+// error and never by what it says.
+func failureOf(err error) string {
+	var (
+		timeout      net.Error
+		verification *tls.CertificateVerificationError
+		authority    x509.UnknownAuthorityError
+		invalid      x509.CertificateInvalidError
+		hostname     x509.HostnameError
+		dns          *net.DNSError
+		protocol     textproto.ProtocolError
+		notTLS       tls.RecordHeaderError
+	)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return failureInterrupted
+	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &timeout) && timeout.Timeout():
+		return failureTimedOut
+	case errors.As(err, &verification), errors.As(err, &authority), errors.As(err, &invalid), errors.As(err, &hostname):
+		return failureTLS
+	case errors.As(err, &dns):
+		return failureUnresolved
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return failureRefused
+	case errors.Is(err, syscall.ECONNRESET), errors.Is(err, syscall.EPIPE), errors.Is(err, net.ErrClosed),
+		errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+		return failureClosed
+	case errors.As(err, &protocol), errors.As(err, &notTLS):
+		return failureNotHTTP
+	}
+	// The client tells of a first line that is not one of HTTP with a type it keeps to itself:
+	// it is known by the words the client starts it with, which are its own, not the peer's.
+	for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+		if strings.HasPrefix(cause.Error(), "malformed HTTP") {
+			return failureNotHTTP
+		}
+	}
+	return failureOther
 }

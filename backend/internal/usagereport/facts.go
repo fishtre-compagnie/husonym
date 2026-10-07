@@ -32,19 +32,22 @@ func ModeSettingFromEnvironment() string {
 
 // ReportURLFromEnvironment gives the address the report is sent to: the one of
 // HUSONYM_TELEMETRY_URL when it is one a report can be sent to, the default one otherwise. A
-// value that is refused is logged, without the value: it may hold credentials.
+// value that is in force is logged by its host alone, and one that is refused without the
+// value: it may hold credentials.
 func ReportURLFromEnvironment(logger *slog.Logger) string {
 	address := strings.TrimSpace(viper.GetString(reportURLVariable))
 	if address == "" {
 		return DefaultReportURL
 	}
-	if _, err := checkReportURL(address); err != nil {
+	target, err := checkReportURL(address)
+	if err != nil {
 		logger.Warn(
 			"the usage report is sent to its default address: the one given cannot be used",
 			"variable", reportURLVariable, "error", err,
 		)
 		return DefaultReportURL
 	}
+	logger.Info("the usage report is sent to the address given", "variable", reportURLVariable, "host", target.Host)
 	return address
 }
 

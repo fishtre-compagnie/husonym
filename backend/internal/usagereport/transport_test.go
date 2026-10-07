@@ -2,17 +2,29 @@ package usagereport
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
+	"fmt"
 	"io"
+	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -134,7 +146,7 @@ func Test_Post_ADestinationThatDoesNotAnswerIsAnErrorWithinTheBound(t *testing.T
 	transport := newHTTPTransport(target, "v0.2.0", 50*time.Millisecond)
 
 	started := time.Now()
-	require.Error(t, transport.Post(t.Context(), storedReport))
+	require.ErrorContains(t, transport.Post(t.Context(), storedReport), ": timed out")
 	require.Less(t, time.Since(started), 5*time.Second)
 }
 
@@ -159,15 +171,104 @@ func Test_Post_AnAnswerIsReadOnlyUpToItsBound(t *testing.T) {
 }
 
 func Test_Post_AnErrorNeverQuotesTheCredentialsOfTheAddress(t *testing.T) {
-	destination := newReceiver(t, http.StatusNoContent, nil)
+	destination := newReceiver(t, http.StatusInternalServerError, nil)
 	address := strings.Replace(destination.URL, "http://", "http://someone:hunter2@", 1)
-	destination.Close()
 
 	err := transportTo(t, address).Post(t.Context(), storedReport)
+	require.EqualError(t, err, strings.TrimPrefix(destination.URL, "http://")+" answered with the status 500")
+	destination.Close()
+	err = transportTo(t, address).Post(t.Context(), storedReport)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "hunter2")
 	require.NotContains(t, err.Error(), "someone")
-	require.Contains(t, err.Error(), strings.TrimPrefix(destination.URL, "http://"))
+}
+
+// What answers is not an HTTP server, and what it sends is long: none of it is in the error.
+func Test_Post_AnAnswerThatIsNotHTTPIsToldInAFewWordsThatQuoteNoneOfIt(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	garbage := bytes.Repeat([]byte("what-the-peer-wrote "), 4096)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				// The request is read first, so that the answer is not a reset.
+				_, _ = conn.Read(make([]byte, 64<<10))
+				_, _ = conn.Write(append(garbage, '\n'))
+			}()
+		}
+	}()
+
+	host := listener.Addr().String()
+	err = transportTo(t, "http://"+host+"/in").Post(t.Context(), storedReport)
+	require.EqualError(t, err, "unable to send to "+host+": not an HTTP answer")
+}
+
+func Test_Post_ACertificateThatIsNotTrustedIsToldWithoutItsNames(t *testing.T) {
+	destination := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(destination.Close)
+	// Not a line of the test: the server logs the handshake the client gave up.
+	destination.Config.ErrorLog = log.New(io.Discard, "", 0)
+
+	host := strings.TrimPrefix(destination.URL, "https://")
+	err := transportTo(t, destination.URL).Post(t.Context(), storedReport)
+	require.EqualError(t, err, "unable to send to "+host+": TLS verification failed")
+}
+
+func Test_Post_ADestinationThatIsNotThereIsToldInAFewWords(t *testing.T) {
+	destination := newReceiver(t, http.StatusNoContent, nil)
+	host := strings.TrimPrefix(destination.URL, "http://")
+	destination.Close()
+
+	err := transportTo(t, destination.URL).Post(t.Context(), storedReport)
+	require.EqualError(t, err, "unable to send to "+host+": connection refused")
+}
+
+func Test_Post_ADestinationThatHangsUpIsToldInAFewWords(t *testing.T) {
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}))
+	t.Cleanup(destination.Close)
+
+	host := strings.TrimPrefix(destination.URL, "http://")
+	err := transportTo(t, destination.URL).Post(t.Context(), storedReport)
+	require.EqualError(t, err, "unable to send to "+host+": connection reset or closed")
+}
+
+func Test_FailureOf_IsOneOfAFewFixedTexts(t *testing.T) {
+	quoted := errors.New("what-the-peer-wrote")
+	for name, tc := range map[string]struct {
+		err  error
+		want string
+	}{
+		"interrupted":           {err: fmt.Errorf("%w: %w", quoted, context.Canceled), want: "the request was interrupted"},
+		"past its deadline":     {err: fmt.Errorf("%w: %w", quoted, context.DeadlineExceeded), want: "timed out"},
+		"a name not resolved":   {err: &net.OpError{Op: "dial", Err: &net.DNSError{Err: "what-the-peer-wrote", Name: "what-the-peer-wrote", IsNotFound: true}}, want: "name not resolved"},
+		"a resolution too slow": {err: &net.DNSError{Err: "what-the-peer-wrote", IsTimeout: true}, want: "timed out"},
+		"refused":               {err: &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, want: "connection refused"},
+		"reset":                 {err: &net.OpError{Op: "read", Err: os.NewSyscallError("read", syscall.ECONNRESET)}, want: "connection reset or closed"},
+		"a name of another certificate": {
+			err: &tls.CertificateVerificationError{Err: x509.HostnameError{Host: "what-the-peer-wrote"}}, want: "TLS verification failed",
+		},
+		"an answer that is not TLS":  {err: tls.RecordHeaderError{Msg: "what-the-peer-wrote"}, want: "not an HTTP answer"},
+		"a header that is not one":   {err: textproto.ProtocolError("what-the-peer-wrote"), want: "not an HTTP answer"},
+		"what a proxy answered":      {err: errors.New("what-the-peer-wrote"), want: "the request failed"},
+		"an address that is refused": {err: fmt.Errorf("%w: what-the-peer-wrote", safehttp.ErrBlockedAddress), want: "the request failed"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, tc.want, failureOf(&url.Error{Op: "Post", URL: "http://someone:hunter2@what-the-peer-wrote", Err: tc.err}))
+		})
+	}
 }
 
 func Test_NewHTTPTransport_RefusesAnAddressItCannotSendTo(t *testing.T) {
@@ -207,9 +308,23 @@ func Test_ReportURLFromEnvironment_IsTheDefaultOneWithoutTheVariable(t *testing.
 	require.Equal(t, DefaultReportURL, ReportURLFromEnvironment(slog.New(slog.DiscardHandler)))
 }
 
-func Test_ReportURLFromEnvironment_TakesAnAddressThatCanBeSentTo(t *testing.T) {
-	setReportURL(t, " http://127.0.0.1:9999/in ")
-	require.Equal(t, "http://127.0.0.1:9999/in", ReportURLFromEnvironment(slog.New(slog.DiscardHandler)))
+func Test_ReportURLFromEnvironment_TakesAnAddressThatCanBeSentToAndNamesItsHostAlone(t *testing.T) {
+	var logs syncBuffer
+	setReportURL(t, " http://someone:hunter2@127.0.0.1:9999/in?token=hunter3 ")
+
+	require.Equal(t, "http://someone:hunter2@127.0.0.1:9999/in?token=hunter3",
+		ReportURLFromEnvironment(slog.New(slog.NewTextHandler(&logs, nil))))
+	require.Contains(t, logs.String(), "level=INFO")
+	require.Contains(t, logs.String(), "host=127.0.0.1:9999")
+	require.NotContains(t, logs.String(), "hunter")
+	require.NotContains(t, logs.String(), "someone")
+	require.Equal(t, 1, strings.Count(logs.String(), "\n"))
+}
+
+func Test_ReportURLFromEnvironment_SaysNothingWithoutTheVariable(t *testing.T) {
+	var logs syncBuffer
+	require.Equal(t, DefaultReportURL, ReportURLFromEnvironment(slog.New(slog.NewTextHandler(&logs, nil))))
+	require.Empty(t, logs.String())
 }
 
 func Test_ReportURLFromEnvironment_KeepsTheDefaultOneAndSaysSoWhenTheVariableIsNotValid(t *testing.T) {

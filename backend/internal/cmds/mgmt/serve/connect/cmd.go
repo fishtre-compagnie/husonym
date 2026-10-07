@@ -750,24 +750,21 @@ func serve(ctx context.Context) error {
 		usageFacts,
 	)
 	// Each pass then sends the reports that are due, when the license provides for it and the
-	// operator did not set otherwise. It runs apart from every request and every run.
+	// operator did not set otherwise. It runs apart from every request and every run, and the
+	// API starts whatever becomes of it: without a transport the report is prepared and not sent.
+	var usageSender *usagereport.Sender
 	usageReportTransport, err := usagereport.NewHTTPTransport(
 		usagereport.ReportURLFromEnvironment(slogger), version.Get().GitVersion,
 	)
 	if err != nil {
-		return fmt.Errorf("unable to initialize the sending of the usage report: %w", err)
+		slogger.Error("the usage report of the instance is prepared and not sent", "error", err)
+	} else {
+		usageSender = usagereport.NewSender(
+			usageStore, eelicense, usageKey, usageModeSetting, usageReportTransport, slogger,
+		)
 	}
 	go usagereport.NewDaily(
-		usagereport.NewPreparer(usageReports, usageStore, slogger),
-		usagereport.NewSender(
-			usageStore,
-			eelicense,
-			usageKey,
-			usageModeSetting,
-			usageReportTransport,
-			slogger,
-		),
-		slogger,
+		usagereport.NewPreparer(usageReports, usageStore, slogger), usageSender, slogger,
 	).Every(licenseCtx, usageReportInterval)
 
 	// The interface and the CLI read the mode the report is sent under from the same key, setting

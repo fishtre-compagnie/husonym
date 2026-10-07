@@ -80,12 +80,11 @@ func newDaily(builder *syncBuilder) *daily {
 		logs:      &syncBuffer{},
 	}
 	logger := slog.New(slog.NewTextHandler(d.logs, nil))
-	d.loop = NewDaily(
-		NewPreparer(builder, newFakeStore(), logger),
-		NewSender(d.store, &fakeLicense{inForce: true}, d.key, "", d.transport, logger),
-		logger,
-	)
-	d.loop.now = func() time.Time { return now.Add(12 * time.Hour) }
+	noon := func() time.Time { return now.Add(12 * time.Hour) }
+	sender := NewSender(d.store, &fakeLicense{inForce: true}, d.key, "", d.transport, logger)
+	sender.now = noon
+	d.loop = NewDaily(NewPreparer(builder, newFakeStore(), logger), sender, logger)
+	d.loop.now = noon
 	return d
 }
 
@@ -217,6 +216,18 @@ func Test_Pass_AContextThatEndedIsNotLoggedAsAFailure(t *testing.T) {
 
 	d.loop.Pass(ctx)
 	require.Empty(t, d.logs.String())
+}
+
+func Test_Pass_WithoutASenderOnlyPrepares(t *testing.T) {
+	builder := &syncBuilder{}
+	var logs syncBuffer
+	loop := NewDaily(NewPreparer(builder, newFakeStore(), slog.New(slog.NewTextHandler(&logs, nil))), nil, slog.New(slog.NewTextHandler(&logs, nil)))
+	loop.now = func() time.Time { return now.Add(12 * time.Hour) }
+
+	loop.Pass(t.Context())
+	loop.Pass(t.Context())
+	require.Equal(t, 2, builder.count())
+	require.Empty(t, logs.String())
 }
 
 // syncBuffer is a log sink a loop may write to while the test reads it.

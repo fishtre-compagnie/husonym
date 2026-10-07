@@ -19,6 +19,12 @@ const (
 	retryAfter = 6 * time.Hour
 	// sentDays is how many closed days back a report is still sent.
 	sentDays = 30
+	// passTimeout bounds one pass of the sending: a database that does not answer ends the pass,
+	// and never holds the loop the preparation runs in too.
+	passTimeout = 2 * time.Minute
+	// recordTimeout bounds what is recorded of a report once its request has ended, which is
+	// done whatever became of the pass: a report that left is marked even as the process stops.
+	recordTimeout = 5 * time.Second
 )
 
 // SendingStore keeps since when the instance sends its report, and what became of the report
@@ -49,6 +55,9 @@ type Sender struct {
 
 	waitBeforeFirst time.Duration
 	retryAfter      time.Duration
+	passTimeout     time.Duration
+	recordTimeout   time.Duration
+	now             func() time.Time
 }
 
 // NewSender takes the license of the process, which says whether anything is sent at all, the
@@ -65,6 +74,7 @@ func NewSender(
 	return &Sender{
 		store: store, license: lic, key: key, setting: setting, transport: transport, logger: logger,
 		waitBeforeFirst: waitBeforeFirst, retryAfter: retryAfter,
+		passTimeout: passTimeout, recordTimeout: recordTimeout, now: time.Now,
 	}
 }
 
@@ -74,9 +84,19 @@ func NewSender(
 // sends, which also forgets since when the instance was sending: an instance that comes back to
 // sending starts again, and what was prepared in between stays.
 //
+// now is the moment of the pass, which what is due is told from; a report is claimed and marked
+// at the moment it is, read from the clock. The pass is bounded: reports left when it ends go
+// at a later pass.
+//
 // A report that cannot be sent is logged and ends the pass: it is not an error, and it is tried
 // again later. Several replicas may run it at once: a report is claimed by one of them only.
-func (s *Sender) SendDue(ctx context.Context, now time.Time) error {
+//
+// A report may arrive twice: once it left, it is logged, then marked, and one that could not
+// be marked is sent again later. It is then the same report: same day, same bytes, same seal.
+func (s *Sender) SendDue(parent context.Context, now time.Time) error {
+	ctx, cancel := context.WithTimeout(parent, s.passTimeout)
+	defer cancel()
+
 	// Asked first, and of what the process holds: without a license nothing is read at all.
 	if !s.license.IsValid() {
 		return nil
@@ -114,37 +134,59 @@ func (s *Sender) SendDue(ctx context.Context, now time.Time) error {
 	}
 
 	for {
-		report, err := s.store.ClaimReport(ctx, from, yesterday, now.Add(-s.retryAfter), now)
+		// Nothing is claimed once the pass or the process has ended: a claim counts as an attempt.
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("the sending of the usage reports ended before all that is due was sent: %w", err)
+		}
+		claimedAt := s.now()
+		report, err := s.store.ClaimReport(ctx, from, yesterday, claimedAt.Add(-s.retryAfter), claimedAt)
 		if err != nil {
 			return err
 		}
 		if report == nil {
 			return nil
 		}
-		dayText := report.Day.Format(time.DateOnly)
 		if err := s.transport.Post(ctx, report); err != nil {
 			// A process that stops has not failed to send: the report is tried again later.
-			if ctx.Err() == nil {
-				s.logger.WarnContext(ctx, "could not send the usage report of the day",
-					"day", dayText, "attempts", s.attempts(ctx, report.Day), "error", err)
+			if parent.Err() == nil {
+				s.logFailure(parent, report.Day, err)
 			}
 			// The next report is not claimed: a claim counts as an attempt.
 			return nil
 		}
-		if err := s.store.MarkReportSent(ctx, report.Day, now); err != nil {
-			return fmt.Errorf("unable to record that the usage report of %s was sent: %w", dayText, err)
+		if err := s.sent(parent, report); err != nil {
+			return err
 		}
-		// The document is made of numbers and of values from closed lists: it is logged as it left.
-		s.logger.InfoContext(ctx, "the usage report of the day is sent", "day", dayText, "document", string(report.Document))
 	}
 }
 
-// attempts reads how many times the report of a day was tried, for the log. Zero when it
-// cannot be read: the log line is written all the same.
-func (s *Sender) attempts(ctx context.Context, day time.Time) int32 {
-	sendings, err := s.store.ListReportSendings(ctx, day, day)
-	if err != nil || len(sendings) != 1 {
-		return 0
+// sent logs a report that left, then marks it. The line is written first, so that a report
+// that left is always told of; and the marking does not end with the pass nor with the process,
+// so that a sending that is done is not done again for a mark that was not given its time.
+func (s *Sender) sent(parent context.Context, report *usagestore.StoredReport) error {
+	dayText := report.Day.Format(time.DateOnly)
+	// The document is made of numbers and of values from closed lists: it is logged as it left.
+	s.logger.InfoContext(parent, "the usage report of the day is sent", "day", dayText, "document", string(report.Document))
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), s.recordTimeout)
+	defer cancel()
+	if err := s.store.MarkReportSent(ctx, report.Day, s.now()); err != nil {
+		s.logger.WarnContext(parent, "the usage report of the day was sent and could not be marked as sent: it will be sent again",
+			"day", dayText, "error", err)
+		return fmt.Errorf("unable to record that the usage report of %s was sent: %w", dayText, err)
 	}
-	return sendings[0].Attempts
+	return nil
+}
+
+// logFailure tells of a report that could not be sent, with how many times it was tried when
+// that can be read: the line is written all the same when it cannot.
+func (s *Sender) logFailure(parent context.Context, day time.Time, failure error) {
+	attributes := []any{"day", day.Format(time.DateOnly)}
+	// The pass may have ended with the request: the reading has its own time.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), s.recordTimeout)
+	defer cancel()
+	if sendings, err := s.store.ListReportSendings(ctx, day, day); err == nil && len(sendings) == 1 {
+		attributes = append(attributes, "attempts", sendings[0].Attempts)
+	}
+	s.logger.WarnContext(parent, "could not send the usage report of the day", append(attributes, "error", failure)...)
 }
