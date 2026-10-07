@@ -17,7 +17,7 @@ import (
 )
 
 // settleAfter is how long a run may stay open before the orchestrator is asked about it.
-const settleAfter = 24 * time.Hour
+const settleAfter = time.Hour
 
 // fateTimeout bounds one question to the orchestrator, so that a call that hangs does not
 // hold up the other runs.
@@ -50,7 +50,7 @@ func New(runs Runs, fate Fate, logger *slog.Logger) *Settler {
 	return &Settler{runs: runs, fate: fate, logger: logger, fateTimeout: fateTimeout}
 }
 
-// SettleOnce settles the runs still open that started more than a day before now. A run whose
+// SettleOnce settles the runs still open that started more than an hour before now. A run whose
 // fate cannot be told is left for the next pass, and the others are still settled.
 func (s *Settler) SettleOnce(ctx context.Context, now time.Time) error {
 	open, err := s.runs.OpenRunsStartedBefore(ctx, now.Add(-settleAfter))

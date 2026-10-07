@@ -33,7 +33,15 @@ type fakeRuns struct {
 
 func (f *fakeRuns) OpenRunsStartedBefore(_ context.Context, before time.Time) ([]usagestore.OpenRun, error) {
 	f.before = before
-	return f.open, nil
+	var open []usagestore.OpenRun
+	for _, run := range f.open {
+		// As the store answers: only a run that started before the given time. A run with no
+		// start time in a test is old enough.
+		if run.StartedAt.IsZero() || run.StartedAt.Before(before) {
+			open = append(open, run)
+		}
+	}
+	return open, nil
 }
 
 func (f *fakeRuns) Settle(_ context.Context, runId string, status usagestore.Status, endedAt *time.Time) error {
@@ -60,11 +68,20 @@ func settle(t *testing.T, runs *fakeRuns, answers map[string]answer, now time.Ti
 	require.NoError(t, New(runs, fateOf(answers), slog.Default()).SettleOnce(t.Context(), now))
 }
 
-func Test_SettleOnce_AsksOnlyForRunsOlderThanADay(t *testing.T) {
+func Test_SettleOnce_AsksOnlyForRunsOlderThanAnHour(t *testing.T) {
 	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
-	runs := &fakeRuns{}
-	settle(t, runs, nil, now)
-	require.Equal(t, now.Add(-24*time.Hour), runs.before)
+	runs := &fakeRuns{open: []usagestore.OpenRun{
+		{RunId: "recent", StartedAt: now.Add(-59 * time.Minute)},
+		{RunId: "silent", StartedAt: now.Add(-61 * time.Minute)},
+	}}
+	answers := map[string]answer{
+		"recent": {status: usagestore.StatusTimedOut, found: true},
+		"silent": {status: usagestore.StatusTimedOut, found: true},
+	}
+	settle(t, runs, answers, now)
+	require.Equal(t, now.Add(-time.Hour), runs.before)
+	require.Len(t, runs.settled, 1)
+	require.Equal(t, "silent", runs.settled[0].runId)
 }
 
 func Test_SettleOnce_LeavesARunThatIsStillGoing(t *testing.T) {
