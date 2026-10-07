@@ -162,3 +162,12 @@ sql:
             go_type: string
           - column: pg_catalog.pg_constraint.conrelid # this is normally an int but we are casting it in queries to the friendly name
             go_type: string
+  - engine: "postgresql"
+    queries: "controlplane/sql/queries"
+    schema: "controlplane/migrations/sql"
+    gen:
+      go:
+        package: "cpdb"
+        out: "controlplane/gen/db"
+        sql_package: "pgx/v5"
+        emit_interface: true

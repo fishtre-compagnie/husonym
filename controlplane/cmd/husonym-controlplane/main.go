@@ -3,11 +3,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 
+	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
 	"github.com/fishtre-compagnie/husonym/controlplane/migrations"
+	"github.com/fishtre-compagnie/husonym/controlplane/registryimport"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
 )
 
@@ -39,6 +44,49 @@ func newRootCmd() *cobra.Command {
 			return migrations.Up(cmd.Context(), databaseURL, logger)
 		},
 	})
-	root.AddCommand(migrate)
+	root.AddCommand(migrate, newImportRegistryCmd())
 	return root
+}
+
+func newImportRegistryCmd() *cobra.Command {
+	var registryPath string
+	cmd := &cobra.Command{
+		Use:   "import-registry",
+		Short: "Load the registry of issued licenses",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			databaseURL := os.Getenv(databaseURLEnv)
+			if databaseURL == "" {
+				return fmt.Errorf("%s is not set", databaseURLEnv)
+			}
+			registry, err := license.LoadRegistry(registryPath)
+			if err != nil {
+				return err
+			}
+			ring, err := license.EmbeddedKeyring()
+			if err != nil {
+				return err
+			}
+			pool, err := pgxpool.New(cmd.Context(), databaseURL)
+			if err != nil {
+				return errors.New("unable to open the database")
+			}
+			defer pool.Close()
+
+			result, err := registryimport.Run(cmd.Context(), cpstore.New(pool), registry, ring)
+			if err != nil {
+				return err
+			}
+			// Only counts: the registry holds customer names and license keys.
+			fmt.Fprintf(cmd.OutOrStdout(), "added: %d\nalready there: %d\nrefused: %d\n",
+				result.Added, result.AlreadyThere, result.Refused)
+			if result.Refused > 0 {
+				return errors.New("some entries were refused")
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&registryPath, "registry", "", "path of the license registry file")
+	_ = cmd.MarkFlagRequired("registry")
+	return cmd
 }
