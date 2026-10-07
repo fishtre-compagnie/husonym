@@ -3,12 +3,12 @@ package v1alpha_anonymizationservice
 import (
 	"bytes"
 	"context"
-	"time"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -366,4 +366,27 @@ func Test_AnonymizeSingle_WithoutALicenseInForceSaysSo(t *testing.T) {
 			require.NotContains(t, err.Error(), "does not include")
 		})
 	}
+}
+
+// A counter that cannot count changes nothing to what AnonymizeMany answers.
+func Test_AnonymizeMany_ACounterThatFailsChangesNothing(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+	counter := &failingCounter{}
+	s.refusals = counter
+
+	resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+		AccountId: uuid.NewString(),
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "account does not have an active license")
+	require.Equal(t, 1, counter.asked)
+}
+
+type failingCounter struct{ asked int }
+
+func (c *failingCounter) CountRefusal(context.Context, string, []license.Gate, time.Time) error {
+	c.asked++
+	return errors.New("the usage database is down")
 }

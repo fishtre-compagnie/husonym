@@ -16,6 +16,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	refusal "github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,7 @@ func refusalOf(accountId string, gates ...license.Gate) *license.Refusal {
 }
 
 // callUnary serves a unary handler that answers with err behind the interceptor, and calls it.
-func callUnary(t *testing.T, counter Counter, logs *bytes.Buffer, err error) error {
+func callUnary(t *testing.T, counter refusal.Counter, logs *bytes.Buffer, err error) error {
 	t.Helper()
 	logger := slog.New(slog.NewJSONHandler(logs, nil))
 	mux := http.NewServeMux()
@@ -74,7 +75,7 @@ func callUnary(t *testing.T, counter Counter, logs *bytes.Buffer, err error) err
 }
 
 // callStream does the same for a server-streaming handler.
-func callStream(t *testing.T, counter Counter, logs *bytes.Buffer, err error) error {
+func callStream(t *testing.T, counter refusal.Counter, logs *bytes.Buffer, err error) error {
 	t.Helper()
 	logger := slog.New(slog.NewJSONHandler(logs, nil))
 	mux := http.NewServeMux()
@@ -96,7 +97,7 @@ func callStream(t *testing.T, counter Counter, logs *bytes.Buffer, err error) er
 	return stream.Err()
 }
 
-type call func(*testing.T, Counter, *bytes.Buffer, error) error
+type call func(*testing.T, refusal.Counter, *bytes.Buffer, error) error
 
 func Test_Interceptor(t *testing.T) {
 	for name, do := range map[string]call{"unary": callUnary, "streaming": callStream} {
@@ -141,17 +142,15 @@ func Test_Interceptor(t *testing.T) {
 				require.Contains(t, logs.String(), "unable to count a license refusal")
 			})
 
-			t.Run("a refusal without an account or without a gate is logged, not counted", func(t *testing.T) {
+			t.Run("a refusal without an account or without a gate is not counted", func(t *testing.T) {
 				counter := &recorder{}
-				var logs bytes.Buffer
 
-				err := do(t, counter, &logs, refusalOf("", license.GateNotInForce))
+				err := do(t, counter, &bytes.Buffer{}, refusalOf("", license.GateNotInForce))
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-				err = do(t, counter, &logs, refusalOf("an-account"))
+				err = do(t, counter, &bytes.Buffer{}, refusalOf("an-account"))
 				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
 				require.Empty(t, counter.count())
-				require.Contains(t, logs.String(), "could not be counted")
 			})
 		})
 	}

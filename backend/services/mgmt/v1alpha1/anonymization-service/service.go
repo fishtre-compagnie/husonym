@@ -2,7 +2,7 @@ package v1alpha_anonymizationservice
 
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/licenserefusal"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
-	"github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"

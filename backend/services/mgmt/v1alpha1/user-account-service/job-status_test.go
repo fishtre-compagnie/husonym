@@ -10,10 +10,16 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,4 +122,87 @@ func Test_JobStatus(t *testing.T) {
 		require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err), "%v", err)
 		require.ErrorIs(t, err, down)
 	})
+}
+
+// failingRefusalCounter is a counter that cannot count.
+type failingRefusalCounter struct{ asked int }
+
+func (c *failingRefusalCounter) CountRefusal(context.Context, string, []license.Gate, time.Time) error {
+	c.asked++
+	return errors.New("the usage database is down")
+}
+
+// asTheWorker is the context of a call the worker makes: it is let into any account.
+func asTheWorker() context.Context {
+	return auth_apikey.SetTokenData(context.Background(), &auth_apikey.TokenContextData{ApiKeyType: apikey.WorkerApiKey})
+}
+
+// What IsAccountStatusValid answers, and what it counts, when the license of the instance is
+// not in force.
+func Test_IsAccountStatusValid_CountsAnExpiredLicenseForARun(t *testing.T) {
+	accountId := uuid.NewString()
+	jobId := uuid.NewString()
+	expired := func(counter licenserefusal.Counter) *Service {
+		return &Service{
+			cfg:           &Config{IsAuthEnabled: true},
+			licenseclient: testutil.NewFakeEELicense(),
+			refusals:      counter,
+		}
+	}
+
+	t.Run("a run that names its job is counted once, for its account", func(t *testing.T) {
+		counter := &refusalLog{}
+
+		resp, err := expired(counter).IsAccountStatusValid(asTheWorker(), connect.NewRequest(
+			&mgmtv1alpha1.IsAccountStatusValidRequest{AccountId: accountId, JobId: &jobId},
+		))
+
+		require.NoError(t, err)
+		require.False(t, resp.Msg.GetIsValid())
+		require.Equal(t, mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE, resp.Msg.GetAccountStatus())
+		require.Equal(t, []string{accountId + " license_not_in_force"}, counter.counted)
+	})
+
+	t.Run("a bare status question is not counted, and is answered the same", func(t *testing.T) {
+		counter := &refusalLog{}
+
+		resp, err := expired(counter).IsAccountStatusValid(asTheWorker(), connect.NewRequest(
+			&mgmtv1alpha1.IsAccountStatusValidRequest{AccountId: accountId},
+		))
+
+		require.NoError(t, err)
+		require.False(t, resp.Msg.GetIsValid())
+		require.Equal(t, mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE, resp.Msg.GetAccountStatus())
+		require.Empty(t, counter.counted)
+	})
+
+	t.Run("a counter that fails changes nothing to the answer", func(t *testing.T) {
+		counter := &failingRefusalCounter{}
+
+		resp, err := expired(counter).IsAccountStatusValid(asTheWorker(), connect.NewRequest(
+			&mgmtv1alpha1.IsAccountStatusValidRequest{AccountId: accountId, JobId: &jobId},
+		))
+
+		require.NoError(t, err)
+		require.False(t, resp.Msg.GetIsValid())
+		require.Equal(t, mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE, resp.Msg.GetAccountStatus())
+		require.Equal(t, 1, counter.asked)
+	})
+}
+
+func Test_JobStatus_ACounterThatFailsChangesNothing(t *testing.T) {
+	refusal := license.NewRefusal(
+		"an-account",
+		husonymerrors.NewForbidden("this job uses features the license does not include: subsetting"),
+		license.FeatureGate(license.FeatureSubsetting),
+	)
+	counter := &failingRefusalCounter{}
+	s := &Service{jobgate: answeringGate{answer: refusal}, refusals: counter}
+
+	refused, err := s.jobStatus(context.Background(), "an-account", "a-job")
+
+	require.NoError(t, err)
+	require.False(t, refused.GetIsValid())
+	require.Equal(t, "this job uses features the license does not include: subsetting", refused.GetReason())
+	require.Equal(t, 1, counter.asked)
 }

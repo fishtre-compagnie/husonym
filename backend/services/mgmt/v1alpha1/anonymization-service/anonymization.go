@@ -12,6 +12,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -59,19 +60,14 @@ func carriesPiiText(msg transformerMsgToValidate) bool {
 
 // countRefusal counts the refusal of the feature that AnonymizeMany answers as not implemented,
 // and so not as a license refusal that an interceptor would see. The gate is the one the reason
-// says: no license in force, or the feature the license does not include. A count that fails is
-// logged: it never changes the answer.
+// says: no license in force, or the feature the license does not include. The account counted is
+// the one the request carries, before access to it is checked.
 func (s *Service) countRefusal(ctx context.Context, accountId string, f license.Feature, reason string) {
 	gate := license.FeatureGate(f)
 	if reason == license.NotInForceMessage {
 		gate = license.GateNotInForce
 	}
-	if err := s.refusals.CountRefusal(context.WithoutCancel(ctx), accountId, []license.Gate{gate}, time.Now()); err != nil {
-		logger_interceptor.GetLoggerFromContextOrDefault(ctx).Warn(
-			"unable to count a license refusal",
-			"error", err.Error(),
-		)
-	}
+	licenserefusal.Count(ctx, s.refusals, accountId, []license.Gate{gate})
 }
 
 func (s *Service) AnonymizeMany(
@@ -93,6 +89,7 @@ func (s *Service) AnonymizeMany(
 	}
 	// A license that is not in force is said as such, as every gated call says it: it includes
 	// no feature, and naming one as missing would name the wrong cause.
+	// The account counted below is the one the request carries, before access to it is checked.
 	if reason := license.FeatureRefusal(s.license, license.FeaturePiiText); reason != "" {
 		s.countRefusal(ctx, req.Msg.GetAccountId(), license.FeaturePiiText, reason)
 		return nil, notImplemented(reason)
