@@ -105,6 +105,10 @@ const licenseRefreshInterval = time.Minute
 // usageSettleInterval is how often the runs left open without an end are looked at.
 const usageSettleInterval = time.Hour
 
+// usageReportInterval is how often the usage report of the day before is looked for, and
+// prepared when it is not there yet.
+const usageReportInterval = time.Hour
+
 // licenseLoadTimeout bounds one read of the key in force. It is shorter than the interval,
 // so that a read that hangs has ended before the next one is due.
 const licenseLoadTimeout = 10 * time.Second
@@ -746,7 +750,8 @@ func serve(ctx context.Context) error {
 	}
 
 	// The usage report of the instance is assembled from what the usage store counted, what
-	// the instance holds and what this start resolved. Nothing prepares one yet.
+	// the instance holds and what this start resolved. The one of the day before is prepared once a
+	// day, whichever replica gets to it first.
 	usageReports := usagereport.NewBuilder(
 		usageStore,
 		usagereport.NewInventoryReader(db, licenseUsage, rbacclient, usageStore, isAuthEnabled),
@@ -756,7 +761,7 @@ func serve(ctx context.Context) error {
 		licenseRing,
 		getUsageFacts(isAuthEnabled, presidioClients, runLogConfig),
 	)
-	_ = usageReports
+	go usagereport.NewPreparer(usageReports, usageStore, slogger).Every(licenseCtx, usageReportInterval)
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,
