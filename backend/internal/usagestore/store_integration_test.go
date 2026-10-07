@@ -2,6 +2,7 @@ package usagestore
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -261,22 +262,29 @@ func Test_CountRefusal_AnUnknownGateLeavesNoRow(t *testing.T) {
 	require.Zero(t, countRows(ctx, t, container, "gate_refusals_daily"))
 }
 
-func Test_MigrationDown_RemovesTheThreeTables(t *testing.T) {
+func Test_MigrationDown_RemovesTheThreeTablesOnly(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
 	ctx := t.Context()
 	container, _ := migratedDatabase(ctx, t)
 
-	tables := func() int {
+	tables := func(names ...string) int {
 		var n int
 		require.NoError(t, container.DB.QueryRow(ctx,
 			`SELECT count(*) FROM information_schema.tables
-			 WHERE table_schema = 'husonym_api'
-			   AND table_name IN ('instance', 'run_usage', 'gate_refusals_daily')`).Scan(&n))
+			 WHERE table_schema = 'husonym_api' AND table_name = ANY($1)`, names).Scan(&n))
 		return n
 	}
-	require.Equal(t, 3, tables())
-	require.NoError(t, neomigrate.Down(ctx, container.URL, schemaDir, testutil.GetTestLogger(t)))
-	require.Zero(t, tables())
+	usage := []string{"instance", "run_usage", "gate_refusals_daily"}
+	require.Equal(t, 3, tables(usage...))
+
+	// The down file of this migration alone, not the whole chain of them.
+	down, err := os.ReadFile(schemaDir + "/20261007100000_adds-usage.down.sql")
+	require.NoError(t, err)
+	_, err = container.DB.Exec(ctx, string(down))
+	require.NoError(t, err)
+
+	require.Zero(t, tables(usage...))
+	require.Equal(t, 1, tables("license_keys"), "an earlier migration is untouched")
 }

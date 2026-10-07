@@ -104,6 +104,11 @@ func (s *Store) RunStarted(ctx context.Context, run RunStart) error { //nolint:g
 // RunEnded records the end of a run, creating the row when its start was never recorded. A run
 // that already finished is left as it is: the first end told wins.
 func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocritic // hugeParam: callers hand a value they do not share
+	switch run.Status {
+	case StatusCompleted, StatusFailed, StatusCanceled:
+	default:
+		return fmt.Errorf("a run cannot end with the status %q", run.Status)
+	}
 	accountId, jobId, err := toUuids(run.AccountId, run.JobId)
 	if err != nil {
 		return err
@@ -154,7 +159,7 @@ func (s *Store) Settle(ctx context.Context, runId string, status Status, endedAt
 }
 
 // CountRefusal adds one to the count of each gate that refused the account, on the UTC day of
-// the given time. A gate the license does not know is not counted.
+// the given time. A gate the license does not know is not counted, and a gate named twice is counted once.
 func (s *Store) CountRefusal(ctx context.Context, accountId string, gates []license.Gate, at time.Time) error {
 	known := knownGates(gates)
 	if len(known) == 0 {
@@ -178,12 +183,12 @@ func (s *Store) CountRefusal(ctx context.Context, accountId string, gates []lice
 	return nil
 }
 
-// knownGates keeps the gates the license defines.
+// knownGates keeps the gates the license defines, each once.
 func knownGates(gates []license.Gate) []license.Gate {
 	all := license.AllGates()
 	known := make([]license.Gate, 0, len(gates))
 	for _, gate := range gates {
-		if slices.Contains(all, gate) {
+		if slices.Contains(all, gate) && !slices.Contains(known, gate) {
 			known = append(known, gate)
 		}
 	}
