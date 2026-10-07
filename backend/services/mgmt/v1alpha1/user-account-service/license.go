@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -75,11 +76,15 @@ func (s *Service) licenseAfterOffer(
 		return nil, husonymerrors.NewBadRequest(result.Reason)
 	case licensestore.RefusedOlder:
 		return nil, husonymerrors.NewFailedPrecondition(result.Reason)
-	case licensestore.Accepted:
+	case licensestore.Accepted, licensestore.Unchanged:
 		// The key is in force in this process when the call answers, without waiting for the
 		// background refresh. When it cannot be read back the key is stored all the same, so
 		// the call does not fail: giving the key again would then be answered as unchanged,
 		// against a first answer that said it was not taken.
+		//
+		// The key already in force is read again too, which is one cheap read: on an instance
+		// of the API that has not refreshed since another one stored the key, giving the key
+		// again is then what makes it in force there at once.
 		if err := s.refreshLicense(ctx); err != nil {
 			logger_interceptor.GetLoggerFromContextOrDefault(ctx).ErrorContext(
 				ctx,
@@ -87,7 +92,9 @@ func (s *Service) licenseAfterOffer(
 				"error", err,
 			)
 		}
-	case licensestore.Unchanged:
+	default:
+		// The store names every outcome it gives: one that is none of them is no key taken.
+		return nil, fmt.Errorf("the license store gave no outcome for the key (%d)", result.Outcome)
 	}
 	return s.systemLicense(ctx), nil
 }
@@ -185,6 +192,14 @@ func (s *Service) systemLicense(ctx context.Context) *mgmtv1alpha1.SystemLicense
 	if key == nil {
 		// Without a key the expiry is the present instant, as it always was.
 		dto.ExpiresAt = timestamppb.Now()
+		// A key that a door holds and the store refused as invalid never reaches the process:
+		// it has no key and no problem of its own to tell. The reason the store kept is told
+		// then, so that a key truncated in the settings does not read as no key at all.
+		if dto.Problem == nil {
+			if problem := s.licenses.DoorProblem(); problem != "" {
+				dto.Problem = &problem
+			}
+		}
 		return dto
 	}
 	dto.ExpiresAt = timestamppb.New(key.ExpiresAt)
@@ -201,34 +216,37 @@ func (s *Service) systemLicense(ctx context.Context) *mgmtv1alpha1.SystemLicense
 		}
 	}
 
-	if installation := s.installationOf(ctx, key.Id); installation != nil {
+	if installation := s.installationOf(ctx, key); installation != nil {
 		dto.Origin = string(installation.Origin)
 		dto.InstalledAt = timestamppb.New(installation.At)
 	}
 	return dto
 }
 
-// installationMemory remembers how the key of one license was stored. It is safe for
-// concurrent use.
+// installationMemory remembers how one key was stored. It is safe for concurrent use.
 type installationMemory struct {
 	mu sync.Mutex
 	// known is false until an answer of the store was remembered.
-	known     bool
+	known bool
+	// licenseId and issuedAt tell the key apart: a renewal may keep the id of the license it
+	// renews, and is issued later.
 	licenseId string
+	issuedAt  time.Time
 	// installation is nil when the store holds no key of that license.
 	installation *licensestore.Installation
 }
 
-// installationOf tells how the key of the license with this id was stored, or nothing when
-// that is not known.
+// installationOf tells how the key was stored, or nothing when that is not known.
 //
 // The store is asked once per key the process holds, not once per call: the answer is
-// remembered for as long as the id stays the same. A store that does not answer is logged and
-// leaves the answer unknown for this call; the next call asks again.
-func (s *Service) installationOf(ctx context.Context, licenseId string) *licensestore.Installation {
+// remembered for as long as the id and the issue date of the key stay the same. A store that
+// does not answer is logged and leaves the answer unknown for this call; the next call asks
+// again.
+func (s *Service) installationOf(ctx context.Context, key *license.Key) *licensestore.Installation {
+	licenseId := key.Id
 	memory := &s.installations
 	memory.mu.Lock()
-	if memory.known && memory.licenseId == licenseId {
+	if memory.known && memory.licenseId == licenseId && memory.issuedAt.Equal(key.IssuedAt) {
 		defer memory.mu.Unlock()
 		return memory.installation
 	}
@@ -248,7 +266,7 @@ func (s *Service) installationOf(ctx context.Context, licenseId string) *license
 
 	memory.mu.Lock()
 	defer memory.mu.Unlock()
-	memory.known, memory.licenseId, memory.installation = true, licenseId, installation
+	memory.known, memory.licenseId, memory.issuedAt, memory.installation = true, licenseId, key.IssuedAt, installation
 	return installation
 }
 

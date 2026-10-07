@@ -60,6 +60,9 @@ type LicenseStore interface {
 	) (*licensestore.Result, error)
 	Current(ctx context.Context) (string, error)
 	Installation(ctx context.Context, licenseId string) (*licensestore.Installation, error)
+	// DoorProblem tells why the key of the variable or of the file was last refused as invalid,
+	// or nothing.
+	DoorProblem() string
 }
 
 type Config struct {

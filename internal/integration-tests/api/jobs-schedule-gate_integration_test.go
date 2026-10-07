@@ -3,6 +3,7 @@ package integrationtests_test
 import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -65,6 +66,34 @@ func (s *IntegrationTestSuite) Test_UpdateJobSchedule_NeedsTheFeature() {
 	updated, err := schedule()
 	requireNoErrResp(t, updated, err)
 	require.Equal(t, cron, updated.Msg.GetJob().GetCronSchedule())
+}
+
+// A job that was given no schedule reads back with a placeholder cron. A client that sends back
+// a job as it read it is not giving it a schedule: it is not asked for the feature, when the job
+// is created or when its schedule is written.
+func (s *IntegrationTestSuite) Test_Schedule_ThePlaceholderOfAnUnscheduledJobIsNotASchedule() {
+	t := s.T()
+	ctx := s.ctx
+	g := s.newGateGround("schedule-placeholder")
+	unscheduled := s.createJobUnderValidLicense(t, g.jobs, g.jobRequest("schedule-placeholder-read"))
+	placeholder := unscheduled.GetCronSchedule()
+	require.Equal(t, job_util.UnscheduledCron, placeholder)
+
+	s.closeFeature(license.FeatureScheduling)
+
+	echoed := g.jobRequest("schedule-placeholder-echoed")
+	echoed.CronSchedule = &placeholder
+	created := s.createJobUnderValidLicense(t, g.jobs, echoed)
+	require.Equal(t, placeholder, created.GetCronSchedule())
+
+	s.Mocks.TemporalClientManager.EXPECT().
+		UpdateSchedule(mock.Anything, g.accountId, unscheduled.GetId(), mock.Anything, mock.Anything).
+		Return(nil).Once()
+	updated, err := g.jobs.UpdateJobSchedule(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateJobScheduleRequest{
+		Id: unscheduled.GetId(), CronSchedule: &placeholder,
+	}))
+	requireNoErrResp(t, updated, err)
+	require.Equal(t, placeholder, updated.Msg.GetJob().GetCronSchedule())
 }
 
 // A schedule can always be taken away, whatever the license includes.

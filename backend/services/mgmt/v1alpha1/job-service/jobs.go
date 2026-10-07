@@ -409,7 +409,7 @@ func (s *Service) CreateJob(
 	}); err != nil {
 		return nil, err
 	}
-	if req.Msg.GetCronSchedule() != "" {
+	if givesASchedule(req.Msg.GetCronSchedule()) {
 		if err := enforceScheduling(ctx, user, req.Msg.GetAccountId()); err != nil {
 			return nil, err
 		}
@@ -894,7 +894,7 @@ func (s *Service) UpdateJobSchedule(
 		return nil, err
 	}
 	// Taking a schedule away stays possible without the feature.
-	if req.Msg.GetCronSchedule() != "" {
+	if givesASchedule(req.Msg.GetCronSchedule()) {
 		if err := enforceScheduling(ctx, user, jobDto.GetAccountId()); err != nil {
 			return nil, err
 		}
@@ -1317,12 +1317,7 @@ func (s *Service) UpdateJobSourceConnection(
 
 		return nil
 	}); err != nil {
-		if husonymdb.IsLockNotAvailable(err) {
-			return nil, connect.NewError(connect.CodeAborted, errors.New(
-				"the job is being changed by another request: try again in a moment",
-			))
-		}
-		return nil, err
+		return nil, sourceWriteError(err, sourceGuard != nil)
 	}
 
 	updatedJob, err := s.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{
@@ -1476,6 +1471,26 @@ func setsWhereClause(schemas *mgmtv1alpha1.JobSourceSqlSubetSchemas) bool {
 // orchestrator, so the start of a run cannot tell them apart.
 func enforceScheduling(ctx context.Context, user *userdata.User, accountId string) error {
 	return user.EnforceFeature(ctx, accountId, license.FeatureScheduling)
+}
+
+// sourceWriteError is what a failed change of the source of a job answers. A wait for a lock
+// that gave up means that the job is being changed by another request only when the guard of
+// the cap on sources was in play: it is the guard that bounds the wait for the row of the job.
+// Without it this write sets no bound, and the same error is whatever the database meant by it.
+func sourceWriteError(err error, guarded bool) error {
+	if guarded && husonymdb.IsLockNotAvailable(err) {
+		return connect.NewError(connect.CodeAborted, errors.New(
+			"the job is being changed by another request: try again in a moment",
+		))
+	}
+	return err
+}
+
+// givesASchedule tells whether a cron asks for a job to run on its own. A job without a schedule
+// is stored, and read back, with a placeholder cron: a client that sends back the job it read
+// gives it no schedule, and is not asked for the feature.
+func givesASchedule(cron string) bool {
+	return cron != "" && cron != job_util.UnscheduledCron
 }
 
 func (s *Service) UpdateJobDestinationConnection(

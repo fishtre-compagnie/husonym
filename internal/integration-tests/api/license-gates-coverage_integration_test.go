@@ -96,6 +96,11 @@ func (p *gateProbes) createTransformer(
 // served by a license that includes everything and refused, naming the feature, by one that
 // includes everything else; or a reference to the test of a gate the API suite cannot reach, which
 // must exist.
+//
+// It probes ONE representative call per feature. It proves that the feature has a gate, and
+// nothing about the others: not the gates met when a run starts or while it runs, not what the
+// worker reads of the license, and not the other entry points that configure or use the same
+// feature. Each of those has its own tests.
 func (s *IntegrationTestSuite) Test_EveryFeatureHasAGate() {
 	t := s.T()
 	p := s.newGateProbes()

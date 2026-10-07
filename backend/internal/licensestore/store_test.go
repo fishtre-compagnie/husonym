@@ -282,6 +282,108 @@ func Test_Current(t *testing.T) {
 	})
 }
 
+// A Result nobody filled in must not read as a key that was accepted.
+func Test_Outcome_TheZeroValueIsNoOutcome(t *testing.T) {
+	var empty Result
+	for _, outcome := range []Outcome{Accepted, Unchanged, RefusedOlder, RefusedInvalid} {
+		require.NotEqual(t, outcome, empty.Outcome)
+	}
+}
+
+// A key that a door holds and that is not valid is remembered with its reason, so that it can
+// be shown where the instance says it has no license: a key truncated in the values of a
+// deployment otherwise reads as no key at all.
+func Test_DoorProblem(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	t.Run("nothing was offered", func(t *testing.T) {
+		require.Empty(t, newFixture(t, false).store.DoorProblem())
+	})
+
+	t.Run("an invalid key of a door is told with its door and its reason, never its value", func(t *testing.T) {
+		for origin, named := range map[Origin]string{
+			OriginEnvironment: "EE_LICENSE",
+			OriginFile:        "EE_LICENSE_FILE",
+		} {
+			f := newFixture(t, false)
+
+			res, err := f.store.Offer(ctx, "not-a-key", origin, nil)
+			require.NoError(t, err)
+
+			problem := f.store.DoorProblem()
+			require.Contains(t, problem, named)
+			require.Contains(t, problem, res.Reason)
+			require.NotContains(t, problem, "not-a-key")
+		}
+	})
+
+	t.Run("a key pasted in the interface is no door: its refusal was answered to who pasted it", func(t *testing.T) {
+		f := newFixture(t, false)
+
+		_, err := f.store.Offer(ctx, "not-a-key", OriginInterface, nil)
+		require.NoError(t, err)
+
+		require.Empty(t, f.store.DoorProblem())
+	})
+
+	t.Run("a key older than the one in force is not a problem to show", func(t *testing.T) {
+		f := newFixture(t, true)
+		newMemoryTable(f)
+		_, err := f.store.Offer(ctx, signedKey(t, f.priv, now, now.Add(time.Hour)), OriginInterface, nil)
+		require.NoError(t, err)
+
+		res, err := f.store.Offer(ctx, signedKey(t, f.priv, now.Add(-time.Hour), now.Add(time.Hour)), OriginEnvironment, nil)
+		require.NoError(t, err)
+		require.Equal(t, RefusedOlder, res.Outcome)
+
+		require.Empty(t, f.store.DoorProblem())
+	})
+
+	t.Run("a door whose key is good again has no problem any more", func(t *testing.T) {
+		f := newFixture(t, true)
+		newMemoryTable(f)
+		_, err := f.store.Offer(ctx, "not-a-key", OriginFile, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, f.store.DoorProblem())
+
+		_, err = f.store.Offer(ctx, signedKey(t, f.priv, now, now.Add(time.Hour)), OriginFile, nil)
+		require.NoError(t, err)
+
+		require.Empty(t, f.store.DoorProblem())
+	})
+
+	t.Run("a key accepted, wherever it came from, clears what the doors were refused", func(t *testing.T) {
+		f := newFixture(t, true)
+		newMemoryTable(f)
+		_, err := f.store.Offer(ctx, "not-a-key", OriginEnvironment, nil)
+		require.NoError(t, err)
+		_, err = f.store.Offer(ctx, "not-a-key-either", OriginFile, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, f.store.DoorProblem())
+
+		res, err := f.store.Offer(ctx, signedKey(t, f.priv, now, now.Add(time.Hour)), OriginInterface, nil)
+		require.NoError(t, err)
+		require.Equal(t, Accepted, res.Outcome)
+
+		require.Empty(t, f.store.DoorProblem())
+	})
+
+	t.Run("a database that does not answer decides nothing and leaves what was known", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		_, err := f.store.Offer(ctx, "not-a-key", OriginEnvironment, nil)
+		require.NoError(t, err)
+		known := f.store.DoorProblem()
+
+		table.failsNext(1)
+		_, err = f.store.Offer(ctx, signedKey(t, f.priv, now, now.Add(time.Hour)), OriginEnvironment, nil)
+		require.Error(t, err)
+
+		require.Equal(t, known, f.store.DoorProblem())
+	})
+}
+
 func Test_Installation(t *testing.T) {
 	t.Run("is where the key of that license came from and when it was stored", func(t *testing.T) {
 		f := newFixture(t, false)

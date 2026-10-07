@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS husonym_api.license_keys (
     REFERENCES husonym_api.users(id)
     ON DELETE SET NULL,
 
-  -- The same key submitted twice is one row.
+  -- A key is stored once: the constraint rejects a second copy of the same value.
   CONSTRAINT license_keys_key_unique UNIQUE (key)
 );
 

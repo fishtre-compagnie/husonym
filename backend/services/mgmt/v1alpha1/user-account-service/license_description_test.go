@@ -40,6 +40,12 @@ type installationsStore struct {
 	rows  map[string]*licensestore.Installation
 	err   error
 	asked []string
+	// doorProblem is why the key of a door was refused, set before the store is used.
+	doorProblem string
+}
+
+func (s *installationsStore) DoorProblem() string {
+	return s.doorProblem
 }
 
 func (s *installationsStore) Installation(_ context.Context, licenseId string) (*licensestore.Installation, error) {
@@ -139,6 +145,32 @@ func Test_SystemLicense_TellsTheInstallationOfTheKeyItDescribes(t *testing.T) {
 			require.True(t, secondStored.Equal(described.GetInstalledAt().AsTime()))
 		}
 		require.Equal(t, []string{"lic-1", "lic-2"}, f.store.askedFor())
+	})
+
+	t.Run("a renewal that keeps the id of the license is another key: the store is asked again", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.store.rows["lic-1"] = &licensestore.Installation{Origin: licensestore.OriginFile, At: firstStored}
+		issued := func(at time.Time) license.Description {
+			held := validKey("lic-1")
+			held.Key.IssuedAt = at
+			return held
+		}
+
+		f.held.holds(issued(firstStored.Add(-time.Hour)))
+		for range 2 {
+			require.Equal(t, "file", f.service.systemLicense(ctx).GetOrigin())
+		}
+		require.Equal(t, []string{"lic-1"}, f.store.askedFor())
+
+		// The renewal was stored since, under the same id.
+		f.store.rows["lic-1"] = &licensestore.Installation{Origin: licensestore.OriginInterface, At: secondStored}
+		f.held.holds(issued(secondStored.Add(-time.Hour)))
+		for range 2 {
+			described := f.service.systemLicense(ctx)
+			require.Equal(t, "interface", described.GetOrigin())
+			require.True(t, secondStored.Equal(described.GetInstalledAt().AsTime()))
+		}
+		require.Equal(t, []string{"lic-1", "lic-1"}, f.store.askedFor())
 	})
 
 	t.Run("a store that does not answer leaves the two fields empty, and is asked again", func(t *testing.T) {
@@ -257,6 +289,37 @@ func Test_SystemLicense_Problem(t *testing.T) {
 		f := newDescriptionFixture()
 		require.Nil(t, f.service.systemLicense(ctx).Problem)
 	})
+
+	// A key truncated in the settings of the deployment is refused by the store, and the
+	// process then holds no key and has nothing to say of it: the reason the store kept is told.
+	t.Run("without a key, the key a door was refused is told", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.store.doorProblem = "the license key given in EE_LICENSE is not valid: not valid base64"
+
+		described := f.service.systemLicense(ctx)
+
+		require.Equal(t, "none", described.GetState())
+		require.Equal(t, "the license key given in EE_LICENSE is not valid: not valid base64", described.GetProblem())
+	})
+
+	t.Run("the problem of the key the process tried to read comes first", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.store.doorProblem = "the license key given in EE_LICENSE is not valid: not valid base64"
+		f.held.holds(license.Description{
+			State:   license.StateNone,
+			Problem: fmt.Errorf("%w: %w", license.ErrKeyNotLoaded, errors.New("connection reset")),
+		})
+
+		require.Equal(t, "the license key could not be loaded", f.service.systemLicense(ctx).GetProblem())
+	})
+
+	t.Run("with a key in place, what a door was refused is not a problem of the license", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.store.doorProblem = "the license key given in EE_LICENSE is not valid: not valid base64"
+		f.held.holds(validKey("lic-1"))
+
+		require.Nil(t, f.service.systemLicense(ctx).Problem)
+	})
 }
 
 func Test_LicenseAfterOffer(t *testing.T) {
@@ -283,7 +346,9 @@ func Test_LicenseAfterOffer(t *testing.T) {
 		require.Equal(t, 1, f.refreshes)
 	})
 
-	t.Run("the key already in force is answered without reading anything again", func(t *testing.T) {
+	// On an instance of the API that has not read the key yet, giving the key again is what
+	// makes it in force there at once: the key is read again, as after it was accepted.
+	t.Run("the key already in force is read again before the answer", func(t *testing.T) {
 		f := newDescriptionFixture()
 		f.held.holds(validKey("lic-1"))
 
@@ -291,6 +356,28 @@ func Test_LicenseAfterOffer(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, "valid", described.GetState())
+		require.Equal(t, 1, f.refreshes)
+	})
+
+	t.Run("the key already in force that cannot be read again is answered, not failed", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.refreshErr = errors.New("connection reset")
+		f.held.holds(validKey("lic-1"))
+
+		described, err := f.service.licenseAfterOffer(ctx, &licensestore.Result{Outcome: licensestore.Unchanged})
+
+		require.NoError(t, err)
+		require.Equal(t, "valid", described.GetState())
+	})
+
+	t.Run("a result that says nothing is not a key that was taken", func(t *testing.T) {
+		f := newDescriptionFixture()
+		f.held.holds(validKey("lic-1"))
+
+		described, err := f.service.licenseAfterOffer(ctx, &licensestore.Result{})
+
+		require.Nil(t, described)
+		require.Error(t, err)
 		require.Zero(t, f.refreshes)
 	})
 

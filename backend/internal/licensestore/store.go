@@ -6,7 +6,9 @@ package licensestore
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -30,9 +32,11 @@ const (
 // Outcome is what the rule decided about an offered key.
 type Outcome int
 
+// The outcomes start at one: the zero value is none of them, so that a Result nobody filled in
+// does not read as a key that was accepted.
 const (
 	// Accepted: the key was stored and is now the one in force.
-	Accepted Outcome = iota
+	Accepted Outcome = iota + 1
 	// Unchanged: the key is the one already in force.
 	Unchanged
 	// RefusedOlder: the key was not issued after the one in force.
@@ -53,10 +57,60 @@ type Result struct {
 type Store struct {
 	db   *husonymdb.HusonymDb
 	ring license.Keyring
+
+	// doorProblems is why the key each door holds was last refused as invalid, in the memory
+	// of this process alone. A door is where a key is offered with nobody to read the answer:
+	// the variable and the file.
+	doorMu       sync.Mutex
+	doorProblems map[Origin]string
 }
 
 func New(db *husonymdb.HusonymDb, ring license.Keyring) *Store {
-	return &Store{db: db, ring: ring}
+	return &Store{db: db, ring: ring, doorProblems: map[Origin]string{}}
+}
+
+// doors are the origins that offer a key with nobody to read the answer, in the order their
+// problems are told; doorSettings names the setting each one reads.
+var (
+	doors        = []Origin{OriginFile, OriginEnvironment}
+	doorSettings = map[Origin]string{
+		OriginFile:        "EE_LICENSE_FILE",
+		OriginEnvironment: "EE_LICENSE",
+	}
+)
+
+// DoorProblem tells why the key a door holds was refused as invalid the last time it was
+// offered, or nothing. It is for the description of an instance that holds no key: a key
+// truncated in the settings of a deployment would otherwise read as no key at all. A key older
+// than the one in force is no problem, and a key that was accepted since, wherever it came
+// from, clears everything. The reason never contains a key value.
+func (s *Store) DoorProblem() string {
+	s.doorMu.Lock()
+	defer s.doorMu.Unlock()
+	for _, door := range doors {
+		if reason, ok := s.doorProblems[door]; ok {
+			return fmt.Sprintf("the license key given in %s is not valid: %s", doorSettings[door], reason)
+		}
+	}
+	return ""
+}
+
+// rememberDoor keeps what the store decided about the key of a door.
+func (s *Store) rememberDoor(origin Origin, result *Result) {
+	s.doorMu.Lock()
+	defer s.doorMu.Unlock()
+	if result.Outcome == Accepted {
+		clear(s.doorProblems)
+		return
+	}
+	if !slices.Contains(doors, origin) {
+		return
+	}
+	if result.Outcome == RefusedInvalid {
+		s.doorProblems[origin] = result.Reason
+		return
+	}
+	delete(s.doorProblems, origin)
 }
 
 const environmentPrefix = "EE_LICENSE="
@@ -77,6 +131,16 @@ func Clean(value string) string {
 // Offer puts a key forward as the one in force. A refusal is a Result; the error is for a
 // database that does not answer, which says nothing about the key.
 func (s *Store) Offer(ctx context.Context, value string, origin Origin, userId *pgtype.UUID) (*Result, error) {
+	result, err := s.decide(ctx, value, origin, userId)
+	if err != nil {
+		return nil, err
+	}
+	s.rememberDoor(origin, result)
+	return result, nil
+}
+
+// decide applies the rule to an offered key, and stores the key it accepts.
+func (s *Store) decide(ctx context.Context, value string, origin Origin, userId *pgtype.UUID) (*Result, error) {
 	value = Clean(value)
 	if value == "" {
 		return &Result{Outcome: RefusedInvalid, Reason: "no license key was given"}, nil

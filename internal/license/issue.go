@@ -88,7 +88,7 @@ func (r *IssueRequest) validate() error {
 }
 
 // featureProblems checks the feature list: a typo in a name would otherwise sign a key that
-// silently allows less than was sold.
+// silently allows less than was intended.
 func (r *IssueRequest) featureProblems() []string {
 	var problems []string
 	seen := map[string]bool{}

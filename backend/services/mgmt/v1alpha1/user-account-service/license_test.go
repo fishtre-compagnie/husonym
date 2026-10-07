@@ -15,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -104,12 +105,13 @@ func (w *licenseWorld) viewer(ctx context.Context, t *testing.T) mgmtv1alpha1con
 	require.NoError(t, err)
 	require.NoError(t, w.api.HusonymQuerier.CreateAccountUserAssociation(ctx, w.api.Pgcontainer.DB,
 		db_queries.CreateAccountUserAssociationParams{AccountID: accountUuid, UserID: viewerUuid}))
-	_, err = w.admin.SetUserRole(ctx, connect.NewRequest(&mgmtv1alpha1.SetUserRoleRequest{
-		AccountId: w.accountId,
-		UserId:    viewerId,
-		Role:      mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER,
-	}))
+	// The role is written directly too: giving a role other than administrator through the API
+	// asks for the rbac feature, and this world starts without a license in force.
+	roles, err := rbac.New(ctx, w.api.Pgcontainer.DB, testutil.GetTestLogger(t))
 	require.NoError(t, err)
+	require.NoError(t, roles.SetRole(
+		ctx, rbac.NewUser(viewerId), rbac.NewAccount(w.accountId), mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER,
+	))
 	return viewer
 }
 
