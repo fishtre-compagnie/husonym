@@ -61,7 +61,12 @@ There are two ways to offer a key:
   older and invalid are all answers), then no more; a key accepted that way is in force at
   once. Each offer through a door, and each read of the key in force, is bound to ten
   seconds, so a database that accepts the connection and says nothing hangs neither the
-  start nor a refresh.
+  start nor a refresh. A key of a door that is refused as **invalid** has nobody to read the
+  refusal: the store keeps its reason in memory (`Store.DoorProblem`), and
+  `GetSystemInformation` tells it as the `problem` of an instance that holds no key, so
+  that a key truncated in the settings of a deployment shows its reason on the License page
+  instead of "no license". A key older than the one in force is not such a problem, and a
+  key accepted since, wherever it came from, clears it.
 - **The License page** of the web app, and the RPC behind it,
   `UserAccountService.SetSystemLicense`, with origin `interface`. The call is not gated by
   the license itself: it is how an instance without a valid one gets one.
@@ -99,11 +104,14 @@ seconds. A worker that took work before that would believe there is no license w
 API, which holds one, starts runs. Both then refresh once a minute in the background
 (`RefreshEvery`). A key stored by
 another API instance, or through the interface, therefore reaches every process within a
-minute; the API that took a key through `SetSystemLicense` refreshes at once. A value that
+minute; the API that took a key through `SetSystemLicense` refreshes at once, and so does
+one that is given the key already in force (on an instance that has not refreshed yet,
+pasting the key again is then what makes it in force there). A failed refresh is logged
+and never fails the call. A value that
 cannot be loaded or verified is logged, kept as `Problem()`, and never replaces the key
 already in place; a loader that has nothing to give does not take the key away either, so a
 database or an API that does not answer leaves the last verified key in force. A load cut
-short by a shutdown (a cancelled context) is neither logged nor kept; one that runs past its
+short by a shutdown (a canceled context) is neither logged nor kept; one that runs past its
 deadline is a problem like any other.
 
 The job-hooks activity is the one place where a worker without the license would have run
@@ -209,11 +217,11 @@ license: a feature is never granted by a license that is not in force.
 | `pii_detection` | creating or changing a PII detection job; the PII detection call on a connection | a job of that type does not start; the workflow of a run that a schedule started fails |
 | `custom_transformers` | creating or modifying a user-defined transformer; trying a JavaScript rule; JavaScript or a user-defined transformer in a job's mappings; an anonymization call (`AnonymizeSingle`, `AnonymizeMany`) or a column preview that carries one, at top level, as a default transformer or among the anonymizers of a PII text | a job that maps one does not start |
 | `subsetting` | setting a WHERE clause on a table of the source (clearing them stays possible) | a job with a WHERE clause does not start |
-| `scheduling` | setting a cron schedule, resuming a paused schedule | none: see the known limits |
+| `scheduling` | setting a cron schedule, resuming a paused schedule; the placeholder cron an unscheduled job is stored with (`job_util.UnscheduledCron`) is not a schedule, so a client that sends back a job as it read it is not asked for the feature | none: see the known limits |
 | `mapping_review` | reviewing and applying mapping changes, setting transformers on them | none: the reconciliation a run does is not review |
 | `api_keys` | creating and regenerating an API key | none: existing keys keep authenticating |
 | `mcp` | none: the gate is in the CLI's MCP server | tool calls of the MCP server are refused |
-| `rbac` | giving a member a role other than administrator | none: existing roles keep applying |
+| `rbac` | giving a member a role other than administrator. An invitation that names no role gives the "job viewer" role when it is accepted, with or without the feature; without it, the administrator role is the only one that can be assigned afterwards | none: existing roles keep applying |
 | `sso` | declaring, or trying, the OIDC provider of an account that has none yet | none: a declared provider keeps signing in, and can be replaced and tried whatever the license |
 | `run_logs` | none | under a license in force that lacks it, the logs of a run are not served (`GetJobRunLogs` and `GetJobRunLogsStream`); under no license in force they are served |
 
@@ -228,9 +236,18 @@ The semantics of the list in a key (`Key.HasFeature`):
 
 ### What a closed feature does
 
-- It cannot be configured: the API answers `permission_denied` with
-  `this license does not include <feature>`. The message names the feature, never a plan,
-  and never the key. The web app shows the actions of the feature disabled.
+- It cannot be configured: the API answers `this license does not include <feature>`
+  (`license.NotIncludedMessage`, the one place the sentence is built). The message names
+  the feature, never a plan, and never the key. The code is `permission_denied` almost
+  everywhere, not everywhere: `AnonymizeMany` keeps the `unimplemented` code it always
+  answered a license without PII text with, the sentence being the reason it gives. When
+  no license is in force the answer is `account does not have an active license`
+  (`license.NotInForceMessage`) rather than a feature named as missing, since no feature is
+  included then; the MCP server of the CLI says `no license is in force on this instance`.
+- The web app shows most actions of the feature disabled, with a notice. It does not
+  disable all of them: some are only refused by the API, with the message above (a
+  JavaScript or user-defined transformer picked in a mapping, the trial of a rule, starting
+  a job).
 - A job that **uses** it does not start. A job uses a feature when it has an enabled hook
   (`job_hooks`), maps PII text (`pii_text`), maps a custom transformer (`custom_transformers`)
   including JavaScript or a user-defined transformer nested inside the anonymizers of a PII
@@ -273,8 +290,8 @@ Said plainly, so nobody relies on more than is there:
   are refused; a schedule that already runs keeps firing. A manual run and a scheduled run
   are the same Temporal action, so the start of a run cannot tell them apart.
 - **`mcp` is gated in the CLI's MCP server**, not in the API: the server has no license of
-  its own and asks the API (`GetSystemInformation`, kept for a minute) before each tool
-  call.
+  its own and asks the API (`GetSystemInformation`, the answer kept for a minute so that a
+  burst of tool calls reads the API once) before each tool call.
 - **PII text reached through JavaScript code is not detected at start.** The gate reads the
   mappings, not the code. The call to the API that rewrites a value fails during the run,
   and the run fails with it.
@@ -289,8 +306,10 @@ Said plainly, so nobody relies on more than is there:
 A feature is closed in one place per entry point, never by a `Get*` other than the run
 logs under a license in force:
 `User.EnforceFeature` (which refuses `this license does not include <feature>` and asks for
-a valid license first) in the services, `hooks` for the hook procedures, `licensegate`
-for what a job uses, and the worker for the two reads below. The worker reads the license
+a valid license first) in the services, `userdata.FeatureRefusal` (the same answer, for a
+service that holds the license and no user: the anonymization calls, the column preview,
+the content scan of a connection), `hooks` for the hook procedures, `licensegate` for what
+a job uses, and the worker for the two reads below. The worker reads the license
 only through `workflow_shared.LicenseIsValid` and `LicenseAllows`, which record the answer.
 
 ## Usage limits
@@ -336,7 +355,9 @@ synchronization job reads, counted by engine:
   synchronization job.
 - **MySQL and MongoDB**: a connection and a database, the databases being the distinct
   schemas of the job's mappings (for MongoDB, the database names). One connection read
-  through two databases counts twice. A job that maps none counts the connection alone.
+  through two databases counts twice. A job that maps none counts the connection alone,
+  and that is a source of its own: a connection that one job reads without a mapped
+  database and another reads with one counts twice.
 
 A generation job counts for nothing, and neither does a PII detection job. Destinations
 never count. Two connections to the same database count twice: the license counts
@@ -345,21 +366,26 @@ why `GetLicenseUsage` tells an account its own sources and only the total of the
 
 The rule (`JobGate.SourceGuard`): a write is refused when it brings a source the instance
 does not have and the total would then exceed the cap. Two writes go
-through it: `CreateJob` and `UpdateJobSourceConnection`, which carries the mappings. It is never refused at run time. An instance over a lowered cap keeps running
-and can edit its jobs as long as the edit adds no source, so a customer can always come
-back under it.
+through it: `CreateJob` and `UpdateJobSourceConnection`, which carries the mappings. It is
+never refused at run time, and the reconciliation a run does of the mappings with what it
+read does not go through the guard: on MySQL and MongoDB, where the databases counted are
+those of the mappings, a run can therefore add a source without being held. An instance
+over a lowered cap keeps running and can edit its jobs as long as the edit adds no source,
+so a customer can always come back under it.
 
 Two writes made at the same moment cannot both take the last room: the guard holds an
 advisory lock on the sources of the instance until its transaction ends. While it
 holds that lock, a write waits at most five seconds for the row of the job (`lock_timeout`):
-past it the write fails and lets the others pass.
+past it the write fails (`the job is being changed by another request`) and lets the
+others pass. Without a cap there is no guard and no such bound, and that answer is not
+given.
 
 `max_jobs` and `max_connections` remain **per account**.
 
 ## Issuing a license
 
 Use the tool; do not hand-sign a JSON file. See
-[`scripts/gen-license.md`](../../../scripts/gen-license.md) for the full reference.
+[`scripts/gen-license.md`](../../scripts/gen-license.md) for the full reference.
 
 ```console
 go run ./internal/license/cmd/husonym-license issue \
@@ -456,6 +482,12 @@ entry names the test that proves the gate, which must exist. It proves **one rep
 call per feature**, not that every entry point of a feature is gated, and it does not cover
 the run-time reads of the worker: those have their own tests.
 
+The web app lists the features by a list of its own
+(`frontend/apps/web/libs/license/license.ts`, `LICENSE_FEATURES`).
+`Test_AllFeatures_AreTheOnesTheWebAppLists` reads it from that source and fails when it is
+not `license.AllFeatures()`: a feature added here cannot be silently missing from the
+License page.
+
 ## The signing key
 
 The private key is the one asset that cannot be replaced. Lose it and no customer can ever
@@ -529,9 +561,14 @@ behavior kept for runs that predate it.
 history holds markers and recorded values that the previous version does not expect; that
 version replays them, fails on the mismatch, and those runs cannot make progress until the
 worker is upgraded again. Let the open runs finish, or cancel them, before a worker goes
-back. Rolling the API back is safe for the license: the previous version reads its
-environment variable again, and the extra table is ignored or removed by the down
-migration.
+back. Rolling the API back does not break the license, with two cares: the previous
+version reads its environment variable only, so a key installed since from the License
+page has to be put into `EE_LICENSE` or `EE_LICENSE_FILE` first; and the previous worker
+reads its own variable, so the variable stays on the worker for as long as a rollback is
+intended. The extra table is ignored or removed by the down migration. A new worker in
+front of a rolled-back API obtains no key (that API does not serve
+`GetSystemLicenseKey`) and waits, taking no work: upgrade the API before the worker, and
+roll the worker back with it.
 
 ## What this does not protect against
 

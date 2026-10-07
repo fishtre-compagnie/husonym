@@ -44,6 +44,10 @@ and the more recent key is kept.
 account you administer and the key. The answer describes the license now in force; it never
 contains the key.
 
+When authentication is not enabled (`AUTH_ENABLED` is `false`), anyone who can reach the API
+can install a license key, and read the key in force as it was signed. Authentication should
+be enabled in any production environment.
+
 A key replaces the one in force only when it was issued **after** it. An older key, or one
 that was issued at the same moment, is refused with a message that gives both dates, and the
 key in force is not touched. A key that is not valid, or that was not signed by us, is refused
@@ -54,7 +58,8 @@ even when it has already expired, and the instance then behaves as the stages be
 A key that cannot be verified, or a file that is empty or unreadable, is reported in the
 logs and the key already in place stays in force. The API always starts, whatever the
 license: absent, unreadable or expired. In the first two cases it logs the reason and runs
-without a license.
+without a license. When the instance has no license and the key given in `EE_LICENSE` or
+in the file was refused as invalid, the License page shows the reason.
 
 The license is checked on every request and follows the clock. An expiry never needs a
 restart, and neither does a renewal.
@@ -92,7 +97,8 @@ account uses of it.
 - **Limits**: the sources counted against the number the license allows, the sources of
   this account, and the other limits the license carries. Sources are counted for the whole
   instance; the limits on jobs and on connections apply to each account.
-- **License key**: where you install a new key. The key in force is never shown.
+- **License key**: where you install a new key. The key in force is never shown. Pasting
+  the key that is already in force changes nothing, and the page says so.
 
 ## What the license covers
 
@@ -116,9 +122,9 @@ feature includes all of them, and so do all the licenses issued before features 
 | --------------------- | ------------------------------------------------------------------------------------ |
 | `job_hooks`           | hooks that run SQL before and after a job                                            |
 | `account_hooks`       | account hooks, which announce the events of the runs                                 |
-| `pii_text`            | the PII text transformer and the bulk anonymization call                             |
+| `pii_text`            | the PII text transformer, in a job, in the column preview and in the anonymization calls |
 | `pii_detection`       | the PII detection job and the detection call on a connection                         |
-| `custom_transformers` | user-defined transformers, and JavaScript in a mapping or a rule                     |
+| `custom_transformers` | user-defined transformers and JavaScript: in a mapping, in a rule, in the column preview and in the anonymization calls |
 | `subsetting`          | a WHERE clause on a table of the source                                              |
 | `scheduling`          | giving a job a schedule, and resuming a paused one                                   |
 | `mapping_review`      | reviewing and applying the mappings that a run proposes for new columns              |
@@ -130,10 +136,16 @@ feature includes all of them, and so do all the licenses issued before features 
 
 When a feature is not included:
 
-- Its actions are shown disabled in the web app, with a notice that points to the License
-  page.
+- Most of its actions are shown disabled in the web app, with a notice that points to the
+  License page. Some are not disabled and are refused when you use them, with the message
+  below: picking a JavaScript or user-defined transformer in a mapping, trying a rule, and
+  starting a job.
 - The API refuses them with a message that names the feature:
   `this license does not include job_hooks`.
+- With `account_hooks` not included, the account hooks that exist stop announcing the events
+  of the runs. They are kept, and announce again once the license includes the feature.
+- A job hook can be turned off, in the web app too, without `job_hooks`: the job then
+  starts, and the hook keeps its SQL.
 - A job that uses it does not start, whether it is run by hand or by its schedule. A job
   uses a feature when it has an enabled hook, maps the PII text transformer, maps a
   user-defined transformer or JavaScript, has a WHERE clause, or is a PII detection job. The
@@ -141,7 +153,8 @@ When a feature is not included:
   `this job uses features the license does not include: job_hooks, subsetting`.
 - **Reading, stopping, deleting and turning off keep working.** You can still see your jobs,
   runs and configuration, cancel a run, delete a job or a hook, pause a schedule and turn a
-  hook off.
+  hook off. The one read a license can close is the logs of a run, and only a license in
+  force that does not include `run_logs` closes it (see below).
 
 The features `rbac`, `sso` and `api_keys` only forbid making changes: roles that are already
 assigned, an identity provider that is already declared and API keys that already exist
@@ -149,7 +162,9 @@ keep working. An account that has already declared its identity provider can alw
 it, for instance when the provider changes its issuer or its client id, whatever the
 license; only declaring the first one needs `sso`. Likewise `scheduling` is checked when a schedule is set or resumed: a schedule
 that already runs keeps running. The logs of a run are not served when the license in force
-does not include `run_logs`, while the run, its status and its events stay readable.
+does not include `run_logs`, while the run, its status and its events stay readable. Once a
+license has expired, or without any license, the logs of your runs are readable like the
+rest of your history.
 
 ## As your license approaches expiry
 
@@ -178,10 +193,12 @@ never touches your data. The instance keeps starting and serving requests.
 - creating or modifying a hook, and turning a hook back on
 - creating or modifying an Amazon S3 or Google Cloud Storage connection
 
-These are refused with the message `account does not have an active license`. Also
-refused, each with its own message: initializing the schema of a Microsoft SQL Server
-destination, the bulk anonymization call, and the PII text transformer. Features are only
-included while the license is in force: once it is not, none of them is.
+These are refused with the message `account does not have an active license`, and so are
+the bulk anonymization call, the PII text transformer and the content scan of a
+connection. Initializing the schema of a Microsoft SQL Server destination is refused with
+a message of its own. Features are only included while the license is in force: once it
+is not, none of them is, and a refusal says that no license is active rather than naming a
+feature.
 
 **Keeps working:**
 
@@ -190,6 +207,8 @@ included while the license is in force: once it is not, none of them is.
 - pausing a schedule, and turning a hook off
 - cancelling or terminating a run that is already going
 - deleting jobs, hooks and connections
+- signing in through the identity provider your account has declared, and replacing that
+  provider
 
 Runs already in progress when the license expires are not interrupted. One exception: a
 run that maps the PII text transformer asks the API to rewrite each value, and the API
