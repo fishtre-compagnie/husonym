@@ -104,6 +104,16 @@ func test_postgres_automap_athanor(
 
 	runJob()
 
+	// The run left its usage row: it read the seven rows of the two tables, and ended completed.
+	var runs, rowsRead int64
+	var status string
+	require.NoError(t, husonymApi.Pgcontainer.DB.QueryRow(ctx,
+		`SELECT count(*), coalesce(max(status), ''), coalesce(sum(rows_read), 0)
+		 FROM husonym_api.run_usage WHERE job_id = $1`, job.GetId()).Scan(&runs, &status, &rowsRead))
+	require.EqualValues(t, 1, runs)
+	require.Equal(t, "completed", status)
+	require.EqualValues(t, 7, rowsRead)
+
 	resp, err := jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: job.GetId()}))
 	require.NoError(t, err)
 	mapped := map[string]*mgmtv1alpha1.TransformerConfig{}
