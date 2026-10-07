@@ -1,12 +1,16 @@
 package useractivity
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -156,4 +160,64 @@ func Test_Seen_NoStore_DoesNothing(t *testing.T) {
 	var r *Recorder
 	r.Seen(context.Background(), "u1")
 	NewRecorder(nil).Seen(context.Background(), "u1")
+}
+
+// panickingStore panics on its first write and counts the others.
+type panickingStore struct {
+	mu    sync.Mutex
+	calls int
+	wrote chan struct{}
+}
+
+func (p *panickingStore) UserSeen(context.Context, string, time.Time) error {
+	p.mu.Lock()
+	p.calls++
+	first := p.calls == 1
+	p.mu.Unlock()
+	if first {
+		panic("a value that must not be logged")
+	}
+	p.wrote <- struct{}{}
+	return nil
+}
+
+// syncBuffer is a log sink the write may reach while the test reads it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func Test_Seen_AWriteThatPanics_IsLoggedAndTheNextCallRetries(t *testing.T) {
+	var logs syncBuffer
+	s := &panickingStore{wrote: make(chan struct{}, 1)}
+	at := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	r := newTestRecorder(s, &at)
+	ctx := logger_interceptor.SetLoggerContext(t.Context(), slog.New(slog.NewTextHandler(&logs, nil)))
+
+	r.Seen(ctx, "u1")
+	require.Eventually(t, func() bool {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return len(r.seen) == 0 && strings.Contains(logs.String(), "panicked=true")
+	}, 5*time.Second, time.Millisecond)
+	require.NotContains(t, logs.String(), "must not be logged")
+
+	r.Seen(ctx, "u1")
+	select {
+	case <-s.wrote:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the user was not noted again")
+	}
 }

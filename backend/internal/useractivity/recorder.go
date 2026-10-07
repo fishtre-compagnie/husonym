@@ -36,7 +36,8 @@ func NewRecorder(store Store) *Recorder {
 // The users already noted today (UTC) are kept in memory, so that the store is asked once per
 // user per day per replica; the memory is emptied when the day changes. The write runs in its
 // own goroutine, on a context detached from the request and bounded in time. A write that fails
-// is logged and the user is forgotten, to be noted again by a later call.
+// or panics is logged and the user is forgotten, to be noted again by a later call. The value of
+// a panic is not logged, it may hold anything.
 func (r *Recorder) Seen(ctx context.Context, userId string) {
 	if r == nil || r.store == nil || userId == "" {
 		return
@@ -50,6 +51,12 @@ func (r *Recorder) Seen(ctx context.Context, userId string) {
 	go func() {
 		writeCtx, cancel := context.WithTimeout(writeCtx, writeTimeout)
 		defer cancel()
+		defer func() {
+			if recover() != nil {
+				logger.Error("unable to note the day a user was seen", "panicked", true)
+				r.forget(day, userId)
+			}
+		}()
 		if err := r.store.UserSeen(writeCtx, userId, day); err != nil {
 			logger.Warn("unable to note the day a user was seen", "error", err.Error())
 			r.forget(day, userId)

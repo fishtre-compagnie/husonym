@@ -14,6 +14,15 @@ import (
 // so a database or an orchestrator that does not answer would otherwise hold the pass.
 const buildTimeout = 2 * time.Minute
 
+// closedAfter is how long past midnight UTC the day before is taken as closed. A run counts for
+// the day the database recorded its end on, and the clock of this process may differ from the
+// one of the database by seconds: a run recorded at 23:59:59 must be in the report.
+const closedAfter = 5 * time.Minute
+
+// firstPassAfter is how long after it starts the loop makes its first pass, so that a process
+// restarted more often than the interval still prepares its report.
+const firstPassAfter = 2 * time.Minute
+
 // keptMonths is how long a prepared report is kept, counted from the day just prepared.
 const keptMonths = 24
 
@@ -35,19 +44,31 @@ type Preparer struct {
 	store   ReportStore
 	logger  *slog.Logger
 
-	buildTimeout time.Duration
+	buildTimeout   time.Duration
+	firstPassAfter time.Duration
+	now            func() time.Time
 }
 
 func NewPreparer(builder ReportBuilder, store ReportStore, logger *slog.Logger) *Preparer {
-	return &Preparer{builder: builder, store: store, logger: logger, buildTimeout: buildTimeout}
+	return &Preparer{
+		builder: builder, store: store, logger: logger,
+		buildTimeout: buildTimeout, firstPassAfter: firstPassAfter, now: time.Now,
+	}
 }
 
 // PrepareDue prepares the report of yesterday (UTC) when none is stored yet. Only yesterday is
 // prepared: the state of the instance is known at the present only, so a missed day is not made
 // up afterwards. Several replicas may run it at once: the store keeps the first report of a day
 // and leaves the others, so there is one report whichever replica made it.
+//
+// Nothing is prepared in the first minutes of a day: the report of a day is made once, so it
+// waits until every run of that day is sure to be recorded.
 func (p *Preparer) PrepareDue(ctx context.Context, now time.Time) error {
-	day := now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
+	today := now.UTC().Truncate(24 * time.Hour)
+	if now.Sub(today) < closedAfter {
+		return nil
+	}
+	day := today.AddDate(0, 0, -1)
 	dayText := day.Format(time.DateOnly)
 
 	stored, err := p.store.Report(ctx, day)
@@ -96,9 +117,18 @@ func (p *Preparer) PrepareDue(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-// Every prepares at the given interval until ctx is done, the first pass being at the first
-// tick. A pass that fails is logged and the next one tries again.
+// Every prepares soon after it starts, then at the given interval, until ctx is done. A pass
+// that fails is logged and the next one tries again.
 func (p *Preparer) Every(ctx context.Context, every time.Duration) {
+	first := time.NewTimer(p.firstPassAfter)
+	defer first.Stop()
+	select {
+	case <-ctx.Done():
+		return
+	case <-first.C:
+		p.pass(ctx)
+	}
+
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
@@ -106,9 +136,20 @@ func (p *Preparer) Every(ctx context.Context, every time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := p.PrepareDue(ctx, time.Now()); err != nil && ctx.Err() == nil {
-				p.logger.WarnContext(ctx, "could not prepare the usage report of the day", "error", err)
-			}
+			p.pass(ctx)
 		}
+	}
+}
+
+// pass makes one pass of the loop. A panic ends the pass and not the process: the usage report
+// never takes the instance down. The value of the panic is not logged, it may hold anything.
+func (p *Preparer) pass(ctx context.Context) {
+	defer func() {
+		if recover() != nil {
+			p.logger.ErrorContext(ctx, "could not prepare the usage report of the day", "panicked", true)
+		}
+	}()
+	if err := p.PrepareDue(ctx, p.now()); err != nil && ctx.Err() == nil {
+		p.logger.WarnContext(ctx, "could not prepare the usage report of the day", "error", err)
 	}
 }
