@@ -144,6 +144,10 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// What is needed to count the sources of the instance: the source options, the mappings and the
+	// job type of every job. This is the first query of this file that crosses accounts, on purpose:
+	// the license covers the whole instance, so its cap on sources is counted over all of them.
+	ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
 	// Held until the transaction ends, so that two changes of the role of one member in one
@@ -161,6 +165,9 @@ type Querier interface {
 	// Held until the transaction ends, so that two keys given at the same moment, wherever they
 	// are asked, are looked at one after the other: the second sees what the first wrote.
 	LockLicenseKeys(ctx context.Context, db DBTX) error
+	// Held until the transaction ends, so that two sources added at the same moment, wherever they
+	// are asked, are counted one after the other: the second sees what the first wrote.
+	LockLicenseSources(ctx context.Context, db DBTX) error
 	// Holds a user for the rest of the transaction, so that what is created once per user is
 	// decided by one transaction at a time: a second one waits here until the first is done.
 	//

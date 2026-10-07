@@ -432,6 +432,60 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 	return count, err
 }
 
+const listJobSourcesOfInstance = `-- name: ListJobSourcesOfInstance :many
+SELECT id, account_id, connection_options, mappings, jobtype_config
+FROM husonym_api.jobs
+ORDER BY id
+`
+
+type ListJobSourcesOfInstanceRow struct {
+	ID                pgtype.UUID
+	AccountID         pgtype.UUID
+	ConnectionOptions *pg_models.JobSourceOptions
+	Mappings          []*pg_models.JobMapping
+	JobtypeConfig     []byte
+}
+
+// What is needed to count the sources of the instance: the source options, the mappings and the
+// job type of every job. This is the first query of this file that crosses accounts, on purpose:
+// the license covers the whole instance, so its cap on sources is counted over all of them.
+func (q *Queries) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error) {
+	rows, err := db.Query(ctx, listJobSourcesOfInstance)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListJobSourcesOfInstanceRow
+	for rows.Next() {
+		var i ListJobSourcesOfInstanceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ConnectionOptions,
+			&i.Mappings,
+			&i.JobtypeConfig,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockLicenseSources = `-- name: LockLicenseSources :exec
+SELECT pg_advisory_xact_lock(hashtextextended('license_sources', 0))
+`
+
+// Held until the transaction ends, so that two sources added at the same moment, wherever they
+// are asked, are counted one after the other: the second sees what the first wrote.
+func (q *Queries) LockLicenseSources(ctx context.Context, db DBTX) error {
+	_, err := db.Exec(ctx, lockLicenseSources)
+	return err
+}
+
 const removeJobById = `-- name: RemoveJobById :exec
 DELETE FROM husonym_api.jobs WHERE id = $1
 `

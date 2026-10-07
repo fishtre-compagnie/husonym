@@ -7067,6 +7067,74 @@ func (_c *MockQuerier_IsUserInAccountApiKey_Call) RunAndReturn(run func(ctx cont
 	return _c
 }
 
+// ListJobSourcesOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListJobSourcesOfInstance")
+	}
+
+	var r0 []ListJobSourcesOfInstanceRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]ListJobSourcesOfInstanceRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []ListJobSourcesOfInstanceRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListJobSourcesOfInstanceRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListJobSourcesOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListJobSourcesOfInstance'
+type MockQuerier_ListJobSourcesOfInstance_Call struct {
+	*mock.Call
+}
+
+// ListJobSourcesOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) ListJobSourcesOfInstance(ctx any, db any) *MockQuerier_ListJobSourcesOfInstance_Call {
+	return &MockQuerier_ListJobSourcesOfInstance_Call{Call: _e.mock.On("ListJobSourcesOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_ListJobSourcesOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_ListJobSourcesOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListJobSourcesOfInstance_Call) Return(listJobSourcesOfInstanceRows []ListJobSourcesOfInstanceRow, err error) *MockQuerier_ListJobSourcesOfInstance_Call {
+	_c.Call.Return(listJobSourcesOfInstanceRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListJobSourcesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)) *MockQuerier_ListJobSourcesOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LockAccountRole provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -7246,6 +7314,63 @@ func (_c *MockQuerier_LockLicenseKeys_Call) Return(err error) *MockQuerier_LockL
 }
 
 func (_c *MockQuerier_LockLicenseKeys_Call) RunAndReturn(run func(ctx context.Context, db DBTX) error) *MockQuerier_LockLicenseKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LockLicenseSources provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockLicenseSources(ctx context.Context, db DBTX) error {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockLicenseSources")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) error); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_LockLicenseSources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockLicenseSources'
+type MockQuerier_LockLicenseSources_Call struct {
+	*mock.Call
+}
+
+// LockLicenseSources is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) LockLicenseSources(ctx any, db any) *MockQuerier_LockLicenseSources_Call {
+	return &MockQuerier_LockLicenseSources_Call{Call: _e.mock.On("LockLicenseSources", ctx, db)}
+}
+
+func (_c *MockQuerier_LockLicenseSources_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_LockLicenseSources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockLicenseSources_Call) Return(err error) *MockQuerier_LockLicenseSources_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_LockLicenseSources_Call) RunAndReturn(run func(ctx context.Context, db DBTX) error) *MockQuerier_LockLicenseSources_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -189,3 +189,16 @@ SELECT EXISTS (
         WHERE connection_id = sqlc.arg('connectionId')
     ) all_connections
 );
+
+-- Held until the transaction ends, so that two sources added at the same moment, wherever they
+-- are asked, are counted one after the other: the second sees what the first wrote.
+-- name: LockLicenseSources :exec
+SELECT pg_advisory_xact_lock(hashtextextended('license_sources', 0));
+
+-- What is needed to count the sources of the instance: the source options, the mappings and the
+-- job type of every job. This is the first query of this file that crosses accounts, on purpose:
+-- the license covers the whole instance, so its cap on sources is counted over all of them.
+-- name: ListJobSourcesOfInstance :many
+SELECT id, account_id, connection_options, mappings, jobtype_config
+FROM husonym_api.jobs
+ORDER BY id;
