@@ -27,13 +27,32 @@ worker of the previous version picks it up.
 
 ### License
 
-The API and the worker start whatever the license, and read it on every request. The
-worker no longer reads a license variable: it asks the API for the key. If `EE_LICENSE` or
-`EE_LICENSE_FILE` was set only on the worker, it must now be set on the API, because the
+The API and the worker start whatever the license, and read it on every request.
+
+The key in force is now kept in the database of the API. At its first start, the API takes
+the key from `EE_LICENSE` or `EE_LICENSE_FILE` into the database, and from then on the
+database holds it. The variables stay useful as ways to install a newer key: the API
+offers what they hold at each start (and the file again when its content changes), and
+keeps a key only when it is newer than the one it holds. A key can also be installed from the
+License page of the settings. The upgrade adds one table to the database, through a
+migration that can be reversed.
+
+The worker no longer reads a license variable: it asks the API for the key. If `EE_LICENSE`
+or `EE_LICENSE_FILE` was set only on the worker, it must now be set on the API, because the
 worker takes the key from the API; the worker keeps running without a license until then.
-See
-[Licensing](/deploy/licensing) for what a valid license is needed for, and for
-`EE_LICENSE_FILE`, which lets a renewed license take effect without a restart.
+
+Keys that were issued before this version keep working and allow everything. See
+[Licensing](/deploy/licensing) for what a valid license is needed for, for the features and
+the sources a license may limit, and for `EE_LICENSE_FILE`, which lets a renewed license
+take effect without a restart.
+
+**Rolling back.** Once the new worker has started job runs, do not roll the **worker** back
+to the previous version while some of those runs are still open: their history holds
+entries that the previous version does not expect, so they cannot make progress until the
+worker is upgraded again. Let the open runs finish, or cancel them, before rolling a worker
+back. Rolling the **API** back is safe as far as the license goes: the previous version
+reads its environment variable again, and the extra table is ignored, or removed by the
+reverse migration.
 
 ### Roles
 
