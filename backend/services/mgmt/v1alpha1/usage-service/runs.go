@@ -2,7 +2,6 @@ package v1alpha1_usageservice
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -34,7 +33,7 @@ func (s *Service) RecordRunStarted(
 		RunId:     req.Msg.GetRunId(),
 		AccountId: husonymdb.UUIDString(job.AccountID),
 		JobId:     req.Msg.GetJobId(),
-		Kind:      kindOf(&job),
+		Kind:      usagestore.KindOfJob(&job),
 		StartedAt: req.Msg.GetStartedAt().AsTime(),
 	})
 	if err != nil {
@@ -78,7 +77,7 @@ func (s *Service) RecordRunEnded(
 		RunId:         req.Msg.GetRunId(),
 		AccountId:     husonymdb.UUIDString(job.AccountID),
 		JobId:         req.Msg.GetJobId(),
-		Kind:          kindOf(&job),
+		Kind:          usagestore.KindOfJob(&job),
 		StartedAt:     req.Msg.GetStartedAt().AsTime(),
 		EndedAt:       req.Msg.GetEndedAt().AsTime(),
 		Status:        status,
@@ -123,27 +122,6 @@ func (s *Service) jobOf(ctx context.Context, jobId string) (db_queries.HusonymAp
 		return db_queries.HusonymApiJob{}, false, fmt.Errorf("unable to read the job of the run: %w", err)
 	}
 	return job, true, nil
-}
-
-// kindOf says what the job does: detect PII, generate from the options of its source, and
-// otherwise synchronize. A job whose type cannot be read is a synchronization, as the license
-// counts it.
-func kindOf(job *db_queries.HusonymApiJob) usagestore.JobKind {
-	config := &mgmtv1alpha1.JobTypeConfig{}
-	if len(job.JobtypeConfig) > 0 {
-		if err := json.Unmarshal(job.JobtypeConfig, config); err == nil && config.GetPiiDetect() != nil {
-			return usagestore.JobKindPiiDetect
-		}
-	}
-	switch options := job.ConnectionOptions; {
-	case options == nil:
-		return usagestore.JobKindSync
-	case options.AiGenerateOptions != nil:
-		return usagestore.JobKindAiGenerate
-	case options.GenerateOptions != nil:
-		return usagestore.JobKindGenerate
-	}
-	return usagestore.JobKindSync
 }
 
 func statusOf(outcome mgmtv1alpha1.RunOutcome) (usagestore.Status, bool) {

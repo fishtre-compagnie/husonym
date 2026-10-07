@@ -297,32 +297,15 @@ func TestRecordRunEndedOfAGoneJobWithoutARowKeepsNothing(t *testing.T) {
 	require.Empty(t, f.store.ended)
 }
 
-func TestRecordRunStartedGivesTheKindOfEachJob(t *testing.T) {
-	piiDetect := &mgmtv1alpha1.JobTypeConfig{
-		JobType: &mgmtv1alpha1.JobTypeConfig_PiiDetect{PiiDetect: &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{}},
-	}
-	sync := &mgmtv1alpha1.JobTypeConfig{
-		JobType: &mgmtv1alpha1.JobTypeConfig_Sync{Sync: &mgmtv1alpha1.JobTypeConfig_JobTypeSync{}},
-	}
-	for name, tc := range map[string]struct {
-		options *pg_models.JobSourceOptions
-		jobType *mgmtv1alpha1.JobTypeConfig
-		want    usagestore.JobKind
-	}{
-		"a synchronization":       {syncOptions(), sync, usagestore.JobKindSync},
-		"a job with no type":      {syncOptions(), nil, usagestore.JobKindSync},
-		"a job with no source":    {nil, nil, usagestore.JobKindSync},
-		"a generation":            {&pg_models.JobSourceOptions{GenerateOptions: &pg_models.GenerateSourceOptions{}}, sync, usagestore.JobKindGenerate},
-		"a generation by a model": {&pg_models.JobSourceOptions{AiGenerateOptions: &pg_models.AiGenerateSourceOptions{}}, sync, usagestore.JobKindAiGenerate},
-		"a detection of PII":      {syncOptions(), piiDetect, usagestore.JobKindPiiDetect},
-	} {
-		t.Run(name, func(t *testing.T) {
-			f := newFixture(t, userdata.WorkerOnly{})
-			f.storesJob(t, tc.options, tc.jobType)
-			_, err := f.svc.RecordRunStarted(context.Background(), started())
-			require.NoError(t, err)
-			require.Len(t, f.store.started, 1)
-			require.Equal(t, tc.want, f.store.started[0].Kind)
-		})
-	}
+// What each job is, is decided by usagestore.KindOfJob and tested there: here, that the service
+// asks it rather than assume a synchronization.
+func TestRecordRunStartedGivesTheKindOfTheJob(t *testing.T) {
+	f := newFixture(t, userdata.WorkerOnly{})
+	f.storesJob(t, &pg_models.JobSourceOptions{GenerateOptions: &pg_models.GenerateSourceOptions{}}, nil)
+
+	_, err := f.svc.RecordRunStarted(context.Background(), started())
+
+	require.NoError(t, err)
+	require.Len(t, f.store.started, 1)
+	require.Equal(t, usagestore.JobKindGenerate, f.store.started[0].Kind)
 }

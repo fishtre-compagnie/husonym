@@ -327,6 +327,138 @@ func (_c *MockQuerier_ConvertPersonalAccountToTeam_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// CountAccountOidcProviders provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountAccountOidcProviders(ctx context.Context, db DBTX) (int64, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountAccountOidcProviders")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (int64, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) int64); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountAccountOidcProviders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountAccountOidcProviders'
+type MockQuerier_CountAccountOidcProviders_Call struct {
+	*mock.Call
+}
+
+// CountAccountOidcProviders is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) CountAccountOidcProviders(ctx any, db any) *MockQuerier_CountAccountOidcProviders_Call {
+	return &MockQuerier_CountAccountOidcProviders_Call{Call: _e.mock.On("CountAccountOidcProviders", ctx, db)}
+}
+
+func (_c *MockQuerier_CountAccountOidcProviders_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountAccountOidcProviders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountAccountOidcProviders_Call) Return(n int64, err error) *MockQuerier_CountAccountOidcProviders_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountAccountOidcProviders_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (int64, error)) *MockQuerier_CountAccountOidcProviders_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountAccounts provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountAccounts(ctx context.Context, db DBTX) (int64, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountAccounts")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (int64, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) int64); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountAccounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountAccounts'
+type MockQuerier_CountAccounts_Call struct {
+	*mock.Call
+}
+
+// CountAccounts is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) CountAccounts(ctx any, db any) *MockQuerier_CountAccounts_Call {
+	return &MockQuerier_CountAccounts_Call{Call: _e.mock.On("CountAccounts", ctx, db)}
+}
+
+func (_c *MockQuerier_CountAccounts_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountAccounts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountAccounts_Call) Return(n int64, err error) *MockQuerier_CountAccounts_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountAccounts_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (int64, error)) *MockQuerier_CountAccounts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountOtherAccountsDeclaringIssuer provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -547,6 +679,140 @@ func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// CountSourceColumnTypesOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountSourceColumnTypesOfInstance")
+	}
+
+	var r0 []CountSourceColumnTypesOfInstanceRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]CountSourceColumnTypesOfInstanceRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []CountSourceColumnTypesOfInstanceRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]CountSourceColumnTypesOfInstanceRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountSourceColumnTypesOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountSourceColumnTypesOfInstance'
+type MockQuerier_CountSourceColumnTypesOfInstance_Call struct {
+	*mock.Call
+}
+
+// CountSourceColumnTypesOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) CountSourceColumnTypesOfInstance(ctx any, db any) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+	return &MockQuerier_CountSourceColumnTypesOfInstance_Call{Call: _e.mock.On("CountSourceColumnTypesOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Return(countSourceColumnTypesOfInstanceRows []CountSourceColumnTypesOfInstanceRow, err error) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+	_c.Call.Return(countSourceColumnTypesOfInstanceRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountUserDefinedTransformersOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountUserDefinedTransformersOfInstance(ctx context.Context, db DBTX) (int64, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountUserDefinedTransformersOfInstance")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (int64, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) int64); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountUserDefinedTransformersOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountUserDefinedTransformersOfInstance'
+type MockQuerier_CountUserDefinedTransformersOfInstance_Call struct {
+	*mock.Call
+}
+
+// CountUserDefinedTransformersOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) CountUserDefinedTransformersOfInstance(ctx any, db any) *MockQuerier_CountUserDefinedTransformersOfInstance_Call {
+	return &MockQuerier_CountUserDefinedTransformersOfInstance_Call{Call: _e.mock.On("CountUserDefinedTransformersOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_CountUserDefinedTransformersOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountUserDefinedTransformersOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountUserDefinedTransformersOfInstance_Call) Return(n int64, err error) *MockQuerier_CountUserDefinedTransformersOfInstance_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountUserDefinedTransformersOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (int64, error)) *MockQuerier_CountUserDefinedTransformersOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountUserDefinedTransformersOutsideAccount provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -615,6 +881,72 @@ func (_c *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call) Return(n 
 }
 
 func (_c *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error)) *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountUsersOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountUsersOfInstance(ctx context.Context, db DBTX) (int64, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountUsersOfInstance")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (int64, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) int64); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountUsersOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountUsersOfInstance'
+type MockQuerier_CountUsersOfInstance_Call struct {
+	*mock.Call
+}
+
+// CountUsersOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) CountUsersOfInstance(ctx any, db any) *MockQuerier_CountUsersOfInstance_Call {
+	return &MockQuerier_CountUsersOfInstance_Call{Call: _e.mock.On("CountUsersOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_CountUsersOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountUsersOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountUsersOfInstance_Call) Return(n int64, err error) *MockQuerier_CountUsersOfInstance_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountUsersOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (int64, error)) *MockQuerier_CountUsersOfInstance_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7749,6 +8081,142 @@ func (_c *MockQuerier_IsUserInAccountApiKey_Call) RunAndReturn(run func(ctx cont
 	return _c
 }
 
+// ListConnectionsOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListConnectionsOfInstance(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListConnectionsOfInstance")
+	}
+
+	var r0 []ListConnectionsOfInstanceRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]ListConnectionsOfInstanceRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []ListConnectionsOfInstanceRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListConnectionsOfInstanceRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListConnectionsOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListConnectionsOfInstance'
+type MockQuerier_ListConnectionsOfInstance_Call struct {
+	*mock.Call
+}
+
+// ListConnectionsOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) ListConnectionsOfInstance(ctx any, db any) *MockQuerier_ListConnectionsOfInstance_Call {
+	return &MockQuerier_ListConnectionsOfInstance_Call{Call: _e.mock.On("ListConnectionsOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_ListConnectionsOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_ListConnectionsOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListConnectionsOfInstance_Call) Return(listConnectionsOfInstanceRows []ListConnectionsOfInstanceRow, err error) *MockQuerier_ListConnectionsOfInstance_Call {
+	_c.Call.Return(listConnectionsOfInstanceRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListConnectionsOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error)) *MockQuerier_ListConnectionsOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListJobDestinationsOfInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListJobDestinationsOfInstance(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListJobDestinationsOfInstance")
+	}
+
+	var r0 []ListJobDestinationsOfInstanceRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]ListJobDestinationsOfInstanceRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []ListJobDestinationsOfInstanceRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListJobDestinationsOfInstanceRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListJobDestinationsOfInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListJobDestinationsOfInstance'
+type MockQuerier_ListJobDestinationsOfInstance_Call struct {
+	*mock.Call
+}
+
+// ListJobDestinationsOfInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) ListJobDestinationsOfInstance(ctx any, db any) *MockQuerier_ListJobDestinationsOfInstance_Call {
+	return &MockQuerier_ListJobDestinationsOfInstance_Call{Call: _e.mock.On("ListJobDestinationsOfInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_ListJobDestinationsOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_ListJobDestinationsOfInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListJobDestinationsOfInstance_Call) Return(listJobDestinationsOfInstanceRows []ListJobDestinationsOfInstanceRow, err error) *MockQuerier_ListJobDestinationsOfInstance_Call {
+	_c.Call.Return(listJobDestinationsOfInstanceRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListJobDestinationsOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error)) *MockQuerier_ListJobDestinationsOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListJobSourcesOfInstance provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error) {
 	ret := _mock.Called(ctx, db)
@@ -7813,6 +8281,74 @@ func (_c *MockQuerier_ListJobSourcesOfInstance_Call) Return(listJobSourcesOfInst
 }
 
 func (_c *MockQuerier_ListJobSourcesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)) *MockQuerier_ListJobSourcesOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListJobsOfInstanceForUsage provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListJobsOfInstanceForUsage(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListJobsOfInstanceForUsage")
+	}
+
+	var r0 []ListJobsOfInstanceForUsageRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]ListJobsOfInstanceForUsageRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []ListJobsOfInstanceForUsageRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListJobsOfInstanceForUsageRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListJobsOfInstanceForUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListJobsOfInstanceForUsage'
+type MockQuerier_ListJobsOfInstanceForUsage_Call struct {
+	*mock.Call
+}
+
+// ListJobsOfInstanceForUsage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) ListJobsOfInstanceForUsage(ctx any, db any) *MockQuerier_ListJobsOfInstanceForUsage_Call {
+	return &MockQuerier_ListJobsOfInstanceForUsage_Call{Call: _e.mock.On("ListJobsOfInstanceForUsage", ctx, db)}
+}
+
+func (_c *MockQuerier_ListJobsOfInstanceForUsage_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_ListJobsOfInstanceForUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListJobsOfInstanceForUsage_Call) Return(listJobsOfInstanceForUsageRows []ListJobsOfInstanceForUsageRow, err error) *MockQuerier_ListJobsOfInstanceForUsage_Call {
+	_c.Call.Return(listJobsOfInstanceForUsageRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListJobsOfInstanceForUsage_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error)) *MockQuerier_ListJobsOfInstanceForUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }

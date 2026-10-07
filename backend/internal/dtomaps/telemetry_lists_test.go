@@ -1,4 +1,4 @@
-package v1alpha1_connectionservice
+package dtomaps
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 )
 
-// The usage report counts connections by the names connectionTypeName gives their types; a type
+// The usage report counts connections by the names ConnectionTypeName gives their types; a type
 // named here and missing from the report's list would be counted as other.
 func Test_TheUsageReportConnectionTypes_AreTheNamesOfTheService(t *testing.T) {
 	configs := []*mgmtv1alpha1.ConnectionConfig{
@@ -24,11 +24,11 @@ func Test_TheUsageReportConnectionTypes_AreTheNamesOfTheService(t *testing.T) {
 	}
 	names := make([]string, 0, len(configs)+1)
 	for _, cfg := range configs {
-		name := connectionTypeName(cfg)
+		name := ConnectionTypeName(cfg)
 		require.NotEqual(t, "unknown", name)
 		require.Equal(t, name, telemetry.ConnectionType(name))
 		names = append(names, name)
 	}
 	require.ElementsMatch(t, append(names, "other"), telemetry.ConnectionTypes)
-	require.Equal(t, "other", telemetry.ConnectionType(connectionTypeName(&mgmtv1alpha1.ConnectionConfig{})))
+	require.Equal(t, "other", telemetry.ConnectionType(ConnectionTypeName(&mgmtv1alpha1.ConnectionConfig{})))
 }

@@ -34,7 +34,7 @@ func FeaturesUsedBy(ctx context.Context, facts JobFacts, lookup TransformerLooku
 	used := map[license.Feature]bool{
 		license.FeatureJobHooks:     facts.HasEnabledHooks,
 		license.FeaturePiiDetection: job.GetJobType().GetPiiDetect() != nil,
-		license.FeatureSubsetting:   usesSubsetting(job),
+		license.FeatureSubsetting:   UsesSubsetting(job),
 	}
 
 	stored := map[string]*mgmtv1alpha1.TransformerConfig{}
@@ -118,9 +118,9 @@ func transformerConfigsOf(job *mgmtv1alpha1.Job) []*mgmtv1alpha1.TransformerConf
 	return configs
 }
 
-// usesSubsetting reports whether any table of a SQL or DynamoDB source has a WHERE clause. The
+// UsesSubsetting reports whether any table of a SQL or DynamoDB source has a WHERE clause. The
 // foreign-key subset flag alone only follows references, it does not subset.
-func usesSubsetting(job *mgmtv1alpha1.Job) bool {
+func UsesSubsetting(job *mgmtv1alpha1.Job) bool {
 	options := job.GetSource().GetOptions()
 	var clauses []string
 	for _, schema := range options.GetPostgres().GetSchemas() {

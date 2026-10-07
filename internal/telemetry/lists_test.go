@@ -117,6 +117,22 @@ func Test_Roles_AreTheAccountRolesOfTheProto(t *testing.T) {
 	require.Equal(t, "other", Roles[len(Roles)-1])
 }
 
+func Test_Role(t *testing.T) {
+	for role, want := range map[mgmtv1alpha1.AccountRole]string{
+		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN:         "admin",
+		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_DEVELOPER: "job_developer",
+		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED:   "none",
+		mgmtv1alpha1.AccountRole(9999):                      "other",
+	} {
+		require.Equal(t, want, Role(role), role)
+	}
+	for number := range mgmtv1alpha1.AccountRole_name {
+		role := mgmtv1alpha1.AccountRole(number)
+		require.Contains(t, Roles, Role(role))
+		require.NotEqual(t, "other", Role(role), role)
+	}
+}
+
 func Test_TransformerName(t *testing.T) {
 	for source, want := range map[mgmtv1alpha1.TransformerSource]string{
 		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL: "generate_email",

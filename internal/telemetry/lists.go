@@ -155,6 +155,15 @@ func RunStatus(raw string) string { return member(RunStatuses, raw) }
 // LicenseState is the state of the license lifecycle, or other.
 func LicenseState(raw string) string { return member(LicenseStates, raw) }
 
+// Role is the lower-cased name of an account role, none for a user who holds no role, or other.
+// It takes the enum and never a name, as TransformerName does.
+func Role(role mgmtv1alpha1.AccountRole) string {
+	if role == mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED {
+		return "none"
+	}
+	return member(Roles, strings.TrimPrefix(role.String(), "ACCOUNT_ROLE_"))
+}
+
 // TransformerName is the lower-cased name of a system transformer source, or other. It takes the
 // enum and never a name, so that a transformer of the customer that is named like a system one
 // cannot be counted as it.
