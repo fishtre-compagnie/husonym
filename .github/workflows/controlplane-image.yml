@@ -1,0 +1,61 @@
+name: Control Plane Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - controlplane/**
+      - internal/license/**
+      - internal/telemetry/**
+      - docker/Dockerfile.controlplane
+      - .github/workflows/controlplane-image.yml
+  pull_request:
+    paths:
+      - controlplane/**
+      - internal/license/**
+      - internal/telemetry/**
+      - docker/Dockerfile.controlplane
+      - .github/workflows/controlplane-image.yml
+
+jobs:
+  docker-controlplane:
+    name: Control Plane Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ghcr.io/${{ github.repository }}/controlplane
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          file: docker/Dockerfile.controlplane
+          context: .
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

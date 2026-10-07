@@ -1,0 +1,39 @@
+# Build the control plane binary
+FROM golang:1.27-trixie AS builder
+
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+
+RUN go mod download
+
+# What the binary imports: the license and telemetry packages, and the generated protobuf code
+# the telemetry package depends on.
+COPY internal/ internal/
+COPY backend/gen/ backend/gen/
+COPY controlplane/ controlplane/
+
+# Build; the migrations are embedded in the binary
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/husonym-controlplane ./controlplane/cmd/husonym-controlplane
+
+FROM debian:trixie-slim
+WORKDIR /
+
+# Install CA certificates for TLS connections to the database
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive \
+  apt-get install --no-install-recommends -y ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /workspace/bin/husonym-controlplane /husonym-controlplane
+
+# Create a non-root user
+RUN useradd -u 65532 -r nonroot
+USER nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/husonym-controlplane"]
+
+CMD ["serve", "public"]
