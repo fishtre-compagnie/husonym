@@ -9,6 +9,7 @@ import (
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -159,4 +160,69 @@ func Test_TableSync_ContinueAsNew(t *testing.T) {
 	// Verify that the error is a ContinueAsNewError.
 	var continueErr *workflow.ContinueAsNewError
 	require.True(t, errors.As(err, &continueErr))
+}
+
+// tableSyncWithPages runs a table workflow whose activity answers with the given pages, one
+// per call, the last page having no continuation token unless it is cut off earlier.
+func tableSyncWithPages(
+	t *testing.T,
+	maxIterations int,
+	request *TableSyncRequest,
+	pages []*sync_activity.SyncTableResponse,
+) (*testsuite.TestWorkflowEnvironment, *Workflow) {
+	t.Helper()
+	var ts testsuite.WorkflowTestSuite
+	env := ts.NewTestWorkflowEnvironment()
+	tsWf := New(maxIterations)
+	env.RegisterWorkflow(tsWf.TableSync)
+
+	call := 0
+	var syncActivity *sync_activity.Activity
+	env.OnActivity(syncActivity.SyncTable, mock.Anything, mock.Anything, mock.Anything).
+		Return(func(context.Context, *sync_activity.SyncTableRequest, *sync_activity.SyncMetadata) (*sync_activity.SyncTableResponse, error) {
+			page := pages[call]
+			call++
+			return page, nil
+		})
+	options := workflow.ActivityOptions{ScheduleToStartTimeout: time.Minute, StartToCloseTimeout: time.Minute}
+	request.SyncActivityOptions = &options
+	env.ExecuteWorkflow(tsWf.TableSync, request)
+	return env, tsWf
+}
+
+func Test_TableSync_SumsTheRowsOfItsPages(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t"}, []*sync_activity.SyncTableResponse{
+		{ContinuationToken: pointerToString("a"), RowsRead: 10},
+		{ContinuationToken: pointerToString("b"), RowsRead: 20, RowsDiscarded: 1},
+		{RowsRead: 5},
+	})
+	require.NoError(t, env.GetWorkflowError())
+	var result *TableSyncResponse
+	require.NoError(t, env.GetWorkflowResult(&result))
+	require.EqualValues(t, 35, result.RowsRead)
+	require.EqualValues(t, 1, result.RowsDiscarded)
+}
+
+func Test_TableSync_ContinueAsNewCarriesTheSums(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 2, &TableSyncRequest{TableSchema: "s", TableName: "t"}, []*sync_activity.SyncTableResponse{
+		{ContinuationToken: pointerToString("a"), RowsRead: 10, Retries: 1},
+		{ContinuationToken: pointerToString("b"), RowsRead: 20, RowsDiscarded: 1},
+		{RowsRead: 5},
+	})
+	var continueErr *workflow.ContinueAsNewError
+	require.True(t, errors.As(env.GetWorkflowError(), &continueErr))
+	var next TableSyncRequest
+	require.NoError(t, converter.GetDefaultDataConverter().FromPayloads(continueErr.Input, &next))
+	require.EqualValues(t, 30, next.RowsRead)
+	require.EqualValues(t, 1, next.RowsDiscarded)
+	require.EqualValues(t, 1, next.Retries)
+}
+
+func Test_TableSync_AddsToWhatTheRequestBrought(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t", RowsRead: 30},
+		[]*sync_activity.SyncTableResponse{{RowsRead: 5}})
+	require.NoError(t, env.GetWorkflowError())
+	var result *TableSyncResponse
+	require.NoError(t, env.GetWorkflowResult(&result))
+	require.EqualValues(t, 35, result.RowsRead)
 }

@@ -96,8 +96,9 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 		}
 		return actOptResp.AccountId, nil
 	}
+	totals := &workflow_shared.RunTotals{}
 	runWorkflow := func(ctx workflow.Context, logger log.Logger) (*WorkflowResponse, error) {
-		return executeWorkflow(ctx, req, licensed)
+		return executeWorkflow(ctx, req, licensed, totals)
 	}
 	wfinfo := workflow.GetInfo(ctx)
 	return workflow_shared.HandleWorkflowEventLifecycle(
@@ -117,6 +118,7 @@ func executeWorkflow(
 	wfctx workflow.Context,
 	req *WorkflowRequest,
 	licensed bool,
+	totals *workflow_shared.RunTotals,
 ) (*WorkflowResponse, error) {
 	ctx, cancelHandler := workflow.WithCancel(wfctx)
 	logger := workflow.GetLogger(ctx)
@@ -410,6 +412,10 @@ func executeWorkflow(
 				}
 				return
 			}
+			// Only a table that finished adds: a failed one leaves what the others counted.
+			totals.RowsRead += wfResult.RowsRead
+			totals.RowsDiscarded += wfResult.RowsDiscarded
+			totals.Retries += wfResult.Retries
 			logger.Info("config sync completed", "name", bc.Name)
 			err = runPostTableSyncActivity(ctx, logger, actOptResp, bc.Name)
 			if err != nil {

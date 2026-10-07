@@ -20,12 +20,23 @@ type TableSyncRequest struct {
 	TableName           string
 
 	ColumnIdentityCursors map[string]*tablesync_shared.IdentityCursor
+
+	// What the earlier runs of this table counted (ContinueAsNew). Members are only ever
+	// added and left out when empty.
+	RowsRead      int64 `json:",omitempty"`
+	RowsDiscarded int64 `json:",omitempty"`
+	Retries       int64 `json:",omitempty"`
 }
 
 type TableSyncResponse struct {
 	// Here to make it easier to see in UI and logs
 	Schema string
 	Table  string
+
+	// The sums over every page of the table, across continuations.
+	RowsRead      int64 `json:",omitempty"`
+	RowsDiscarded int64 `json:",omitempty"`
+	Retries       int64 `json:",omitempty"`
 }
 
 type Workflow struct {
@@ -60,6 +71,7 @@ func (w *Workflow) TableSync(
 
 	continuationToken := req.ContinuationToken
 	var iterations int
+	rowsRead, rowsDiscarded, retries := req.RowsRead, req.RowsDiscarded, req.Retries
 
 	logger.Debug("starting table sync")
 
@@ -89,6 +101,9 @@ func (w *Workflow) TableSync(
 		if err != nil {
 			return nil, err
 		}
+		rowsRead += resp.RowsRead
+		rowsDiscarded += resp.RowsDiscarded
+		retries += resp.Retries
 		continuationToken = resp.ContinuationToken
 		if continuationToken == nil {
 			logger.Debug("no continuation token, breaking")
@@ -104,6 +119,7 @@ func (w *Workflow) TableSync(
 			newReq := *req
 			newReq.ContinuationToken = continuationToken
 			newReq.ColumnIdentityCursors = cursors
+			newReq.RowsRead, newReq.RowsDiscarded, newReq.Retries = rowsRead, rowsDiscarded, retries
 			var wf *Workflow
 			return nil, workflow.NewContinueAsNewError(ctx, wf.TableSync, &newReq)
 		}
@@ -117,6 +133,10 @@ func (w *Workflow) TableSync(
 	return &TableSyncResponse{
 		Schema: req.TableSchema,
 		Table:  req.TableName,
+
+		RowsRead:      rowsRead,
+		RowsDiscarded: rowsDiscarded,
+		Retries:       retries,
 	}, nil
 }
 
