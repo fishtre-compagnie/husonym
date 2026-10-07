@@ -23,7 +23,10 @@ const (
 	OutcomeCanceled  = "canceled"
 )
 
-const errorTypeUnknownOutcome = "UnknownRunOutcome"
+const (
+	errorTypeUnknownOutcome = "UnknownRunOutcome"
+	errorTypeRefused        = "UsageReportRefused"
+)
 
 type Activities struct {
 	usageclient mgmtv1alpha1connect.UsageServiceClient
@@ -74,10 +77,7 @@ func (a *Activities) RecordRunStarted(ctx context.Context, req *RunStartedReques
 		RunId:     req.RunId,
 		StartedAt: timestamppb.New(req.StartedAt),
 	}))
-	if err != nil {
-		return fmt.Errorf("unable to report the start of the run: %w", err)
-	}
-	return nil
+	return reportFailure("the start", err)
 }
 
 // RecordRunEnded tells the API that a run has ended, and what it counted.
@@ -99,10 +99,23 @@ func (a *Activities) RecordRunEnded(ctx context.Context, req *RunEndedRequest) e
 		RowsDiscarded: req.RowsDiscarded,
 		Retries:       req.Retries,
 	}))
-	if err != nil {
-		return fmt.Errorf("unable to report the end of the run: %w", err)
+	return reportFailure("the end", err)
+}
+
+// reportFailure gives the failure of a call to the API as the activity fails with it. An answer
+// that asking again cannot change is not retried: the API does not have the procedure (a worker
+// newer than the API, in a rolling upgrade), or it refuses the request or the caller.
+func reportFailure(what string, err error) error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	failure := fmt.Errorf("unable to report %s of the run: %w", what, err)
+	switch connect.CodeOf(err) {
+	case connect.CodeUnimplemented, connect.CodeInvalidArgument, connect.CodePermissionDenied:
+		return temporal.NewNonRetryableApplicationError(failure.Error(), errorTypeRefused, err)
+	default:
+		return failure
+	}
 }
 
 func outcomeOf(outcome string) (mgmtv1alpha1.RunOutcome, bool) {

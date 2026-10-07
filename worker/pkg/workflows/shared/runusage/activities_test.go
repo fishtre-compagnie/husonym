@@ -156,6 +156,45 @@ func Test_Activities_ReturnTheFailureOfTheAPI(t *testing.T) {
 	require.False(t, applicationErr.NonRetryable())
 }
 
+// An answer that asking again cannot change is not retried: a new worker told to an API that does
+// not have the procedures yet, or a request the API refuses.
+func Test_Activities_DoNotRetryWhatTheAPIWillNeverAccept(t *testing.T) {
+	for code, retryable := range map[connect.Code]bool{
+		connect.CodeUnimplemented:     false,
+		connect.CodeInvalidArgument:   false,
+		connect.CodePermissionDenied:  false,
+		connect.CodeUnavailable:       true,
+		connect.CodeDeadlineExceeded:  true,
+		connect.CodeInternal:          true,
+		connect.CodeResourceExhausted: true,
+	} {
+		t.Run(code.String(), func(t *testing.T) {
+			client := &recorder{err: connect.NewError(code, errors.New("the API answered"))}
+			env := (&testsuite.WorkflowTestSuite{}).NewTestActivityEnvironment()
+			activities := New(client)
+			Register(env, activities)
+
+			_, err := env.ExecuteActivity(activities.RecordRunStarted, &RunStartedRequest{
+				JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt,
+			})
+			requireRetryable(t, err, retryable)
+
+			_, err = env.ExecuteActivity(activities.RecordRunEnded, &RunEndedRequest{
+				JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt, EndedAt: testEndedAt, Outcome: OutcomeFailed,
+			})
+			requireRetryable(t, err, retryable)
+		})
+	}
+}
+
+func requireRetryable(t *testing.T, err error, retryable bool) {
+	t.Helper()
+	require.ErrorContains(t, err, "the API answered")
+	var applicationErr *temporal.ApplicationError
+	require.ErrorAs(t, err, &applicationErr)
+	require.Equal(t, retryable, !applicationErr.NonRetryable())
+}
+
 // The serialized form of the requests is in the histories of the runs: a count that is zero
 // is left out.
 func Test_RunEndedRequest_LeavesOutEmptyCounts(t *testing.T) {
