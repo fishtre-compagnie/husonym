@@ -205,6 +205,12 @@ Deux ajustements maison :
   reconnaisseur France. Nous ajoutons le modèle spaCy `fr_core_news_md` et les
   reconnaisseurs `FR_NIR`, `FR_PHONE_NUMBER`, `FR_POSTAL_CODE`, `FR_SIRET`
   (voir `docker/presidio-fr/`).
+- **Personnes en français.** L'image reconnaît les personnes avec le modèle
+  CamemBERT `Jean-Baptiste/camembert-ner` ; spaCy fournit toujours les lieux
+  (`LOCATION`) et les dates en français. En anglais, rien ne change : spaCy
+  reconnaît aussi les personnes. L'image demande le réseau pour se construire et
+  aucun pour tourner ; elle est plus lourde que l'image officielle (voir son
+  `README.md` pour les poids et les durées mesurés).
 - **Affinage local.** Presidio dit `PERSON` pour un prénom, un nom ou un nom complet
   indifféremment, et `LOCATION` pour une ville comme pour une adresse. Husonym
   tranche ensuite sur la forme des valeurs : plusieurs mots → nom complet ; numéro en
@@ -324,6 +330,22 @@ python3 scripts/testdata/bench-presidio.py
 
 - **Texte libre multi-PII** — une colonne de commentaires contenant à la fois un nom
   et un téléphone ne remonte qu'une seule catégorie, la plus fréquente.
+- **Personnes, ce que l'IA rate ou désigne à tort** — sur des textes métier inventés
+  (12 colonnes de 50 valeurs par langue, valeurs coupées à 200 caractères, seuil
+  0,35), l'image française a désigné 32 passages dont 31 sur un nom de personne,
+  et trouvé 31 des 32 noms. Elle n'a désigné une personne que dans 1 valeur sur 300
+  de six colonnes sans personne (noms de sociétés, de produits, villes, codes) : un
+  nom de cabinet. Elle a manqué un nom de famille en capitales en tête de valeur.
+  Ce sont des chiffres de ces jeux, pas une garantie : une colonne n'est signalée que
+  si une entité couvre au moins un tiers des valeurs lues, mais vérifiez un verdict
+  _À vérifier_ avant d'agir.
+- **Lieux, téléphones et SIRET dans les colonnes sans personne** — la reconnaissance
+  des lieux reste celle de spaCy : sur les mêmes colonnes françaises sans personne,
+  73 valeurs sur 300 portent un `LOCATION`, 30 un `PHONE_NUMBER`, 9 un
+  `FR_PHONE_NUMBER` et 8 un `FR_SIRET`. Ces signaux n'ont pas changé avec CamemBERT.
+- **Anglais** — la reconnaissance des personnes n'a pas changé : sur les mêmes jeux
+  anglais, 30 passages justes sur 48 désignés (noms de sociétés, numéros de
+  commande et mots d'état pris pour des personnes).
 - **Prénom vs nom sur un mot seul** — indistinguables par le contenu sans dictionnaire
   INSEE. Le nom de colonne, lui, tranche sans ambiguïté.
 - **Code postal par le contenu** — volontairement absent : « 5 chiffres, département

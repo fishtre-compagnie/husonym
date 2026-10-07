@@ -112,8 +112,10 @@ différences près :
      texte dont les seules espaces sont celles du nom ; un nom de quatre mots
      rendu sans son dernier mot à 1 position sur 30 dans du JSON compact ;
    - un nom que le modèle ne voit dans aucun morceau ;
-   - une trouvaille à laquelle il manque sa première lettre, ou qui prend le
-     signe qui la précède, vue après un guillemet, un tiret ou un chiffre.
+   - une trouvaille à laquelle il manque sa première lettre, ou qui commence
+     par un tiret placé juste avant le nom : observé dans les essais de
+     balayage des coupes (par exemple « -Mathilde Rousseau de Kerbrat »,
+     « athilde Rousseau de Kerbrat »), sans taux établi au-delà de ces essais.
 4. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
    « aucune trouvaille » pour le morceau ; ici l'erreur remonte, et le serveur
    répond par une erreur au lieu d'une liste incomplète.
@@ -192,10 +194,15 @@ ligne de journal (« Control socket listening at … »), le worker hérite d'un
 verrou que personne ne relâchera : il reste bloqué sur sa première ligne de
 journal, n'importe jamais l'application, et `/health` ne répond pas. gunicorn
 ne le remplace pas de lui-même ; un `SIGHUP` au processus maître en crée un
-nouveau. C'est le défaut gunicorn n° 3509, corrigé par
-[la PR n° 3520](https://github.com/benoitc/gunicorn/pull/3520), livrée en
-25.2.0. Mesuré sur cette image, un démarrage à la fois sur un CPU : 5 démarrages
-bloqués sur 53 sans l'option, 0 sur 60 avec. Ce socket ne sert pas ici (il
+nouveau. Ce défaut de gunicorn est décrit dans
+[l'issue n° 3529](https://github.com/benoitc/gunicorn/issues/3529) et corrigé par
+[la pull request n° 3520](https://github.com/benoitc/gunicorn/pull/3520)
+(« prevent fork deadlock… »), qui ferme l'issue n° 3509 ; le correctif est dans
+le code de gunicorn 25.2.0. Mesuré sur cette image, un démarrage à la fois sur
+un CPU : 5 démarrages bloqués sur 53 sans l'option, 0 sur 60 avec. Le blocage a
+aussi été observé sur l'image précédente de ce dossier lancée sous
+l'utilisateur 1001 (1 démarrage sur 30), et pas lancée en root (0 sur 60) ; on
+ne sait pas pourquoi il ne se montre pas en root. Ce socket ne sert pas ici (il
 pilote gunicorn par la commande `gunicornc`). L'option est à retirer quand
 l'image de base embarquera gunicorn 25.2.0 ou plus.
 
@@ -258,6 +265,51 @@ Une observation par cas, sur un hôte à 16 cœurs, pour un texte français de
 | 2 000 caractères, `--cpus 2` et `OMP_NUM_THREADS` non fixé | 1,66 s | — |
 
 Un texte de 5 000 caractères sans aucun blanc prend environ 3 s sans quota.
+
+## Reconnaissance mesurée sur des textes métier
+
+La mesure est `internal/integration-tests/presidio/measure_integration_test.go`,
+sur les jeux inventés de `testdata/free-text-fr.json` et `free-text-en.json` :
+12 colonnes de 50 valeurs par langue (6 colonnes qui nomment des personnes, 6
+qui n'en nomment pas : noms de sociétés, de produits, villes, codes). Chaque
+valeur est tronquée à ses 200 premiers caractères et envoyée seule, avec
+`score_threshold` à 0,35. Un passage désigné est juste quand il chevauche un nom
+annoté de sa valeur ; un nom est trouvé quand un passage `PERSON` le chevauche.
+Un titre (« Mme », « M. », « Mr ») n'est pas compté dans le nom annoté. Ce sont
+des chiffres de ces jeux, une mesure par cas : pas une garantie sur d'autres
+textes. Les jeux comptent 32 noms dans chaque langue.
+
+| | Français | Anglais |
+|---|---|---|
+| Passages `PERSON` rendus | 32 | 48 |
+| Passages justes, précision | 31, soit 0,97 | 30, soit 0,63 |
+| Noms trouvés, rappel | 31 sur 32, soit 0,97 | 30 sur 32, soit 0,94 |
+| Valeurs désignées dans les colonnes sans personne | 1 sur 300 | 16 sur 300 |
+
+En français, les 31 passages justes ont exactement les bornes du nom annoté. Sur
+les mêmes valeurs et le même seuil, l'image d'avant CamemBERT désignait 32
+valeurs des colonnes sans personne (mesure par valeur faite lors de la mise au
+point, non rejouable avec ce dépôt). L'anglais n'a pas changé : ses chiffres sont ceux de l'image de base.
+
+**Ce que la mesure a manqué ou désigné à tort, à lire comme des limites :**
+
+- français, un nom manqué : un nom de famille en capitales en tête de valeur
+  (« LEMOINE Sophie a remplacé le capteur… ») n'est pas rendu, alors que
+  « BESSON Thibault » l'est : deux cas, trop peu pour fixer une règle ;
+- français, un passage à tort : un nom de cabinet (« Cabinet Oréade »), pris
+  pour une personne ;
+- français, un titre (« Mme ») placé devant le nom n'a pas été dans le passage
+  désigné sur ces jeux : qui réécrit le passage laisse le titre en place ;
+- anglais, deux noms manqués (« Grace Barnes » dans une remarque de commande,
+  « Draper » après « Mr ») ; 18 passages à tort : noms de sociétés, un nom
+  commun en début de phrase, numéros de commande (« SO-362398 »), un mot d'état
+  (« Voicemail ») ;
+- `LOCATION` vient toujours de spaCy en français, comme `DATE_TIME` et `NRP` :
+  CamemBERT n'y change rien. Dans les colonnes françaises sans personne, des
+  valeurs portent encore des types sensibles autres que `PERSON` (sur 300
+  valeurs : 73 `LOCATION`, 30 `PHONE_NUMBER`, 9 `FR_PHONE_NUMBER`, 8
+  `FR_SIRET`) ;
+- le découpage des longs textes a ses propres limites, plus haut.
 
 ## Tests
 

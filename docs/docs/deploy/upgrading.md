@@ -65,6 +65,28 @@ succeed, and do not follow redirects. See [Account Hooks](/guides/account-hooks)
 The API calls the Presidio analyzer only. `PRESIDIO_ANONYMIZER_URL` is no longer read. See
 [Environment Variables](/deploy/environment-variables).
 
+### The analyzer image
+
+If you run the analyzer image of `docker/presidio-fr/`, rebuild it:
+`docker compose -f compose.dev.yml up -d --build presidio-analyzer`. Without `--build`, an
+image built earlier is started as it is. Building needs the network; running does not.
+
+The image recognizes French persons with a language model, so it is larger and slower per
+French text. Measured once on one host, against the image before the change: 3.9 GB
+instead of 1.69 GB, 1.31 GiB of memory after start-up instead of 1.12 GiB, 8 to 10 s
+before `/health` answers instead of 6.5 s, and 0.56 s instead of 0.07 s for a
+2,000-character French text. Each analyzer process loads the model: size `WORKERS` and
+`OMP_NUM_THREADS` of the image as its `README.md` says.
+
+The configuration is now inside the image. Files that an older compose file mounted over
+it are no longer needed, and would override it: remove those mounts.
+
+French verdicts and rewritten passages change. On the invented business text of the
+image's measure, 1 value of 300 in columns that name no person was designated as a person,
+against 32 before; fewer product and company names are taken for persons. Review the
+verdicts of the PII content scan again, and the output of `Transform PII Text` on French
+text. See [Transform PII Text](/transformers/system#transform-pii-text).
+
 ### Microsoft SQL Server destinations
 
 Initializing the schema needs a source database at compatibility level 130 or more, and

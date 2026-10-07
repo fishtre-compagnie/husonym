@@ -734,6 +734,14 @@ Anonymizes free text: a note, a comment, the body of a message. A [Presidio](htt
 
 It needs a license and `PRESIDIO_ANALYZER_URL` (see [Environment Variables](/deploy/environment-variables)). Only the analyzer is used: Husonym does not call a Presidio anonymizer. The license is needed however the transformer is reached: mapped to a column, stored in a user-defined transformer, or called from a script with `husonym.transformPiiText`.
 
+**The analyzer image**
+
+The repository ships an analyzer image for French and English, in `docker/presidio-fr/` (see its `README.md`). In English it recognizes as the official analyzer does. In French it recognizes persons with the Hugging Face model `Jean-Baptiste/camembert-ner`; locations, dates and groups still come from spaCy. The image holds its configuration, needs the network to be built and none to run, and is larger and slower per French text than the image before CamemBERT: measured once on a 2,000-character French text, 0.56 s against 0.07 s, with 1.31 GiB of memory after start-up for one process. Each analyzer process loads the model, so the memory is counted per process (`WORKERS`, 1 by default); `OMP_NUM_THREADS` (2 by default) should match the CPUs given to the container.
+
+French persons are kept by the image only above a confidence of 0.8, whatever the `ScoreThreshold` of the transformer. A text longer than 400 characters is analyzed in overlapping pieces, two consecutive pieces sharing at least 40 characters, and the findings of two pieces that overlap are merged into one. A finding is therefore a passage, not always one person: two persons named back to back around the cut between two pieces can be rewritten as one passage.
+
+Measured on invented business text (12 columns of 50 values per language, each value cut at 200 characters), the French image designated 32 passages, 31 of them on a person, and found 31 of the 32 names; the English figures are 48 passages, 30 on a person, and 30 of 32 names found. These figures are not a guarantee on your data. Known limits: a surname in capitals at the start of a text may be missed; a title such as `Mme` before a name may stay outside the passage, so the rewritten text keeps the title; a name of several words in a long text with few spaces can be designated in part when the cut falls inside it; company and product names are still sometimes taken for persons, mostly in English.
+
 **Configurations**
 
 | Name              | Description                                                                                                                                                                                                    | Default                                |
@@ -773,7 +781,7 @@ Each character of the text belongs to one finding at most. Findings of the same 
 
 **Failures**
 
-A value is rewritten exactly or not at all. When the analyzer does not answer or refuses the text, when its answer does not fit the text, or when the transformer of a `Transform` anonymizer fails, the value fails: it is never returned half rewritten, and a run stops on it. An empty value and a null value are returned as they are, without calling the analyzer.
+A value is rewritten exactly or not at all. When the analyzer does not answer or refuses the text, when its answer does not fit the text, or when the transformer of a `Transform` anonymizer fails, the value fails: it is never returned half rewritten, and a run stops on it. The analyzer image answers with an error, not with a shorter list of findings, when its analysis of a text fails: the value then fails like any other. An empty value and a null value are returned as they are, without calling the analyzer.
 
 ### Transform String\{#transform-string}
 
