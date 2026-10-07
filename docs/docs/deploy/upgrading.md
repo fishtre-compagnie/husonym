@@ -27,7 +27,8 @@ worker of the previous version picks it up.
 
 ### License
 
-The API and the worker start whatever the license, and read it on every request.
+The API starts whatever the license, and reads it on every request. The worker asks the API
+for it, and takes no job run until the API has answered once.
 
 The key in force is now kept in the database of the API. At its first start, the API takes
 the key from `EE_LICENSE` or `EE_LICENSE_FILE` into the database, and from then on the
@@ -39,7 +40,8 @@ migration that can be reversed.
 
 The worker no longer reads a license variable: it asks the API for the key. If `EE_LICENSE`
 or `EE_LICENSE_FILE` was set only on the worker, it must now be set on the API, because the
-worker takes the key from the API; the worker keeps running without a license until then.
+worker takes the key from the API. Until then the instance has no license: the API starts no
+job run.
 
 Keys that were issued before this version keep working and allow everything. See
 [Licensing](/deploy/licensing) for what a valid license is needed for, for the features and

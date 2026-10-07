@@ -42,13 +42,19 @@ func Test_New(t *testing.T) {
 	require.NotNil(t, a)
 }
 
-func Test_Activity_EELicense_Skip(t *testing.T) {
+// A job without an active hook for the timing has nothing to run, whatever the license says.
+func Test_Activity_NotLicensed_NoActiveHook(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestActivityEnvironment()
 
+	jobclient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
+	jobclient.EXPECT().
+		GetActiveJobHooksByTiming(mock.Anything, mock.Anything).
+		Return(connect.NewResponse(&mgmtv1alpha1.GetActiveJobHooksByTimingResponse{}), nil).
+		Once()
 	activity := New(
-		mgmtv1alpha1connect.NewMockJobServiceClient(t),
+		jobclient,
 		mgmtv1alpha1connect.NewMockConnectionServiceClient(t),
 		sqlmanager.NewMockSqlManagerClient(t),
 		&fakeELicense{isValid: false},
@@ -69,6 +75,10 @@ func Test_Activity_EELicense_Skip(t *testing.T) {
 // The run tells the activity the license answer it started with, and that answer decides —
 // not what the license says by the time the hooks are due. A request without it comes from
 // a run started before the answer was passed along: the license is then read as before.
+//
+// The API does not start a run under a license that is not in force, so a run that reaches
+// its hooks "not licensed" is one whose worker had not received the license: the hooks are
+// not run, and the activity fails rather than let the run pass for whole.
 func Test_Activity_FollowsTheLicenseAnswerOfTheRun(t *testing.T) {
 	yes, no := true, false
 
@@ -93,34 +103,34 @@ func Test_Activity_FollowsTheLicenseAnswerOfTheRun(t *testing.T) {
 			jobId := uuid.NewString()
 			connId := uuid.NewString()
 
-			// Without an expectation, a mock fails the test on any call: skipped hooks are
-			// not even looked up.
+			// Without an expectation, a mock fails the test on any call: the hooks are looked
+			// up either way, and a hook that is not run opens no connection.
 			jobclient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
 			connclient := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
 			sqlMgrClient := sqlmanager.NewMockSqlManagerClient(t)
-			if tt.expectRun {
-				jobclient.EXPECT().
-					GetActiveJobHooksByTiming(mock.Anything, mock.Anything).
-					Return(connect.NewResponse(&mgmtv1alpha1.GetActiveJobHooksByTimingResponse{
-						Hooks: []*mgmtv1alpha1.JobHook{{
-							Id:      uuid.NewString(),
-							Name:    "restore-constraints",
-							JobId:   jobId,
-							Enabled: true,
-							Config: &mgmtv1alpha1.JobHookConfig{
-								Config: &mgmtv1alpha1.JobHookConfig_Sql{
-									Sql: &mgmtv1alpha1.JobHookConfig_JobSqlHook{
-										Query:        "alter table public.users enable trigger all",
-										ConnectionId: connId,
-										Timing: &mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing{
-											Timing: &mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing_PostSync{},
-										},
+			jobclient.EXPECT().
+				GetActiveJobHooksByTiming(mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&mgmtv1alpha1.GetActiveJobHooksByTimingResponse{
+					Hooks: []*mgmtv1alpha1.JobHook{{
+						Id:      uuid.NewString(),
+						Name:    "restore-constraints",
+						JobId:   jobId,
+						Enabled: true,
+						Config: &mgmtv1alpha1.JobHookConfig{
+							Config: &mgmtv1alpha1.JobHookConfig_Sql{
+								Sql: &mgmtv1alpha1.JobHookConfig_JobSqlHook{
+									Query:        "alter table public.users enable trigger all",
+									ConnectionId: connId,
+									Timing: &mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing{
+										Timing: &mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing_PostSync{},
 									},
 								},
 							},
-						}},
-					}), nil).
-					Once()
+						},
+					}},
+				}), nil).
+				Once()
+			if tt.expectRun {
 				connclient.EXPECT().
 					GetConnection(mock.Anything, mock.Anything).
 					Return(connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
@@ -144,14 +154,15 @@ func Test_Activity_FollowsTheLicenseAnswerOfTheRun(t *testing.T) {
 				Timing:   mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_POSTSYNC,
 				Licensed: tt.licensed,
 			})
+			if !tt.expectRun {
+				require.ErrorContains(t, err,
+					"the worker has not received the instance's license yet: job hooks were not run")
+				return
+			}
 			require.NoError(t, err)
 			res := &RunJobHooksByTimingResponse{}
 			require.NoError(t, val.Get(res))
-			if tt.expectRun {
-				require.Equal(t, uint(1), res.ExecCount)
-			} else {
-				require.Equal(t, uint(0), res.ExecCount)
-			}
+			require.Equal(t, uint(1), res.ExecCount)
 		})
 	}
 }

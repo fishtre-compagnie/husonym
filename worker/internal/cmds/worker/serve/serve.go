@@ -68,6 +68,10 @@ import (
 	"github.com/grafana/pyroscope-go"
 )
 
+// licenseRetryEvery is how often a starting worker asks the API again for the license of
+// the instance, for as long as the API has not answered.
+const licenseRetryEvery = 5 * time.Second
+
 func NewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
@@ -365,19 +369,28 @@ func serve(ctx context.Context) error {
 		connectInterceptorOption,
 	)
 
-	// The key is the one the API holds, which the provider verifies itself. It never stops
-	// the start: when the API does not answer, the refresh logs it and the worker starts
-	// without a license; the key is then asked again in the background, which also picks up
-	// a renewed one without a restart.
+	// The key is the one the API holds, which the provider verifies itself. The worker takes
+	// no work until the API has answered once, "this instance holds no key" being an answer:
+	// a worker that started without it would believe there is no license while the API,
+	// which holds one, starts runs. It needs the API for every job anyway. The key is then
+	// asked again in the background, which also picks up a renewed one without a restart.
 	eelicense := license.NewProvider(licenseloader.FromAPI(userclient), logger)
-	firstRefreshCtx, stopFirstRefresh := context.WithTimeout(ctx, 10*time.Second)
-	_ = eelicense.Refresh(firstRefreshCtx)
-	stopFirstRefresh()
-	// The context of the command never ends, so the background refresh gets its own. It
-	// is ended as soon as the interrupt is received, before anything a loader may use is
-	// closed; the defer covers the early returns.
+	// The context of the command never ends, so the wait and the background refresh get
+	// their own. It is ended as soon as the interrupt is received, before anything a loader
+	// may use is closed; the defer covers the early returns.
 	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
 	defer stopLicenseRefresh()
+	go func() {
+		select {
+		case <-worker.InterruptCh():
+			stopLicenseRefresh()
+		case <-refreshCtx.Done():
+		}
+	}()
+	if err := licenseloader.AwaitFirstAnswer(refreshCtx, eelicense, licenseRetryEvery, logger); err != nil {
+		logger.Info("received interrupt while waiting for the license of the instance, stopping worker")
+		return nil
+	}
 	go eelicense.RefreshEvery(refreshCtx, time.Minute)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
@@ -520,9 +533,9 @@ func serve(ctx context.Context) error {
 		}
 	}()
 
-	<-worker.InterruptCh()
+	// The interrupt ends this context, and with it the background refresh.
+	<-refreshCtx.Done()
 	logger.Info("received interrupt, stopping worker...")
-	stopLicenseRefresh()
 	w.Stop()
 	logger.Info("temporal worker shut down, proceeding to shutting down http server")
 	ctx, cancelHandler := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))

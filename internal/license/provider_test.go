@@ -299,6 +299,23 @@ func Test_Provider_ALoaderErrorUnderADoneContextIsNotAProblem(t *testing.T) {
 	require.Equal(t, 1, f.errorLogs())
 }
 
+// A deadline that runs out is not a shutdown: the loader did not answer in the time it was
+// given, which is what an operator needs to read when a process starts without its key.
+func Test_Provider_ALoaderErrorPastItsDeadlineIsAProblem(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProvider()
+
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+	f.loader.fails(context.DeadlineExceeded)
+
+	require.ErrorIs(t, p.Refresh(ctx), context.DeadlineExceeded)
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
+	require.ErrorIs(t, p.Problem(), context.DeadlineExceeded)
+	require.Equal(t, 1, f.errorLogs())
+}
+
 func Test_Provider_AnInvalidKeyKeepsTheKeyInPlace(t *testing.T) {
 	cases := map[string]func(t *testing.T) string{
 		"unreadable content": func(*testing.T) string {

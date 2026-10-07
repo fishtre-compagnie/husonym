@@ -66,10 +66,11 @@ when it starts and then once a minute, and verifies it itself. A key installed o
 therefore reaches the worker without a restart. An `EE_LICENSE` or `EE_LICENSE_FILE`
 variable left in place on the worker is ignored and does no harm.
 
-While the worker has no license, for instance when the API does not answer at its start,
-data-sync job runs still execute, but their job hooks and the account-hook notifications
-are skipped, and initializing the schema of a Microsoft SQL Server destination fails. A
-PII detection job run fails. The worker obtains the license as soon as the API answers.
+A worker that starts takes no job run until the API has answered it once about the license,
+"this instance has no key" being an answer. Until then it asks again every five seconds and
+its log says that it is waiting. A job never runs without its hooks: if a run reaches its
+job hooks on a worker that holds no license in force, the run fails with
+`the worker has not received the instance's license yet: job hooks were not run`.
 :::
 
 ## The License page

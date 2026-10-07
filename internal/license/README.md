@@ -86,14 +86,27 @@ The license is a `license.Provider`. It holds the last key that a `license.Loade
   `EE_LICENSE` or `EE_LICENSE_FILE` variable left in place on the worker is ignored and
   harmless.
 
-The API and the worker refresh once when they start (the worker's first refresh is bound
-to ten seconds), then once a minute in the background (`RefreshEvery`). A key stored by
+The API refreshes once when it starts and starts either way. The worker does not poll
+Temporal until its loader has **answered** once (`licenseloader.AwaitFirstAnswer`): "the
+instance holds no key" is an answer, and so is a key the worker refuses; an API that does
+not answer is not, and the worker asks again every five seconds, each attempt bound to ten
+seconds. A worker that took work before that would believe there is no license while the
+API, which holds one, starts runs. Both then refresh once a minute in the background
+(`RefreshEvery`). A key stored by
 another API instance, or through the interface, therefore reaches every process within a
 minute; the API that took a key through `SetSystemLicense` refreshes at once. A value that
 cannot be loaded or verified is logged, kept as `Problem()`, and never replaces the key
 already in place; a loader that has nothing to give does not take the key away either, so a
-database or an API that does not answer leaves the last verified key in force. The process
-starts either way.
+database or an API that does not answer leaves the last verified key in force. A load cut
+short by a shutdown (a cancelled context) is neither logged nor kept; one that runs past its
+deadline is a problem like any other.
+
+The job-hooks activity is the one place where a worker without the license would have run
+a job "without" a feature: it used to skip the hooks. It now fails
+(`the worker has not received the instance's license yet: job hooks were not run`) when the
+license answer of the run is "not in force" and the job has an active hook for the timing;
+with no active hook it does nothing, as before. The API starts no run under a license that
+is not in force, so this only meets a worker whose key differs from the API's.
 
 Only `Refresh` calls the loader. Every read (`IsValid`, `HasFeature`, `Limits`, `State`,
 `Describe`…) answers from memory and from the clock, without any I/O: workflow code calls

@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -90,10 +91,86 @@ func Test_Worker_StartsWithoutTheAPI(t *testing.T) {
 
 	require.Error(t, provider.Refresh(t.Context()))
 	require.False(t, provider.IsValid(), "the worker starts with no license")
+	require.ErrorIs(t, provider.Problem(), license.ErrKeyNotLoaded, "and knows that it was not answered")
 
 	api.down.Store(false)
 	require.NoError(t, provider.Refresh(t.Context()))
 	require.True(t, provider.IsValid(), "the next refresh gives the license")
+	require.NoError(t, provider.Problem())
+}
+
+// countingLoader fails its first calls, then answers the value.
+type countingLoader struct {
+	failures int64
+	value    string
+	calls    atomic.Int64
+	// called is signalled on every call, when set.
+	called chan struct{}
+}
+
+func (l *countingLoader) load(context.Context) (string, error) {
+	n := l.calls.Add(1)
+	if l.called != nil {
+		select {
+		case l.called <- struct{}{}:
+		default:
+		}
+	}
+	if n <= l.failures {
+		return "", errors.New("the API is down")
+	}
+	return l.value, nil
+}
+
+func Test_AwaitFirstAnswer(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+
+	t.Run("an instance without a key is an answer", func(t *testing.T) {
+		loader := &countingLoader{failures: 2}
+		provider := license.NewProviderWithKeyring(loader.load, nil, logger)
+
+		require.NoError(t, AwaitFirstAnswer(t.Context(), provider, time.Millisecond, logger))
+		require.EqualValues(t, 3, loader.calls.Load(), "asked again until the API answered, and no more")
+		require.False(t, provider.IsValid())
+		require.NoError(t, provider.Problem())
+	})
+
+	t.Run("the key the API holds is in force once it answers", func(t *testing.T) {
+		key, ring := issuedKey(t, "lic-1")
+		loader := &countingLoader{failures: 2, value: key}
+		provider := license.NewProviderWithKeyring(loader.load, ring, logger)
+
+		require.NoError(t, AwaitFirstAnswer(t.Context(), provider, time.Millisecond, logger))
+		require.True(t, provider.IsValid())
+	})
+
+	t.Run("a key the worker refuses is an answer too", func(t *testing.T) {
+		loader := &countingLoader{value: "not-a-key"}
+		provider := license.NewProviderWithKeyring(loader.load, nil, logger)
+
+		require.NoError(t, AwaitFirstAnswer(t.Context(), provider, time.Hour, logger))
+		require.EqualValues(t, 1, loader.calls.Load())
+		require.Error(t, provider.Problem())
+	})
+
+	t.Run("it stops waiting when its context is cancelled", func(t *testing.T) {
+		loader := &countingLoader{failures: 1 << 30, called: make(chan struct{}, 1)}
+		provider := license.NewProviderWithKeyring(loader.load, nil, logger)
+		ctx, cancel := context.WithCancel(t.Context())
+
+		done := make(chan error, 1)
+		go func() { done <- AwaitFirstAnswer(ctx, provider, time.Hour, logger) }()
+		<-loader.called
+		cancel()
+
+		select {
+		case err := <-done:
+			require.ErrorIs(t, err, context.Canceled)
+		case <-time.After(5 * time.Second):
+			t.Fatal("the wait did not end with its context")
+		}
+		require.EqualValues(t, 1, loader.calls.Load())
+	})
 }
 
 func Test_Worker_KeepsTheLastKeyWhenTheAPIStopsAnswering(t *testing.T) {

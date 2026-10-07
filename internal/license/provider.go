@@ -91,7 +91,8 @@ func newProvider(load Loader, ring Keyring, now func() time.Time, logger *slog.L
 //
 // A key that cannot be loaded or trusted never replaces the one in place: the reason is
 // returned, kept for Problem and logged once for as long as it lasts. A load that fails
-// once ctx is done is only returned. A well-signed key
+// once ctx is canceled is only returned; one that fails past the deadline of ctx is a
+// problem like any other. A well-signed key
 // replaces the one in place whatever its dates say, so that the loader is the single
 // source of truth. A loader with nothing to give leaves the key in place: a store that
 // answers nothing does not take a license away.
@@ -102,9 +103,11 @@ func (p *Provider) Refresh(ctx context.Context) error {
 	value, err := p.load(ctx)
 	if err != nil {
 		err = fmt.Errorf("%w: %w", ErrKeyNotLoaded, err)
-		// A refresh in flight when its context ends, as at shutdown, was told to stop: that
-		// says nothing about the key, so it is neither kept as the problem nor logged.
-		if ctx.Err() != nil {
+		// A refresh in flight when its context is canceled, as at shutdown, was told to
+		// stop: that says nothing about the key, so it is neither kept as the problem nor
+		// logged. A deadline that ran out is another matter: the loader did not answer in
+		// the time it was given, and that is a problem like any other.
+		if errors.Is(ctx.Err(), context.Canceled) {
 			return err
 		}
 		return p.refuse(err)
