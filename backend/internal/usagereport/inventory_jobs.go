@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -20,6 +21,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -68,7 +71,38 @@ var (
 	// errPanicked is a reading that panicked. What the panic said is dropped: it can quote what
 	// was being read.
 	errPanicked = errors.New("the reading panicked")
+	// errUndecodable is a stored value that was read and could not be made sense of.
+	errUndecodable = errors.New("what was read does not decode")
 )
+
+// undecodable tells a reading that failed on what it read from one that could not read: a stored
+// value that does not decode, a row that does not scan, or a panic. Such a thing is the same at
+// the next pass, and is left out alone. Anything else may be the database not answering: left
+// out, it would thin a report that is made once, so it fails the reading, which is tried again.
+func undecodable(err error) bool {
+	var (
+		syntax *json.SyntaxError
+		typed  *json.UnmarshalTypeError
+		scan   pgx.ScanArgError
+	)
+	return errors.Is(err, errPanicked) || errors.Is(err, errUndecodable) ||
+		errors.As(err, &syntax) || errors.As(err, &typed) || errors.As(err, &scan)
+}
+
+// causeKind says of a failed reading what can be said without quoting it: the error itself may
+// carry a piece of what was read.
+func causeKind(err error) string {
+	var answered *pgconn.PgError
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "the reading took too long"
+	case errors.Is(err, context.Canceled):
+		return "the reading was canceled"
+	case errors.As(err, &answered):
+		return "the database answered " + answered.Code
+	}
+	return "the reading failed"
+}
 
 // guarded makes a reading whose panic is an error like any other, so that what is damaged in a
 // way nobody foresaw is left out alone too.
@@ -82,8 +116,9 @@ func guarded[T any](read func() (T, error)) (value T, err error) {
 	return read()
 }
 
-// readJobs counts the jobs. A job that cannot be read is left out of every count and logged by
-// its id: one such job must not hide the others. It fails only when the context is done.
+// readJobs counts the jobs. A job that does not decode, or whose reading panics, is left out of
+// every count and logged by its id: one such job must not hide the others. It fails when the
+// context is done, or when what a job uses could not be asked: that may pass, and is tried again.
 func readJobs(ctx context.Context, rows []db_queries.ListJobsOfInstanceForUsageRow, features jobFeatures) (*jobsRead, error) {
 	read := &jobsRead{
 		features:          map[license.Feature]bool{},
@@ -101,6 +136,10 @@ func readJobs(ctx context.Context, rows []db_queries.ListJobsOfInstanceForUsageR
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
+			}
+			if !undecodable(err) {
+				// The error is not wrapped: it can quote a piece of what was read.
+				return nil, fmt.Errorf("unable to read what job %s uses: %s", husonymdb.UUIDString(row.ID), causeKind(err))
 			}
 			// The error is not logged: one of decoding can quote a piece of what it read.
 			leftOut(ctx, "a job could not be read and is left out of the usage report", "jobId", husonymdb.UUIDString(row.ID), err)
@@ -162,7 +201,8 @@ func readJobs(ctx context.Context, rows []db_queries.ListJobsOfInstanceForUsageR
 func factsOfJob(ctx context.Context, row *db_queries.ListJobsOfInstanceForUsageRow, features jobFeatures) (*jobFacts, error) {
 	stored, job, err := decodeJob(row)
 	if err != nil {
-		return nil, err
+		// Nothing was asked of the database here: whatever failed is what the row holds.
+		return nil, fmt.Errorf("%w: %w", errUndecodable, err)
 	}
 	used, err := features(ctx, job)
 	if err != nil {

@@ -84,8 +84,10 @@ func NewInventoryReader(
 // Read gives the inventory of the instance. now is the moment the report is prepared: the users
 // active in the last thirty days are counted back from it.
 //
-// A job, a connection or an account that cannot be read is left out alone, logged by its id and
-// counted in Unread; a query on the whole instance that fails fails the reading.
+// A job, a connection or an account that does not decode, or whose reading panics, is left out
+// alone, logged by its id and counted in Unread. A query that fails, on the whole instance or on
+// one job or account, fails the reading: the report of a day is made once, and the next pass may
+// find the database answering.
 func (r *InventoryReader) Read(ctx context.Context, now time.Time) (*Inventory, error) {
 	inventory := &Inventory{}
 	used, err := r.readJobsAndConnections(ctx, inventory)
@@ -173,7 +175,7 @@ type accountRead struct {
 	features []license.Feature
 	members  []rbac.User
 	held     map[rbac.User]mgmtv1alpha1.AccountRole
-	// featuresErr says why the features could not be read, when the members could.
+	// featuresErr says why the features could not be told, when the members could.
 	featuresErr error
 }
 
@@ -196,6 +198,10 @@ func (r *InventoryReader) readAccounts(ctx context.Context, used map[license.Fea
 		if cause != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
+			}
+			if !undecodable(cause) {
+				// The error is not wrapped: it can quote a piece of what was read.
+				return fmt.Errorf("unable to read account %s: %s", account.String(), causeKind(cause))
 			}
 			// The error is not logged: it can carry what a decoding quoted of a stored value.
 			leftOut(ctx, "an account could not be read and is left out of the usage report", "accountId", account.String(), cause)

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -93,32 +94,33 @@ type fakeCounters struct {
 	runs       *usagestore.DayRuns
 	versions   []usagestore.SourceEngineRuns
 	refusals   []usagestore.GateCount
-	err        error
 	calls      int
 	days       []time.Time
+
+	instanceErr, runsErr, versionsErr, refusalsErr error
 }
 
 func (f *fakeCounters) InstanceId(context.Context) (string, error) {
 	f.calls++
-	return f.instanceId, f.err
+	return f.instanceId, f.instanceErr
 }
 
 func (f *fakeCounters) RunsOfDay(_ context.Context, day time.Time) (*usagestore.DayRuns, error) {
 	f.calls++
 	f.days = append(f.days, day)
-	return f.runs, f.err
+	return f.runs, f.runsErr
 }
 
 func (f *fakeCounters) SourceVersionsOfDay(_ context.Context, day time.Time) ([]usagestore.SourceEngineRuns, error) {
 	f.calls++
 	f.days = append(f.days, day)
-	return f.versions, f.err
+	return f.versions, f.versionsErr
 }
 
 func (f *fakeCounters) RefusalsOfDay(_ context.Context, day time.Time) ([]usagestore.GateCount, error) {
 	f.calls++
 	f.days = append(f.days, day)
-	return f.refusals, f.err
+	return f.refusals, f.refusalsErr
 }
 
 type fakeInventory struct {
@@ -142,6 +144,8 @@ type fakeInstance struct {
 
 	sourcesErr, postgresErr, temporalErr, workersErr error
 	calls                                            int
+	// afterWorkers runs when the last of the optional readings is done.
+	afterWorkers func()
 }
 
 func (f *fakeInstance) SourcesCount(context.Context) (int, error) {
@@ -161,6 +165,9 @@ func (f *fakeInstance) TemporalVersion(context.Context) (string, error) {
 
 func (f *fakeInstance) Workers(context.Context) (int, error) {
 	f.calls++
+	if f.afterWorkers != nil {
+		f.afterWorkers()
+	}
 	return f.workers, f.workersErr
 }
 
@@ -495,9 +502,12 @@ func Test_Build_AnOptionalReadingThatFails(t *testing.T) {
 func Test_Build_ARequiredReadingThatFails(t *testing.T) {
 	failure := errors.New("unavailable")
 	for name, fail := range map[string]func(*fixture){
-		"the usage store": func(f *fixture) { f.counters.err = failure },
-		"the sources":     func(f *fixture) { f.instance.sourcesErr = failure },
-		"the inventory":   func(f *fixture) { f.inventory.err = failure },
+		"the id of the instance":         func(f *fixture) { f.counters.instanceErr = failure },
+		"the runs of the day":            func(f *fixture) { f.counters.runsErr = failure },
+		"the source versions of the day": func(f *fixture) { f.counters.versionsErr = failure },
+		"the refusals of the day":        func(f *fixture) { f.counters.refusalsErr = failure },
+		"the sources":                    func(f *fixture) { f.instance.sourcesErr = failure },
+		"the inventory":                  func(f *fixture) { f.inventory.err = failure },
 	} {
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t)
@@ -508,6 +518,18 @@ func Test_Build_ARequiredReadingThatFails(t *testing.T) {
 			require.Nil(t, sealed)
 		})
 	}
+}
+
+// The optional readings are skipped when they fail, which a context that ended makes them do: a
+// report made past its time lacks what it should hold, and is not sealed.
+func Test_Build_AContextThatEndedDuringTheOptionalReadingsSealsNothing(t *testing.T) {
+	f := newFixture(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	f.instance.afterWorkers = cancel
+
+	sealed, err := f.builder().Build(ctx, reportDay, reportNow)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, sealed)
 }
 
 // A document the schema refuses is an error: it is never sealed.
@@ -547,10 +569,21 @@ func Test_Build_ValuesOutsideTheirLists(t *testing.T) {
 		{Gate: license.Gate(leak + "-gate"), Count: 7},
 	}
 
-	sealed, err := f.builder().Build(t.Context(), reportDay, reportNow)
+	ctx, output := logged(t)
+	sealed, err := f.builder().Build(ctx, reportDay, reportNow)
 	require.NoError(t, err)
 	require.NoError(t, telemetry.Validate(sealed.Document))
 	requireNoLeak(t, string(sealed.Document))
+	// What is dropped is said, once each, and nothing of it is quoted.
+	for _, dropped := range []string{
+		"a version of the orchestrator that is not one is left out of the usage report",
+		"runs on a source whose version is not one are left out of the usage report",
+		"refusals of a gate the usage report does not know are left out of it",
+	} {
+		require.Equal(t, 1, strings.Count(output.String(), dropped), dropped)
+	}
+	require.Equal(t, 3, strings.Count(output.String(), `"level":"WARN"`))
+	requireNoLeak(t, output.String())
 
 	read := tree(t, sealed.Document)
 	require.Equal(t, "other", block(t, read, "identification")["license_id"])

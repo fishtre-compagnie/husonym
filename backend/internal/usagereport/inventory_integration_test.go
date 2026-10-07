@@ -20,6 +20,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -39,19 +40,36 @@ func migratedPool(ctx context.Context, t *testing.T) *pgxpool.Pool {
 }
 
 // apiKeysFailingFor is the queries of the API, of which the one that lists the API keys of an
-// account fails for one account.
+// account fails for one account, with the given error.
 type apiKeysFailingFor struct {
 	db_queries.Querier
 	account pgtype.UUID
+	err     error
 }
 
 func (q apiKeysFailingFor) GetAccountApiKeys(
 	ctx context.Context, db db_queries.DBTX, accountId pgtype.UUID,
 ) ([]db_queries.HusonymApiAccountApiKey, error) {
 	if accountId == q.account {
-		return nil, errors.New("the API keys of " + leak + " cannot be listed")
+		return nil, q.err
 	}
 	return q.Querier.GetAccountApiKeys(ctx, db, accountId)
+}
+
+// membersFailingFor is the queries of the API, of which the one that lists the members of an
+// account fails for one account.
+type membersFailingFor struct {
+	db_queries.Querier
+	account pgtype.UUID
+}
+
+func (q membersFailingFor) GetAccountUsers(
+	ctx context.Context, db db_queries.DBTX, accountId pgtype.UUID,
+) ([]pgtype.UUID, error) {
+	if accountId == q.account {
+		return nil, errors.New("the members of " + leak + " cannot be listed")
+	}
+	return q.Querier.GetAccountUsers(ctx, db, accountId)
 }
 
 // rolesFailingFor is the roles of the instance, which panic for one account.
@@ -376,9 +394,29 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 	}
 	require.Contains(t, output.String(), husonymdb.UUIDString(damagedConnection.ID))
 
-	// An account whose own features cannot be read, because a query fails, loses those and
-	// nothing else: its members still count, and what its jobs use is still told.
-	failing := licensegate.NewUsageReader(husonymdb.New(pool, apiKeysFailingFor{Querier: queries, account: first.ID}), roles)
+	// An account whose own features could not be asked, because a query fails, is not left out:
+	// the query may answer at the next pass, and a report without the account would stay as it
+	// is. The reading fails, and says which account without quoting why.
+	unanswered := licensegate.NewUsageReader(husonymdb.New(pool, apiKeysFailingFor{
+		Querier: queries, account: first.ID, err: errors.New("the API keys of " + leak + " cannot be listed"),
+	}), roles)
+	none, err := NewInventoryReader(db, unanswered, roles, store, true).Read(ctx, now)
+	require.ErrorContains(t, err, firstId)
+	requireNoLeak(t, err.Error())
+	require.Nil(t, none)
+	// So does it when the members of an account could not be asked.
+	withoutMembers := husonymdb.New(pool, membersFailingFor{Querier: queries, account: second.ID})
+	none, err = NewInventoryReader(withoutMembers, usage, roles, store, true).Read(ctx, now)
+	require.ErrorContains(t, err, secondId)
+	requireNoLeak(t, err.Error())
+	require.Nil(t, none)
+	require.NotContains(t, output.String(), `"accountId"`, "an account that fails the reading is not said to be left out")
+
+	// An account whose own features do not decode loses those and nothing else: its members
+	// still count, and what its jobs use is still told.
+	failing := licensegate.NewUsageReader(husonymdb.New(pool, apiKeysFailingFor{
+		Querier: queries, account: first.ID, err: pgx.ScanArgError{ColumnIndex: 1, Err: errors.New("cannot scan " + leak)},
+	}), roles)
 	withoutFeatures, err := NewInventoryReader(db, failing, roles, store, true).Read(ctx, now)
 	require.NoError(t, err)
 	want.Unread.Accounts = 1

@@ -96,7 +96,8 @@ func NewBuilder(
 // and of its license are read at.
 //
 // A document its schema refuses is an error: nothing is sealed. What the instance cannot tell
-// of where it runs is left out and logged, and the report is made without it.
+// of where it runs is left out and logged, and the report is made without it; but a context
+// that ended makes every such reading fail, and that report is not sealed.
 func (b *Builder) Build(ctx context.Context, day, now time.Time) (*Sealed, error) {
 	// Asked first, and of what the process holds: without a license nothing is read at all.
 	if !b.license.IsValid() {
@@ -128,6 +129,12 @@ func (b *Builder) Build(ctx context.Context, day, now time.Time) (*Sealed, error
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// The optional readings are skipped when they fail, and they all fail once the context is
+	// done: what was assembled then is not the report that was asked for.
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("the usage report was not made in time: %w", err)
 	}
 
 	document, err := report.Marshal()
@@ -207,16 +214,26 @@ func (b *Builder) diagnostics(ctx context.Context, day, now time.Time) (*telemet
 		configuration.AuthProvider = telemetry.AuthProvider(b.facts.AuthProvider)
 	}
 
+	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+	engines, unshaped := sourceEngines(versions, inventory.SourceTypeOfJob)
+	if unshaped {
+		logger.WarnContext(ctx, "runs on a source whose version is not one are left out of the usage report")
+	}
+	refused, unknown := refusalCounts(refusals)
+	if unknown {
+		logger.WarnContext(ctx, "refusals of a gate the usage report does not know are left out of it")
+	}
+
 	return &telemetry.Diagnostics{
 		Installation:  b.installation(ctx),
 		Configuration: configuration,
 		Connections:   inventory.Connections,
-		SourceEngines: sourceEngines(versions, inventory.SourceTypeOfJob),
+		SourceEngines: engines,
 		Jobs:          inventory.Jobs,
 		Transformers:  inventory.Transformers,
 		ColumnTypes:   inventory.ColumnTypes,
 		Features:      inventory.Features,
-		Refusals:      refusalCounts(refusals),
+		Refusals:      refused,
 		Runs:          runsOf(runs),
 		// Empty for now: the lists its rows are of are declared, and nothing fills it yet.
 		Errors: []telemetry.ErrorCount{},
@@ -241,6 +258,12 @@ func (b *Builder) installation(ctx context.Context) telemetry.Installation {
 	}
 	if version, ok := optional(ctx, "the version of the orchestrator", b.instance.TemporalVersion); ok {
 		installation.TemporalVersion = telemetry.TemporalVersion(version)
+		// What the server said is not logged: it is not the report's to quote.
+		if installation.TemporalVersion == "" {
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+				ctx, "a version of the orchestrator that is not one is left out of the usage report",
+			)
+		}
 	}
 	if workers, ok := optional(ctx, "the number of workers", b.instance.Workers); ok {
 		installation.Workers = &workers
@@ -265,35 +288,43 @@ func optional[T any](ctx context.Context, what string, read func(context.Context
 
 // sourceEngines adds up the runs of the day per type and major version of their source. A job
 // that is gone since its run, or whose source is not known, counts under the type other; a
-// version that is not one or two numbers is not counted.
-func sourceEngines(versions []usagestore.SourceEngineRuns, typeOfJob map[string]string) []telemetry.SourceEngine {
+// version that is not one or two numbers is not counted, and unshaped tells there was one.
+func sourceEngines(
+	versions []usagestore.SourceEngineRuns,
+	typeOfJob map[string]string,
+) (engines []telemetry.SourceEngine, unshaped bool) {
 	type engine struct{ kind, major string }
 	runs := make(map[engine]int)
 	for _, version := range versions {
 		major := telemetry.SourceMajor(version.VersionMajor)
 		if major == "" {
+			unshaped = true
 			continue
 		}
 		// A job the map does not hold gives the empty type, which is other.
 		runs[engine{telemetry.ConnectionType(typeOfJob[version.JobId]), major}] += int(version.Runs)
 	}
-	engines := make([]telemetry.SourceEngine, 0, len(runs))
+	engines = make([]telemetry.SourceEngine, 0, len(runs))
 	for key, count := range runs {
 		engines = append(engines, telemetry.SourceEngine{Type: key.kind, Major: key.major, Runs: count})
 	}
-	return engines
+	return engines, unshaped
 }
 
-// refusalCounts keeps the refusals of the gates the report knows.
-func refusalCounts(refusals []usagestore.GateCount) []telemetry.GateCount {
+// refusalCounts keeps the refusals of the gates the report knows, and unknown tells there was
+// one of another gate.
+func refusalCounts(refusals []usagestore.GateCount) (counts []telemetry.GateCount, unknown bool) {
 	gates := telemetry.Gates()
-	counts := make([]telemetry.GateCount, 0, len(refusals))
+	counts = make([]telemetry.GateCount, 0, len(refusals))
 	for _, refusal := range refusals {
-		if gate := string(refusal.Gate); slices.Contains(gates, gate) {
-			counts = append(counts, telemetry.GateCount{Gate: gate, Count: int(refusal.Count)})
+		gate := string(refusal.Gate)
+		if !slices.Contains(gates, gate) {
+			unknown = true
+			continue
 		}
+		counts = append(counts, telemetry.GateCount{Gate: gate, Count: int(refusal.Count)})
 	}
-	return counts
+	return counts, unknown
 }
 
 // runsOf turns the runs of the day into their block. Kinds and statuses the report does not

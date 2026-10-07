@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -19,6 +20,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
@@ -329,21 +332,21 @@ func Test_readJobs_CountsAJobWhoseTypeCannotBeReadAsASynchronization(t *testing.
 	}
 }
 
-// A job whose reading panics, or whose features cannot be told, is left out like any other, and
-// what the panic or the error said is not written.
-func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrFails(t *testing.T) {
-	for name, features := range map[string]jobFeatures{
-		"a panic": func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
-			if job.GetId() == jobTwo {
-				panic("cannot read " + leak)
-			}
-			return definitionOnly(ctx, job)
+// A job whose reading panics, or whose features hold what does not decode, is left out like any
+// other, and what the panic or the error said is not written.
+func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrDoesNotDecode(t *testing.T) {
+	for name, failure := range map[string]func() error{
+		"a panic": func() error { panic("cannot read " + leak) },
+		"a stored value that is no JSON": func() error {
+			var none map[string]any
+			return fmt.Errorf("unable to look up %s: %w", leak, json.Unmarshal([]byte(`{"`+leak), &none))
 		},
-		"an error": func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
-			if job.GetId() == jobTwo {
-				return nil, errors.New("cannot read " + leak)
-			}
-			return definitionOnly(ctx, job)
+		"a stored value of another type": func() error {
+			var none struct{ Name int }
+			return fmt.Errorf("unable to look up %s: %w", leak, json.Unmarshal([]byte(`{"Name":"`+leak+`"}`), &none))
+		},
+		"a row that does not scan": func() error {
+			return fmt.Errorf("unable to look up %s: %w", leak, pgx.ScanArgError{ColumnIndex: 2, Err: errors.New(leak)})
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -353,7 +356,12 @@ func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrFails(t *testing.T) {
 				jobOf(t, jobOne, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
 				scheduled(jobOf(t, jobTwo, postgresFrom(connectionTwo, "x = 1"), passthrough(t, "s", "t", "a")), "0 3 * * *"),
 				jobOf(t, jobThree, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
-			}, features)
+			}, func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
+				if job.GetId() == jobTwo {
+					return nil, failure()
+				}
+				return definitionOnly(ctx, job)
+			})
 
 			require.NoError(t, err)
 			require.Equal(t, []telemetry.JobKindCount{{Kind: "sync", Count: 2}}, read.jobs.ByKind)
@@ -369,6 +377,45 @@ func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrFails(t *testing.T) {
 			} else {
 				require.NotContains(t, output.String(), "panicked")
 			}
+		})
+	}
+}
+
+// A job whose features could not be asked is not a job that cannot be read: the database may
+// answer at the next pass, and a report that leaves the job out would stay as it is. The reading
+// fails, and says which job without quoting why.
+func Test_readJobs_FailsWhenTheFeaturesOfAJobCannotBeAsked(t *testing.T) {
+	for name, tc := range map[string]struct {
+		failure error
+		says    string
+	}{
+		"an error nobody knows": {errors.New("cannot read " + leak), "the reading failed"},
+		"an error of the database": {
+			fmt.Errorf("unable to get the hooks: %w", &pgconn.PgError{Code: "57014", Message: "canceling " + leak}),
+			"the database answered 57014",
+		},
+		"a reading that took too long": {
+			fmt.Errorf("unable to get the hooks of %s: %w", leak, context.DeadlineExceeded), "the reading took too long",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx, output := logged(t)
+
+			read, err := readJobs(ctx, []jobRow{
+				jobOf(t, jobOne, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
+				jobOf(t, jobTwo, postgresFrom(connectionTwo), passthrough(t, "s", "t", "a")),
+			}, func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
+				if job.GetId() == jobTwo {
+					return nil, tc.failure
+				}
+				return definitionOnly(ctx, job)
+			})
+
+			require.Nil(t, read)
+			require.ErrorContains(t, err, jobTwo)
+			require.ErrorContains(t, err, tc.says)
+			requireNoLeak(t, err.Error())
+			require.Empty(t, output.String())
 		})
 	}
 }
