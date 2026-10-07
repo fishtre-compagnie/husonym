@@ -16,7 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
-var update = flag.Bool("update", false, "rewrite the generated files (the schema from the closed lists, the seal vector)")
+var update = flag.Bool("update", false, "rewrite the generated files (the schema from the closed lists)")
 
 const schemaPath = "schema/usage-report.v1.schema.json"
 

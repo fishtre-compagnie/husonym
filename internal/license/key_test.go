@@ -1,6 +1,7 @@
 package license
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
@@ -179,5 +180,22 @@ func Test_SignatureOf_RefusesWithoutEchoingTheValue(t *testing.T) {
 		_, err := SignatureOf(value)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "secret")
+	}
+}
+
+// Whoever holds the signature can prove it holds the key: a signature that is empty, or of any
+// other length than the one Ed25519 gives, is one anybody can make up.
+func Test_SignatureOf_RefusesASignatureThatIsNotOfEd25519(t *testing.T) {
+	for name, signature := range map[string][]byte{
+		"none":      {},
+		"too short": bytes.Repeat([]byte{7}, ed25519.SignatureSize-1),
+		"too long":  bytes.Repeat([]byte{7}, ed25519.SignatureSize+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := SignatureOf(encodeEnvelope(t, b64([]byte("secret-content")), b64(signature)))
+			require.Error(t, err)
+			require.Nil(t, got)
+			require.NotContains(t, err.Error(), "secret")
+		})
 	}
 }

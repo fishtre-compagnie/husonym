@@ -55,13 +55,19 @@ itself never appears in it.
   base64 string as the instance holds it), surrounding whitespace trimmed.
 - **Secret**: the key value is base64 of a JSON envelope whose `signature` field is base64 of the
   Ed25519 signature. The secret is `HKDF-SHA-256(ikm = signature bytes, salt = none, info =
-  "husonym usage report seal v1", length = 32)`.
+  "husonym usage report seal v1", length = 32)`. The signature is exactly 64 bytes: a key that
+  carries one of another length, or none, is refused, since the secret derived from it would be
+  anybody's to derive.
 - **Seal**: the lowercase hex HMAC-SHA-256, keyed with that secret, of the exact bytes of the
-  document as sent. Re-encoding the JSON changes the bytes and invalidates the seal.
+  document as sealed. Re-encoding the JSON changes the bytes and invalidates the seal.
+- **Check**: a seal is exactly 64 lowercase hex characters. Anything else is refused before any
+  comparison, upper case included, so that a seal has one spelling. The seal is decoded and its 32
+  bytes are compared in constant time with the HMAC computed again.
 
 `testdata/seal-vector.json` holds a throwaway key, a document, its fingerprint and its seal. It is
-the reference for any other implementation. Refresh it with
-`go test ./internal/telemetry -run Test_Seal_MatchesThePublishedVector -update`.
+the reference for any other implementation, and does not change: `-update` leaves it alone. Only
+`go test ./internal/telemetry -run Test_Seal_MatchesThePublishedVector -update-seal-vector` mints
+a new one, which every other implementation then has to follow.
 
 ## Evolving the schema
 

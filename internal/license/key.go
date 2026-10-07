@@ -84,10 +84,18 @@ func ParseWith(value string, ring Keyring) (*Key, error) {
 }
 
 // SignatureOf returns the signature bytes a key value carries. It does not verify them: the
-// caller holds a key that a provider already verified. Errors never echo the key material.
+// caller holds a key that a provider already verified. It refuses a signature that is not of
+// the length Ed25519 gives: what is derived from an empty one, anybody can derive. Errors never
+// echo the key material.
 func SignatureOf(value string) ([]byte, error) {
 	_, _, signature, err := decode(value)
-	return signature, err
+	if err != nil {
+		return nil, err
+	}
+	if len(signature) != ed25519.SignatureSize {
+		return nil, errors.New("license key envelope has a signature that is not an Ed25519 signature (envelope)")
+	}
+	return signature, nil
 }
 
 // decode unwraps a key value into its envelope, the signed content and the signature.
