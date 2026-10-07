@@ -86,6 +86,7 @@ func Test_RecordRunEnded_SendsWhatItIsGiven(t *testing.T) {
 			_, err := env.ExecuteActivity(activities.RecordRunEnded, &RunEndedRequest{
 				JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt, EndedAt: testEndedAt,
 				Outcome: tt.outcome, RowsRead: 42, RowsDiscarded: 3, Retries: 2,
+				TablesUncounted: 4, SourceVersionMajor: "8.0",
 			})
 			require.NoError(t, err)
 
@@ -99,6 +100,8 @@ func Test_RecordRunEnded_SendsWhatItIsGiven(t *testing.T) {
 			require.Equal(t, int64(42), sent.GetRowsRead())
 			require.Equal(t, int64(3), sent.GetRowsDiscarded())
 			require.Equal(t, int64(2), sent.GetRetries())
+			require.Equal(t, int64(4), sent.GetTablesUncounted())
+			require.Equal(t, "8.0", sent.GetSourceVersionMajor())
 		})
 	}
 }

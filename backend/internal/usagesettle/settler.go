@@ -91,10 +91,22 @@ func (s *Settler) Every(ctx context.Context, every time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := s.SettleOnce(ctx, time.Now()); err != nil && ctx.Err() == nil {
-				s.logger.Warn("could not settle the runs left open", "error", err)
-			}
+			s.pass(ctx)
 		}
+	}
+}
+
+// pass makes one pass of the loop. A panic ends the pass and not the process: the usage
+// counters never take the instance down. The value of the panic is not logged, it may hold
+// anything.
+func (s *Settler) pass(ctx context.Context) {
+	defer func() {
+		if recover() != nil {
+			s.logger.Error("could not settle the runs left open", "panicked", true)
+		}
+	}()
+	if err := s.SettleOnce(ctx, time.Now()); err != nil && ctx.Err() == nil {
+		s.logger.Warn("could not settle the runs left open", "error", err)
 	}
 }
 

@@ -43,7 +43,7 @@ func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
 // it: reading through the pool instead would take a second connection while the first is held,
 // and callers queued on the same row could then exhaust the pool and wait on one another.
 func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgmtv1alpha1.Job) error {
-	used, err := featuresOfJob(ctx, g.db, dbtx, job)
+	used, err := FeaturesOfJob(ctx, g.db, dbtx, job)
 	if err != nil {
 		return err
 	}
@@ -62,10 +62,11 @@ func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgm
 	)
 }
 
-// featuresOfJob lists the licensed features a job uses, from its definition and from what only
+// FeaturesOfJob lists the licensed features a job uses, from its definition and from what only
 // the database knows about it: whether it has an enabled hook, and what the user-defined
-// transformers it references store. It reads through the given handle.
-func featuresOfJob(
+// transformers it references store. It reads through the given handle. It never reports
+// scheduling, as FeaturesUsedBy does not.
+func FeaturesOfJob(
 	ctx context.Context,
 	db *husonymdb.HusonymDb,
 	dbtx husonymdb.BaseDBTX,

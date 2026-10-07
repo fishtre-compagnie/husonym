@@ -195,9 +195,13 @@ type RecordRunEndedRequest struct {
 	// The rows the run set aside instead of writing them.
 	RowsDiscarded int64 `protobuf:"varint,7,opt,name=rows_discarded,json=rowsDiscarded,proto3" json:"rows_discarded,omitempty"`
 	// The times the run's activities were tried again.
-	Retries       int64 `protobuf:"varint,8,opt,name=retries,proto3" json:"retries,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Retries int64 `protobuf:"varint,8,opt,name=retries,proto3" json:"retries,omitempty"`
+	// The tables of the run whose rows were not counted.
+	TablesUncounted int64 `protobuf:"varint,9,opt,name=tables_uncounted,json=tablesUncounted,proto3" json:"tables_uncounted,omitempty"`
+	// The major version of the database the run read, as "16" or "8.0". Empty when it is not known.
+	SourceVersionMajor string `protobuf:"bytes,10,opt,name=source_version_major,json=sourceVersionMajor,proto3" json:"source_version_major,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RecordRunEndedRequest) Reset() {
@@ -286,6 +290,20 @@ func (x *RecordRunEndedRequest) GetRetries() int64 {
 	return 0
 }
 
+func (x *RecordRunEndedRequest) GetTablesUncounted() int64 {
+	if x != nil {
+		return x.TablesUncounted
+	}
+	return 0
+}
+
+func (x *RecordRunEndedRequest) GetSourceVersionMajor() string {
+	if x != nil {
+		return x.SourceVersionMajor
+	}
+	return ""
+}
+
 type RecordRunEndedResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -332,7 +350,7 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x06run_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05runId\x12A\n" +
 	"\n" +
 	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n" +
-	"\x18RecordRunStartedResponse\"\x94\x03\n" +
+	"\x18RecordRunStartedResponse\"\xa1\x04\n" +
 	"\x15RecordRunEndedRequest\x12\x1f\n" +
 	"\x06job_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n" +
 	"\x06run_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05runId\x12A\n" +
@@ -343,7 +361,10 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\aoutcome\x12$\n" +
 	"\trows_read\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\browsRead\x12.\n" +
 	"\x0erows_discarded\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rrowsDiscarded\x12!\n" +
-	"\aretries\x18\b \x01(\x03B\a\xbaH\x04\"\x02(\x00R\aretries\"\x18\n" +
+	"\aretries\x18\b \x01(\x03B\a\xbaH\x04\"\x02(\x00R\aretries\x122\n" +
+	"\x10tables_uncounted\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n" +
+	"\x14source_version_major\x18\n" +
+	" \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\"\x18\n" +
 	"\x16RecordRunEndedResponse*v\n" +
 	"\n" +
 	"RunOutcome\x12\x1b\n" +

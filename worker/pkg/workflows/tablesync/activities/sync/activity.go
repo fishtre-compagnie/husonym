@@ -99,6 +99,9 @@ type SyncTableResponse struct {
 	RowsDiscarded int64 `json:",omitempty"`
 	// attempt - 1 of the attempt that answered
 	Retries int64 `json:",omitempty"`
+	// Uncounted says that the page went through Benthos, which counts no row: what the page
+	// read is not known, and is not zero.
+	Uncounted bool `json:",omitempty"`
 }
 
 type SyncMetadata struct {
@@ -149,10 +152,13 @@ func (a *Activity) SyncTable(
 	metadata *SyncMetadata,
 ) (resp *SyncTableResponse, retErr error) {
 	info := activity.GetInfo(ctx)
-	// Whichever engine answers, the response says which attempt it was.
+	// Whichever engine answers, the response says which attempt it was, and whether the
+	// engine counted what the page read: Athanor does, Benthos does not.
+	counted := false
 	defer func() {
 		if resp != nil {
 			resp.Retries = int64(info.Attempt) - 1
+			resp.Uncounted = !counted
 		}
 	}()
 
@@ -234,6 +240,7 @@ func (a *Activity) SyncTable(
 				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
 			}
 			logger.Info("sync complete (athanor)", "hasMorePages", aresp.ContinuationToken != nil)
+			counted = true
 			return aresp, nil
 		}
 		logger.Info("moteur=athanor demandé, mais aucun plan pour cette table (source non SQL) : Benthos exécute la synchro")

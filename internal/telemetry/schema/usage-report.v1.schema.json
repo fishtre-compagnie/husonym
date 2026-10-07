@@ -1,0 +1,746 @@
+{
+  "$defs": {
+    "architecture": {
+      "enum": [
+        "amd64",
+        "arm64",
+        "other"
+      ]
+    },
+    "auth_provider": {
+      "enum": [
+        "auth0",
+        "keycloak",
+        "other"
+      ]
+    },
+    "column_type_family": {
+      "enum": [
+        "integer",
+        "decimal",
+        "float",
+        "boolean",
+        "text",
+        "binary",
+        "date",
+        "time",
+        "timestamp",
+        "interval",
+        "uuid",
+        "json",
+        "xml",
+        "array",
+        "enum",
+        "network",
+        "geometric",
+        "other"
+      ]
+    },
+    "connection_role": {
+      "enum": [
+        "source",
+        "destination"
+      ]
+    },
+    "connection_type": {
+      "enum": [
+        "postgres",
+        "mysql",
+        "mssql",
+        "mongodb",
+        "dynamodb",
+        "aws-s3",
+        "gcp-cloud-storage",
+        "openai",
+        "other"
+      ]
+    },
+    "count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "error_category": {
+      "enum": [
+        "connection_refused",
+        "authentication_refused",
+        "timeout",
+        "constraint_violated",
+        "insufficient_privileges",
+        "object_missing",
+        "type_mismatch",
+        "resources_exhausted",
+        "canceled",
+        "license",
+        "other"
+      ]
+    },
+    "error_step": {
+      "enum": [
+        "preflight",
+        "schema_init",
+        "table_sync",
+        "hooks",
+        "integrity_check",
+        "other"
+      ]
+    },
+    "feature": {
+      "enum": [
+        "job_hooks",
+        "account_hooks",
+        "pii_text",
+        "pii_detection",
+        "custom_transformers",
+        "subsetting",
+        "scheduling",
+        "mapping_review",
+        "api_keys",
+        "mcp",
+        "rbac",
+        "sso",
+        "run_logs"
+      ]
+    },
+    "gate": {
+      "enum": [
+        "job_hooks",
+        "account_hooks",
+        "pii_text",
+        "pii_detection",
+        "custom_transformers",
+        "subsetting",
+        "scheduling",
+        "mapping_review",
+        "api_keys",
+        "mcp",
+        "rbac",
+        "sso",
+        "run_logs",
+        "license_not_in_force",
+        "source_cap",
+        "job_cap",
+        "connection_cap",
+        "connection_type"
+      ]
+    },
+    "install_kind": {
+      "enum": [
+        "helm",
+        "compose",
+        "other"
+      ]
+    },
+    "job_kind": {
+      "enum": [
+        "sync",
+        "generate",
+        "ai_generate",
+        "pii_detect",
+        "other"
+      ]
+    },
+    "license_state": {
+      "enum": [
+        "none",
+        "valid",
+        "expiring",
+        "grace",
+        "frozen",
+        "other"
+      ]
+    },
+    "operating_system": {
+      "enum": [
+        "linux",
+        "darwin",
+        "windows",
+        "other"
+      ]
+    },
+    "role": {
+      "enum": [
+        "none",
+        "admin",
+        "job_developer",
+        "job_viewer",
+        "job_executor",
+        "other"
+      ]
+    },
+    "rows_bucket": {
+      "enum": [
+        "lt_1k",
+        "lt_10k",
+        "lt_100k",
+        "lt_1m",
+        "lt_10m",
+        "lt_100m",
+        "gte_100m"
+      ]
+    },
+    "run_logs": {
+      "enum": [
+        "none",
+        "loki",
+        "k8s_pods",
+        "other"
+      ]
+    },
+    "run_status": {
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "canceled",
+        "terminated",
+        "timed_out",
+        "other"
+      ]
+    },
+    "transformer_name": {
+      "enum": [
+        "passthrough",
+        "generate_default",
+        "transform_javascript",
+        "generate_email",
+        "transform_email",
+        "generate_bool",
+        "generate_card_number",
+        "generate_city",
+        "generate_e164_phone_number",
+        "generate_first_name",
+        "generate_float64",
+        "generate_full_address",
+        "generate_full_name",
+        "generate_gender",
+        "generate_int64_phone_number",
+        "generate_int64",
+        "generate_random_int64",
+        "generate_last_name",
+        "generate_sha256hash",
+        "generate_ssn",
+        "generate_state",
+        "generate_street_address",
+        "generate_string_phone_number",
+        "generate_string",
+        "generate_random_string",
+        "generate_unixtimestamp",
+        "generate_username",
+        "generate_utctimestamp",
+        "generate_uuid",
+        "generate_zipcode",
+        "transform_e164_phone_number",
+        "transform_first_name",
+        "transform_float64",
+        "transform_full_name",
+        "transform_int64_phone_number",
+        "transform_int64",
+        "transform_last_name",
+        "transform_phone_number",
+        "transform_string",
+        "generate_null",
+        "generate_categorical",
+        "transform_character_scramble",
+        "generate_javascript",
+        "generate_country",
+        "transform_pii_text",
+        "generate_business_name",
+        "generate_ip_address",
+        "transform_uuid",
+        "transform_scramble_identity",
+        "other"
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "day": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": "string"
+    },
+    "diagnostics": {
+      "additionalProperties": false,
+      "properties": {
+        "column_types": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "$ref": "#/$defs/count"
+              },
+              "family": {
+                "$ref": "#/$defs/column_type_family"
+              }
+            },
+            "required": [
+              "family",
+              "columns"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "configuration": {
+          "additionalProperties": false,
+          "properties": {
+            "account_oidc_providers": {
+              "$ref": "#/$defs/count"
+            },
+            "auth_enabled": {
+              "type": "boolean"
+            },
+            "auth_provider": {
+              "$ref": "#/$defs/auth_provider"
+            },
+            "presidio": {
+              "type": "boolean"
+            },
+            "run_logs": {
+              "$ref": "#/$defs/run_logs"
+            }
+          },
+          "required": [
+            "auth_enabled",
+            "account_oidc_providers",
+            "presidio",
+            "run_logs"
+          ],
+          "type": "object"
+        },
+        "connections": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "$ref": "#/$defs/count"
+              },
+              "role": {
+                "$ref": "#/$defs/connection_role"
+              },
+              "type": {
+                "$ref": "#/$defs/connection_type"
+              }
+            },
+            "required": [
+              "type",
+              "role",
+              "count"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "$ref": "#/$defs/error_category"
+              },
+              "count": {
+                "$ref": "#/$defs/count"
+              },
+              "step": {
+                "$ref": "#/$defs/error_step"
+              }
+            },
+            "required": [
+              "category",
+              "step",
+              "count"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "features": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "in_use": {
+                "type": "boolean"
+              },
+              "name": {
+                "$ref": "#/$defs/feature"
+              }
+            },
+            "required": [
+              "name",
+              "in_use"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "installation": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "$ref": "#/$defs/architecture"
+            },
+            "kind": {
+              "$ref": "#/$defs/install_kind"
+            },
+            "os": {
+              "$ref": "#/$defs/operating_system"
+            },
+            "postgres_major": {
+              "maximum": 999,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "temporal_version": {
+              "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){0,2}$",
+              "type": "string"
+            },
+            "workers": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "kind",
+            "os",
+            "arch"
+          ],
+          "type": "object"
+        },
+        "jobs": {
+          "additionalProperties": false,
+          "properties": {
+            "by_kind": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "$ref": "#/$defs/count"
+                  },
+                  "kind": {
+                    "$ref": "#/$defs/job_kind"
+                  },
+                  "scheduled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "scheduled",
+                  "count"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "columns": {
+              "$ref": "#/$defs/count"
+            },
+            "tables": {
+              "$ref": "#/$defs/count"
+            },
+            "with_subset": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "by_kind",
+            "tables",
+            "columns",
+            "with_subset"
+          ],
+          "type": "object"
+        },
+        "refusals": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "$ref": "#/$defs/count"
+              },
+              "gate": {
+                "$ref": "#/$defs/gate"
+              }
+            },
+            "required": [
+              "gate",
+              "count"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "runs": {
+          "additionalProperties": false,
+          "properties": {
+            "by_status": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "$ref": "#/$defs/count"
+                  },
+                  "kind": {
+                    "$ref": "#/$defs/job_kind"
+                  },
+                  "status": {
+                    "$ref": "#/$defs/run_status"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "status",
+                  "count"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "duration_seconds": {
+              "additionalProperties": false,
+              "properties": {
+                "median": {
+                  "$ref": "#/$defs/count"
+                },
+                "p95": {
+                  "$ref": "#/$defs/count"
+                }
+              },
+              "required": [
+                "median",
+                "p95"
+              ],
+              "type": "object"
+            },
+            "retries": {
+              "$ref": "#/$defs/count"
+            },
+            "rows_discarded": {
+              "$ref": "#/$defs/rows_bucket"
+            },
+            "rows_read": {
+              "$ref": "#/$defs/rows_bucket"
+            },
+            "with_uncounted_rows": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "by_status",
+            "rows_read",
+            "rows_discarded",
+            "retries",
+            "with_uncounted_rows"
+          ],
+          "type": "object"
+        },
+        "source_engines": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "major": {
+                "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3})?$",
+                "type": "string"
+              },
+              "runs": {
+                "$ref": "#/$defs/count"
+              },
+              "type": {
+                "$ref": "#/$defs/connection_type"
+              }
+            },
+            "required": [
+              "type",
+              "major",
+              "runs"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "transformers": {
+          "additionalProperties": false,
+          "properties": {
+            "system": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "columns": {
+                    "$ref": "#/$defs/count"
+                  },
+                  "name": {
+                    "$ref": "#/$defs/transformer_name"
+                  }
+                },
+                "required": [
+                  "name",
+                  "columns"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "user_defined": {
+              "$ref": "#/$defs/count"
+            },
+            "user_defined_columns": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "system",
+            "user_defined",
+            "user_defined_columns"
+          ],
+          "type": "object"
+        },
+        "unread": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "$ref": "#/$defs/count"
+            },
+            "connections": {
+              "$ref": "#/$defs/count"
+            },
+            "jobs": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "jobs",
+            "connections",
+            "accounts"
+          ],
+          "type": "object"
+        },
+        "users": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "$ref": "#/$defs/count"
+            },
+            "active_30d": {
+              "$ref": "#/$defs/count"
+            },
+            "by_role": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "$ref": "#/$defs/count"
+                  },
+                  "role": {
+                    "$ref": "#/$defs/role"
+                  }
+                },
+                "required": [
+                  "role",
+                  "count"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "users": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "accounts",
+            "users",
+            "by_role"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "installation",
+        "configuration",
+        "connections",
+        "source_engines",
+        "jobs",
+        "transformers",
+        "column_types",
+        "features",
+        "refusals",
+        "runs",
+        "errors",
+        "users",
+        "unread"
+      ],
+      "type": "object"
+    },
+    "generated_at": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "type": "string"
+    },
+    "identification": {
+      "additionalProperties": false,
+      "properties": {
+        "days_to_expiry": {
+          "type": "integer"
+        },
+        "instance_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "license_id": {
+          "pattern": "^([0-9a-f]{16}|other)$",
+          "type": "string"
+        },
+        "license_state": {
+          "$ref": "#/$defs/license_state"
+        }
+      },
+      "required": [
+        "key_fingerprint",
+        "license_id",
+        "instance_id",
+        "license_state",
+        "days_to_expiry"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "sources": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "type": "object"
+    },
+    "version": {
+      "additionalProperties": false,
+      "properties": {
+        "husonym": {
+          "pattern": "^(other|v?[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16})?)?)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "husonym"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "day",
+    "generated_at",
+    "identification",
+    "version",
+    "sources"
+  ],
+  "title": "Usage report of the instance, version 1",
+  "type": "object"
+}

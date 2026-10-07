@@ -445,6 +445,21 @@ func Test_UsageReader_FeaturesInUse(t *testing.T) {
 			usage, err = newUsageReader(store, rolesHeld{}).Of(t.Context(), other)
 			require.NoError(t, err)
 			require.Empty(t, usage.FeaturesInUse)
+
+			// What the account uses by itself is the part that no job tells, and it is told
+			// without reading a job.
+			var byItself []license.Feature
+			for _, feature := range tc.want {
+				switch feature {
+				case license.FeatureAccountHooks, license.FeatureApiKeys, license.FeatureSso, license.FeatureRbac:
+					byItself = append(byItself, feature)
+				}
+			}
+			store.down["GetJobsByAccount"] = errors.New("the jobs are not read")
+			store.down["ListJobSourcesOfInstance"] = errors.New("the sources are not read")
+			own, err := newUsageReader(store, roles).AccountFeatures(t.Context(), account)
+			require.NoError(t, err)
+			require.Equal(t, byItself, own)
 		})
 	}
 }

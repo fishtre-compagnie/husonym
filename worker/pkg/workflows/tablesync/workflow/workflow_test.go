@@ -218,6 +218,54 @@ func Test_TableSync_ContinueAsNewCarriesTheSums(t *testing.T) {
 	require.EqualValues(t, 1, next.Retries)
 }
 
+// One page that was not counted is enough: the table is not counted.
+func Test_TableSync_TellsATableWithAPageThatWasNotCounted(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t"}, []*sync_activity.SyncTableResponse{
+		{ContinuationToken: pointerToString("a"), RowsRead: 10},
+		{ContinuationToken: pointerToString("b"), Uncounted: true},
+		{RowsRead: 5},
+	})
+	require.NoError(t, env.GetWorkflowError())
+	var result *TableSyncResponse
+	require.NoError(t, env.GetWorkflowResult(&result))
+	require.True(t, result.Uncounted)
+	require.EqualValues(t, 15, result.RowsRead)
+}
+
+func Test_TableSync_ATableWhosePagesWereAllCountedIsCounted(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t"}, []*sync_activity.SyncTableResponse{
+		{ContinuationToken: pointerToString("a"), RowsRead: 10},
+		{RowsRead: 5},
+	})
+	require.NoError(t, env.GetWorkflowError())
+	var result *TableSyncResponse
+	require.NoError(t, env.GetWorkflowResult(&result))
+	require.False(t, result.Uncounted)
+}
+
+func Test_TableSync_ContinueAsNewCarriesAPageThatWasNotCounted(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 2, &TableSyncRequest{TableSchema: "s", TableName: "t"}, []*sync_activity.SyncTableResponse{
+		{ContinuationToken: pointerToString("a"), Uncounted: true},
+		{ContinuationToken: pointerToString("b"), RowsRead: 20},
+		{RowsRead: 5},
+	})
+	var continueErr *workflow.ContinueAsNewError
+	require.True(t, errors.As(env.GetWorkflowError(), &continueErr))
+	var next TableSyncRequest
+	require.NoError(t, converter.GetDefaultDataConverter().FromPayloads(continueErr.Input, &next))
+	require.True(t, next.Uncounted)
+}
+
+// What an earlier run of the table could not count stays so, whatever the pages after it.
+func Test_TableSync_KeepsWhatTheRequestBroughtUncounted(t *testing.T) {
+	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t", Uncounted: true},
+		[]*sync_activity.SyncTableResponse{{RowsRead: 5}})
+	require.NoError(t, env.GetWorkflowError())
+	var result *TableSyncResponse
+	require.NoError(t, env.GetWorkflowResult(&result))
+	require.True(t, result.Uncounted)
+}
+
 func Test_TableSync_AddsToWhatTheRequestBrought(t *testing.T) {
 	env, _ := tableSyncWithPages(t, 30, &TableSyncRequest{TableSchema: "s", TableName: "t", RowsRead: 30},
 		[]*sync_activity.SyncTableResponse{{RowsRead: 5}})

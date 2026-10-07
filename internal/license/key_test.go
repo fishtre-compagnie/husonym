@@ -1,6 +1,7 @@
 package license
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
@@ -155,4 +156,46 @@ func Test_Parse_RefusesAKeyNotSignedByTheEmbeddedKey(t *testing.T) {
 	_, err := Parse(readTestdata(t, "issued-before.key"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signature")
+}
+
+func Test_SignatureOf_ReturnsTheSignatureTheKeyCarries(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	content := []byte(`{"version":"1"}`)
+	signature := ed25519.Sign(priv, content)
+
+	got, err := SignatureOf(encode(t, content, priv))
+	require.NoError(t, err)
+	require.Equal(t, signature, got)
+
+	withKid, err := json.Marshal(map[string]string{"license": b64(content), "signature": b64(signature), "kid": "k2"})
+	require.NoError(t, err)
+	got, err = SignatureOf(b64(withKid))
+	require.NoError(t, err)
+	require.Equal(t, signature, got)
+}
+
+func Test_SignatureOf_RefusesWithoutEchoingTheValue(t *testing.T) {
+	for _, value := range []string{"%%%secret", b64([]byte("secret")), encodeEnvelope(t, b64([]byte("x")), "%%%secret")} {
+		_, err := SignatureOf(value)
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "secret")
+	}
+}
+
+// Whoever holds the signature can prove it holds the key: a signature that is empty, or of any
+// other length than the one Ed25519 gives, is one anybody can make up.
+func Test_SignatureOf_RefusesASignatureThatIsNotOfEd25519(t *testing.T) {
+	for name, signature := range map[string][]byte{
+		"none":      {},
+		"too short": bytes.Repeat([]byte{7}, ed25519.SignatureSize-1),
+		"too long":  bytes.Repeat([]byte{7}, ed25519.SignatureSize+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := SignatureOf(encodeEnvelope(t, b64([]byte("secret-content")), b64(signature)))
+			require.Error(t, err)
+			require.Nil(t, got)
+			require.NotContains(t, err.Error(), "secret")
+		})
+	}
 }

@@ -11,16 +11,31 @@ import (
 )
 
 type Interceptor struct {
-	db *husonymdb.HusonymDb
+	db     *husonymdb.HusonymDb
+	onUser func(ctx context.Context, userId string)
 }
 
-func NewInterceptor(db *husonymdb.HusonymDb) connect.Interceptor {
-	return &Interceptor{db: db}
+// Option configures the interceptor.
+type Option func(*Interceptor)
+
+// WithOnUser calls fn with the internal id of a user authenticated by JWT, once it is known. It
+// is not called for an API key, nor when the user cannot be resolved. fn runs on the request
+// path: it must return at once and must not fail the request.
+func WithOnUser(fn func(ctx context.Context, userId string)) Option {
+	return func(i *Interceptor) { i.onUser = fn }
+}
+
+func NewInterceptor(db *husonymdb.HusonymDb, opts ...Option) connect.Interceptor {
+	i := &Interceptor{db: db}
+	for _, opt := range opts {
+		opt(i)
+	}
+	return i
 }
 
 func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-		return next(setAuthValues(ctx, i.db), request)
+		return next(i.setAuthValues(ctx), request)
 	}
 }
 
@@ -36,20 +51,25 @@ func (i *Interceptor) WrapStreamingHandler(
 	next connect.StreamingHandlerFunc,
 ) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		return next(setAuthValues(ctx, i.db), conn)
+		return next(i.setAuthValues(ctx), conn)
 	}
 }
 
-func setAuthValues(ctx context.Context, db *husonymdb.HusonymDb) context.Context {
-	vals := getAuthValues(ctx, db)
+func (i *Interceptor) setAuthValues(ctx context.Context) context.Context {
+	vals, jwtUserId := resolveAuth(ctx, i.db)
+	if jwtUserId != "" && i.onUser != nil {
+		i.onUser(ctx, jwtUserId)
+	}
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx).With(vals...)
 	return logger_interceptor.SetLoggerContext(ctx, logger)
 }
 
-func getAuthValues(ctx context.Context, db *husonymdb.HusonymDb) []any {
+// resolveAuth returns the values that attribute a log line, and the internal id of the user
+// when the caller is one authenticated by JWT and found.
+func resolveAuth(ctx context.Context, db *husonymdb.HusonymDb) (values []any, jwtUserId string) {
 	tokenCtxResp, err := tokenctx.GetTokenCtx(ctx)
 	if err != nil {
-		return []any{}
+		return []any{}, ""
 	}
 	output := []any{}
 
@@ -64,7 +84,8 @@ func getAuthValues(ctx context.Context, db *husonymdb.HusonymDb) []any {
 			ProviderIss: tokenCtxResp.JwtContextData.AuthIssuer,
 		})
 		if err == nil {
-			output = append(output, "userId", husonymdb.UUIDString(association.UserID))
+			jwtUserId = husonymdb.UUIDString(association.UserID)
+			output = append(output, "userId", jwtUserId)
 		}
 	} else if tokenCtxResp.ApiKeyContextData != nil {
 		output = append(output, "apiKeyType", tokenCtxResp.ApiKeyContextData.ApiKeyType)
@@ -76,5 +97,5 @@ func getAuthValues(ctx context.Context, db *husonymdb.HusonymDb) []any {
 			)
 		}
 	}
-	return output
+	return output, jwtUserId
 }

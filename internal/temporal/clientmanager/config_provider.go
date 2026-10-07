@@ -12,6 +12,9 @@ import (
 
 type ConfigProvider interface {
 	GetConfig(ctx context.Context, accountID string) (*TemporalConfig, error)
+	// DefaultConfig is the configuration of the deployment, which an account that sets none of
+	// its own runs on.
+	DefaultConfig() *TemporalConfig
 }
 
 type DB interface {
@@ -63,6 +66,10 @@ func (p *DBConfigProvider) GetConfig(
 	accountConfig := dbConfigToTemporalConfig(dbConfig)
 	mergedConfig := p.defaultConfig.Override(accountConfig)
 	return mergedConfig, nil
+}
+
+func (p *DBConfigProvider) DefaultConfig() *TemporalConfig {
+	return p.defaultConfig
 }
 
 func dbConfigToTemporalConfig(dbConfig *pg_models.TemporalConfig) *TemporalConfig {

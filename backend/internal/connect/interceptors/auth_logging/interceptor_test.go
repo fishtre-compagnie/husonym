@@ -85,6 +85,64 @@ func Test_Interceptor_WrapUnary_JwtContextData_NoUser_NoFail(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func runGetUser(t *testing.T, data *auth_jwt.TokenContextData, q *db_queries.MockQuerier, opts ...Option) {
+	t.Helper()
+	logger := testutil.GetTestLogger(t)
+	mux := http.NewServeMux()
+	mux.Handle(mgmtv1alpha1connect.UserAccountServiceGetUserProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.UserAccountServiceGetUserProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetUserRequest]) (*connect.Response[mgmtv1alpha1.GetUserResponse], error) {
+			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{UserId: "123"}), nil
+		},
+		connect.WithInterceptors(
+			logger_interceptor.NewInterceptor(logger),
+			&mockAuthInterceptor{data: data},
+			NewInterceptor(husonymdb.New(husonymdb.NewMockDBTX(t), q), opts...),
+		),
+	))
+	srv := startHTTPServer(t, mux)
+	client := mgmtv1alpha1connect.NewUserAccountServiceClient(srv.Client(), srv.URL)
+	_, err := client.GetUser(context.Background(), connect.NewRequest(&mgmtv1alpha1.GetUserRequest{}))
+	require.NoError(t, err)
+}
+
+func Test_Interceptor_WithOnUser_Jwt_CallsBackWithInternalId(t *testing.T) {
+	q := db_queries.NewMockQuerier(t)
+	uuidstr := uuid.NewString()
+	genuuid, _ := husonymdb.ToUuid(uuidstr)
+	q.On("GetUserAssociationByIdentity", mock.Anything, mock.Anything, mock.Anything).
+		Return(db_queries.HusonymApiUserIdentityProviderAssociation{UserID: genuuid}, nil)
+
+	var got []string
+	runGetUser(t, &auth_jwt.TokenContextData{AuthUserId: "auth-user-id", AuthIssuer: testIssuer}, q,
+		WithOnUser(func(_ context.Context, userId string) { got = append(got, userId) }))
+	require.Equal(t, []string{uuidstr}, got)
+}
+
+func Test_Interceptor_WithOnUser_JwtUserNotFound_NoCallback(t *testing.T) {
+	q := db_queries.NewMockQuerier(t)
+	q.On("GetUserAssociationByIdentity", mock.Anything, mock.Anything, mock.Anything).
+		Return(db_queries.HusonymApiUserIdentityProviderAssociation{}, errors.New("test err"))
+
+	called := false
+	runGetUser(t, &auth_jwt.TokenContextData{AuthUserId: "auth-user-id", AuthIssuer: testIssuer}, q,
+		WithOnUser(func(context.Context, string) { called = true }))
+	require.False(t, called)
+}
+
+func Test_Interceptor_WithOnUser_ApiKey_NoCallback(t *testing.T) {
+	userid, _ := husonymdb.ToUuid(uuid.NewString())
+	ctx := context.WithValue(context.Background(), auth_apikey.TokenContextKey{}, &auth_apikey.TokenContextData{
+		ApiKeyType: apikey.AccountApiKey,
+		ApiKey:     &db_queries.HusonymApiAccountApiKey{UserID: userid},
+	})
+	called := false
+	i := NewInterceptor(husonymdb.New(husonymdb.NewMockDBTX(t), db_queries.NewMockQuerier(t)),
+		WithOnUser(func(context.Context, string) { called = true })).(*Interceptor)
+	_ = i.setAuthValues(ctx)
+	require.False(t, called)
+}
+
 type mockAuthInterceptor struct {
 	data *auth_jwt.TokenContextData
 }
@@ -120,8 +178,8 @@ func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
 	return srv
 }
 
-func Test_getAuthValues_NoTokenCtx(t *testing.T) {
-	vals := getAuthValues(context.Background(), &husonymdb.HusonymDb{})
+func Test_resolveAuth_NoTokenCtx(t *testing.T) {
+	vals, _ := resolveAuth(context.Background(), &husonymdb.HusonymDb{})
 	require.Empty(t, vals)
 }
 
@@ -129,7 +187,7 @@ func Test_getAuthValues_NoTokenCtx(t *testing.T) {
 // same subject from two providers is two people.
 const testIssuer = "https://idp.example.com/"
 
-func Test_getAuthValues_Valid_Jwt(t *testing.T) {
+func Test_resolveAuth_Valid_Jwt(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
@@ -151,7 +209,7 @@ func Test_getAuthValues_Valid_Jwt(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
+	vals, _ := resolveAuth(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"authUserId", "auth-user-id", "userId", uuidstr},
@@ -159,7 +217,7 @@ func Test_getAuthValues_Valid_Jwt(t *testing.T) {
 	)
 }
 
-func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
+func Test_resolveAuth_Valid_Jwt_No_User(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
@@ -179,7 +237,7 @@ func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
+	vals, _ := resolveAuth(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"authUserId", "auth-user-id"},
@@ -187,7 +245,7 @@ func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
 	)
 }
 
-func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
+func Test_resolveAuth_Valid_ApiKey(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
@@ -212,7 +270,7 @@ func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
+	vals, _ := resolveAuth(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{
@@ -229,7 +287,7 @@ func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
 	)
 }
 
-func Test_getAuthValues_Valid_ApiKey_No_Apikey(t *testing.T) {
+func Test_resolveAuth_Valid_ApiKey_No_Apikey(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
@@ -241,7 +299,7 @@ func Test_getAuthValues_Valid_ApiKey_No_Apikey(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
+	vals, _ := resolveAuth(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"apiKeyType", apikey.AccountApiKey},

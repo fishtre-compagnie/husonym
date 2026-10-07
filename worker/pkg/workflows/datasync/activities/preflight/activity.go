@@ -42,6 +42,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// sourceVersionTimeout bounds the reading of the version of the source: a run waits for it no
+// longer, whatever the source does.
+const sourceVersionTimeout = 5 * time.Second
+
 type Activity struct {
 	jobclient  mgmtv1alpha1connect.JobServiceClient
 	connclient mgmtv1alpha1connect.ConnectionServiceClient
@@ -54,6 +58,8 @@ type Activity struct {
 	athanor shared.AthanorPolicy
 	// transformerclient resolves the user-defined transformers, whose rules may need Athanor.
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient
+	// sourceVersionTimeout is how long the version of the source is waited for.
+	sourceVersionTimeout time.Duration
 }
 
 func New(
@@ -67,6 +73,7 @@ func New(
 	return &Activity{
 		jobclient: jobclient, connclient: connclient, sqlconnmanager: sqlconnmanager,
 		sqlmanagerclient: sqlmanagerclient, athanor: athanor, transformerclient: transformerclient,
+		sourceVersionTimeout: sourceVersionTimeout,
 	}
 }
 
@@ -118,17 +125,26 @@ type RunPreflightRequest struct {
 	Findings []*preflight.Finding
 }
 
-type RunPreflightResponse struct{}
+type RunPreflightResponse struct {
+	// SourceVersionMajor is the major version of the source of the job, as "16" or "8.0";
+	// empty when it could not be read. Members are only ever added and left out when empty.
+	SourceVersionMajor string `json:",omitempty"`
+}
 
 // RunPreflight completes the report of the run with what the connections tell, keeps it in
-// the run context of the run, and fails on a blocking finding.
+// the run context of the run, and fails on a blocking finding. A run that may go on is told
+// the version of its source, when it can be read.
 func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (*RunPreflightResponse, error) {
 	logger, slogger := loggers(ctx, req.JobId)
 	stop := heartbeat(ctx)
 	defer stop()
 
 	// The job is read after the run brought it in step with its source.
-	report, findings, err := a.report(ctx, req.JobId, nil, req.Tables, req.Findings, slogger)
+	job, err := a.job(ctx, req.JobId)
+	if err != nil {
+		return nil, err
+	}
+	report, findings, err := a.report(ctx, job, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +163,11 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 			"PreflightBlocking", nil)
 	}
 	logger.Debug("pre-flight check passed", "findings", len(findings))
-	return &RunPreflightResponse{}, nil
+	// The reading has a session of its own, which it releases itself: it may outlast this call.
+	session := connectionmanager.NewUniqueSession(
+		connectionmanager.WithSessionGroup(activity.GetInfo(ctx).WorkflowExecution.ID),
+	)
+	return &RunPreflightResponse{SourceVersionMajor: a.sourceVersionMajor(ctx, session, job, slogger)}, nil
 }
 
 type CheckPreflightRequest struct {
@@ -173,7 +193,14 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 	stop := heartbeat(ctx)
 	defer stop()
 
-	report, _, err := a.report(ctx, req.JobId, req.Mappings, req.Tables, req.Findings, slogger)
+	job, err := a.job(ctx, req.JobId)
+	if err != nil {
+		return nil, err
+	}
+	if req.Mappings != nil {
+		job.Mappings = req.Mappings
+	}
+	report, _, err := a.report(ctx, job, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -185,21 +212,13 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 // takes out of its way.
 func (a *Activity) report(
 	ctx context.Context,
-	jobID string,
-	mappings []*mgmtv1alpha1.JobMapping,
+	job *mgmtv1alpha1.Job,
 	tables []*TableColumns,
 	planned []*preflight.Finding,
 	slogger *slog.Logger,
-) (*mgmtv1alpha1.PreflightReport, []*preflight.Finding, error) {
-	job, err := a.job(ctx, jobID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if mappings != nil {
-		job.Mappings = mappings
-	}
+) (report *mgmtv1alpha1.PreflightReport, findings []*preflight.Finding, err error) {
 	usesAthanor := a.athanor.UsesAthanor(job)
-	findings := slices.Clone(planned)
+	findings = slices.Clone(planned)
 
 	if err := a.engineRuns(ctx, job, usesAthanor); err != nil {
 		var unsupported *shared.EngineUnsupportedError
@@ -239,6 +258,65 @@ func (a *Activity) report(
 		engine = mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR
 	}
 	return preflight.Report(engine, findings), findings, nil
+}
+
+// sourceConnectionID is the connection a job reads when its source is MySQL or PostgreSQL,
+// and empty otherwise.
+func sourceConnectionID(job *mgmtv1alpha1.Job) string {
+	options := job.GetSource().GetOptions()
+	if id := options.GetMysql().GetConnectionId(); id != "" {
+		return id
+	}
+	return options.GetPostgres().GetConnectionId()
+}
+
+// sourceVersionMajor asks the source of a job its major version, as "16" or "8.0". The run
+// does nothing with it but tell it at its end: whatever keeps it from being read leaves it
+// empty, and stops nothing. It is waited for no longer than its bound, even from a source
+// that never opens. The session is the reading's own, and is released when the reading ends.
+func (a *Activity) sourceVersionMajor(
+	ctx context.Context,
+	session connectionmanager.SessionInterface,
+	job *mgmtv1alpha1.Job,
+	slogger *slog.Logger,
+) string {
+	sourceID := sourceConnectionID(job)
+	if sourceID == "" {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, a.sourceVersionTimeout)
+	defer cancel()
+
+	read := make(chan string, 1)
+	go func() {
+		major := ""
+		defer func() {
+			// The value of a panic is not logged, it may hold anything.
+			if recover() != nil {
+				slogger.Warn("the version of the source was not read", "panicked", true)
+				major = ""
+			}
+			read <- major
+		}()
+		defer a.sqlconnmanager.ReleaseSession(session, slogger)
+		_, err := a.check(ctx, session, sourceID, slogger,
+			func(_ string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
+				major = connectionchecks.VersionMajor(ctx, db, dialect)
+				return nil, nil
+			})
+		if err != nil {
+			slogger.Warn("the version of the source was not read", "error", err)
+			major = ""
+		}
+	}()
+
+	select {
+	case major := <-read:
+		return major
+	case <-ctx.Done():
+		slogger.Warn("the version of the source was not read in time")
+		return ""
+	}
 }
 
 type CheckRunPrivilegesRequest struct {
@@ -312,12 +390,7 @@ func (a *Activity) connectionFindings(
 	}
 	var findings []*preflight.Finding
 
-	sourceOptions := job.GetSource().GetOptions()
-	sourceID := sourceOptions.GetMysql().GetConnectionId()
-	if sourceID == "" {
-		sourceID = sourceOptions.GetPostgres().GetConnectionId()
-	}
-	if sourceID != "" {
+	if sourceID := sourceConnectionID(job); sourceID != "" {
 		found, err := a.check(ctx, session, sourceID, slogger,
 			func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
 				return connectionchecks.Source(ctx, db, dialect, name, tables)

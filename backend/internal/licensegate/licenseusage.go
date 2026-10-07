@@ -107,10 +107,32 @@ func (r *UsageReader) featuresInUse(ctx context.Context, accountUuid pgtype.UUID
 	if err := r.markJobFeatures(ctx, accountUuid, used); err != nil {
 		return nil, err
 	}
+	if err := r.markAccountFeatures(ctx, accountUuid, used); err != nil {
+		return nil, err
+	}
+	return featuresIn(used), nil
+}
 
+// AccountFeatures lists the features the account uses that none of its jobs tells: account
+// hooks, API keys, an identity provider of its own and roles other than administrator. It is
+// the part of the usage that reads no job, in the order of license.AllFeatures.
+func (r *UsageReader) AccountFeatures(ctx context.Context, accountId string) ([]license.Feature, error) {
+	accountUuid, err := husonymdb.ToUuid(accountId)
+	if err != nil {
+		return nil, err
+	}
+	used := map[license.Feature]bool{}
+	if err := r.markAccountFeatures(ctx, accountUuid, used); err != nil {
+		return nil, err
+	}
+	return featuresIn(used), nil
+}
+
+// markAccountFeatures marks what the account itself uses, whatever its jobs do.
+func (r *UsageReader) markAccountFeatures(ctx context.Context, accountUuid pgtype.UUID, used map[license.Feature]bool) error {
 	hooks, err := r.db.Q.GetAccountHooksByAccount(ctx, r.db.Db, accountUuid)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get the hooks of the account: %w", err)
+		return fmt.Errorf("unable to get the hooks of the account: %w", err)
 	}
 	for i := range hooks {
 		// As for the hooks of a job, a disabled one does not run.
@@ -121,20 +143,20 @@ func (r *UsageReader) featuresInUse(ctx context.Context, accountUuid pgtype.UUID
 
 	apiKeys, err := r.db.Q.GetAccountApiKeys(ctx, r.db.Db, accountUuid)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get the API keys of the account: %w", err)
+		return fmt.Errorf("unable to get the API keys of the account: %w", err)
 	}
 	used[license.FeatureApiKeys] = len(apiKeys) > 0
 
 	_, err = r.db.Q.GetAccountOidcProvider(ctx, r.db.Db, accountUuid)
 	if err != nil && !husonymdb.IsNoRows(err) {
-		return nil, fmt.Errorf("unable to get the identity provider of the account: %w", err)
+		return fmt.Errorf("unable to get the identity provider of the account: %w", err)
 	}
 	used[license.FeatureSso] = err == nil
 
 	account := rbac.NewAccount(husonymdb.UUIDString(accountUuid))
 	members, err := rbac.NewAccounts(r.db.Q, r.db.Db).HumanMembers(ctx, account)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get the members of the account: %w", err)
+		return fmt.Errorf("unable to get the members of the account: %w", err)
 	}
 	// Every member being an administrator is what an account has without the feature. A member
 	// who holds no role was given none.
@@ -143,14 +165,18 @@ func (r *UsageReader) featuresInUse(ctx context.Context, accountUuid pgtype.UUID
 			used[license.FeatureRbac] = true
 		}
 	}
+	return nil
+}
 
+// featuresIn lists the features marked, in the order of license.AllFeatures.
+func featuresIn(used map[license.Feature]bool) []license.Feature {
 	var features []license.Feature
 	for _, feature := range license.AllFeatures() {
 		if used[feature] {
 			features = append(features, feature)
 		}
 	}
-	return features, nil
+	return features
 }
 
 // markJobFeatures marks what the jobs of the account use: what the job gate asks the license
@@ -171,15 +197,16 @@ func (r *UsageReader) markJobFeatures(ctx context.Context, accountUuid pgtype.UU
 		// query per job.
 		job, err := dtomaps.ToJobDto(dbJob, nil)
 		if err != nil {
-			// One job that cannot be read must not hide what every other one uses.
+			// One job that cannot be read must not hide what every other one uses. The error
+			// is not logged: it can quote a piece of what the job stores.
 			logger_interceptor.GetLoggerFromContextOrDefault(ctx).ErrorContext(
 				ctx,
 				"a job could not be read and is left out of what the account uses of the license",
-				"jobId", husonymdb.UUIDString(dbJob.ID), "error", err,
+				"jobId", husonymdb.UUIDString(dbJob.ID),
 			)
 			continue
 		}
-		features, err := featuresOfJob(ctx, r.db, r.db.Db, job)
+		features, err := FeaturesOfJob(ctx, r.db, r.db.Db, job)
 		if err != nil {
 			return err
 		}

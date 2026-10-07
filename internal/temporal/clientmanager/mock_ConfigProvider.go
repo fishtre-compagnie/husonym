@@ -46,6 +46,52 @@ func (_m *MockConfigProvider) EXPECT() *MockConfigProvider_Expecter {
 	return &MockConfigProvider_Expecter{mock: &_m.Mock}
 }
 
+// DefaultConfig provides a mock function for the type MockConfigProvider
+func (_mock *MockConfigProvider) DefaultConfig() *TemporalConfig {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DefaultConfig")
+	}
+
+	var r0 *TemporalConfig
+	if returnFunc, ok := ret.Get(0).(func() *TemporalConfig); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*TemporalConfig)
+		}
+	}
+	return r0
+}
+
+// MockConfigProvider_DefaultConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DefaultConfig'
+type MockConfigProvider_DefaultConfig_Call struct {
+	*mock.Call
+}
+
+// DefaultConfig is a helper method to define mock.On call
+func (_e *MockConfigProvider_Expecter) DefaultConfig() *MockConfigProvider_DefaultConfig_Call {
+	return &MockConfigProvider_DefaultConfig_Call{Call: _e.mock.On("DefaultConfig")}
+}
+
+func (_c *MockConfigProvider_DefaultConfig_Call) Run(run func()) *MockConfigProvider_DefaultConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockConfigProvider_DefaultConfig_Call) Return(temporalConfig *TemporalConfig) *MockConfigProvider_DefaultConfig_Call {
+	_c.Call.Return(temporalConfig)
+	return _c
+}
+
+func (_c *MockConfigProvider_DefaultConfig_Call) RunAndReturn(run func() *TemporalConfig) *MockConfigProvider_DefaultConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetConfig provides a mock function for the type MockConfigProvider
 func (_mock *MockConfigProvider) GetConfig(ctx context.Context, accountID string) (*TemporalConfig, error) {
 	ret := _mock.Called(ctx, accountID)

@@ -223,9 +223,12 @@ func executeWorkflow(
 			return nil, err
 		}
 	case privilegesVersion >= 3:
-		if err := runPreflightCheck(ctx, logger, req.JobId, info.WorkflowExecution.ID, bcResp); err != nil {
+		sourceVersionMajor, err := runPreflightCheck(ctx, logger, req.JobId, info.WorkflowExecution.ID, bcResp)
+		if err != nil {
 			return nil, err
 		}
+		// Kept from here on: a run that fails later still tells what it read from.
+		totals.SourceVersionMajor = sourceVersionMajor
 	}
 
 	err = execRunJobHooksByTiming(
@@ -389,6 +392,10 @@ func executeWorkflow(
 		"totalConfigs", len(bcResp.BenthosConfigs),
 	)
 
+	// The tables that finished with a page, at least, that was not counted. Schema and name
+	// are kept apart: joined, a.b and c would be the table b.c of the schema a.
+	type schemaTable struct{ schema, table string }
+	uncountedTables := map[schemaTable]struct{}{}
 	executeSyncActivity := func(bc *benthosbuilder.BenthosConfigResponse, logger log.Logger) {
 		future := invokeSync(
 			bc,
@@ -426,6 +433,11 @@ func executeWorkflow(
 			totals.RowsRead += wfResult.RowsRead
 			totals.RowsDiscarded += wfResult.RowsDiscarded
 			totals.Retries += wfResult.Retries
+			if wfResult.Uncounted {
+				// A table may be synced in several passes: it counts once.
+				uncountedTables[schemaTable{bc.TableSchema, bc.TableName}] = struct{}{}
+				totals.TablesUncounted = int64(len(uncountedTables))
+			}
 			logger.Info("config sync completed", "name", bc.Name)
 			err = runPostTableSyncActivity(ctx, logger, actOptResp, bc.Name)
 			if err != nil {
@@ -744,17 +756,19 @@ func runPostTableSyncActivity(
 }
 
 // runPreflightCheck keeps the report of what the run will meet, and stops the run before
-// anything is read or written on a blocking finding.
+// anything is read or written on a blocking finding. It returns the major version of the
+// source, as the check read it: empty when it could not, and for a check recorded before it
+// read any.
 func runPreflightCheck(
 	ctx workflow.Context,
 	logger log.Logger,
 	jobId, jobRunId string,
 	generated *genbenthosconfigs_activity.GenerateBenthosConfigsResponse,
-) error {
+) (string, error) {
 	logger.Info("scheduling pre-flight check")
 	var resp *preflight_activity.RunPreflightResponse
 	var preflightActivity *preflight_activity.Activity
-	return workflow.ExecuteActivity(
+	err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 			StartToCloseTimeout: 2 * time.Minute,
 			// It only reads, and keeps its report under one key: a failure to ask a
@@ -771,6 +785,10 @@ func runPreflightCheck(
 			Findings:  generated.Findings,
 		},
 	).Get(ctx, &resp)
+	if err != nil || resp == nil {
+		return "", err
+	}
+	return resp.SourceVersionMajor, nil
 }
 
 // runPrivilegeCheck stops the run before anything is read or written when a connection

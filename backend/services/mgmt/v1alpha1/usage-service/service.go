@@ -20,7 +20,7 @@ type runStore interface {
 	RunEnded(ctx context.Context, run usagestore.RunEnd) error
 	CloseRun(
 		ctx context.Context, runId string, status usagestore.Status, endedAt time.Time,
-		rowsRead, rowsDiscarded, retries int64,
+		rowsRead, rowsDiscarded, retries, tablesUncounted int64, sourceVersionMajor string,
 	) error
 }
 

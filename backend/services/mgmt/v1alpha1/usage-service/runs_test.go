@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -41,7 +42,7 @@ type fakeStore struct {
 
 func (f *fakeStore) CloseRun(
 	_ context.Context, runId string, status usagestore.Status, endedAt time.Time,
-	rowsRead, rowsDiscarded, retries int64,
+	rowsRead, rowsDiscarded, retries, tablesUncounted int64, sourceVersionMajor string,
 ) error {
 	if !f.running[runId] {
 		return nil
@@ -51,6 +52,7 @@ func (f *fakeStore) CloseRun(
 	f.closure = usagestore.RunEnd{
 		RunId: runId, Status: status, EndedAt: endedAt,
 		RowsRead: rowsRead, RowsDiscarded: rowsDiscarded, Retries: retries,
+		TablesUncounted: tablesUncounted, SourceVersionMajor: sourceVersionMajor,
 	}
 	return nil
 }
@@ -128,6 +130,7 @@ func finished(outcome mgmtv1alpha1.RunOutcome) *connect.Request[mgmtv1alpha1.Rec
 	return connect.NewRequest(&mgmtv1alpha1.RecordRunEndedRequest{
 		JobId: aJobId, RunId: "run-1", StartedAt: timestamppb.New(began), EndedAt: timestamppb.New(ended),
 		Outcome: outcome, RowsRead: 120, RowsDiscarded: 3, Retries: 2,
+		TablesUncounted: 4, SourceVersionMajor: "16",
 	})
 }
 
@@ -172,6 +175,7 @@ func TestRecordRunStartedThenEndedCarriesTheAccountAndTheKindOfTheJob(t *testing
 		RunId: "run-1", AccountId: anAccountId, JobId: aJobId, Kind: usagestore.JobKindSync,
 		StartedAt: began, EndedAt: ended, Status: usagestore.StatusFailed,
 		RowsRead: 120, RowsDiscarded: 3, Retries: 2,
+		TablesUncounted: 4, SourceVersionMajor: "16",
 	}}, f.store.ended)
 }
 
@@ -210,6 +214,33 @@ func TestRecordRunEndedMapsEveryOutcome(t *testing.T) {
 	})
 }
 
+// The version of the source is one or two short numbers, or nothing: whatever else a worker
+// would send is refused before the service is asked.
+func TestRecordRunEndedRequestValidatesWhatTheWorkerAdds(t *testing.T) {
+	validator, err := protovalidate.New()
+	require.NoError(t, err)
+
+	for _, version := range []string{"", "16", "8.0", "10.11", "999.999"} {
+		t.Run("the version "+version+" is accepted", func(t *testing.T) {
+			req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_COMPLETED).Msg
+			req.SourceVersionMajor = version
+			require.NoError(t, validator.Validate(req))
+		})
+	}
+	for _, version := range []string{"16; drop", "8.0.36", "8.", ".0", "1000", "sixteen", "16\n", " 16"} {
+		t.Run("the version "+version+" is refused", func(t *testing.T) {
+			req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_COMPLETED).Msg
+			req.SourceVersionMajor = version
+			require.Error(t, validator.Validate(req))
+		})
+	}
+	t.Run("a negative number of tables is refused", func(t *testing.T) {
+		req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_COMPLETED).Msg
+		req.TablesUncounted = -1
+		require.Error(t, validator.Validate(req))
+	})
+}
+
 // A job deleted since the run began leaves nothing to count, and is no error for the worker.
 func TestRecordRunOfAnUnknownJobKeepsNothing(t *testing.T) {
 	f := newFixture(t, userdata.WorkerOnly{})
@@ -245,6 +276,7 @@ func TestRecordRunEndedOfAGoneJobClosesTheRowThatExists(t *testing.T) {
 	require.Equal(t, usagestore.RunEnd{
 		RunId: "run-1", Status: usagestore.StatusFailed, EndedAt: ended,
 		RowsRead: 120, RowsDiscarded: 3, Retries: 2,
+		TablesUncounted: 4, SourceVersionMajor: "16",
 	}, f.store.closure)
 	require.Empty(t, f.store.ended, "no row is created for a job that is gone")
 }
@@ -265,32 +297,15 @@ func TestRecordRunEndedOfAGoneJobWithoutARowKeepsNothing(t *testing.T) {
 	require.Empty(t, f.store.ended)
 }
 
-func TestRecordRunStartedGivesTheKindOfEachJob(t *testing.T) {
-	piiDetect := &mgmtv1alpha1.JobTypeConfig{
-		JobType: &mgmtv1alpha1.JobTypeConfig_PiiDetect{PiiDetect: &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{}},
-	}
-	sync := &mgmtv1alpha1.JobTypeConfig{
-		JobType: &mgmtv1alpha1.JobTypeConfig_Sync{Sync: &mgmtv1alpha1.JobTypeConfig_JobTypeSync{}},
-	}
-	for name, tc := range map[string]struct {
-		options *pg_models.JobSourceOptions
-		jobType *mgmtv1alpha1.JobTypeConfig
-		want    usagestore.JobKind
-	}{
-		"a synchronization":       {syncOptions(), sync, usagestore.JobKindSync},
-		"a job with no type":      {syncOptions(), nil, usagestore.JobKindSync},
-		"a job with no source":    {nil, nil, usagestore.JobKindSync},
-		"a generation":            {&pg_models.JobSourceOptions{GenerateOptions: &pg_models.GenerateSourceOptions{}}, sync, usagestore.JobKindGenerate},
-		"a generation by a model": {&pg_models.JobSourceOptions{AiGenerateOptions: &pg_models.AiGenerateSourceOptions{}}, sync, usagestore.JobKindAiGenerate},
-		"a detection of PII":      {syncOptions(), piiDetect, usagestore.JobKindPiiDetect},
-	} {
-		t.Run(name, func(t *testing.T) {
-			f := newFixture(t, userdata.WorkerOnly{})
-			f.storesJob(t, tc.options, tc.jobType)
-			_, err := f.svc.RecordRunStarted(context.Background(), started())
-			require.NoError(t, err)
-			require.Len(t, f.store.started, 1)
-			require.Equal(t, tc.want, f.store.started[0].Kind)
-		})
-	}
+// What each job is, is decided by usagestore.KindOfJob and tested there: here, that the service
+// asks it rather than assume a synchronization.
+func TestRecordRunStartedGivesTheKindOfTheJob(t *testing.T) {
+	f := newFixture(t, userdata.WorkerOnly{})
+	f.storesJob(t, &pg_models.JobSourceOptions{GenerateOptions: &pg_models.GenerateSourceOptions{}}, nil)
+
+	_, err := f.svc.RecordRunStarted(context.Background(), started())
+
+	require.NoError(t, err)
+	require.Len(t, f.store.started, 1)
+	require.Equal(t, usagestore.JobKindGenerate, f.store.started[0].Kind)
 }

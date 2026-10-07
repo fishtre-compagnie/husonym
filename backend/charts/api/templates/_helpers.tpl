@@ -177,6 +177,10 @@ RUN_LOGS_LOKICONFIG_KEEPLABELS: {{ .Values.runLogs.lokiConfig.keepLabels | join 
 {{- end }}
 {{- end }} # ends loki check
 {{- end }} # ends runLogs.enabled check
+HUSONYM_INSTALL_KIND: helm
+{{- if and .Values.usageReport (eq (toString .Values.usageReport.diagnostics) "false") }}
+HUSONYM_TELEMETRY_DIAGNOSTICS: "false"
+{{- end }}
 {{- if and .Values.ee .Values.ee.license }}
 EE_LICENSE: {{ .Values.ee.license | quote }}
 {{- end }}

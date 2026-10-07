@@ -1,9 +1,11 @@
 package usagesettle
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -229,4 +231,65 @@ func Test_TemporalFate_OtherErrorsAreReturned(t *testing.T) {
 	}
 	_, _, _, err := TemporalFate(describe, slog.Default())(t.Context(), "acc", "run")
 	require.ErrorIs(t, err, boom)
+}
+
+// panickingRuns panics on its first listing and counts the others.
+type panickingRuns struct {
+	fakeRuns
+	mu    sync.Mutex
+	calls int
+}
+
+func (p *panickingRuns) OpenRunsStartedBefore(context.Context, time.Time) ([]usagestore.OpenRun, error) {
+	p.mu.Lock()
+	p.calls++
+	first := p.calls == 1
+	p.mu.Unlock()
+	if first {
+		panic("a value that must not be logged")
+	}
+	return nil, nil
+}
+
+func (p *panickingRuns) count() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.calls
+}
+
+// syncBuffer is a log sink the loop may write to while the test reads it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func Test_Every_APassThatPanicsDoesNotStopTheLoop(t *testing.T) {
+	var logs syncBuffer
+	runs := &panickingRuns{}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		New(runs, fateOf(nil), slog.New(slog.NewTextHandler(&logs, nil))).Every(ctx, time.Millisecond)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+
+	require.Eventually(t, func() bool { return runs.count() >= 2 }, 5*time.Second, time.Millisecond)
+	require.Contains(t, logs.String(), "panicked=true")
+	require.NotContains(t, logs.String(), "must not be logged")
 }

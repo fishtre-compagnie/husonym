@@ -90,7 +90,7 @@ func Test_TrackRunUsage_ReportsTheStartThenTheEndOfARunThatCompletes(t *testing.
 		if err := workflow.Sleep(ctx, 10*time.Minute); err != nil {
 			return nil, err
 		}
-		*totals = RunTotals{RowsRead: 42, RowsDiscarded: 3, Retries: 2}
+		*totals = RunTotals{RowsRead: 42, RowsDiscarded: 3, Retries: 2, TablesUncounted: 4, SourceVersionMajor: "16"}
 		return &trackedResult{Value: "done"}, nil
 	})
 
@@ -116,6 +116,8 @@ func Test_TrackRunUsage_ReportsTheStartThenTheEndOfARunThatCompletes(t *testing.
 	assert.Equal(t, int64(42), ended.RowsRead)
 	assert.Equal(t, int64(3), ended.RowsDiscarded)
 	assert.Equal(t, int64(2), ended.Retries)
+	assert.Equal(t, int64(4), ended.TablesUncounted)
+	assert.Equal(t, "16", ended.SourceVersionMajor)
 }
 
 func Test_TrackRunUsage_ReportsARunThatFails(t *testing.T) {

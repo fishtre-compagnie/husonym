@@ -119,6 +119,72 @@ func (_c *MockInterface_CancelWorkflow_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// CountDefaultQueueWorkers provides a mock function for the type MockInterface
+func (_mock *MockInterface) CountDefaultQueueWorkers(ctx context.Context, logger *slog.Logger) (int, error) {
+	ret := _mock.Called(ctx, logger)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountDefaultQueueWorkers")
+	}
+
+	var r0 int
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) (int, error)); ok {
+		return returnFunc(ctx, logger)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) int); ok {
+		r0 = returnFunc(ctx, logger)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *slog.Logger) error); ok {
+		r1 = returnFunc(ctx, logger)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInterface_CountDefaultQueueWorkers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountDefaultQueueWorkers'
+type MockInterface_CountDefaultQueueWorkers_Call struct {
+	*mock.Call
+}
+
+// CountDefaultQueueWorkers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - logger *slog.Logger
+func (_e *MockInterface_Expecter) CountDefaultQueueWorkers(ctx any, logger any) *MockInterface_CountDefaultQueueWorkers_Call {
+	return &MockInterface_CountDefaultQueueWorkers_Call{Call: _e.mock.On("CountDefaultQueueWorkers", ctx, logger)}
+}
+
+func (_c *MockInterface_CountDefaultQueueWorkers_Call) Run(run func(ctx context.Context, logger *slog.Logger)) *MockInterface_CountDefaultQueueWorkers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *slog.Logger
+		if args[1] != nil {
+			arg1 = args[1].(*slog.Logger)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInterface_CountDefaultQueueWorkers_Call) Return(n int, err error) *MockInterface_CountDefaultQueueWorkers_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockInterface_CountDefaultQueueWorkers_Call) RunAndReturn(run func(ctx context.Context, logger *slog.Logger) (int, error)) *MockInterface_CountDefaultQueueWorkers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateSchedule provides a mock function for the type MockInterface
 func (_mock *MockInterface) CreateSchedule(ctx context.Context, accountId string, opts *client.ScheduleOptions, logger *slog.Logger) (string, error) {
 	ret := _mock.Called(ctx, accountId, opts, logger)
@@ -193,6 +259,72 @@ func (_c *MockInterface_CreateSchedule_Call) Return(s string, err error) *MockIn
 }
 
 func (_c *MockInterface_CreateSchedule_Call) RunAndReturn(run func(ctx context.Context, accountId string, opts *client.ScheduleOptions, logger *slog.Logger) (string, error)) *MockInterface_CreateSchedule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DefaultServerVersion provides a mock function for the type MockInterface
+func (_mock *MockInterface) DefaultServerVersion(ctx context.Context, logger *slog.Logger) (string, error) {
+	ret := _mock.Called(ctx, logger)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DefaultServerVersion")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) (string, error)); ok {
+		return returnFunc(ctx, logger)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) string); ok {
+		r0 = returnFunc(ctx, logger)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *slog.Logger) error); ok {
+		r1 = returnFunc(ctx, logger)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInterface_DefaultServerVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DefaultServerVersion'
+type MockInterface_DefaultServerVersion_Call struct {
+	*mock.Call
+}
+
+// DefaultServerVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - logger *slog.Logger
+func (_e *MockInterface_Expecter) DefaultServerVersion(ctx any, logger any) *MockInterface_DefaultServerVersion_Call {
+	return &MockInterface_DefaultServerVersion_Call{Call: _e.mock.On("DefaultServerVersion", ctx, logger)}
+}
+
+func (_c *MockInterface_DefaultServerVersion_Call) Run(run func(ctx context.Context, logger *slog.Logger)) *MockInterface_DefaultServerVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *slog.Logger
+		if args[1] != nil {
+			arg1 = args[1].(*slog.Logger)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInterface_DefaultServerVersion_Call) Return(s string, err error) *MockInterface_DefaultServerVersion_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockInterface_DefaultServerVersion_Call) RunAndReturn(run func(ctx context.Context, logger *slog.Logger) (string, error)) *MockInterface_DefaultServerVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -16,6 +16,11 @@ type RunTotals struct {
 	RowsRead      int64
 	RowsDiscarded int64
 	Retries       int64
+	// TablesUncounted is the number of tables that finished with a page, at least, not counted.
+	TablesUncounted int64
+	// SourceVersionMajor is the major version of the database the run reads, as the pre-flight
+	// check read it; empty when it is not known.
+	SourceVersionMajor string
 }
 
 const runUsageReportedChangeId = "run-usage-reported"
@@ -68,6 +73,9 @@ func TrackRunUsage[T any](
 			RowsRead:      counted.RowsRead,
 			RowsDiscarded: counted.RowsDiscarded,
 			Retries:       counted.Retries,
+
+			TablesUncounted:    counted.TablesUncounted,
+			SourceVersionMajor: counted.SourceVersionMajor,
 		},
 	).Get(detachedCtx, nil)
 	if err != nil {

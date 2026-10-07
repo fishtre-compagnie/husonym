@@ -208,16 +208,19 @@ type HusonymApiLicenseKey struct {
 
 // Stores the usage of each run: counts and times, nothing a customer entered
 type HusonymApiRunUsage struct {
-	RunID         string
-	AccountID     pgtype.UUID
-	JobID         pgtype.UUID
-	JobKind       string
-	Status        string
-	StartedAt     pgtype.Timestamptz
-	EndedAt       pgtype.Timestamptz
-	RowsRead      int64
-	RowsDiscarded int64
-	Retries       int64
+	RunID              string
+	AccountID          pgtype.UUID
+	JobID              pgtype.UUID
+	JobKind            string
+	Status             string
+	StartedAt          pgtype.Timestamptz
+	EndedAt            pgtype.Timestamptz
+	RowsRead           int64
+	RowsDiscarded      int64
+	Retries            int64
+	RecordedAt         pgtype.Timestamptz
+	TablesUncounted    int64
+	SourceVersionMajor pgtype.Text
 }
 
 type HusonymApiRuncontext struct {
@@ -255,11 +258,26 @@ type HusonymApiTransformer struct {
 	Source            int32
 }
 
+// Stores the usage report of each day, as prepared
+type HusonymApiUsageReport struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
 type HusonymApiUser struct {
 	ID        pgtype.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	UserType  int16
+}
+
+// Stores the last day each user was seen, to count the users active over a period
+type HusonymApiUserActivity struct {
+	UserID     pgtype.UUID
+	LastSeenOn pgtype.Date
 }
 
 type HusonymApiUserIdentityProviderAssociation struct {

@@ -318,6 +318,15 @@ func mysqlReadOnly(ctx context.Context, db Db) (bool, error) {
 	return readOnly, rows.Err()
 }
 
+// mysqlVersion is what VERSION() gives, or nothing when it cannot be read.
+func mysqlVersion(ctx context.Context, db Db) string {
+	var version string
+	if err := db.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
+		return ""
+	}
+	return version
+}
+
 // The probes name the columns the run writes, so that a privilege held on some columns only
 // answers for those. The statements are never run, but the values they set are still
 // evaluated: MySQL prunes the partitions of an INSERT with them, and MariaDB refuses

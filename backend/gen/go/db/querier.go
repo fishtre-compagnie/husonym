@@ -20,11 +20,27 @@ type Querier interface {
 	// Closes the row of a run still running, and creates nothing.
 	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error
 	ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)
+	// The accounts that declared an identity provider of their own. The provider is not read.
+	CountAccountOidcProviders(ctx context.Context, db DBTX) (int64, error)
+	CountAccounts(ctx context.Context, db DBTX) (int64, error)
 	// Whether an issuer is declared by an account other than the one given. Two accounts
 	// sharing an issuer share the subject space it mints, so the second one to claim it would
 	// be able to name the members of the first.
 	CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error)
+	CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)
+	// A run counts for the UTC day on which the API recorded its end, whichever way it learned of
+	// it: nothing recorded after midnight belongs to the day before. A run still running counts for
+	// no day.
+	CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)
+	// The types of the columns the runs saw, counted by type. The schema, the table and the column
+	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
+	// could not read, which it leaves out of every count.
+	CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error)
+	CountUserDefinedTransformersOfInstance(ctx context.Context, db DBTX) (int64, error)
 	CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error)
+	// People only: the user of an API key is not counted.
+	CountUsersOfInstance(ctx context.Context, db DBTX) (int64, error)
+	CountUsersSeenSince(ctx context.Context, db DBTX, lastSeenOn pgtype.Date) (int64, error)
 	CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error)
 	CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (HusonymApiAccountHook, error)
 	CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error)
@@ -48,6 +64,7 @@ type Querier interface {
 	DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DeleteJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) error
 	DeleteSlackOAuthConnection(ctx context.Context, db DBTX, accountID pgtype.UUID) error
+	DeleteUsageReportsBefore(ctx context.Context, db DBTX, day pgtype.Date) error
 	DeleteUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DoesJobHaveConnectionId(ctx context.Context, db DBTX, arg DoesJobHaveConnectionIdParams) (bool, error)
 	GetAccount(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccount, error)
@@ -126,6 +143,7 @@ type Querier interface {
 	GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]HusonymApiAccount, error)
 	GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.TemporalConfig, error)
 	GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)
+	GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error)
 	GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)
 	// Looks an identity up by the pair that identifies it. The empty issuer is accepted in
 	// the same breath because a row recorded before issuers were has not been adopted yet:
@@ -144,6 +162,9 @@ type Querier interface {
 	InsertLicenseKey(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)
 	// A run already there is left as it is.
 	InsertRunUsageStarted(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams) error
+	// The report of a day already there is left as it is. The count of rows tells whether this
+	// call made it.
+	InsertUsageReport(ctx context.Context, db DBTX, arg InsertUsageReportParams) (int64, error)
 	IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error)
 	IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConnectionInAccountParams) (int64, error)
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
@@ -152,6 +173,9 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// As for the jobs, the configuration is handed over as stored.
+	ListConnectionsOfInstance(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error)
+	ListJobDestinationsOfInstance(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error)
 	// What is needed to count the sources of the instance: the source options, the job type and,
 	// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
 	// first query of this file that crosses accounts, on purpose: the license covers the whole
@@ -163,6 +187,14 @@ type Querier interface {
 	// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
 	// A mappings value that is null or not an array yields no schema rather than an error.
 	ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)
+	// What the instance holds, read across every account for the usage report of the instance.
+	//
+	// These queries select identifiers, stored configurations and counts. None of them selects how
+	// a connection, a job or an account is called, an account's slug or a user's email: what is not
+	// selected cannot reach the report.
+	// The stored JSON is handed over as it is, not as the Go models: a job whose JSON cannot be
+	// decoded is then left out on its own instead of failing the whole list.
+	ListJobsOfInstanceForUsage(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error)
 	ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
@@ -241,6 +273,10 @@ type Querier interface {
 	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
 	// Only a run still open is settled.
 	SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error
+	SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)
+	// Durations come from the runs that have an end only, and are never negative: an end told
+	// before its start counts for nothing.
+	SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)
@@ -260,8 +296,11 @@ type Querier interface {
 	// rather than by the columns it covers.
 	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
 	// Creates the row when the start was never recorded; a row already finished keeps what it
-	// holds, so that the first end told wins.
+	// holds, so that the first end told wins. The moment the end is recorded is the clock of the
+	// database, and a second end does not move it.
 	UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error
+	// Only a later day moves the date.
+	UpsertUserActivity(ctx context.Context, db DBTX, arg UpsertUserActivityParams) error
 }
 
 var _ Querier = (*Queries)(nil)

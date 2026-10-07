@@ -68,6 +68,10 @@ type RunEndedRequest struct {
 	RowsRead      int64 `json:",omitempty"`
 	RowsDiscarded int64 `json:",omitempty"`
 	Retries       int64 `json:",omitempty"`
+	// TablesUncounted is the number of tables whose rows were not counted.
+	TablesUncounted int64 `json:",omitempty"`
+	// SourceVersionMajor is the major version of the database the run read, as "16" or "8.0".
+	SourceVersionMajor string `json:",omitempty"`
 }
 
 // RecordRunStarted tells the API that a run has begun.
@@ -98,6 +102,9 @@ func (a *Activities) RecordRunEnded(ctx context.Context, req *RunEndedRequest) e
 		RowsRead:      req.RowsRead,
 		RowsDiscarded: req.RowsDiscarded,
 		Retries:       req.Retries,
+
+		TablesUncounted:    req.TablesUncounted,
+		SourceVersionMajor: req.SourceVersionMajor,
 	}))
 	return reportFailure("the end", err)
 }

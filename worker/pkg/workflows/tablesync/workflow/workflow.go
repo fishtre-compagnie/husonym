@@ -26,6 +26,8 @@ type TableSyncRequest struct {
 	RowsRead      int64 `json:",omitempty"`
 	RowsDiscarded int64 `json:",omitempty"`
 	Retries       int64 `json:",omitempty"`
+	// Uncounted says that one of their pages was not counted.
+	Uncounted bool `json:",omitempty"`
 }
 
 type TableSyncResponse struct {
@@ -37,6 +39,9 @@ type TableSyncResponse struct {
 	RowsRead      int64 `json:",omitempty"`
 	RowsDiscarded int64 `json:",omitempty"`
 	Retries       int64 `json:",omitempty"`
+	// Uncounted says that a page of the table, at least, was not counted: the sums above are
+	// then less than what the table read.
+	Uncounted bool `json:",omitempty"`
 }
 
 type Workflow struct {
@@ -72,6 +77,7 @@ func (w *Workflow) TableSync(
 	continuationToken := req.ContinuationToken
 	var iterations int
 	rowsRead, rowsDiscarded, retries := req.RowsRead, req.RowsDiscarded, req.Retries
+	uncounted := req.Uncounted
 
 	logger.Debug("starting table sync")
 
@@ -104,6 +110,7 @@ func (w *Workflow) TableSync(
 		rowsRead += resp.RowsRead
 		rowsDiscarded += resp.RowsDiscarded
 		retries += resp.Retries
+		uncounted = uncounted || resp.Uncounted
 		continuationToken = resp.ContinuationToken
 		if continuationToken == nil {
 			logger.Debug("no continuation token, breaking")
@@ -120,6 +127,7 @@ func (w *Workflow) TableSync(
 			newReq.ContinuationToken = continuationToken
 			newReq.ColumnIdentityCursors = cursors
 			newReq.RowsRead, newReq.RowsDiscarded, newReq.Retries = rowsRead, rowsDiscarded, retries
+			newReq.Uncounted = uncounted
 			var wf *Workflow
 			return nil, workflow.NewContinueAsNewError(ctx, wf.TableSync, &newReq)
 		}
@@ -137,6 +145,7 @@ func (w *Workflow) TableSync(
 		RowsRead:      rowsRead,
 		RowsDiscarded: rowsDiscarded,
 		Retries:       retries,
+		Uncounted:     uncounted,
 	}, nil
 }
 

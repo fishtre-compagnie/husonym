@@ -765,32 +765,6 @@ func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) erro
 	}
 }
 
-// connectionTypeName maps a connection config onto the stable name a license allowlist
-// uses. Kept as a plain switch rather than derived from the protobuf type name so that
-// renaming a generated type cannot silently invalidate licenses already in the field.
-func connectionTypeName(cfg *mgmtv1alpha1.ConnectionConfig) string {
-	switch cfg.GetConfig().(type) {
-	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		return "postgres"
-	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		return "mysql"
-	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		return "mssql"
-	case *mgmtv1alpha1.ConnectionConfig_MongoConfig:
-		return "mongodb"
-	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
-		return "dynamodb"
-	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config:
-		return "aws-s3"
-	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
-		return "gcp-cloud-storage"
-	case *mgmtv1alpha1.ConnectionConfig_OpenaiConfig:
-		return "openai"
-	default:
-		return "unknown"
-	}
-}
-
 // enforceConnectionLimits applies the license's connection caps: how many connections may
 // exist, and which types are permitted.
 //
@@ -811,12 +785,12 @@ func (s *Service) enforceConnectionLimits(
 		return nil
 	}
 
-	if !limits.Allows(connectionTypeName(cfg)) {
+	if !limits.Allows(dtomaps.ConnectionTypeName(cfg)) {
 		return license.NewRefusal(
 			husonymdb.UUIDString(accountUuid),
 			husonymerrors.NewForbidden(fmt.Sprintf(
 				"this license does not include %s connections; contact us to add it",
-				connectionTypeName(cfg),
+				dtomaps.ConnectionTypeName(cfg),
 			)),
 			license.GateConnectionType,
 		)
