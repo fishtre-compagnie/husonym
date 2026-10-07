@@ -513,7 +513,7 @@ type GetUsageReportingResponse struct {
 	Diagnostics bool `protobuf:"varint,4,opt,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 	// Since when the instance sends its report. Absent when it does not.
 	SendingSince *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=sending_since,json=sendingSince,proto3" json:"sending_since,omitempty"`
-	// When the first report is sent. Present only during the first 24 hours of sending.
+	// When the first report is sent at the earliest: 24 hours after it was prepared. Present while the instance sends, has a report to send and has sent none since it started sending.
 	FirstSendAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=first_send_at,json=firstSendAt,proto3" json:"first_send_at,omitempty"`
 	// When a report was last sent. Absent when none ever was.
 	LastSentAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_sent_at,json=lastSentAt,proto3" json:"last_sent_at,omitempty"`

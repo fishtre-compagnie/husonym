@@ -225,31 +225,80 @@ func Test_GetUsageReporting_KeepsEveryReportWhenTheModeIsNotOnline(t *testing.T)
 	}
 }
 
-func Test_GetUsageReporting_TellsTheFirstSendOnlyDuringTheFirstDay(t *testing.T) {
+// The first sending is a day after the oldest report that is to be sent was prepared, while
+// nothing was sent since the instance started sending: what the sender waits for.
+func Test_GetUsageReporting_TellsWhenTheFirstReportIsSent(t *testing.T) {
+	prepared := now.Add(-3 * time.Hour)
+	sent := at(1)
 	tests := []struct {
-		name   string
-		since  *time.Time
-		hasOne bool
+		name     string
+		setting  string
+		since    *time.Time
+		lastSent *time.Time
+		sendings []usagestore.ReportSending
+		want     *time.Time
 	}{
-		{"just started", at(1), true},
-		{"almost a day", at(23), true},
-		{"a day", at(24), false},
-		{"long ago", at(24 * 3), false},
-		{"not sending", nil, false},
+		{name: "not sending"},
+		{name: "sending, no report yet", since: at(2)},
+		{
+			name: "sending, only reports of before it began", since: at(2),
+			sendings: []usagestore.ReportSending{{Day: day(1), PreparedAt: prepared}},
+		},
+		{
+			name: "a first report to be sent", since: at(24),
+			sendings: []usagestore.ReportSending{{Day: day(1), PreparedAt: prepared}},
+			want:     new(prepared.Add(24 * time.Hour)),
+		},
+		{
+			name: "a first report that could not be sent", since: at(24 * 3),
+			sendings: []usagestore.ReportSending{
+				{Day: day(2), PreparedAt: prepared.Add(-24 * time.Hour), Attempts: 1, LastAttemptAt: at(1)},
+			},
+			want: new(prepared),
+		},
+		{
+			name: "several to be sent: the oldest one", since: at(24 * 3),
+			sendings: []usagestore.ReportSending{
+				{Day: day(1), PreparedAt: prepared},
+				{Day: day(2), PreparedAt: prepared.Add(-24 * time.Hour)},
+				{Day: day(5), PreparedAt: prepared.Add(-96 * time.Hour)}, // before sending began
+			},
+			want: new(prepared),
+		},
+		{
+			name: "a report was sent since sending began", since: at(24 * 3), lastSent: sent,
+			sendings: []usagestore.ReportSending{
+				{Day: day(1), PreparedAt: prepared},
+				{Day: day(2), PreparedAt: prepared.Add(-24 * time.Hour), SentAt: sent, Attempts: 1},
+			},
+		},
+		{
+			name: "the last sending is of before sending began again", since: at(24), lastSent: at(24 * 9),
+			sendings: []usagestore.ReportSending{
+				{Day: day(1), PreparedAt: prepared},
+				{Day: day(9), PreparedAt: prepared.Add(-8 * 24 * time.Hour), SentAt: at(24 * 9), Attempts: 1},
+			},
+			want: new(prepared.Add(24 * time.Hour)),
+		},
+		{
+			name: "the mode is not the one that sends", setting: "offline", since: at(24),
+			sendings: []usagestore.ReportSending{{Day: day(1), PreparedAt: prepared}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
-			f.reports.since = tt.since
+			f := reporting(t, fakeKey{mode: license.TelemetryOnline}, tt.setting, true)
+			f.reports.since, f.reports.lastSent, f.reports.sendings = tt.since, tt.lastSent, tt.sendings
 
 			res, err := f.svc.GetUsageReporting(t.Context(), aView())
 
 			require.NoError(t, err)
-			require.Equal(t, tt.hasOne, res.Msg.GetFirstSendAt() != nil)
-			if tt.hasOne {
-				require.True(t, res.Msg.GetFirstSendAt().AsTime().Equal(tt.since.Add(24*time.Hour)))
+			if tt.want == nil {
+				require.Nil(t, res.Msg.GetFirstSendAt())
+			} else {
+				require.NotNil(t, res.Msg.GetFirstSendAt())
+				require.True(t, res.Msg.GetFirstSendAt().AsTime().Equal(*tt.want), "got %s", res.Msg.GetFirstSendAt().AsTime())
 			}
-			require.Equal(t, tt.since != nil, res.Msg.GetSendingSince() != nil)
 		})
 	}
 }

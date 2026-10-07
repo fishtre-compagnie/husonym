@@ -19,16 +19,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const (
-	// reportDays is how many closed days back the reports are told of: the window the sender
-	// sends within.
-	reportDays = 30
-	// waitBeforeFirst is how long an instance that starts sending waits before it sends anything.
-	waitBeforeFirst = 24 * time.Hour
-	// periodBuildTimeout bounds the making of the report for a period: a database that does not
-	// answer does not hold the caller.
-	periodBuildTimeout = 30 * time.Second
-)
+// periodBuildTimeout bounds the making of the report for a period: a database that does not
+// answer does not hold the caller.
+const periodBuildTimeout = 30 * time.Second
 
 // reportStore is what the service reads the usage reports and their sending from:
 // usagestore.Store.
@@ -45,8 +38,12 @@ type periodBuilder interface {
 }
 
 // GetUsageReporting tells under which mode the usage report of the instance is sent, and what
-// became of the reports of the last 30 days. Without a license key in force there is no mode:
-// nothing is prepared nor sent, and nothing is listed.
+// became of the reports of the last 30 days: the window the sender sends within. Without a
+// license key in force there is no mode: nothing is prepared nor sent, and nothing is listed.
+//
+// While the instance has sent no report since it started sending, it also tells when the first
+// one leaves at the earliest: a day after the oldest report that is to be sent was prepared, as
+// the sender waits. There is no such moment while no report is to be sent yet.
 func (s *Service) GetUsageReporting(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetUsageReportingRequest],
@@ -88,26 +85,33 @@ func (s *Service) GetUsageReporting(
 	}
 	res.SendingSince = optionalTimestamp(since)
 	if since != nil {
-		if first := since.Add(waitBeforeFirst); first.After(now) {
-			res.FirstSendAt = timestamppb.New(first)
-		}
-		res.Silent = now.Sub(*since) > reportDays*24*time.Hour &&
-			(lastSent == nil || now.Sub(*lastSent) > reportDays*24*time.Hour)
+		res.Silent = now.Sub(*since) > usagereport.SentDays*24*time.Hour &&
+			(lastSent == nil || now.Sub(*lastSent) > usagereport.SentDays*24*time.Hour)
 	}
 
 	yesterday := now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
-	sendings, err := s.reports.ListReportSendings(ctx, yesterday.AddDate(0, 0, -(reportDays-1)), yesterday)
+	sendings, err := s.reports.ListReportSendings(ctx, yesterday.AddDate(0, 0, -(usagereport.SentDays-1)), yesterday)
 	if err != nil {
 		return nil, err
 	}
+	// The reports come newest first: the last one that is to be sent is the oldest.
+	var oldestToSend *usagestore.ReportSending
 	for i := range sendings {
 		sending := &sendings[i]
+		status := statusOfSending(sending, mode, since)
+		if status == mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_TO_BE_SENT ||
+			status == mgmtv1alpha1.UsageReportStatus_USAGE_REPORT_STATUS_NOT_SENT {
+			oldestToSend = sending
+		}
 		res.Reports = append(res.Reports, &mgmtv1alpha1.UsageReportSummary{
 			Day:      dateOf(sending.Day),
-			Status:   statusOfSending(sending, mode, since),
+			Status:   status,
 			SentAt:   optionalTimestamp(sending.SentAt),
 			Attempts: sending.Attempts,
 		})
+	}
+	if since != nil && oldestToSend != nil && usagereport.WaitsBeforeFirst(*since, lastSent) {
+		res.FirstSendAt = timestamppb.New(oldestToSend.PreparedAt.Add(usagereport.WaitBeforeFirst))
 	}
 	return connect.NewResponse(res), nil
 }

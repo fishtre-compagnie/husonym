@@ -81,8 +81,10 @@ which may only lower it; only the mode `online` sends.
   `Husonym-Key-Fingerprint` (the fingerprint of the key that sealed it).
 - **Success**: any 2xx status. A redirect is not followed and counts as a failure; the body of
   an answer is read up to a limit and dropped.
-- **First sending**: an instance that starts sending waits 24 hours before it sends anything.
-  Leaving the mode `online` forgets since when it was sending, so coming back waits again.
+- **First sending**: until an instance has sent a report since it started sending, a report
+  leaves only 24 hours after it was prepared; once one was sent, the following ones go as soon
+  as they are prepared. Leaving the mode `online` forgets since when it was sending, so coming
+  back waits again on its first report.
 - **Retry**: a report that could not be sent is tried again after 6 hours, from the oldest, and
   reports of closed days older than 30 days are no longer sent. A failure is logged and never
   delays a request or a run.

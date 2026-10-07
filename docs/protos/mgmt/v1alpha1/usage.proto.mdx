@@ -1,0 +1,110 @@
+---
+title: usage.proto
+hide_title: true
+---
+
+import { ProtoMessage, ProtoServiceMethod, ProtoEnum } from '@theme/ProtoFile';
+
+# `usage.proto`
+_**path** mgmt/v1alpha1/usage.proto_
+
+_**package** mgmt.v1alpha1_
+
+
+
+---
+
+## Messages
+
+
+### `GetUsagePeriodReportRequest`
+<ProtoMessage key={0} message={{"name":"GetUsagePeriodReportRequest","longName":"GetUsagePeriodReportRequest","fullName":"mgmt.v1alpha1.GetUsagePeriodReportRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The unique identifier of the account that asks.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"from_month","description":"The first month of the period, as \"2026-01\", in UTC.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"to_month","description":"The last month of the period, included: not before the first, not in the future, and at most 24 months in all.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetUsagePeriodReportResponse`
+<ProtoMessage key={1} message={{"name":"GetUsagePeriodReportResponse","longName":"GetUsagePeriodReportResponse","fullName":"mgmt.v1alpha1.GetUsagePeriodReportResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"document","description":"The report for the period, as it was sealed, byte for byte.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"seal","description":"The seal of the document.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"key_fingerprint","description":"The fingerprint of the key that sealed it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetUsageReportRequest`
+<ProtoMessage key={2} message={{"name":"GetUsageReportRequest","longName":"GetUsageReportRequest","fullName":"mgmt.v1alpha1.GetUsageReportRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The unique identifier of the account that asks.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"day","description":"The UTC day of the report: a day of the calendar that is not in the future.","label":"","type":"Date","longType":"Date","fullType":"mgmt.v1alpha1.Date","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/metrics.proto#date"}]}} />
+
+
+### `GetUsageReportResponse`
+<ProtoMessage key={3} message={{"name":"GetUsageReportResponse","longName":"GetUsageReportResponse","fullName":"mgmt.v1alpha1.GetUsageReportResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"document","description":"The report as it is kept, byte for byte.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"seal","description":"The seal of the document.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"key_fingerprint","description":"The fingerprint of the key that sealed it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetUsageReportingRequest`
+<ProtoMessage key={4} message={{"name":"GetUsageReportingRequest","longName":"GetUsageReportingRequest","fullName":"mgmt.v1alpha1.GetUsageReportingRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The unique identifier of the account that asks.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetUsageReportingResponse`
+<ProtoMessage key={5} message={{"name":"GetUsageReportingResponse","longName":"GetUsageReportingResponse","fullName":"mgmt.v1alpha1.GetUsageReportingResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"license_mode","description":"What the license key provides for the usage report. Unspecified when no key is in force.","label":"","type":"UsageReportingMode","longType":"UsageReportingMode","fullType":"mgmt.v1alpha1.UsageReportingMode","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/usage.proto#usagereportingmode"},{"name":"mode","description":"The mode in force. Unspecified when no key is in force.","label":"","type":"UsageReportingMode","longType":"UsageReportingMode","fullType":"mgmt.v1alpha1.UsageReportingMode","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/usage.proto#usagereportingmode"},{"name":"below_license","description":"Whether the operator lowered the mode below what the key provides.","label":"","type":"bool","longType":"bool","fullType":"bool","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"diagnostics","description":"Whether the part of the report that describes the instance is on.","label":"","type":"bool","longType":"bool","fullType":"bool","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"sending_since","description":"Since when the instance sends its report. Absent when it does not.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"first_send_at","description":"When the first report is sent at the earliest: 24 hours after it was prepared. Present while the instance sends, has a report to send and has sent none since it started sending.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"last_sent_at","description":"When a report was last sent. Absent when none ever was.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"silent","description":"Whether the instance sends its report and nothing was sent for 30 days.","label":"","type":"bool","longType":"bool","fullType":"bool","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"reports","description":"What became of the reports of the last 30 days, the newest first.","label":"repeated","type":"UsageReportSummary","longType":"UsageReportSummary","fullType":"mgmt.v1alpha1.UsageReportSummary","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/usage.proto#usagereportsummary"}]}} />
+
+
+### `RecordRunEndedRequest`
+<ProtoMessage key={6} message={{"name":"RecordRunEndedRequest","longName":"RecordRunEndedRequest","fullName":"mgmt.v1alpha1.RecordRunEndedRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"job_id","description":"The job the run belongs to. The account and the kind of the run are read from it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"run_id","description":"The identifier of the run, as the orchestrator gives it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"started_at","description":"When the run began.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"ended_at","description":"When the run ended.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"outcome","description":"How the run ended.","label":"","type":"RunOutcome","longType":"RunOutcome","fullType":"mgmt.v1alpha1.RunOutcome","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/usage.proto#runoutcome"},{"name":"rows_read","description":"The rows the run read from its source.","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"rows_discarded","description":"The rows the run set aside instead of writing them.","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"retries","description":"The times the run's activities were tried again.","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"tables_uncounted","description":"The tables of the run whose rows were not counted.","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"source_version_major","description":"The major version of the database the run read, as \"16\" or \"8.0\". Empty when it is not known.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `RecordRunEndedResponse`
+<ProtoMessage key={7} message={{"name":"RecordRunEndedResponse","longName":"RecordRunEndedResponse","fullName":"mgmt.v1alpha1.RecordRunEndedResponse","description":"","hasExtensions":false,"hasFields":false,"hasOneofs":false,"extensions":[],"fields":[]}} />
+
+
+### `RecordRunStartedRequest`
+<ProtoMessage key={8} message={{"name":"RecordRunStartedRequest","longName":"RecordRunStartedRequest","fullName":"mgmt.v1alpha1.RecordRunStartedRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"job_id","description":"The job the run belongs to. The account and the kind of the run are read from it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"run_id","description":"The identifier of the run, as the orchestrator gives it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"started_at","description":"When the run began.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `RecordRunStartedResponse`
+<ProtoMessage key={9} message={{"name":"RecordRunStartedResponse","longName":"RecordRunStartedResponse","fullName":"mgmt.v1alpha1.RecordRunStartedResponse","description":"","hasExtensions":false,"hasFields":false,"hasOneofs":false,"extensions":[],"fields":[]}} />
+
+
+### `UsageReportSummary`
+<ProtoMessage key={10} message={{"name":"UsageReportSummary","longName":"UsageReportSummary","fullName":"mgmt.v1alpha1.UsageReportSummary","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"day","description":"The UTC day the report counts.","label":"","type":"Date","longType":"Date","fullType":"mgmt.v1alpha1.Date","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/metrics.proto#date"},{"name":"status","description":"","label":"","type":"UsageReportStatus","longType":"UsageReportStatus","fullType":"mgmt.v1alpha1.UsageReportStatus","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/usage.proto#usagereportstatus"},{"name":"sent_at","description":"When the report was sent. Absent while it was not.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"attempts","description":"How many times the report was tried.","label":"","type":"int32","longType":"int32","fullType":"int32","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+---
+## Enums
+
+
+### `RunOutcome`
+<ProtoEnum key={0} enumb={{"name":"RunOutcome","longName":"RunOutcome","fullName":"mgmt.v1alpha1.RunOutcome","description":"How a run ended.","values":[{"name":"RUN_OUTCOME_UNSPECIFIED","number":"0","description":""},{"name":"RUN_OUTCOME_COMPLETED","number":"1","description":"The run finished its work."},{"name":"RUN_OUTCOME_FAILED","number":"2","description":"The run stopped on an error."},{"name":"RUN_OUTCOME_CANCELED","number":"3","description":"The run was told to stop."}]}} />
+
+
+### `UsageReportStatus`
+<ProtoEnum key={1} enumb={{"name":"UsageReportStatus","longName":"UsageReportStatus","fullName":"mgmt.v1alpha1.UsageReportStatus","description":"What became of the usage report of a day.","values":[{"name":"USAGE_REPORT_STATUS_UNSPECIFIED","number":"0","description":""},{"name":"USAGE_REPORT_STATUS_KEPT","number":"1","description":"The report is kept, and is not to be sent."},{"name":"USAGE_REPORT_STATUS_TO_BE_SENT","number":"2","description":"The report is waiting to be sent, and no attempt was made yet."},{"name":"USAGE_REPORT_STATUS_SENT","number":"3","description":"The report was sent."},{"name":"USAGE_REPORT_STATUS_NOT_SENT","number":"4","description":"The report was tried and could not be sent; it is tried again later."}]}} />
+
+
+### `UsageReportingMode`
+<ProtoEnum key={2} enumb={{"name":"UsageReportingMode","longName":"UsageReportingMode","fullName":"mgmt.v1alpha1.UsageReportingMode","description":"What the instance does with its usage report.","values":[{"name":"USAGE_REPORTING_MODE_UNSPECIFIED","number":"0","description":""},{"name":"USAGE_REPORTING_MODE_ONLINE","number":"1","description":"The report is prepared and sent."},{"name":"USAGE_REPORTING_MODE_OFFLINE_REPORT","number":"2","description":"The report is prepared and kept, to be given as a file."},{"name":"USAGE_REPORTING_MODE_NONE","number":"3","description":"No report is prepared nor sent."}]}} />
+
+---
+## Services
+
+
+### `UsageService`
+
+Holds the counters of what the instance runs.
+
+
+#### `RecordRunStarted`
+<ProtoServiceMethod key={'RecordRunStarted-0'} method={{"name":"RecordRunStarted","description":"Tells that a run has begun. Only the worker calls this, with its key.","requestType":"RecordRunStartedRequest","requestLongType":"RecordRunStartedRequest","requestFullType":"mgmt.v1alpha1.RecordRunStartedRequest","requestStreaming":false,"responseType":"RecordRunStartedResponse","responseLongType":"RecordRunStartedResponse","responseFullType":"mgmt.v1alpha1.RecordRunStartedResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/usage.proto#recordrunstartedrequest","responseTypeLink":"/api/mgmt/v1alpha1/usage.proto#recordrunstartedresponse"}} />
+
+
+#### `RecordRunEnded`
+<ProtoServiceMethod key={'RecordRunEnded-1'} method={{"name":"RecordRunEnded","description":"Tells that a run has ended, and what it did. Only the worker calls this, with its key.","requestType":"RecordRunEndedRequest","requestLongType":"RecordRunEndedRequest","requestFullType":"mgmt.v1alpha1.RecordRunEndedRequest","requestStreaming":false,"responseType":"RecordRunEndedResponse","responseLongType":"RecordRunEndedResponse","responseFullType":"mgmt.v1alpha1.RecordRunEndedResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/usage.proto#recordrunendedrequest","responseTypeLink":"/api/mgmt/v1alpha1/usage.proto#recordrunendedresponse"}} />
+
+
+#### `GetUsageReporting`
+<ProtoServiceMethod key={'GetUsageReporting-2'} method={{"name":"GetUsageReporting","description":"Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.","requestType":"GetUsageReportingRequest","requestLongType":"GetUsageReportingRequest","requestFullType":"mgmt.v1alpha1.GetUsageReportingRequest","requestStreaming":false,"responseType":"GetUsageReportingResponse","responseLongType":"GetUsageReportingResponse","responseFullType":"mgmt.v1alpha1.GetUsageReportingResponse","responseStreaming":false,"options":{"idempotency_level":"NO_SIDE_EFFECTS"},"requestTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusagereportingrequest","responseTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusagereportingresponse"}} />
+
+
+#### `GetUsageReport`
+<ProtoServiceMethod key={'GetUsageReport-3'} method={{"name":"GetUsageReport","description":"Gives the usage report of a day, as it is kept.","requestType":"GetUsageReportRequest","requestLongType":"GetUsageReportRequest","requestFullType":"mgmt.v1alpha1.GetUsageReportRequest","requestStreaming":false,"responseType":"GetUsageReportResponse","responseLongType":"GetUsageReportResponse","responseFullType":"mgmt.v1alpha1.GetUsageReportResponse","responseStreaming":false,"options":{"idempotency_level":"NO_SIDE_EFFECTS"},"requestTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusagereportrequest","responseTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusagereportresponse"}} />
+
+
+#### `GetUsagePeriodReport`
+<ProtoServiceMethod key={'GetUsagePeriodReport-4'} method={{"name":"GetUsagePeriodReport","description":"Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.","requestType":"GetUsagePeriodReportRequest","requestLongType":"GetUsagePeriodReportRequest","requestFullType":"mgmt.v1alpha1.GetUsagePeriodReportRequest","requestStreaming":false,"responseType":"GetUsagePeriodReportResponse","responseLongType":"GetUsagePeriodReportResponse","responseFullType":"mgmt.v1alpha1.GetUsagePeriodReportResponse","responseStreaming":false,"options":{"idempotency_level":"NO_SIDE_EFFECTS"},"requestTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusageperiodreportrequest","responseTypeLink":"/api/mgmt/v1alpha1/usage.proto#getusageperiodreportresponse"}} />
+
+
+---
+
+
+  

@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	// waitBeforeFirst is how long an instance that starts sending waits before it sends anything.
-	waitBeforeFirst = 24 * time.Hour
+	// WaitBeforeFirst is how long the first report of an instance that starts sending waits, once
+	// it is prepared, before it is sent: the time it can be read in before it leaves.
+	WaitBeforeFirst = 24 * time.Hour
+	// SentDays is how many closed days back a report is still sent.
+	SentDays = 30
 	// retryAfter is how long a report that could not be sent waits before it is tried again.
 	retryAfter = 6 * time.Hour
-	// sentDays is how many closed days back a report is still sent.
-	sentDays = 30
 	// passTimeout bounds one pass of the sending: a database that does not answer ends the pass,
 	// and never holds the loop the preparation runs in too.
 	passTimeout = 2 * time.Minute
@@ -33,7 +34,8 @@ type SendingStore interface {
 	SendingSince(ctx context.Context) (*time.Time, error)
 	StartSending(ctx context.Context, at time.Time) error
 	StopSending(ctx context.Context) error
-	ClaimReport(ctx context.Context, from, to, notAttemptedSince, now time.Time) (*usagestore.StoredReport, error)
+	LastSentAt(ctx context.Context) (*time.Time, error)
+	ClaimReport(ctx context.Context, claim usagestore.ReportClaim) (*usagestore.StoredReport, error)
 	MarkReportSent(ctx context.Context, day, at time.Time) error
 	ListReportSendings(ctx context.Context, from, to time.Time) ([]usagestore.ReportSending, error)
 }
@@ -73,9 +75,15 @@ func NewSender(
 ) *Sender {
 	return &Sender{
 		store: store, license: lic, key: key, setting: setting, transport: transport, logger: logger,
-		waitBeforeFirst: waitBeforeFirst, retryAfter: retryAfter,
+		waitBeforeFirst: WaitBeforeFirst, retryAfter: retryAfter,
 		passTimeout: passTimeout, recordTimeout: recordTimeout, now: time.Now,
 	}
+}
+
+// WaitsBeforeFirst tells whether the reports of an instance that sends since the given moment
+// still wait before they are sent: they do until one was sent since.
+func WaitsBeforeFirst(since time.Time, lastSent *time.Time) bool {
+	return lastSent == nil || lastSent.Before(since)
 }
 
 // SendDue sends the reports that are due, from the oldest: those of the closed days since the
@@ -83,6 +91,11 @@ func NewSender(
 // last hours. Nothing is sent without a license in force, nor in a mode that is not the one that
 // sends, which also forgets since when the instance was sending: an instance that comes back to
 // sending starts again, and what was prepared in between stays.
+//
+// Until a report was sent since the instance started sending, a report is due only a day after
+// it was prepared: the first one to leave can be read for a day before it does. Each report
+// waits its own day, so one that could not be sent does not let a newer one leave earlier. Once
+// one was sent, those that follow go as soon as they are prepared.
 //
 // now is the moment of the pass, which what is due is told from; a report is claimed and marked
 // at the moment it is, read from the clock. The pass is bounded: reports left when it ends go
@@ -123,12 +136,17 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 		return err
 	}
 	// Nil when another replica, started with another setting, stopped the sending in between.
-	if since == nil || now.Sub(*since) < s.waitBeforeFirst {
+	if since == nil {
 		return nil
 	}
+	lastSent, err := s.store.LastSentAt(ctx)
+	if err != nil {
+		return err
+	}
+	waits := WaitsBeforeFirst(*since, lastSent)
 
 	yesterday := now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)
-	from := yesterday.AddDate(0, 0, -(sentDays - 1))
+	from := yesterday.AddDate(0, 0, -(SentDays - 1))
 	if sinceDay := since.UTC().Truncate(24 * time.Hour); sinceDay.After(from) {
 		from = sinceDay
 	}
@@ -139,7 +157,13 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 			return fmt.Errorf("the sending of the usage reports ended before all that is due was sent: %w", err)
 		}
 		claimedAt := s.now()
-		report, err := s.store.ClaimReport(ctx, from, yesterday, claimedAt.Add(-s.retryAfter), claimedAt)
+		claim := usagestore.ReportClaim{
+			From: from, To: yesterday, NotAttemptedSince: claimedAt.Add(-s.retryAfter), At: claimedAt,
+		}
+		if waits {
+			claim.PreparedBy = new(claimedAt.Add(-s.waitBeforeFirst))
+		}
+		report, err := s.store.ClaimReport(ctx, claim)
 		if err != nil {
 			return err
 		}
@@ -157,6 +181,8 @@ func (s *Sender) SendDue(parent context.Context, now time.Time) error {
 		if err := s.sent(parent, report); err != nil {
 			return err
 		}
+		// A report was sent since the instance started sending: the others go as they are due.
+		waits = false
 	}
 }
 

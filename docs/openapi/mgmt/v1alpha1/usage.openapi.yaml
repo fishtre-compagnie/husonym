@@ -253,7 +253,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: first_send_at
-          description: When the first report is sent. Present only during the first 24 hours of sending.
+          description: 'When the first report is sent at the earliest: 24 hours after it was prepared. Present while the instance sends, has a report to send and has sent none since it started sending.'
         lastSentAt:
           allOf:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'

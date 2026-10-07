@@ -35,12 +35,14 @@ type sendingRow struct {
 // fakeSendingStore keeps the sending state the way the usage store does: a claim takes the
 // oldest report that is due and counts the attempt.
 type fakeSendingStore struct {
-	mu      sync.Mutex
-	since   *time.Time
-	rows    []*sendingRow
-	calls   []string
-	markErr error
-	listErr error
+	mu    sync.Mutex
+	since *time.Time
+	// sentBefore is when a report that is no longer kept was last sent.
+	sentBefore *time.Time
+	rows       []*sendingRow
+	calls      []string
+	markErr    error
+	listErr    error
 	// panicOnStart makes StartSending panic.
 	panicOnStart bool
 	// hang makes SendingSince wait for its context to end, then return what ended it.
@@ -49,17 +51,38 @@ type fakeSendingStore struct {
 	onMark func()
 }
 
+// withReports adds the reports of the given days, each prepared two minutes after its day closed.
 func (f *fakeSendingStore) withReports(days ...string) *fakeSendingStore {
 	for _, text := range days {
-		f.rows = append(f.rows, &sendingRow{report: usagestore.StoredReport{
-			Day: dayOf(text), Document: []byte(`{"day": "` + text + `"}` + "\n"), Seal: "seal-" + text, KeyFingerprint: "fp",
-		}})
+		f.withReport(text, dayOf(text).Add(24*time.Hour+2*time.Minute))
 	}
 	return f
 }
 
+func (f *fakeSendingStore) withReport(day string, preparedAt time.Time) *fakeSendingStore {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.rows = append(f.rows, &sendingRow{report: usagestore.StoredReport{
+		Day: dayOf(day), Document: []byte(`{"day": "` + day + `"}` + "\n"), Seal: "seal-" + day, KeyFingerprint: "fp",
+		PreparedAt: preparedAt,
+	}})
+	return f
+}
+
+// sendingSince is an instance that sends since the given moment and has sent a report since:
+// none of its reports waits.
 func (f *fakeSendingStore) sendingSince(at time.Time) *fakeSendingStore {
+	return f.startedSending(at).lastSent(at)
+}
+
+// startedSending is an instance that sends since the given moment and has sent nothing since.
+func (f *fakeSendingStore) startedSending(at time.Time) *fakeSendingStore {
 	f.since = &at
+	return f
+}
+
+func (f *fakeSendingStore) lastSent(at time.Time) *fakeSendingStore {
+	f.sentBefore = &at
 	return f
 }
 
@@ -111,22 +134,35 @@ func (f *fakeSendingStore) StopSending(context.Context) error {
 	return nil
 }
 
-func (f *fakeSendingStore) ClaimReport(
-	_ context.Context, from, to, notAttemptedSince, now time.Time,
-) (*usagestore.StoredReport, error) {
+func (f *fakeSendingStore) LastSentAt(context.Context) (*time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	last := f.sentBefore
+	for _, row := range f.rows {
+		if row.sentAt != nil && (last == nil || row.sentAt.After(*last)) {
+			last = row.sentAt
+		}
+	}
+	return last, nil
+}
+
+func (f *fakeSendingStore) ClaimReport(_ context.Context, claim usagestore.ReportClaim) (*usagestore.StoredReport, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, "claim")
 	slices.SortFunc(f.rows, func(a, b *sendingRow) int { return a.report.Day.Compare(b.report.Day) })
 	for _, row := range f.rows {
-		if row.sentAt != nil || row.report.Day.Before(from) || row.report.Day.After(to) {
+		if row.sentAt != nil || row.report.Day.Before(claim.From) || row.report.Day.After(claim.To) {
 			continue
 		}
-		if row.lastAttemptAt != nil && !row.lastAttemptAt.Before(notAttemptedSince) {
+		if row.lastAttemptAt != nil && !row.lastAttemptAt.Before(claim.NotAttemptedSince) {
+			continue
+		}
+		if claim.PreparedBy != nil && row.report.PreparedAt.After(*claim.PreparedBy) {
 			continue
 		}
 		row.attempts++
-		row.lastAttemptAt = &now
+		row.lastAttemptAt = &claim.At
 		report := row.report
 		return &report, nil
 	}
@@ -321,63 +357,167 @@ func Test_SendDue_ASettingThatIsNeitherOfflineNorOffCountsAsNone(t *testing.T) {
 	}
 }
 
-func Test_SendDue_AnInstanceThatStartsSendingWaitsADay(t *testing.T) {
+func Test_SendDue_AnInstanceThatStartsSendingRecordsSinceWhenAndKeepsWhatWasPreparedBefore(t *testing.T) {
 	s := newSending((&fakeSendingStore{}).withReports("2026-10-08", "2026-10-09"))
 
 	require.NoError(t, s.sendDue(t, sendNow))
 	require.NotNil(t, s.store.since)
 	require.True(t, sendNow.Equal(*s.store.since))
-	require.Equal(t, []string{"start"}, s.store.called())
+	require.Equal(t, "start", s.store.called()[0])
 	require.Empty(t, s.transport.days())
 
-	// One second short of a day: still nothing, and the first date is kept.
-	require.NoError(t, s.sendDue(t, sendNow.Add(24*time.Hour-time.Second)))
+	// However long after: the first date is kept, and the reports of before are never taken.
+	require.NoError(t, s.sendDue(t, sendNow.Add(72*time.Hour)))
 	require.True(t, sendNow.Equal(*s.store.since))
 	require.Empty(t, s.transport.days())
 }
 
-func Test_SendDue_SendsWhatIsDueFromTheOldestAndMarksIt(t *testing.T) {
-	s := newSending((&fakeSendingStore{}).
-		withReports("2026-10-09", "2026-10-07", "2026-10-08").
-		sendingSince(time.Date(2026, 10, 7, 15, 0, 0, 0, time.UTC)))
+// The wait is on the report: an instance that became a sender half an hour into a day does not
+// send the report of that day in the pass that prepares it, but a day after it exists.
+func Test_SendDue_TheFirstReportWaitsADayOnceItExists(t *testing.T) {
+	since := time.Date(2026, 10, 9, 0, 30, 0, 0, time.UTC)
+	prepared := time.Date(2026, 10, 10, 0, 32, 0, 0, time.UTC)
+	s := newSending((&fakeSendingStore{}).startedSending(since).withReport("2026-10-09", prepared))
 
-	require.NoError(t, s.sendDue(t, sendNow))
-	require.Equal(t, []string{"2026-10-07", "2026-10-08", "2026-10-09"}, s.transport.days())
-	for _, day := range []string{"2026-10-07", "2026-10-08", "2026-10-09"} {
-		row := s.store.row(day)
-		require.NotNil(t, row.sentAt, day)
-		require.True(t, sendNow.Equal(*row.sentAt), day)
-		require.EqualValues(t, 1, row.attempts, day)
+	// The pass that prepared it, then 23 hours later, then one second short of a day.
+	for _, at := range []time.Time{prepared, prepared.Add(23 * time.Hour), prepared.Add(24*time.Hour - time.Second)} {
+		require.NoError(t, s.sendDue(t, at))
+		require.Empty(t, s.transport.days(), "at %s", at)
+		require.Zero(t, s.store.row("2026-10-09").attempts, "at %s", at)
 	}
 
-	// Nothing is sent twice.
-	require.NoError(t, s.sendDue(t, sendNow.Add(time.Hour)))
-	require.Len(t, s.transport.days(), 3)
-}
-
-func Test_SendDue_TheReportOfTodayIsNotSent(t *testing.T) {
-	s := newSending((&fakeSendingStore{}).
-		withReports("2026-10-09", "2026-10-10").
-		sendingSince(sendNow.AddDate(0, 0, -5)))
-
-	require.NoError(t, s.sendDue(t, sendNow))
+	require.NoError(t, s.sendDue(t, prepared.Add(24*time.Hour)))
 	require.Equal(t, []string{"2026-10-09"}, s.transport.days())
+
+	// A first report was sent: the one of the next day goes in the pass that follows its preparation.
+	next := time.Date(2026, 10, 11, 0, 34, 0, 0, time.UTC)
+	s.store.withReport("2026-10-10", next)
+	require.NoError(t, s.sendDue(t, next))
+	require.Equal(t, []string{"2026-10-09", "2026-10-10"}, s.transport.days())
 }
 
-func Test_SendDue_ASuccessIsLoggedWithTheDayAndTheDocument(t *testing.T) {
-	s := newSending((&fakeSendingStore{}).withReports("2026-10-09").sendingSince(sendNow.AddDate(0, 0, -5)))
+// Each state the wait can be in, at a pass on the 10th at noon: the last closed day is the 9th.
+func Test_SendDue_WhichReportsWaitForTheFirstSending(t *testing.T) {
+	type report struct {
+		day        string
+		preparedAt time.Time
+	}
+	at := func(day, hour, minute int) time.Time { return time.Date(2026, 10, day, hour, minute, 0, 0, time.UTC) }
+	aDayAgo := sendNow.Add(-24 * time.Hour)
+
+	for name, tc := range map[string]struct {
+		since    time.Time
+		lastSent *time.Time
+		reports  []report
+		failing  string
+		want     []string
+	}{
+		"nothing sent and no report yet": {
+			since: at(10, 0, 30),
+		},
+		"nothing sent and only reports of before sending began": {
+			since:   at(10, 0, 30),
+			reports: []report{{"2026-10-08", at(9, 0, 2)}, {"2026-10-09", at(10, 0, 2)}},
+		},
+		"a first report prepared less than a day ago": {
+			since:   at(8, 0, 30),
+			reports: []report{{"2026-10-08", aDayAgo.Add(time.Second)}},
+		},
+		"a first report prepared a day ago": {
+			since:   at(8, 0, 30),
+			reports: []report{{"2026-10-08", aDayAgo}},
+			want:    []string{"2026-10-08"},
+		},
+		"several unsent, none a day old": {
+			since:   at(8, 0, 30),
+			reports: []report{{"2026-10-08", aDayAgo.Add(time.Minute)}, {"2026-10-09", at(10, 0, 2)}},
+		},
+		// Once the oldest left, a report was sent since sending began: the rest go as they are due.
+		"several unsent, only the oldest a day old": {
+			since:   at(7, 0, 30),
+			reports: []report{{"2026-10-07", at(8, 0, 2)}, {"2026-10-08", aDayAgo.Add(time.Minute)}, {"2026-10-09", at(10, 0, 2)}},
+			want:    []string{"2026-10-07", "2026-10-08", "2026-10-09"},
+		},
+		// The oldest did not leave: nothing was sent, and the others still wait.
+		"several unsent, the oldest a day old and it fails": {
+			since:   at(7, 0, 30),
+			reports: []report{{"2026-10-07", at(8, 0, 2)}, {"2026-10-08", aDayAgo.Add(time.Minute)}, {"2026-10-09", at(10, 0, 2)}},
+			failing: "2026-10-07",
+			want:    []string{"2026-10-07"},
+		},
+		"a report sent since sending began: the next one does not wait": {
+			since:    at(5, 0, 30),
+			lastSent: new(at(9, 0, 40)),
+			reports:  []report{{"2026-10-09", at(10, 0, 2)}},
+			want:     []string{"2026-10-09"},
+		},
+		"a report sent the moment sending began counts as sent since": {
+			since:    at(8, 0, 30),
+			lastSent: new(at(8, 0, 30)),
+			reports:  []report{{"2026-10-09", at(10, 0, 2)}},
+			want:     []string{"2026-10-09"},
+		},
+		// Back to sending after a time without: what was sent before does not count.
+		"the last sending is of before sending began again, the first report is fresh": {
+			since:    at(8, 0, 30),
+			lastSent: new(at(7, 0, 40)),
+			reports:  []report{{"2026-10-08", aDayAgo.Add(time.Second)}},
+		},
+		"the last sending is of before sending began again, the first report is a day old": {
+			since:    at(8, 0, 30),
+			lastSent: new(at(7, 0, 40)),
+			reports:  []report{{"2026-10-08", aDayAgo}, {"2026-10-09", at(10, 0, 2)}},
+			want:     []string{"2026-10-08", "2026-10-09"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := (&fakeSendingStore{}).startedSending(tc.since)
+			store.sentBefore = tc.lastSent
+			for _, r := range tc.reports {
+				store.withReport(r.day, r.preparedAt)
+			}
+			s := newSending(store)
+			if tc.failing != "" {
+				s.transport.failing[tc.failing] = errors.New("boom")
+			}
+
+			require.NoError(t, s.sendDue(t, sendNow))
+			require.Equal(t, tc.want, s.transport.days())
+			for _, r := range tc.reports {
+				if !slices.Contains(tc.want, r.day) {
+					require.Zero(t, s.store.row(r.day).attempts, "the report of %s was claimed", r.day)
+				}
+			}
+		})
+	}
+}
+
+// A first report that could not be sent does not let the others through: an hour later it is not
+// due again, nothing was sent, and the next one is still less than a day old.
+func Test_SendDue_AFirstReportThatFailsLeavesTheOthersWaiting(t *testing.T) {
+	s := newSending((&fakeSendingStore{}).
+		startedSending(time.Date(2026, 10, 8, 0, 30, 0, 0, time.UTC)).
+		withReports("2026-10-08", "2026-10-09"))
+	s.transport.failing["2026-10-08"] = errors.New("boom")
 
 	require.NoError(t, s.sendDue(t, sendNow))
-	logs := s.logs.String()
-	require.Contains(t, logs, "level=INFO")
-	require.Contains(t, logs, "day=2026-10-09")
-	require.Contains(t, logs, `document="{\"day\": \"2026-10-09\"}\n"`)
-	require.NotContains(t, logs, "level=WARN")
+	require.NoError(t, s.sendDue(t, sendNow.Add(time.Hour)))
+	require.Equal(t, []string{"2026-10-08"}, s.transport.days())
+	require.Zero(t, s.store.row("2026-10-09").attempts)
+
+	// A day after the second was prepared, the first is due again and fails again; at the pass
+	// after that the second goes, though nothing was sent yet: it is a day old.
+	aDayAfter := time.Date(2026, 10, 11, 0, 2, 0, 0, time.UTC)
+	require.NoError(t, s.sendDue(t, aDayAfter))
+	require.Equal(t, []string{"2026-10-08", "2026-10-08"}, s.transport.days())
+	require.NoError(t, s.sendDue(t, aDayAfter.Add(time.Hour)))
+	require.Equal(t, []string{"2026-10-08", "2026-10-08", "2026-10-09"}, s.transport.days())
 }
 
 // From a mode that does not send to the one that does: what was prepared before stays, and the
-// first report to leave is the one of the day sending started on, a day after it started.
-func Test_SendDue_AfterSendingStartsTheReportsOfBeforeStayAndTheFirstWaitsADay(t *testing.T) {
+// first report to leave is the one of the day sending started on, a day after it was prepared,
+// whatever was sent before the instance stopped sending.
+func Test_SendDue_AfterSendingStartsAgainTheReportsOfBeforeStayAndTheFirstWaitsADay(t *testing.T) {
 	s := newSending((&fakeSendingStore{}).
 		withReports("2026-10-07", "2026-10-08", "2026-10-09").
 		sendingSince(sendNow.AddDate(0, 0, -5)))
@@ -391,12 +531,15 @@ func Test_SendDue_AfterSendingStartsTheReportsOfBeforeStayAndTheFirstWaitsADay(t
 	require.True(t, sendNow.Equal(*s.store.since))
 	require.Empty(t, s.transport.days())
 
-	// The day sending started on closes, and its report is prepared.
+	// The day sending started on closes, and its report is prepared two minutes later.
 	s.store.withReports("2026-10-10")
-	require.NoError(t, s.sendDue(t, sendNow.Add(24*time.Hour-time.Minute)))
-	require.Empty(t, s.transport.days())
+	prepared := time.Date(2026, 10, 11, 0, 2, 0, 0, time.UTC)
+	for _, at := range []time.Time{prepared, sendNow.Add(24 * time.Hour), prepared.Add(24*time.Hour - time.Minute)} {
+		require.NoError(t, s.sendDue(t, at))
+		require.Empty(t, s.transport.days(), "at %s", at)
+	}
 
-	require.NoError(t, s.sendDue(t, sendNow.Add(24*time.Hour)))
+	require.NoError(t, s.sendDue(t, prepared.Add(24*time.Hour)))
 	require.Equal(t, []string{"2026-10-10"}, s.transport.days())
 	for _, day := range []string{"2026-10-07", "2026-10-08", "2026-10-09"} {
 		require.Nil(t, s.store.row(day).sentAt, day)
@@ -570,23 +713,25 @@ func Test_SendDue_AFailureIsLoggedWithoutItsAttemptsWhenTheyCannotBeRead(t *test
 }
 
 func Test_SendDue_TheWaitAndTheSpacingAreTheOnesOfTheSender(t *testing.T) {
-	s := newSending((&fakeSendingStore{}).withReports("2026-10-09"))
+	s := newSending((&fakeSendingStore{}).
+		startedSending(time.Date(2026, 10, 9, 0, 30, 0, 0, time.UTC)).
+		withReports("2026-10-09"))
 	s.transport.failing["2026-10-09"] = errors.New("boom")
 	sender := s.sender()
-	require.Equal(t, 24*time.Hour, sender.waitBeforeFirst)
+	require.Equal(t, WaitBeforeFirst, sender.waitBeforeFirst)
+	require.Equal(t, 24*time.Hour, WaitBeforeFirst)
+	require.Equal(t, 30, SentDays)
 	require.Equal(t, 6*time.Hour, sender.retryAfter)
 
 	sender.waitBeforeFirst, sender.retryAfter = time.Minute, time.Minute
-	require.NoError(t, sendDueAt(t.Context(), sender, sendNow))
+	prepared := s.store.row("2026-10-09").report.PreparedAt
+	require.NoError(t, sendDueAt(t.Context(), sender, prepared.Add(time.Minute-time.Second)))
 	require.Empty(t, s.transport.days())
-	require.NoError(t, sendDueAt(t.Context(), sender, sendNow.Add(24*time.Hour+time.Minute)))
-	require.Empty(t, s.transport.days(), "the report of the 9th is of before sending started")
-
-	s.store.withReports("2026-10-10")
-	s.transport.failing["2026-10-10"] = errors.New("boom")
-	require.NoError(t, sendDueAt(t.Context(), sender, sendNow.Add(24*time.Hour+time.Minute)))
-	require.NoError(t, sendDueAt(t.Context(), sender, sendNow.Add(24*time.Hour+3*time.Minute)))
-	require.Equal(t, []string{"2026-10-10", "2026-10-10"}, s.transport.days())
+	require.NoError(t, sendDueAt(t.Context(), sender, prepared.Add(time.Minute)))
+	require.NoError(t, sendDueAt(t.Context(), sender, prepared.Add(2*time.Minute)))
+	require.Equal(t, []string{"2026-10-09"}, s.transport.days())
+	require.NoError(t, sendDueAt(t.Context(), sender, prepared.Add(2*time.Minute+time.Second)))
+	require.Equal(t, []string{"2026-10-09", "2026-10-09"}, s.transport.days())
 }
 
 func Test_InstanceKey_TelemetryMode(t *testing.T) {

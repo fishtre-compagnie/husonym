@@ -37,7 +37,8 @@ func Test_SendDue_TwoReplicasAtOnceSendAReportOnce(t *testing.T) {
 
 	stored := *storedReport
 	stored.Day = time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
-	stored.PreparedAt = sendNow.Add(-11 * time.Hour)
+	// The instance has sent nothing yet: its first report leaves once it is a day old.
+	stored.PreparedAt = sendNow.Add(-24 * time.Hour)
 	saved, err := store.SaveReport(ctx, stored)
 	require.NoError(t, err)
 	require.True(t, saved)

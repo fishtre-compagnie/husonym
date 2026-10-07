@@ -18,7 +18,8 @@ type Querier interface {
 	AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)
 	AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error)
 	// One statement takes the oldest report that is due and marks the attempt: a report another
-	// call holds is skipped, so two calls never get the same one.
+	// call holds is skipped, so two calls never get the same one. When a bound is given on the
+	// preparation, a report prepared after it is not due yet.
 	ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error)
 	// Closes the row of a run still running, and creates nothing.
 	CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error

@@ -154,8 +154,9 @@ function ReportingDetails({
           </dd>
         </>
       )}
-      {/* The API sets first_send_at only while it is in the future, in the first 24
-          hours of sending: its presence is the whole condition. */}
+      {/* The API sets first_send_at while the instance has a report to send and has
+          sent none since it started sending: 24 hours after that report was
+          prepared. Its presence is the whole condition. */}
       {sends && firstAt && (
         <>
           <dt className="text-muted-foreground">First report</dt>

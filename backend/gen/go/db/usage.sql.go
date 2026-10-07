@@ -20,6 +20,7 @@ WHERE day = (
   WHERE r.sent_at IS NULL
     AND r.day >= $2 AND r.day <= $3
     AND (r.last_attempt_at IS NULL OR r.last_attempt_at < $4)
+    AND ($5::timestamptz IS NULL OR r.prepared_at <= $5::timestamptz)
   ORDER BY r.day
   LIMIT 1
   FOR UPDATE SKIP LOCKED
@@ -32,6 +33,7 @@ type ClaimUsageReportParams struct {
 	FromDay           pgtype.Date
 	ToDay             pgtype.Date
 	NotAttemptedSince pgtype.Timestamptz
+	PreparedBy        pgtype.Timestamptz
 }
 
 type ClaimUsageReportRow struct {
@@ -43,13 +45,15 @@ type ClaimUsageReportRow struct {
 }
 
 // One statement takes the oldest report that is due and marks the attempt: a report another
-// call holds is skipped, so two calls never get the same one.
+// call holds is skipped, so two calls never get the same one. When a bound is given on the
+// preparation, a report prepared after it is not due yet.
 func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageReportParams) (ClaimUsageReportRow, error) {
 	row := db.QueryRow(ctx, claimUsageReport,
 		arg.Now,
 		arg.FromDay,
 		arg.ToDay,
 		arg.NotAttemptedSince,
+		arg.PreparedBy,
 	)
 	var i ClaimUsageReportRow
 	err := row.Scan(

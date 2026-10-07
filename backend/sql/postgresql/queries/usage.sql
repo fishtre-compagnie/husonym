@@ -165,7 +165,8 @@ UPDATE husonym_api.instance
 SET sending_since = NULL;
 
 -- One statement takes the oldest report that is due and marks the attempt: a report another
--- call holds is skipped, so two calls never get the same one.
+-- call holds is skipped, so two calls never get the same one. When a bound is given on the
+-- preparation, a report prepared after it is not due yet.
 -- name: ClaimUsageReport :one
 UPDATE husonym_api.usage_reports
 SET attempts = attempts + 1, last_attempt_at = sqlc.arg(now)
@@ -175,6 +176,7 @@ WHERE day = (
   WHERE r.sent_at IS NULL
     AND r.day >= sqlc.arg(from_day) AND r.day <= sqlc.arg(to_day)
     AND (r.last_attempt_at IS NULL OR r.last_attempt_at < sqlc.arg(not_attempted_since))
+    AND (sqlc.narg(prepared_by)::timestamptz IS NULL OR r.prepared_at <= sqlc.narg(prepared_by)::timestamptz)
   ORDER BY r.day
   LIMIT 1
   FOR UPDATE SKIP LOCKED

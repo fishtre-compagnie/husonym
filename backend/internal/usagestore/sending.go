@@ -40,15 +40,34 @@ func (s *Store) StopSending(ctx context.Context) error {
 	return s.db.Q.StopUsageSending(ctx, s.db.Db)
 }
 
-// ClaimReport marks one more attempt on the oldest unsent report whose day is in [from, to] and
-// that was not attempted since notAttemptedSince, and returns it; nil when there is none. Two
-// calls at once never get the same report.
-func (s *Store) ClaimReport(ctx context.Context, from, to, notAttemptedSince, now time.Time) (*StoredReport, error) {
+// ReportClaim says which report is due.
+type ReportClaim struct {
+	// From and To are the first and the last day a report may be of.
+	From, To time.Time
+	// NotAttemptedSince leaves out a report that was tried at that moment or later.
+	NotAttemptedSince time.Time
+	// PreparedBy, when it is given, leaves out a report prepared after that moment.
+	PreparedBy *time.Time
+	// At is the moment of the claim, which the attempt is dated of.
+	At time.Time
+}
+
+// ClaimReport marks one more attempt on the oldest unsent report that is due, and returns it;
+// nil when there is none. Two calls at once never get the same report.
+func (s *Store) ClaimReport(
+	ctx context.Context,
+	claim ReportClaim, //nolint:gocritic // hugeParam: callers hand a value they do not share
+) (*StoredReport, error) {
+	var preparedBy pgtype.Timestamptz
+	if claim.PreparedBy != nil {
+		preparedBy = toTimestamptz(*claim.PreparedBy)
+	}
 	row, err := s.db.Q.ClaimUsageReport(ctx, s.db.Db, db_queries.ClaimUsageReportParams{
-		Now:               toTimestamptz(now),
-		FromDay:           utcDate(from),
-		ToDay:             utcDate(to),
-		NotAttemptedSince: toTimestamptz(notAttemptedSince),
+		Now:               toTimestamptz(claim.At),
+		FromDay:           utcDate(claim.From),
+		ToDay:             utcDate(claim.To),
+		NotAttemptedSince: toTimestamptz(claim.NotAttemptedSince),
+		PreparedBy:        preparedBy,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil //nolint:nilnil // no report due is not an error

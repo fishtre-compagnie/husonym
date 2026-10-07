@@ -22,6 +22,11 @@ func saveReportOf(t *testing.T, store *Store, day time.Time) {
 	require.True(t, saved)
 }
 
+// claimOf is a claim on the reports of the days in [from, to], whenever they were prepared.
+func claimOf(from, to, notAttemptedSince, at time.Time) ReportClaim {
+	return ReportClaim{From: from, To: to, NotAttemptedSince: notAttemptedSince, At: at}
+}
+
 func Test_StartSending_KeepsTheFirstDate(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
@@ -64,7 +69,7 @@ func Test_ClaimReport_GivesTheOldestDueReportAndCountsTheAttempt(t *testing.T) {
 	}
 	from, to := october6, october6.Add(48*time.Hour)
 
-	got, err := store.ClaimReport(ctx, from, to, sendingNow.Add(-time.Hour), sendingNow)
+	got, err := store.ClaimReport(ctx, claimOf(from, to, sendingNow.Add(-time.Hour), sendingNow))
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.True(t, october6.Equal(got.Day))
@@ -84,7 +89,7 @@ func Test_ClaimReport_GivesTheOldestDueReportAndCountsTheAttempt(t *testing.T) {
 	require.Nil(t, sendings[0].LastAttemptAt)
 
 	// The oldest was tried since the cut-off: the next one is due.
-	next, err := store.ClaimReport(ctx, from, to, sendingNow.Add(-time.Hour), sendingNow.Add(time.Minute))
+	next, err := store.ClaimReport(ctx, claimOf(from, to, sendingNow.Add(-time.Hour), sendingNow.Add(time.Minute)))
 	require.NoError(t, err)
 	require.NotNil(t, next)
 	require.True(t, october6.Add(24*time.Hour).Equal(next.Day))
@@ -101,21 +106,21 @@ func Test_ClaimReport_SkipsWhatDoesNotQualify(t *testing.T) {
 	saveReportOf(t, store, day)
 
 	// Outside the range.
-	out, err := store.ClaimReport(ctx, day.Add(24*time.Hour), day.Add(48*time.Hour), sendingNow, sendingNow)
+	out, err := store.ClaimReport(ctx, claimOf(day.Add(24*time.Hour), day.Add(48*time.Hour), sendingNow, sendingNow))
 	require.NoError(t, err)
 	require.Nil(t, out)
 
 	// The range is inclusive on both ends.
-	in, err := store.ClaimReport(ctx, day, day, sendingNow, sendingNow)
+	in, err := store.ClaimReport(ctx, claimOf(day, day, sendingNow, sendingNow))
 	require.NoError(t, err)
 	require.NotNil(t, in)
 	require.True(t, day.Equal(in.Day))
 
 	// Attempted since the cut-off: not due. Attempted before it: due again.
-	recent, err := store.ClaimReport(ctx, day, day, sendingNow.Add(-time.Hour), sendingNow.Add(time.Minute))
+	recent, err := store.ClaimReport(ctx, claimOf(day, day, sendingNow.Add(-time.Hour), sendingNow.Add(time.Minute)))
 	require.NoError(t, err)
 	require.Nil(t, recent)
-	retry, err := store.ClaimReport(ctx, day, day, sendingNow.Add(time.Minute), sendingNow.Add(2*time.Minute))
+	retry, err := store.ClaimReport(ctx, claimOf(day, day, sendingNow.Add(time.Minute), sendingNow.Add(2*time.Minute)))
 	require.NoError(t, err)
 	require.NotNil(t, retry)
 	sendings, err := store.ListReportSendings(ctx, day, day)
@@ -124,9 +129,50 @@ func Test_ClaimReport_SkipsWhatDoesNotQualify(t *testing.T) {
 
 	// A report sent is not given again.
 	require.NoError(t, store.MarkReportSent(ctx, day, sendingNow))
-	sent, err := store.ClaimReport(ctx, day, day, sendingNow.Add(time.Hour), sendingNow.Add(time.Hour))
+	sent, err := store.ClaimReport(ctx, claimOf(day, day, sendingNow.Add(time.Hour), sendingNow.Add(time.Hour)))
 	require.NoError(t, err)
 	require.Nil(t, sent)
+}
+
+// With a bound on the preparation, a report prepared after it is not due, and an older one that
+// is prepared by then is taken in its place.
+func Test_ClaimReport_LeavesAReportPreparedAfterTheBound(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	_, store := migratedDatabase(ctx, t)
+	saveReportOf(t, store, october6)
+	next := october6.Add(24 * time.Hour)
+	saveReportOf(t, store, next)
+	// saveReportOf prepares a report a minute after its day closed.
+	preparedAt := october6.Add(24*time.Hour + time.Minute)
+
+	claim := claimOf(october6, next, sendingNow.Add(-time.Hour), sendingNow)
+	claim.PreparedBy = new(preparedAt.Add(-time.Second))
+	none, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.Nil(t, none)
+	sendings, err := store.ListReportSendings(ctx, october6, next)
+	require.NoError(t, err)
+	require.Zero(t, sendings[0].Attempts+sendings[1].Attempts, "a report that is not due is not counted as tried")
+
+	// The bound is inclusive, and the report of the next day is still after it.
+	claim.PreparedBy = &preparedAt
+	oldest, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.NotNil(t, oldest)
+	require.True(t, october6.Equal(oldest.Day))
+	again, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.Nil(t, again)
+
+	// Without a bound the next one is due.
+	claim.PreparedBy = nil
+	unbounded, err := store.ClaimReport(ctx, claim)
+	require.NoError(t, err)
+	require.NotNil(t, unbounded)
+	require.True(t, next.Equal(unbounded.Day))
 }
 
 func Test_ClaimReport_TwoCallsAtOnceNeverGetTheSameReport(t *testing.T) {
@@ -149,7 +195,7 @@ func Test_ClaimReport_TwoCallsAtOnceNeverGetTheSameReport(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				<-start
-				results[j], errs[j] = store.ClaimReport(ctx, day, day, sendingNow.Add(-time.Hour), sendingNow)
+				results[j], errs[j] = store.ClaimReport(ctx, claimOf(day, day, sendingNow.Add(-time.Hour), sendingNow))
 			}()
 		}
 		close(start)

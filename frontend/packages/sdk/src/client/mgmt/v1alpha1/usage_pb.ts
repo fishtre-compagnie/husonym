@@ -218,7 +218,7 @@ export type GetUsageReportingResponse = Message<"mgmt.v1alpha1.GetUsageReporting
   sendingSince?: Timestamp | undefined;
 
   /**
-   * When the first report is sent. Present only during the first 24 hours of sending.
+   * When the first report is sent at the earliest: 24 hours after it was prepared. Present while the instance sends, has a report to send and has sent none since it started sending.
    *
    * @generated from field: google.protobuf.Timestamp first_send_at = 6;
    */
