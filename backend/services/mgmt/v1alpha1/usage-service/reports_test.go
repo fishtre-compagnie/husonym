@@ -57,6 +57,7 @@ var now = time.Date(2026, 10, 7, 15, 30, 0, 0, time.UTC)
 type reportingFixture struct {
 	svc     *Service
 	reports *fakeReports
+	periods *fakePeriods
 }
 
 // reporting builds a service whose caller may view the account, or not.
@@ -73,10 +74,12 @@ func reporting(t *testing.T, key fakeKey, setting string, mayView bool) *reporti
 	users.On("GetUser", mock.Anything).
 		Return(userdatatest.NewUser(t, testutil.NewFakeEELicense(testutil.WithIsValid()), enforcer), nil)
 	reports := &fakeReports{stored: map[time.Time]*usagestore.StoredReport{}}
+	periods := &fakePeriods{}
 	svc := newService(
-		&Config{ModeSetting: setting, Diagnostics: true}, nil, users, nil, reports, key, func() time.Time { return now },
+		&Config{ModeSetting: setting, Diagnostics: true}, nil, users, nil, reports, key, periods,
+		func() time.Time { return now },
 	)
-	return &reportingFixture{svc: svc, reports: reports}
+	return &reportingFixture{svc: svc, reports: reports, periods: periods}
 }
 
 func aView() *connect.Request[mgmtv1alpha1.GetUsageReportingRequest] {

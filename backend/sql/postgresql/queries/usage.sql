@@ -68,18 +68,19 @@ SET count = husonym_api.gate_refusals_daily.count + 1;
 
 -- A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 -- it: nothing recorded after midnight belongs to the day before. A run still running counts for
--- no day.
--- name: CountRunUsageByStatusOfDay :many
+-- no day. The days counted run from the first given to the day before the second: a day and the
+-- next one for the runs of a day, the first days of two months for the runs of a month.
+-- name: CountRunUsageByStatusBetween :many
 SELECT job_kind, status, count(*)::bigint AS runs
 FROM husonym_api.run_usage
-WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+WHERE recorded_at >= (sqlc.arg(from_day)::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (sqlc.arg(before_day)::date)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_kind, status
 ORDER BY job_kind, status;
 
 -- Durations come from the runs that have an end only, and are never negative: an end told
 -- before its start counts for nothing.
--- name: SumRunUsageOfDay :one
+-- name: SumRunUsageBetween :one
 SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
@@ -93,8 +94,8 @@ SELECT
   COALESCE(sum(retries), 0)::bigint AS retries,
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows
 FROM husonym_api.run_usage
-WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC';
+WHERE recorded_at >= (sqlc.arg(from_day)::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (sqlc.arg(before_day)::date)::timestamp AT TIME ZONE 'UTC';
 
 -- name: CountRunUsageBySourceVersionOfDay :many
 SELECT job_id, source_version_major, count(*)::bigint AS runs
@@ -105,10 +106,11 @@ WHERE source_version_major IS NOT NULL
 GROUP BY job_id, source_version_major
 ORDER BY job_id, source_version_major;
 
--- name: SumGateRefusalsOfDay :many
+-- The days counted run from the first given to the day before the second, as for the runs.
+-- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
 FROM husonym_api.gate_refusals_daily
-WHERE day = $1
+WHERE day >= sqlc.arg(from_day)::date AND day < sqlc.arg(before_day)::date
 GROUP BY gate
 ORDER BY gate;
 
@@ -136,6 +138,13 @@ ON CONFLICT (day) DO NOTHING;
 SELECT day, document, seal, key_fingerprint, prepared_at
 FROM husonym_api.usage_reports
 WHERE day = $1;
+
+-- The reports of the days from the first given to the day before the second, the oldest first.
+-- name: ListUsageReportsBetween :many
+SELECT day, document, seal, key_fingerprint, prepared_at
+FROM husonym_api.usage_reports
+WHERE day >= sqlc.arg(from_day)::date AND day < sqlc.arg(before_day)::date
+ORDER BY day;
 
 -- name: DeleteUsageReportsBefore :exec
 DELETE FROM husonym_api.usage_reports

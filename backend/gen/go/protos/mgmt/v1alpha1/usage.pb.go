@@ -806,6 +806,132 @@ func (x *GetUsageReportResponse) GetKeyFingerprint() string {
 	return ""
 }
 
+type GetUsagePeriodReportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account that asks.
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The first month of the period, as "2026-01", in UTC.
+	FromMonth string `protobuf:"bytes,2,opt,name=from_month,json=fromMonth,proto3" json:"from_month,omitempty"`
+	// The last month of the period, included: not before the first, not in the future, and at most 36 months in all.
+	ToMonth       string `protobuf:"bytes,3,opt,name=to_month,json=toMonth,proto3" json:"to_month,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUsagePeriodReportRequest) Reset() {
+	*x = GetUsagePeriodReportRequest{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUsagePeriodReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUsagePeriodReportRequest) ProtoMessage() {}
+
+func (x *GetUsagePeriodReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUsagePeriodReportRequest.ProtoReflect.Descriptor instead.
+func (*GetUsagePeriodReportRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetUsagePeriodReportRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *GetUsagePeriodReportRequest) GetFromMonth() string {
+	if x != nil {
+		return x.FromMonth
+	}
+	return ""
+}
+
+func (x *GetUsagePeriodReportRequest) GetToMonth() string {
+	if x != nil {
+		return x.ToMonth
+	}
+	return ""
+}
+
+type GetUsagePeriodReportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The report for the period, as it was sealed, byte for byte.
+	Document string `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
+	// The seal of the document.
+	Seal string `protobuf:"bytes,2,opt,name=seal,proto3" json:"seal,omitempty"`
+	// The fingerprint of the key that sealed it.
+	KeyFingerprint string `protobuf:"bytes,3,opt,name=key_fingerprint,json=keyFingerprint,proto3" json:"key_fingerprint,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetUsagePeriodReportResponse) Reset() {
+	*x = GetUsagePeriodReportResponse{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUsagePeriodReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUsagePeriodReportResponse) ProtoMessage() {}
+
+func (x *GetUsagePeriodReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUsagePeriodReportResponse.ProtoReflect.Descriptor instead.
+func (*GetUsagePeriodReportResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetUsagePeriodReportResponse) GetDocument() string {
+	if x != nil {
+		return x.Document
+	}
+	return ""
+}
+
+func (x *GetUsagePeriodReportResponse) GetSeal() string {
+	if x != nil {
+		return x.Seal
+	}
+	return ""
+}
+
+func (x *GetUsagePeriodReportResponse) GetKeyFingerprint() string {
+	if x != nil {
+		return x.KeyFingerprint
+	}
+	return ""
+}
+
 var File_mgmt_v1alpha1_usage_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
@@ -858,6 +984,16 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x16GetUsageReportResponse\x12\x1a\n" +
 	"\bdocument\x18\x01 \x01(\tR\bdocument\x12\x12\n" +
 	"\x04seal\x18\x02 \x01(\tR\x04seal\x12'\n" +
+	"\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xc6\x01\n" +
+	"\x1bGetUsagePeriodReportRequest\x12'\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12@\n" +
+	"\n" +
+	"from_month\x18\x02 \x01(\tB!\xbaH\x1er\x1c2\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\tfromMonth\x12<\n" +
+	"\bto_month\x18\x03 \x01(\tB!\xbaH\x1er\x1c2\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\atoMonth\"w\n" +
+	"\x1cGetUsagePeriodReportResponse\x12\x1a\n" +
+	"\bdocument\x18\x01 \x01(\tR\bdocument\x12\x12\n" +
+	"\x04seal\x18\x02 \x01(\tR\x04seal\x12'\n" +
 	"\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint*v\n" +
 	"\n" +
 	"RunOutcome\x12\x1b\n" +
@@ -875,7 +1011,7 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x18USAGE_REPORT_STATUS_KEPT\x10\x01\x12\"\n" +
 	"\x1eUSAGE_REPORT_STATUS_TO_BE_SENT\x10\x02\x12\x1c\n" +
 	"\x18USAGE_REPORT_STATUS_SENT\x10\x03\x12 \n" +
-	"\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x042\xc1\x03\n" +
+	"\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x042\xbe\x04\n" +
 	"\fUsageService\x12k\n" +
 	"\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12e\n" +
 	"\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n" +
@@ -883,6 +1019,9 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\x01\x90\x02\x01\x12i\n" +
 	"\x0eGetUsageReport\x12$.mgmt.v1alpha1.GetUsageReportRequest\x1a%.mgmt.v1alpha1.GetUsageReportResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12{\n" +
+	"\x14GetUsagePeriodReport\x12*.mgmt.v1alpha1.GetUsagePeriodReportRequest\x1a+.mgmt.v1alpha1.GetUsagePeriodReportResponse\"\n" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\x01\x90\x02\x01B\xcb\x01\n" +
 	"\x11com.mgmt.v1alpha1B\n" +
@@ -901,48 +1040,52 @@ func file_mgmt_v1alpha1_usage_proto_rawDescGZIP() []byte {
 }
 
 var file_mgmt_v1alpha1_usage_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_mgmt_v1alpha1_usage_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_mgmt_v1alpha1_usage_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_mgmt_v1alpha1_usage_proto_goTypes = []any{
-	(RunOutcome)(0),                   // 0: mgmt.v1alpha1.RunOutcome
-	(UsageReportingMode)(0),           // 1: mgmt.v1alpha1.UsageReportingMode
-	(UsageReportStatus)(0),            // 2: mgmt.v1alpha1.UsageReportStatus
-	(*RecordRunStartedRequest)(nil),   // 3: mgmt.v1alpha1.RecordRunStartedRequest
-	(*RecordRunStartedResponse)(nil),  // 4: mgmt.v1alpha1.RecordRunStartedResponse
-	(*RecordRunEndedRequest)(nil),     // 5: mgmt.v1alpha1.RecordRunEndedRequest
-	(*RecordRunEndedResponse)(nil),    // 6: mgmt.v1alpha1.RecordRunEndedResponse
-	(*GetUsageReportingRequest)(nil),  // 7: mgmt.v1alpha1.GetUsageReportingRequest
-	(*GetUsageReportingResponse)(nil), // 8: mgmt.v1alpha1.GetUsageReportingResponse
-	(*UsageReportSummary)(nil),        // 9: mgmt.v1alpha1.UsageReportSummary
-	(*GetUsageReportRequest)(nil),     // 10: mgmt.v1alpha1.GetUsageReportRequest
-	(*GetUsageReportResponse)(nil),    // 11: mgmt.v1alpha1.GetUsageReportResponse
-	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
-	(*Date)(nil),                      // 13: mgmt.v1alpha1.Date
+	(RunOutcome)(0),                      // 0: mgmt.v1alpha1.RunOutcome
+	(UsageReportingMode)(0),              // 1: mgmt.v1alpha1.UsageReportingMode
+	(UsageReportStatus)(0),               // 2: mgmt.v1alpha1.UsageReportStatus
+	(*RecordRunStartedRequest)(nil),      // 3: mgmt.v1alpha1.RecordRunStartedRequest
+	(*RecordRunStartedResponse)(nil),     // 4: mgmt.v1alpha1.RecordRunStartedResponse
+	(*RecordRunEndedRequest)(nil),        // 5: mgmt.v1alpha1.RecordRunEndedRequest
+	(*RecordRunEndedResponse)(nil),       // 6: mgmt.v1alpha1.RecordRunEndedResponse
+	(*GetUsageReportingRequest)(nil),     // 7: mgmt.v1alpha1.GetUsageReportingRequest
+	(*GetUsageReportingResponse)(nil),    // 8: mgmt.v1alpha1.GetUsageReportingResponse
+	(*UsageReportSummary)(nil),           // 9: mgmt.v1alpha1.UsageReportSummary
+	(*GetUsageReportRequest)(nil),        // 10: mgmt.v1alpha1.GetUsageReportRequest
+	(*GetUsageReportResponse)(nil),       // 11: mgmt.v1alpha1.GetUsageReportResponse
+	(*GetUsagePeriodReportRequest)(nil),  // 12: mgmt.v1alpha1.GetUsagePeriodReportRequest
+	(*GetUsagePeriodReportResponse)(nil), // 13: mgmt.v1alpha1.GetUsagePeriodReportResponse
+	(*timestamppb.Timestamp)(nil),        // 14: google.protobuf.Timestamp
+	(*Date)(nil),                         // 15: mgmt.v1alpha1.Date
 }
 var file_mgmt_v1alpha1_usage_proto_depIdxs = []int32{
-	12, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
-	12, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
-	12, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
+	14, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
+	14, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
+	14, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: mgmt.v1alpha1.RecordRunEndedRequest.outcome:type_name -> mgmt.v1alpha1.RunOutcome
 	1,  // 4: mgmt.v1alpha1.GetUsageReportingResponse.license_mode:type_name -> mgmt.v1alpha1.UsageReportingMode
 	1,  // 5: mgmt.v1alpha1.GetUsageReportingResponse.mode:type_name -> mgmt.v1alpha1.UsageReportingMode
-	12, // 6: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
-	12, // 7: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
-	12, // 8: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
+	14, // 6: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
+	14, // 7: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
+	14, // 8: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
 	9,  // 9: mgmt.v1alpha1.GetUsageReportingResponse.reports:type_name -> mgmt.v1alpha1.UsageReportSummary
-	13, // 10: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
+	15, // 10: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
 	2,  // 11: mgmt.v1alpha1.UsageReportSummary.status:type_name -> mgmt.v1alpha1.UsageReportStatus
-	12, // 12: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
-	13, // 13: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
+	14, // 12: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
+	15, // 13: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
 	3,  // 14: mgmt.v1alpha1.UsageService.RecordRunStarted:input_type -> mgmt.v1alpha1.RecordRunStartedRequest
 	5,  // 15: mgmt.v1alpha1.UsageService.RecordRunEnded:input_type -> mgmt.v1alpha1.RecordRunEndedRequest
 	7,  // 16: mgmt.v1alpha1.UsageService.GetUsageReporting:input_type -> mgmt.v1alpha1.GetUsageReportingRequest
 	10, // 17: mgmt.v1alpha1.UsageService.GetUsageReport:input_type -> mgmt.v1alpha1.GetUsageReportRequest
-	4,  // 18: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
-	6,  // 19: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
-	8,  // 20: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
-	11, // 21: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
+	12, // 18: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:input_type -> mgmt.v1alpha1.GetUsagePeriodReportRequest
+	4,  // 19: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
+	6,  // 20: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
+	8,  // 21: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
+	11, // 22: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
+	13, // 23: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:output_type -> mgmt.v1alpha1.GetUsagePeriodReportResponse
+	19, // [19:24] is the sub-list for method output_type
+	14, // [14:19] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name
 	14, // [14:14] is the sub-list for extension extendee
 	0,  // [0:14] is the sub-list for field type_name
@@ -961,7 +1104,7 @@ func file_mgmt_v1alpha1_usage_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_usage_proto_rawDesc), len(file_mgmt_v1alpha1_usage_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

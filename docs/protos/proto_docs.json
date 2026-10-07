@@ -22727,6 +22727,102 @@
       "extensions": [],
       "messages": [
         {
+          "name": "GetUsagePeriodReportRequest",
+          "longName": "GetUsagePeriodReportRequest",
+          "fullName": "mgmt.v1alpha1.GetUsagePeriodReportRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account that asks.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "from_month",
+              "description": "The first month of the period, as \"2026-01\", in UTC.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "to_month",
+              "description": "The last month of the period, included: not before the first, not in the future, and at most 36 months in all.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetUsagePeriodReportResponse",
+          "longName": "GetUsagePeriodReportResponse",
+          "fullName": "mgmt.v1alpha1.GetUsagePeriodReportResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "document",
+              "description": "The report for the period, as it was sealed, byte for byte.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "seal",
+              "description": "The seal of the document.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "key_fingerprint",
+              "description": "The fingerprint of the key that sealed it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetUsageReportRequest",
           "longName": "GetUsageReportRequest",
           "fullName": "mgmt.v1alpha1.GetUsageReportRequest",
@@ -23273,6 +23369,21 @@
               "responseType": "GetUsageReportResponse",
               "responseLongType": "GetUsageReportResponse",
               "responseFullType": "mgmt.v1alpha1.GetUsageReportResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetUsagePeriodReport",
+              "description": "Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.",
+              "requestType": "GetUsagePeriodReportRequest",
+              "requestLongType": "GetUsagePeriodReportRequest",
+              "requestFullType": "mgmt.v1alpha1.GetUsagePeriodReportRequest",
+              "requestStreaming": false,
+              "responseType": "GetUsagePeriodReportResponse",
+              "responseLongType": "GetUsagePeriodReportResponse",
+              "responseFullType": "mgmt.v1alpha1.GetUsagePeriodReportResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

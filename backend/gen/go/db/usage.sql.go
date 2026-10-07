@@ -134,16 +134,21 @@ func (q *Queries) CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX
 	return items, nil
 }
 
-const countRunUsageByStatusOfDay = `-- name: CountRunUsageByStatusOfDay :many
+const countRunUsageByStatusBetween = `-- name: CountRunUsageByStatusBetween :many
 SELECT job_kind, status, count(*)::bigint AS runs
 FROM husonym_api.run_usage
 WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < ($2::date)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_kind, status
 ORDER BY job_kind, status
 `
 
-type CountRunUsageByStatusOfDayRow struct {
+type CountRunUsageByStatusBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type CountRunUsageByStatusBetweenRow struct {
 	JobKind string
 	Status  string
 	Runs    int64
@@ -151,16 +156,17 @@ type CountRunUsageByStatusOfDayRow struct {
 
 // A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 // it: nothing recorded after midnight belongs to the day before. A run still running counts for
-// no day.
-func (q *Queries) CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error) {
-	rows, err := db.Query(ctx, countRunUsageByStatusOfDay, dollar_1)
+// no day. The days counted run from the first given to the day before the second: a day and the
+// next one for the runs of a day, the first days of two months for the runs of a month.
+func (q *Queries) CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error) {
+	rows, err := db.Query(ctx, countRunUsageByStatusBetween, arg.FromDay, arg.BeforeDay)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountRunUsageByStatusOfDayRow
+	var items []CountRunUsageByStatusBetweenRow
 	for rows.Next() {
-		var i CountRunUsageByStatusOfDayRow
+		var i CountRunUsageByStatusBetweenRow
 		if err := rows.Scan(&i.JobKind, &i.Status, &i.Runs); err != nil {
 			return nil, err
 		}
@@ -417,6 +423,53 @@ func (q *Queries) ListUsageReportSendings(ctx context.Context, db DBTX, arg List
 	return items, nil
 }
 
+const listUsageReportsBetween = `-- name: ListUsageReportsBetween :many
+SELECT day, document, seal, key_fingerprint, prepared_at
+FROM husonym_api.usage_reports
+WHERE day >= $1::date AND day < $2::date
+ORDER BY day
+`
+
+type ListUsageReportsBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type ListUsageReportsBetweenRow struct {
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	KeyFingerprint string
+	PreparedAt     pgtype.Timestamptz
+}
+
+// The reports of the days from the first given to the day before the second, the oldest first.
+func (q *Queries) ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error) {
+	rows, err := db.Query(ctx, listUsageReportsBetween, arg.FromDay, arg.BeforeDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsageReportsBetweenRow
+	for rows.Next() {
+		var i ListUsageReportsBetweenRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Document,
+			&i.Seal,
+			&i.KeyFingerprint,
+			&i.PreparedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markUsageReportSent = `-- name: MarkUsageReportSent :exec
 UPDATE husonym_api.usage_reports
 SET sent_at = $2
@@ -474,28 +527,34 @@ func (q *Queries) StopUsageSending(ctx context.Context, db DBTX) error {
 	return err
 }
 
-const sumGateRefusalsOfDay = `-- name: SumGateRefusalsOfDay :many
+const sumGateRefusalsBetween = `-- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
 FROM husonym_api.gate_refusals_daily
-WHERE day = $1
+WHERE day >= $1::date AND day < $2::date
 GROUP BY gate
 ORDER BY gate
 `
 
-type SumGateRefusalsOfDayRow struct {
+type SumGateRefusalsBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumGateRefusalsBetweenRow struct {
 	Gate     string
 	Refusals int64
 }
 
-func (q *Queries) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error) {
-	rows, err := db.Query(ctx, sumGateRefusalsOfDay, day)
+// The days counted run from the first given to the day before the second, as for the runs.
+func (q *Queries) SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error) {
+	rows, err := db.Query(ctx, sumGateRefusalsBetween, arg.FromDay, arg.BeforeDay)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SumGateRefusalsOfDayRow
+	var items []SumGateRefusalsBetweenRow
 	for rows.Next() {
-		var i SumGateRefusalsOfDayRow
+		var i SumGateRefusalsBetweenRow
 		if err := rows.Scan(&i.Gate, &i.Refusals); err != nil {
 			return nil, err
 		}
@@ -507,7 +566,7 @@ func (q *Queries) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.
 	return items, nil
 }
 
-const sumRunUsageOfDay = `-- name: SumRunUsageOfDay :one
+const sumRunUsageBetween = `-- name: SumRunUsageBetween :one
 SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
@@ -522,10 +581,15 @@ SELECT
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows
 FROM husonym_api.run_usage
 WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < ($2::date)::timestamp AT TIME ZONE 'UTC'
 `
 
-type SumRunUsageOfDayRow struct {
+type SumRunUsageBetweenParams struct {
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumRunUsageBetweenRow struct {
 	RunsWithEnd       int64
 	DurationMedian    int64
 	DurationP95       int64
@@ -537,9 +601,9 @@ type SumRunUsageOfDayRow struct {
 
 // Durations come from the runs that have an end only, and are never negative: an end told
 // before its start counts for nothing.
-func (q *Queries) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error) {
-	row := db.QueryRow(ctx, sumRunUsageOfDay, dollar_1)
-	var i SumRunUsageOfDayRow
+func (q *Queries) SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error) {
+	row := db.QueryRow(ctx, sumRunUsageBetween, arg.FromDay, arg.BeforeDay)
+	var i SumRunUsageBetweenRow
 	err := row.Scan(
 		&i.RunsWithEnd,
 		&i.DurationMedian,

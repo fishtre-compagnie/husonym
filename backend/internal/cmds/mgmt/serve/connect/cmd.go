@@ -768,7 +768,8 @@ func serve(ctx context.Context) error {
 	).Every(licenseCtx, usageReportInterval)
 
 	// The interface and the CLI read the mode the report is sent under from the same key, setting
-	// and facts the daily pass works from.
+	// and facts the daily pass works from, and the report for a period is made by the builder of
+	// the report of the day.
 	usageService := v1alpha1_usageservice.New(
 		&v1alpha1_usageservice.Config{
 			WorkerOnly:  workerOnly,
@@ -779,6 +780,7 @@ func serve(ctx context.Context) error {
 		userdataclient,
 		usageStore,
 		usageKey,
+		usageReports,
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewUsageServiceHandler(

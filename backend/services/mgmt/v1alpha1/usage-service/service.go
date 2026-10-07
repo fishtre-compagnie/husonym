@@ -1,6 +1,6 @@
 // Package v1alpha1_usageservice receives what the worker tells about the runs it executes, and
 // keeps it in the usage counters of the instance. It also tells the interface and the CLI how the
-// usage report of the instance is sent and gives the reports it keeps.
+// usage report of the instance is sent, gives the reports it keeps and makes the one for a period.
 //
 // Only the worker calls the first two procedures. A failure to count never fails a run: the worker logs it and goes on.
 package v1alpha1_usageservice
@@ -33,6 +33,7 @@ type Service struct {
 	store          runStore
 	reports        reportStore
 	key            usagereport.KeyModeSource
+	periods        periodBuilder
 	now            func() time.Time
 }
 
@@ -53,8 +54,9 @@ func New(
 	userdataclient userdata.Interface,
 	store *usagestore.Store,
 	key usagereport.KeyModeSource,
+	builder *usagereport.Builder,
 ) *Service {
-	return newService(cfg, db, userdataclient, store, store, key, time.Now)
+	return newService(cfg, db, userdataclient, store, store, key, builder, time.Now)
 }
 
 func newService(
@@ -64,7 +66,10 @@ func newService(
 	store runStore,
 	reports reportStore,
 	key usagereport.KeyModeSource,
+	periods periodBuilder,
 	now func() time.Time,
 ) *Service {
-	return &Service{cfg: cfg, db: db, userdataclient: userdataclient, store: store, reports: reports, key: key, now: now}
+	return &Service{
+		cfg: cfg, db: db, userdataclient: userdataclient, store: store, reports: reports, key: key, periods: periods, now: now,
+	}
 }

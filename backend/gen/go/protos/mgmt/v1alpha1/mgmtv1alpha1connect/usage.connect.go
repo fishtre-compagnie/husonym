@@ -45,6 +45,9 @@ const (
 	// UsageServiceGetUsageReportProcedure is the fully-qualified name of the UsageService's
 	// GetUsageReport RPC.
 	UsageServiceGetUsageReportProcedure = "/mgmt.v1alpha1.UsageService/GetUsageReport"
+	// UsageServiceGetUsagePeriodReportProcedure is the fully-qualified name of the UsageService's
+	// GetUsagePeriodReport RPC.
+	UsageServiceGetUsagePeriodReportProcedure = "/mgmt.v1alpha1.UsageService/GetUsagePeriodReport"
 )
 
 // UsageServiceClient is a client for the mgmt.v1alpha1.UsageService service.
@@ -57,6 +60,8 @@ type UsageServiceClient interface {
 	GetUsageReporting(context.Context, *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error)
 	// Gives the usage report of a day, as it is kept.
 	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
+	// Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+	GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error)
 }
 
 // NewUsageServiceClient constructs a client for the mgmt.v1alpha1.UsageService service. By default,
@@ -96,15 +101,23 @@ func NewUsageServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getUsagePeriodReport: connect.NewClient[v1alpha1.GetUsagePeriodReportRequest, v1alpha1.GetUsagePeriodReportResponse](
+			httpClient,
+			baseURL+UsageServiceGetUsagePeriodReportProcedure,
+			connect.WithSchema(usageServiceMethods.ByName("GetUsagePeriodReport")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // usageServiceClient implements UsageServiceClient.
 type usageServiceClient struct {
-	recordRunStarted  *connect.Client[v1alpha1.RecordRunStartedRequest, v1alpha1.RecordRunStartedResponse]
-	recordRunEnded    *connect.Client[v1alpha1.RecordRunEndedRequest, v1alpha1.RecordRunEndedResponse]
-	getUsageReporting *connect.Client[v1alpha1.GetUsageReportingRequest, v1alpha1.GetUsageReportingResponse]
-	getUsageReport    *connect.Client[v1alpha1.GetUsageReportRequest, v1alpha1.GetUsageReportResponse]
+	recordRunStarted     *connect.Client[v1alpha1.RecordRunStartedRequest, v1alpha1.RecordRunStartedResponse]
+	recordRunEnded       *connect.Client[v1alpha1.RecordRunEndedRequest, v1alpha1.RecordRunEndedResponse]
+	getUsageReporting    *connect.Client[v1alpha1.GetUsageReportingRequest, v1alpha1.GetUsageReportingResponse]
+	getUsageReport       *connect.Client[v1alpha1.GetUsageReportRequest, v1alpha1.GetUsageReportResponse]
+	getUsagePeriodReport *connect.Client[v1alpha1.GetUsagePeriodReportRequest, v1alpha1.GetUsagePeriodReportResponse]
 }
 
 // RecordRunStarted calls mgmt.v1alpha1.UsageService.RecordRunStarted.
@@ -127,6 +140,11 @@ func (c *usageServiceClient) GetUsageReport(ctx context.Context, req *connect.Re
 	return c.getUsageReport.CallUnary(ctx, req)
 }
 
+// GetUsagePeriodReport calls mgmt.v1alpha1.UsageService.GetUsagePeriodReport.
+func (c *usageServiceClient) GetUsagePeriodReport(ctx context.Context, req *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error) {
+	return c.getUsagePeriodReport.CallUnary(ctx, req)
+}
+
 // UsageServiceHandler is an implementation of the mgmt.v1alpha1.UsageService service.
 type UsageServiceHandler interface {
 	// Tells that a run has begun. Only the worker calls this, with its key.
@@ -137,6 +155,8 @@ type UsageServiceHandler interface {
 	GetUsageReporting(context.Context, *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error)
 	// Gives the usage report of a day, as it is kept.
 	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
+	// Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+	GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error)
 }
 
 // NewUsageServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -172,6 +192,13 @@ func NewUsageServiceHandler(svc UsageServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	usageServiceGetUsagePeriodReportHandler := connect.NewUnaryHandler(
+		UsageServiceGetUsagePeriodReportProcedure,
+		svc.GetUsagePeriodReport,
+		connect.WithSchema(usageServiceMethods.ByName("GetUsagePeriodReport")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.UsageService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UsageServiceRecordRunStartedProcedure:
@@ -182,6 +209,8 @@ func NewUsageServiceHandler(svc UsageServiceHandler, opts ...connect.HandlerOpti
 			usageServiceGetUsageReportingHandler.ServeHTTP(w, r)
 		case UsageServiceGetUsageReportProcedure:
 			usageServiceGetUsageReportHandler.ServeHTTP(w, r)
+		case UsageServiceGetUsagePeriodReportProcedure:
+			usageServiceGetUsagePeriodReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -205,4 +234,8 @@ func (UnimplementedUsageServiceHandler) GetUsageReporting(context.Context, *conn
 
 func (UnimplementedUsageServiceHandler) GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetUsageReport is not implemented"))
+}
+
+func (UnimplementedUsageServiceHandler) GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetUsagePeriodReport is not implemented"))
 }

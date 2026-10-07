@@ -35,6 +35,11 @@ type reportStore interface {
 	Report(ctx context.Context, day time.Time) (*usagestore.StoredReport, error)
 }
 
+// periodBuilder makes the sealed usage report for a period of months: usagereport.Builder.
+type periodBuilder interface {
+	BuildPeriod(ctx context.Context, from, to, now time.Time) (*usagereport.Sealed, error)
+}
+
 // GetUsageReporting tells under which mode the usage report of the instance is sent, and what
 // became of the reports of the last 30 days. Without a license key in force there is no mode:
 // nothing is prepared nor sent, and nothing is listed.
@@ -127,6 +132,37 @@ func (s *Service) GetUsageReport(
 		Document:       string(report.Document),
 		Seal:           report.Seal,
 		KeyFingerprint: report.KeyFingerprint,
+	}), nil
+}
+
+// GetUsagePeriodReport makes the usage report of the instance for a period of months and seals
+// it with the license key in force, whatever the mode the report of the day is sent under. The
+// document is the one the seal is of, byte for byte.
+func (s *Service) GetUsagePeriodReport(
+	ctx context.Context,
+	req *connect.Request[mgmtv1alpha1.GetUsagePeriodReportRequest],
+) (*connect.Response[mgmtv1alpha1.GetUsagePeriodReportResponse], error) {
+	if err := s.canView(ctx, req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
+	from, errFrom := time.Parse(telemetry.MonthLayout, req.Msg.GetFromMonth())
+	to, errTo := time.Parse(telemetry.MonthLayout, req.Msg.GetToMonth())
+	if errFrom != nil || errTo != nil {
+		return nil, husonymerrors.NewBadRequest("a month of the period is not a month of the calendar, written as 2026-01")
+	}
+	sealed, err := s.periods.BuildPeriod(ctx, from, to, s.now())
+	switch {
+	case errors.Is(err, usagereport.ErrNoLicenseInForce):
+		return nil, husonymerrors.NewFailedPrecondition("no license key is in force: no usage report is made")
+	case errors.Is(err, usagereport.ErrPeriod):
+		return nil, husonymerrors.NewBadRequest(err.Error())
+	case err != nil:
+		return nil, fmt.Errorf("unable to make the usage report of the period: %w", err)
+	}
+	return connect.NewResponse(&mgmtv1alpha1.GetUsagePeriodReportResponse{
+		Document:       string(sealed.Document),
+		Seal:           sealed.Seal,
+		KeyFingerprint: sealed.KeyFingerprint,
 	}), nil
 }
 

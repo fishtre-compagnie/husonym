@@ -21,7 +21,8 @@ var ErrNoLicenseInForce = errors.New("no license is in force: the usage report i
 // does not answer delays the report and never holds it.
 const optionalReadTimeout = 10 * time.Second
 
-// Sealed is the usage report of a day, as it is kept.
+// Sealed is a usage report with its seal: the one of a day, as it is kept, or the one for a
+// period, as it is handed over.
 type Sealed struct {
 	// Document is the exact JSON the seal is of, byte for byte.
 	Document []byte
@@ -31,12 +32,17 @@ type Sealed struct {
 	KeyFingerprint string
 }
 
-// Counters is what the usage store counted on a day. *usagestore.Store is one.
+// Counters is what the usage store counted on a day, or over the days from one to the day before
+// another, and the reports of the day it keeps. *usagestore.Store is one.
 type Counters interface {
 	InstanceId(ctx context.Context) (string, error)
 	RunsOfDay(ctx context.Context, day time.Time) (*usagestore.DayRuns, error)
 	SourceVersionsOfDay(ctx context.Context, day time.Time) ([]usagestore.SourceEngineRuns, error)
 	RefusalsOfDay(ctx context.Context, day time.Time) ([]usagestore.GateCount, error)
+
+	RunsBetween(ctx context.Context, from, before time.Time) (*usagestore.DayRuns, error)
+	RefusalsBetween(ctx context.Context, from, before time.Time) ([]usagestore.GateCount, error)
+	ReportsBetween(ctx context.Context, from, before time.Time) ([]usagestore.StoredReport, error)
 }
 
 // InventorySource gives what the instance holds. *InventoryReader is one.

@@ -35,6 +35,11 @@ class UsageServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.FromString,
                 _registered_method=True)
+        self.GetUsagePeriodReport = channel.unary_unary(
+                '/mgmt.v1alpha1.UsageService/GetUsagePeriodReport',
+                request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.FromString,
+                _registered_method=True)
 
 
 class UsageServiceServicer:
@@ -69,6 +74,13 @@ class UsageServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetUsagePeriodReport(self, request, context):
+        """Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_UsageServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -91,6 +103,11 @@ def add_UsageServiceServicer_to_server(servicer, server):
                     servicer.GetUsageReport,
                     request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.SerializeToString,
+            ),
+            'GetUsagePeriodReport': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetUsagePeriodReport,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -202,6 +219,33 @@ class UsageService:
             '/mgmt.v1alpha1.UsageService/GetUsageReport',
             mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetUsagePeriodReport(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UsageService/GetUsagePeriodReport',
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.FromString,
             options,
             channel_credentials,
             insecure,

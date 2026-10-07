@@ -142,6 +142,43 @@ components:
 
          Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
          `google.protobuf.Timestamp`.
+    mgmt.v1alpha1.GetUsagePeriodReportRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account that asks.
+        fromMonth:
+          type: string
+          title: from_month
+          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+          description: The first month of the period, as "2026-01", in UTC.
+        toMonth:
+          type: string
+          title: to_month
+          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+          description: 'The last month of the period, included: not before the first, not in the future, and at most 36 months in all.'
+      title: GetUsagePeriodReportRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetUsagePeriodReportResponse:
+      type: object
+      properties:
+        document:
+          type: string
+          title: document
+          description: The report for the period, as it was sealed, byte for byte.
+        seal:
+          type: string
+          title: seal
+          description: The seal of the document.
+        keyFingerprint:
+          type: string
+          title: key_fingerprint
+          description: The fingerprint of the key that sealed it.
+      title: GetUsagePeriodReportResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetUsageReportRequest:
       type: object
       properties:
@@ -384,6 +421,46 @@ components:
 security:
   - BearerAuth: []
 paths:
+  /mgmt.v1alpha1.UsageService/GetUsagePeriodReport:
+    post:
+      tags:
+        - mgmt.v1alpha1.UsageService
+      summary: GetUsagePeriodReport
+      description: Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+      operationId: mgmt.v1alpha1.UsageService.GetUsagePeriodReport
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetUsagePeriodReportRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetUsagePeriodReportResponse'
   /mgmt.v1alpha1.UsageService/GetUsageReport:
     post:
       tags:

@@ -33,8 +33,9 @@ type Querier interface {
 	CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)
 	// A run counts for the UTC day on which the API recorded its end, whichever way it learned of
 	// it: nothing recorded after midnight belongs to the day before. A run still running counts for
-	// no day.
-	CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)
+	// no day. The days counted run from the first given to the day before the second: a day and the
+	// next one for the runs of a day, the first days of two months for the runs of a month.
+	CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error)
 	// The types of the columns the runs saw, counted by type. The schema, the table and the column
 	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
 	// could not read, which it leaves out of every count.
@@ -202,6 +203,8 @@ type Querier interface {
 	ListJobsOfInstanceForUsage(ctx context.Context, db DBTX) ([]ListJobsOfInstanceForUsageRow, error)
 	ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)
 	ListUsageReportSendings(ctx context.Context, db DBTX, arg ListUsageReportSendingsParams) ([]ListUsageReportSendingsRow, error)
+	// The reports of the days from the first given to the day before the second, the oldest first.
+	ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
 	// Held until the transaction ends, so that two changes of the role of one member in one
@@ -284,10 +287,11 @@ type Querier interface {
 	// Only an instance that does not send yet starts: the first date stays.
 	StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error
 	StopUsageSending(ctx context.Context, db DBTX) error
-	SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)
+	// The days counted run from the first given to the day before the second, as for the runs.
+	SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error)
 	// Durations come from the runs that have an end only, and are never negative: an end told
 	// before its start counts for nothing.
-	SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)
+	SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error)
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)

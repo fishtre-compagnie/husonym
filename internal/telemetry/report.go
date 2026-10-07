@@ -203,36 +203,20 @@ func (r *Report) Marshal() ([]byte, error) {
 	sorted := *r
 	if r.Diagnostics != nil {
 		d := *r.Diagnostics
-		d.Connections = sortBy(d.Connections, func(a, b ConnectionCount) int {
-			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
-		})
+		d.Connections = sortedConnections(d.Connections)
 		d.SourceEngines = sortBy(d.SourceEngines, func(a, b SourceEngine) int {
 			return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Major, b.Major), cmp.Compare(a.Runs, b.Runs))
 		})
-		d.Jobs.ByKind = sortBy(d.Jobs.ByKind, func(a, b JobKindCount) int {
-			return cmp.Or(strings.Compare(a.Kind, b.Kind), compareBool(a.Scheduled, b.Scheduled), cmp.Compare(a.Count, b.Count))
-		})
-		d.Transformers.System = sortBy(d.Transformers.System, func(a, b TransformerColumns) int {
-			return cmp.Or(strings.Compare(a.Name, b.Name), cmp.Compare(a.Columns, b.Columns))
-		})
-		d.ColumnTypes = sortBy(d.ColumnTypes, func(a, b ColumnTypeCount) int {
-			return cmp.Or(strings.Compare(a.Family, b.Family), cmp.Compare(a.Columns, b.Columns))
-		})
-		d.Features = sortBy(d.Features, func(a, b FeatureUse) int {
-			return cmp.Or(strings.Compare(a.Name, b.Name), compareBool(a.InUse, b.InUse))
-		})
-		d.Refusals = sortBy(d.Refusals, func(a, b GateCount) int {
-			return cmp.Or(strings.Compare(a.Gate, b.Gate), cmp.Compare(a.Count, b.Count))
-		})
-		d.Runs.ByStatus = sortBy(d.Runs.ByStatus, func(a, b RunCount) int {
-			return cmp.Or(strings.Compare(a.Kind, b.Kind), strings.Compare(a.Status, b.Status), cmp.Compare(a.Count, b.Count))
-		})
+		d.Jobs.ByKind = sortedJobKinds(d.Jobs.ByKind)
+		d.Transformers.System = sortedTransformers(d.Transformers.System)
+		d.ColumnTypes = sortedColumnTypes(d.ColumnTypes)
+		d.Features = sortedFeatures(d.Features)
+		d.Refusals = sortedRefusals(d.Refusals)
+		d.Runs.ByStatus = sortedRunCounts(d.Runs.ByStatus)
 		d.Errors = sortBy(d.Errors, func(a, b ErrorCount) int {
 			return cmp.Or(strings.Compare(a.Category, b.Category), strings.Compare(a.Step, b.Step), cmp.Compare(a.Count, b.Count))
 		})
-		d.Users.ByRole = sortBy(d.Users.ByRole, func(a, b RoleCount) int {
-			return cmp.Or(strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
-		})
+		d.Users.ByRole = sortedRoles(d.Users.ByRole)
 		sorted.Diagnostics = &d
 	}
 	document, err := json.Marshal(&sorted)
@@ -240,6 +224,56 @@ func (r *Report) Marshal() ([]byte, error) {
 		return nil, fmt.Errorf("marshaling the usage report: %w", err)
 	}
 	return document, nil
+}
+
+// The arrays the report of a day and the report for a period both hold are sorted the same way.
+
+func sortedConnections(rows []ConnectionCount) []ConnectionCount {
+	return sortBy(rows, func(a, b ConnectionCount) int {
+		return cmp.Or(strings.Compare(a.Type, b.Type), strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
+	})
+}
+
+func sortedJobKinds(rows []JobKindCount) []JobKindCount {
+	return sortBy(rows, func(a, b JobKindCount) int {
+		return cmp.Or(strings.Compare(a.Kind, b.Kind), compareBool(a.Scheduled, b.Scheduled), cmp.Compare(a.Count, b.Count))
+	})
+}
+
+func sortedTransformers(rows []TransformerColumns) []TransformerColumns {
+	return sortBy(rows, func(a, b TransformerColumns) int {
+		return cmp.Or(strings.Compare(a.Name, b.Name), cmp.Compare(a.Columns, b.Columns))
+	})
+}
+
+func sortedColumnTypes(rows []ColumnTypeCount) []ColumnTypeCount {
+	return sortBy(rows, func(a, b ColumnTypeCount) int {
+		return cmp.Or(strings.Compare(a.Family, b.Family), cmp.Compare(a.Columns, b.Columns))
+	})
+}
+
+func sortedFeatures(rows []FeatureUse) []FeatureUse {
+	return sortBy(rows, func(a, b FeatureUse) int {
+		return cmp.Or(strings.Compare(a.Name, b.Name), compareBool(a.InUse, b.InUse))
+	})
+}
+
+func sortedRefusals(rows []GateCount) []GateCount {
+	return sortBy(rows, func(a, b GateCount) int {
+		return cmp.Or(strings.Compare(a.Gate, b.Gate), cmp.Compare(a.Count, b.Count))
+	})
+}
+
+func sortedRunCounts(rows []RunCount) []RunCount {
+	return sortBy(rows, func(a, b RunCount) int {
+		return cmp.Or(strings.Compare(a.Kind, b.Kind), strings.Compare(a.Status, b.Status), cmp.Compare(a.Count, b.Count))
+	})
+}
+
+func sortedRoles(rows []RoleCount) []RoleCount {
+	return sortBy(rows, func(a, b RoleCount) int {
+		return cmp.Or(strings.Compare(a.Role, b.Role), cmp.Compare(a.Count, b.Count))
+	})
 }
 
 // sortBy is a sorted copy of the rows, never nil, so that an empty array is written as [].

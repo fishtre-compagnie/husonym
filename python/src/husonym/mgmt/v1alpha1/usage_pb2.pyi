@@ -147,3 +147,23 @@ class GetUsageReportResponse(_message.Message):
     seal: str
     key_fingerprint: str
     def __init__(self, document: _Optional[str] = ..., seal: _Optional[str] = ..., key_fingerprint: _Optional[str] = ...) -> None: ...
+
+class GetUsagePeriodReportRequest(_message.Message):
+    __slots__ = ("account_id", "from_month", "to_month")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    FROM_MONTH_FIELD_NUMBER: _ClassVar[int]
+    TO_MONTH_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    from_month: str
+    to_month: str
+    def __init__(self, account_id: _Optional[str] = ..., from_month: _Optional[str] = ..., to_month: _Optional[str] = ...) -> None: ...
+
+class GetUsagePeriodReportResponse(_message.Message):
+    __slots__ = ("document", "seal", "key_fingerprint")
+    DOCUMENT_FIELD_NUMBER: _ClassVar[int]
+    SEAL_FIELD_NUMBER: _ClassVar[int]
+    KEY_FINGERPRINT_FIELD_NUMBER: _ClassVar[int]
+    document: str
+    seal: str
+    key_fingerprint: str
+    def __init__(self, document: _Optional[str] = ..., seal: _Optional[str] = ..., key_fingerprint: _Optional[str] = ...) -> None: ...

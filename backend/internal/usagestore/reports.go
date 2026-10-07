@@ -22,7 +22,8 @@ type RunCount struct {
 // DayRuns is what the runs counted on a UTC day add up to. A run counts for the day on which
 // the API recorded its end, whichever way it learned of it (the end the worker told, or the
 // settling of a run that told none): the runs of a day are closed at midnight, and nothing
-// recorded later belongs to it. A run still running counts for no day.
+// recorded later belongs to it. A run still running counts for no day. The runs of several days
+// add up the same way: RunsBetween gives them as one DayRuns.
 type DayRuns struct {
 	ByStatus []RunCount
 	// Durations are in seconds, from the start of a run to its end, and never negative. They
@@ -58,12 +59,23 @@ type StoredReport struct {
 
 // RunsOfDay adds up the runs counted on the UTC day of the given time.
 func (s *Store) RunsOfDay(ctx context.Context, day time.Time) (*DayRuns, error) {
-	date := utcDate(day)
-	byStatus, err := s.db.Q.CountRunUsageByStatusOfDay(ctx, s.db.Db, date)
+	return s.RunsBetween(ctx, day, day.UTC().AddDate(0, 0, 1))
+}
+
+// RunsBetween adds up the runs counted on the UTC days from the day of from to the day before the
+// one of before: the first days of two months give the runs of a month. The durations are the
+// median and the 95th percentile over all those days.
+func (s *Store) RunsBetween(ctx context.Context, from, before time.Time) (*DayRuns, error) {
+	fromDay, beforeDay := utcDate(from), utcDate(before)
+	byStatus, err := s.db.Q.CountRunUsageByStatusBetween(ctx, s.db.Db, db_queries.CountRunUsageByStatusBetweenParams{
+		FromDay: fromDay, BeforeDay: beforeDay,
+	})
 	if err != nil {
 		return nil, err
 	}
-	sums, err := s.db.Q.SumRunUsageOfDay(ctx, s.db.Db, date)
+	sums, err := s.db.Q.SumRunUsageBetween(ctx, s.db.Db, db_queries.SumRunUsageBetweenParams{
+		FromDay: fromDay, BeforeDay: beforeDay,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +115,15 @@ func (s *Store) SourceVersionsOfDay(ctx context.Context, day time.Time) ([]Sourc
 
 // RefusalsOfDay adds up, over every account, the refusals of each gate on the UTC day.
 func (s *Store) RefusalsOfDay(ctx context.Context, day time.Time) ([]GateCount, error) {
-	rows, err := s.db.Q.SumGateRefusalsOfDay(ctx, s.db.Db, utcDate(day))
+	return s.RefusalsBetween(ctx, day, day.UTC().AddDate(0, 0, 1))
+}
+
+// RefusalsBetween adds up, over every account, the refusals of each gate on the UTC days from the
+// day of from to the day before the one of before.
+func (s *Store) RefusalsBetween(ctx context.Context, from, before time.Time) ([]GateCount, error) {
+	rows, err := s.db.Q.SumGateRefusalsBetween(ctx, s.db.Db, db_queries.SumGateRefusalsBetweenParams{
+		FromDay: utcDate(from), BeforeDay: utcDate(before),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +169,29 @@ func (s *Store) Report(ctx context.Context, day time.Time) (*StoredReport, error
 		KeyFingerprint: row.KeyFingerprint,
 		PreparedAt:     row.PreparedAt.Time,
 	}, nil
+}
+
+// ReportsBetween gives the reports kept for the UTC days from the day of from to the day before
+// the one of before, the oldest first.
+func (s *Store) ReportsBetween(ctx context.Context, from, before time.Time) ([]StoredReport, error) {
+	rows, err := s.db.Q.ListUsageReportsBetween(ctx, s.db.Db, db_queries.ListUsageReportsBetweenParams{
+		FromDay: utcDate(from), BeforeDay: utcDate(before),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to read the reports of the days: %w", err)
+	}
+	reports := make([]StoredReport, 0, len(rows))
+	for i := range rows {
+		row := &rows[i]
+		reports = append(reports, StoredReport{
+			Day:            row.Day.Time,
+			Document:       []byte(row.Document),
+			Seal:           row.Seal,
+			KeyFingerprint: row.KeyFingerprint,
+			PreparedAt:     row.PreparedAt.Time,
+		})
+	}
+	return reports, nil
 }
 
 // DeleteReportsBefore drops the reports of the days before the given UTC day.

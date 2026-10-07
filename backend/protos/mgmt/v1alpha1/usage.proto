@@ -128,6 +128,23 @@ message GetUsageReportResponse {
   string key_fingerprint = 3;
 }
 
+message GetUsagePeriodReportRequest {
+  // The unique identifier of the account that asks.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The first month of the period, as "2026-01", in UTC.
+  string from_month = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-(0[1-9]|1[0-2])$"];
+  // The last month of the period, included: not before the first, not in the future, and at most 36 months in all.
+  string to_month = 3 [(buf.validate.field).string.pattern = "^[0-9]{4}-(0[1-9]|1[0-2])$"];
+}
+message GetUsagePeriodReportResponse {
+  // The report for the period, as it was sealed, byte for byte.
+  string document = 1;
+  // The seal of the document.
+  string seal = 2;
+  // The fingerprint of the key that sealed it.
+  string key_fingerprint = 3;
+}
+
 // Holds the counters of what the instance runs.
 service UsageService {
   // Tells that a run has begun. Only the worker calls this, with its key.
@@ -150,6 +167,14 @@ service UsageService {
 
   // Gives the usage report of a day, as it is kept.
   rpc GetUsageReport(GetUsageReportRequest) returns (GetUsageReportResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
+  rpc GetUsagePeriodReport(GetUsagePeriodReportRequest) returns (GetUsagePeriodReportResponse) {
     option (mgmt.v1alpha1.requires) = {
       all_of: [PERMISSION_ACCOUNT_VIEW]
     };

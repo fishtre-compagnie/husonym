@@ -86,6 +86,7 @@ func newFixture(t *testing.T, workerOnly userdata.WorkerOnly) *fixture {
 			store,
 			nil,
 			nil,
+			nil,
 			time.Now,
 		),
 		querier: querier,

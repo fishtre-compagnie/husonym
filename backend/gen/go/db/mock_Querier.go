@@ -677,48 +677,48 @@ func (_c *MockQuerier_CountRunUsageBySourceVersionOfDay_Call) RunAndReturn(run f
 	return _c
 }
 
-// CountRunUsageByStatusOfDay provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error) {
-	ret := _mock.Called(ctx, db, dollar_1)
+// CountRunUsageByStatusBetween provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error) {
+	ret := _mock.Called(ctx, db, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for CountRunUsageByStatusOfDay")
+		panic("no return value specified for CountRunUsageByStatusBetween")
 	}
 
-	var r0 []CountRunUsageByStatusOfDayRow
+	var r0 []CountRunUsageByStatusBetweenRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)); ok {
-		return returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error)); ok {
+		return returnFunc(ctx, db, arg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []CountRunUsageByStatusOfDayRow); ok {
-		r0 = returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CountRunUsageByStatusBetweenParams) []CountRunUsageByStatusBetweenRow); ok {
+		r0 = returnFunc(ctx, db, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]CountRunUsageByStatusOfDayRow)
+			r0 = ret.Get(0).([]CountRunUsageByStatusBetweenRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
-		r1 = returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, CountRunUsageByStatusBetweenParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_CountRunUsageByStatusOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRunUsageByStatusOfDay'
-type MockQuerier_CountRunUsageByStatusOfDay_Call struct {
+// MockQuerier_CountRunUsageByStatusBetween_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRunUsageByStatusBetween'
+type MockQuerier_CountRunUsageByStatusBetween_Call struct {
 	*mock.Call
 }
 
-// CountRunUsageByStatusOfDay is a helper method to define mock.On call
+// CountRunUsageByStatusBetween is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db DBTX
-//   - dollar_1 pgtype.Date
-func (_e *MockQuerier_Expecter) CountRunUsageByStatusOfDay(ctx any, db any, dollar_1 any) *MockQuerier_CountRunUsageByStatusOfDay_Call {
-	return &MockQuerier_CountRunUsageByStatusOfDay_Call{Call: _e.mock.On("CountRunUsageByStatusOfDay", ctx, db, dollar_1)}
+//   - arg CountRunUsageByStatusBetweenParams
+func (_e *MockQuerier_Expecter) CountRunUsageByStatusBetween(ctx any, db any, arg any) *MockQuerier_CountRunUsageByStatusBetween_Call {
+	return &MockQuerier_CountRunUsageByStatusBetween_Call{Call: _e.mock.On("CountRunUsageByStatusBetween", ctx, db, arg)}
 }
 
-func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+func (_c *MockQuerier_CountRunUsageByStatusBetween_Call) Run(run func(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams)) *MockQuerier_CountRunUsageByStatusBetween_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -728,9 +728,9 @@ func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Run(run func(ctx context.
 		if args[1] != nil {
 			arg1 = args[1].(DBTX)
 		}
-		var arg2 pgtype.Date
+		var arg2 CountRunUsageByStatusBetweenParams
 		if args[2] != nil {
-			arg2 = args[2].(pgtype.Date)
+			arg2 = args[2].(CountRunUsageByStatusBetweenParams)
 		}
 		run(
 			arg0,
@@ -741,12 +741,12 @@ func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Return(countRunUsageByStatusOfDayRows []CountRunUsageByStatusOfDayRow, err error) *MockQuerier_CountRunUsageByStatusOfDay_Call {
-	_c.Call.Return(countRunUsageByStatusOfDayRows, err)
+func (_c *MockQuerier_CountRunUsageByStatusBetween_Call) Return(countRunUsageByStatusBetweenRows []CountRunUsageByStatusBetweenRow, err error) *MockQuerier_CountRunUsageByStatusBetween_Call {
+	_c.Call.Return(countRunUsageByStatusBetweenRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+func (_c *MockQuerier_CountRunUsageByStatusBetween_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error)) *MockQuerier_CountRunUsageByStatusBetween_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8711,6 +8711,80 @@ func (_c *MockQuerier_ListUsageReportSendings_Call) RunAndReturn(run func(ctx co
 	return _c
 }
 
+// ListUsageReportsBetween provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListUsageReportsBetween(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListUsageReportsBetween")
+	}
+
+	var r0 []ListUsageReportsBetweenRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ListUsageReportsBetweenParams) []ListUsageReportsBetweenRow); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListUsageReportsBetweenRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, ListUsageReportsBetweenParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListUsageReportsBetween_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListUsageReportsBetween'
+type MockQuerier_ListUsageReportsBetween_Call struct {
+	*mock.Call
+}
+
+// ListUsageReportsBetween is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg ListUsageReportsBetweenParams
+func (_e *MockQuerier_Expecter) ListUsageReportsBetween(ctx any, db any, arg any) *MockQuerier_ListUsageReportsBetween_Call {
+	return &MockQuerier_ListUsageReportsBetween_Call{Call: _e.mock.On("ListUsageReportsBetween", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_ListUsageReportsBetween_Call) Run(run func(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams)) *MockQuerier_ListUsageReportsBetween_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 ListUsageReportsBetweenParams
+		if args[2] != nil {
+			arg2 = args[2].(ListUsageReportsBetweenParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListUsageReportsBetween_Call) Return(listUsageReportsBetweenRows []ListUsageReportsBetweenRow, err error) *MockQuerier_ListUsageReportsBetween_Call {
+	_c.Call.Return(listUsageReportsBetweenRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListUsageReportsBetween_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ListUsageReportsBetweenParams) ([]ListUsageReportsBetweenRow, error)) *MockQuerier_ListUsageReportsBetween_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LockAccountRole provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -10867,48 +10941,48 @@ func (_c *MockQuerier_StopUsageSending_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
-// SumGateRefusalsOfDay provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error) {
-	ret := _mock.Called(ctx, db, day)
+// SumGateRefusalsBetween provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error) {
+	ret := _mock.Called(ctx, db, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SumGateRefusalsOfDay")
+		panic("no return value specified for SumGateRefusalsBetween")
 	}
 
-	var r0 []SumGateRefusalsOfDayRow
+	var r0 []SumGateRefusalsBetweenRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]SumGateRefusalsOfDayRow, error)); ok {
-		return returnFunc(ctx, db, day)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error)); ok {
+		return returnFunc(ctx, db, arg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []SumGateRefusalsOfDayRow); ok {
-		r0 = returnFunc(ctx, db, day)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SumGateRefusalsBetweenParams) []SumGateRefusalsBetweenRow); ok {
+		r0 = returnFunc(ctx, db, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]SumGateRefusalsOfDayRow)
+			r0 = ret.Get(0).([]SumGateRefusalsBetweenRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
-		r1 = returnFunc(ctx, db, day)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, SumGateRefusalsBetweenParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_SumGateRefusalsOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumGateRefusalsOfDay'
-type MockQuerier_SumGateRefusalsOfDay_Call struct {
+// MockQuerier_SumGateRefusalsBetween_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumGateRefusalsBetween'
+type MockQuerier_SumGateRefusalsBetween_Call struct {
 	*mock.Call
 }
 
-// SumGateRefusalsOfDay is a helper method to define mock.On call
+// SumGateRefusalsBetween is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db DBTX
-//   - day pgtype.Date
-func (_e *MockQuerier_Expecter) SumGateRefusalsOfDay(ctx any, db any, day any) *MockQuerier_SumGateRefusalsOfDay_Call {
-	return &MockQuerier_SumGateRefusalsOfDay_Call{Call: _e.mock.On("SumGateRefusalsOfDay", ctx, db, day)}
+//   - arg SumGateRefusalsBetweenParams
+func (_e *MockQuerier_Expecter) SumGateRefusalsBetween(ctx any, db any, arg any) *MockQuerier_SumGateRefusalsBetween_Call {
+	return &MockQuerier_SumGateRefusalsBetween_Call{Call: _e.mock.On("SumGateRefusalsBetween", ctx, db, arg)}
 }
 
-func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Run(run func(ctx context.Context, db DBTX, day pgtype.Date)) *MockQuerier_SumGateRefusalsOfDay_Call {
+func (_c *MockQuerier_SumGateRefusalsBetween_Call) Run(run func(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams)) *MockQuerier_SumGateRefusalsBetween_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -10918,9 +10992,9 @@ func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Run(run func(ctx context.Contex
 		if args[1] != nil {
 			arg1 = args[1].(DBTX)
 		}
-		var arg2 pgtype.Date
+		var arg2 SumGateRefusalsBetweenParams
 		if args[2] != nil {
-			arg2 = args[2].(pgtype.Date)
+			arg2 = args[2].(SumGateRefusalsBetweenParams)
 		}
 		run(
 			arg0,
@@ -10931,56 +11005,56 @@ func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Return(sumGateRefusalsOfDayRows []SumGateRefusalsOfDayRow, err error) *MockQuerier_SumGateRefusalsOfDay_Call {
-	_c.Call.Return(sumGateRefusalsOfDayRows, err)
+func (_c *MockQuerier_SumGateRefusalsBetween_Call) Return(sumGateRefusalsBetweenRows []SumGateRefusalsBetweenRow, err error) *MockQuerier_SumGateRefusalsBetween_Call {
+	_c.Call.Return(sumGateRefusalsBetweenRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_SumGateRefusalsOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)) *MockQuerier_SumGateRefusalsOfDay_Call {
+func (_c *MockQuerier_SumGateRefusalsBetween_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error)) *MockQuerier_SumGateRefusalsBetween_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SumRunUsageOfDay provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error) {
-	ret := _mock.Called(ctx, db, dollar_1)
+// SumRunUsageBetween provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error) {
+	ret := _mock.Called(ctx, db, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SumRunUsageOfDay")
+		panic("no return value specified for SumRunUsageBetween")
 	}
 
-	var r0 SumRunUsageOfDayRow
+	var r0 SumRunUsageBetweenRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (SumRunUsageOfDayRow, error)); ok {
-		return returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error)); ok {
+		return returnFunc(ctx, db, arg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) SumRunUsageOfDayRow); ok {
-		r0 = returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SumRunUsageBetweenParams) SumRunUsageBetweenRow); ok {
+		r0 = returnFunc(ctx, db, arg)
 	} else {
-		r0 = ret.Get(0).(SumRunUsageOfDayRow)
+		r0 = ret.Get(0).(SumRunUsageBetweenRow)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
-		r1 = returnFunc(ctx, db, dollar_1)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, SumRunUsageBetweenParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_SumRunUsageOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumRunUsageOfDay'
-type MockQuerier_SumRunUsageOfDay_Call struct {
+// MockQuerier_SumRunUsageBetween_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumRunUsageBetween'
+type MockQuerier_SumRunUsageBetween_Call struct {
 	*mock.Call
 }
 
-// SumRunUsageOfDay is a helper method to define mock.On call
+// SumRunUsageBetween is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db DBTX
-//   - dollar_1 pgtype.Date
-func (_e *MockQuerier_Expecter) SumRunUsageOfDay(ctx any, db any, dollar_1 any) *MockQuerier_SumRunUsageOfDay_Call {
-	return &MockQuerier_SumRunUsageOfDay_Call{Call: _e.mock.On("SumRunUsageOfDay", ctx, db, dollar_1)}
+//   - arg SumRunUsageBetweenParams
+func (_e *MockQuerier_Expecter) SumRunUsageBetween(ctx any, db any, arg any) *MockQuerier_SumRunUsageBetween_Call {
+	return &MockQuerier_SumRunUsageBetween_Call{Call: _e.mock.On("SumRunUsageBetween", ctx, db, arg)}
 }
 
-func (_c *MockQuerier_SumRunUsageOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_SumRunUsageOfDay_Call {
+func (_c *MockQuerier_SumRunUsageBetween_Call) Run(run func(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams)) *MockQuerier_SumRunUsageBetween_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -10990,9 +11064,9 @@ func (_c *MockQuerier_SumRunUsageOfDay_Call) Run(run func(ctx context.Context, d
 		if args[1] != nil {
 			arg1 = args[1].(DBTX)
 		}
-		var arg2 pgtype.Date
+		var arg2 SumRunUsageBetweenParams
 		if args[2] != nil {
-			arg2 = args[2].(pgtype.Date)
+			arg2 = args[2].(SumRunUsageBetweenParams)
 		}
 		run(
 			arg0,
@@ -11003,12 +11077,12 @@ func (_c *MockQuerier_SumRunUsageOfDay_Call) Run(run func(ctx context.Context, d
 	return _c
 }
 
-func (_c *MockQuerier_SumRunUsageOfDay_Call) Return(sumRunUsageOfDayRow SumRunUsageOfDayRow, err error) *MockQuerier_SumRunUsageOfDay_Call {
-	_c.Call.Return(sumRunUsageOfDayRow, err)
+func (_c *MockQuerier_SumRunUsageBetween_Call) Return(sumRunUsageBetweenRow SumRunUsageBetweenRow, err error) *MockQuerier_SumRunUsageBetween_Call {
+	_c.Call.Return(sumRunUsageBetweenRow, err)
 	return _c
 }
 
-func (_c *MockQuerier_SumRunUsageOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)) *MockQuerier_SumRunUsageOfDay_Call {
+func (_c *MockQuerier_SumRunUsageBetween_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error)) *MockQuerier_SumRunUsageBetween_Call {
 	_c.Call.Return(run)
 	return _c
 }
