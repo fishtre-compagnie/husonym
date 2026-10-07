@@ -23,6 +23,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	piidetect_model "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/log"
@@ -149,7 +150,12 @@ func test_postgres_pii_detect(
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestWorkflowEnvironment()
 	config := &piidetect.Config{}
-	piidetect.Register(env, license, piidetect.NewActivities(jobclient, connclient, data, nil, classifier, config), config)
+	piidetect.Register(
+		env, license,
+		piidetect.NewActivities(jobclient, connclient, data, nil, classifier, config),
+		runusage.New(husonymApi.OSSUnauthenticatedLicensedClients.Usage()),
+		config,
+	)
 	env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 	env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
 		Return(func(workflow.Context, *accounthooks.ProcessAccountHookRequest) (*accounthooks.ProcessAccountHookResponse, error) {

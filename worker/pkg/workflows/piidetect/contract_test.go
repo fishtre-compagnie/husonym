@@ -13,8 +13,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/require"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 )
@@ -27,6 +29,9 @@ type registered struct {
 
 func (r *registered) RegisterWorkflow(w any) { r.workflows = append(r.workflows, functionName(w)) }
 func (r *registered) RegisterActivity(a any) { r.activities = append(r.activities, functionName(a)) }
+func (r *registered) RegisterActivityWithOptions(a any, _ activity.RegisterOptions) {
+	r.RegisterActivity(a)
+}
 
 // functionName is the name Temporal registers a function under: its own, without its
 // package, its receiver or the suffix of a method value.
@@ -41,12 +46,15 @@ func functionName(function any) string {
 // its workflow. The API reads the two workflow names as well.
 func Test_Register_KeepsTheRegisteredNames(t *testing.T) {
 	names := &registered{}
-	Register(names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, &Config{}), &Config{})
+	Register(
+		names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, &Config{}), runusage.New(nil), &Config{},
+	)
 
 	require.Equal(t, []string{"JobPiiDetect", "TablePiiDetect"}, names.workflows)
 	require.Equal(t, []string{
 		"GetPiiDetectJobDetails", "GetLastSuccessfulWorkflowId", "GetTablesToPiiScan", "SaveJobPiiDetectReport",
 		"GetColumnData", "DetectPiiRegex", "DetectPiiLLM", "SaveTablePiiDetectReport",
+		"RecordRunStarted", "RecordRunEnded",
 	}, names.activities)
 	require.Equal(t, "JobPiiDetect", JobWorkflowName)
 	require.Equal(t, "TablePiiDetect", TableWorkflowName)

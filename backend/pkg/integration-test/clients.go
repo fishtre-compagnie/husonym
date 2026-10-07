@@ -83,6 +83,13 @@ func (s *HusonymClients) AccountSettings(
 	return mgmtv1alpha1connect.NewAccountSettingServiceClient(getHttpClient(config), s.httpUrl)
 }
 
+func (s *HusonymClients) Usage(
+	opts ...ClientConfigOption,
+) mgmtv1alpha1connect.UsageServiceClient {
+	config := getHydratedClientConfig(opts...)
+	return mgmtv1alpha1connect.NewUsageServiceClient(getHttpClient(config), s.httpUrl)
+}
+
 func getHydratedClientConfig(opts ...ClientConfigOption) *clientConfig {
 	config := &clientConfig{}
 	for _, opt := range opts {

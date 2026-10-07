@@ -20,12 +20,15 @@ import (
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/redis/go-redis/v9"
+	"go.temporal.io/sdk/activity"
 )
 
 type Worker interface {
 	RegisterWorkflow(workflow any)
 	RegisterActivity(activity any)
+	RegisterActivityWithOptions(activity any, options activity.RegisterOptions)
 }
 
 func Register(
@@ -34,6 +37,7 @@ func Register(
 	jobclient mgmtv1alpha1connect.JobServiceClient,
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	usageclient mgmtv1alpha1connect.UsageServiceClient,
 	sqlmanager *sql_manager.SqlManager,
 	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 	athanor shared.AthanorPolicy,
@@ -84,6 +88,8 @@ func Register(
 	w.RegisterActivity(preflightActivity.RunPreflight)
 	w.RegisterActivity(preflightActivity.CheckPreflight)
 	w.RegisterActivity(genbenthosActivity.PlanPreflight)
+	// The start and the end of a run, told to the API.
+	runusage.Register(w, runusage.New(usageclient))
 
 	// The pre-flight check of a job, before any run: the same activities as a run's start.
 	w.RegisterWorkflow(preflight_workflow.New().JobPreflight)

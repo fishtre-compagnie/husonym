@@ -14,6 +14,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/activity"
@@ -194,7 +195,7 @@ func newActivityRun(t *testing.T, activities *Activities) *activityRun {
 	var ts testsuite.WorkflowTestSuite
 	ts.SetLogger(run.logs)
 	run.env = ts.NewTestActivityEnvironment()
-	Register(piitest.ActivityRegistry{Env: run.env}, nil, activities, &Config{})
+	Register(piitest.ActivityRegistry{Env: run.env}, nil, activities, runusage.New(nil), &Config{})
 	run.env.SetOnActivityHeartbeatListener(func(_ *activity.Info, details converter.EncodedValues) {
 		var raw any
 		_ = details.Get(&raw)

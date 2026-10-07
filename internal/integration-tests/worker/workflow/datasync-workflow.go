@@ -116,6 +116,7 @@ func NewTestDataSyncWorkflowEnv(
 	accounthookclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountHooks()
 	anonymizationclient := husonymApi.OSSUnauthenticatedLicensedClients.Anonymize()
 	accountsettingclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountSettings()
+	usageclient := husonymApi.OSSUnauthenticatedLicensedClients.Usage()
 
 	// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
 	// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
@@ -138,6 +139,7 @@ func NewTestDataSyncWorkflowEnv(
 		jobclient,
 		connclient,
 		transformerclient,
+		usageclient,
 		dbManagers.SqlManager,
 		dbManagers.SqlConnManager,
 		// chemin Benthos par défaut dans les tests d'intégration

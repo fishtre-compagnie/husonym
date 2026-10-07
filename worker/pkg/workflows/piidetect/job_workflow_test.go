@@ -16,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/temporal"
@@ -38,8 +39,11 @@ type jobRun struct {
 	env        *testsuite.TestWorkflowEnvironment
 	activities *Activities
 
-	mu         sync.Mutex
-	events     []string
+	mu     sync.Mutex
+	events []string
+	// usage is what the run told the API of itself, in order: its start, then its end
+	// with its outcome and the rows it counted.
+	usage      []string
 	tables     []*TablePiiDetectRequest
 	running    int
 	maxRunning int
@@ -76,7 +80,42 @@ func newJobRunUnder(t *testing.T, license *testutil.FakeEELicense, tablesAtOnce 
 			run.events = append(run.events, req.Event.Kind().String())
 			return &accounthooks.ProcessAccountHookResponse{}, nil
 		})
+
+	// Every run tells the API its start and its end, once each.
+	var usage *runusage.Activities
+	run.env.OnActivity(usage.RecordRunStarted, mock.Anything, mock.Anything).
+		Return(func(_ context.Context, req *runusage.RunStartedRequest) error {
+			run.mu.Lock()
+			defer run.mu.Unlock()
+			run.usage = append(run.usage, fmt.Sprintf("started %s %s", req.JobId, req.RunId))
+			return nil
+		}).Once()
+	run.env.OnActivity(usage.RecordRunEnded, mock.Anything, mock.Anything).
+		Return(func(_ context.Context, req *runusage.RunEndedRequest) error {
+			run.mu.Lock()
+			defer run.mu.Unlock()
+			run.usage = append(run.usage, fmt.Sprintf(
+				"%s %s %s, %d rows read, %d discarded, %d retries",
+				req.Outcome, req.JobId, req.RunId, req.RowsRead, req.RowsDiscarded, req.Retries,
+			))
+			return nil
+		}).Once()
 	return run
+}
+
+// reported is what the run told the API of itself.
+func (r *jobRun) reported() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string{}, r.usage...)
+}
+
+// usageOf is what a run that ended on the outcome told the API: a detection counts no row.
+func usageOf(outcome string) []string {
+	return []string{
+		"started job-1 " + testRunId,
+		outcome + " job-1 " + testRunId + ", 0 rows read, 0 discarded, 0 retries",
+	}
 }
 
 // scanned is the end of a scan by activities that say nothing of the model step.
@@ -193,7 +232,8 @@ func requireReport(t *testing.T, want, got *report.JobReport) {
 }
 
 // A run of a job with every setting: what each activity and each table is given, what is
-// saved, what the run returns, and that it reads no version beyond the license's.
+// saved, what the run returns, what it tells the API of itself, and that it reads no
+// version beyond the license's and the one of its usage.
 func Test_JobPiiDetect_ScansTheTablesOfTheJob(t *testing.T) {
 	run := newJobRun(t, 3)
 	run.scanTables(scanned)
@@ -250,7 +290,8 @@ func Test_JobPiiDetect_ScansTheTablesOfTheJob(t *testing.T) {
 	// The entries of the index are in the order of their names.
 	requireReport(t, &report.JobReport{SuccessfulTableReports: []*report.TableEntry{entry("customers"), entry("orders")}}, *saved)
 	require.Equal(t, []string{createdKind, succeededKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1"}, versions.all())
+	require.Equal(t, usageOf(runusage.OutcomeCompleted), run.reported())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1"}, versions.all())
 	run.env.AssertExpectations(t)
 }
 
@@ -263,6 +304,8 @@ func Test_JobPiiDetect_WithoutALicense(t *testing.T) {
 	require.ErrorContains(t, run.env.GetWorkflowError(), "ee license is not valid, unable to run pii detect")
 	run.env.AssertNotCalled(t, "GetPiiDetectJobDetails", mock.Anything, mock.Anything)
 	require.Empty(t, run.started())
+	// A run the license refuses is counted as a run that failed.
+	require.Equal(t, usageOf(runusage.OutcomeFailed), run.reported())
 }
 
 // PII detection is a feature of its own. A run under a valid license that lacks it fails
@@ -286,6 +329,7 @@ func Test_PiiDetect_FailsWithoutTheFeature(t *testing.T) {
 	run.env.AssertNotCalled(t, "SaveJobPiiDetectReport", mock.Anything, mock.Anything)
 	require.Empty(t, run.tables, "no table is scanned")
 	require.Empty(t, run.started(), "no event is announced")
+	require.Equal(t, usageOf(runusage.OutcomeFailed), run.reported())
 }
 
 // A run under a license that includes PII detection scans its tables. Its events are
@@ -545,7 +589,11 @@ func Test_JobPiiDetect_ATableThatFailsFailsTheRunOnceTheIndexIsSaved(t *testing.
 	}, *saved)
 	require.Len(t, run.tables, 4, "every table is attempted")
 	require.Equal(t, []string{createdKind, failedKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "pii-detect-incomplete-run-fails-1"}, versions.all())
+	require.Equal(t, usageOf(runusage.OutcomeFailed), run.reported())
+	require.Equal(t, []string{
+		"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1",
+		"pii-detect-incomplete-run-fails-1",
+	}, versions.all())
 }
 
 // Runs started before an incomplete scan failed the run replay as they ran: they
@@ -634,7 +682,8 @@ func Test_IncompleteMessage(t *testing.T) {
 }
 
 // A run canceled while its tables are scanned ends canceled: no other table starts, no
-// index is stored, no event of its end is sent.
+// index is stored, no event of its end is sent. The API is still told that it ended, and
+// how.
 func Test_JobPiiDetect_Canceled(t *testing.T) {
 	run := newJobRun(t, 3)
 	run.scanTables(scanned)
@@ -656,5 +705,6 @@ func Test_JobPiiDetect_Canceled(t *testing.T) {
 	require.Len(t, run.tables, 3, "the fourth table never starts")
 	require.Zero(t, saves.Load())
 	require.Equal(t, []string{createdKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1"}, versions.all())
+	require.Equal(t, usageOf(runusage.OutcomeCanceled), run.reported())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1"}, versions.all())
 }
