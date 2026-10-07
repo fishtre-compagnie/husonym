@@ -24,17 +24,21 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
       "sentencepiece==${SENTENCEPIECE_VERSION}" "protobuf==${PROTOBUF_VERSION}"
 
 # Le modèle, à une révision épinglée par commit, dans un seul format de poids (safetensors).
-# Téléchargement, preuve et changement de propriétaire dans UNE couche : un chown dans une couche
-# suivante stockerait les poids deux fois.
+# Téléchargement, vérification de l'empreinte des poids, preuve et changement de propriétaire dans
+# UNE couche : un chown dans une couche suivante stockerait les poids deux fois.
 # La preuve tourne réseau interdit (HF_HUB_OFFLINE) : les fichiers embarqués suffisent. Le
 # tokenizer rapide y est écrit une fois (le dépôt ne livre que le fichier sentencepiece), ce qui
 # évite de refaire la conversion à chaque démarrage ; il est requis pour les positions.
 ARG CAMEMBERT_REPO=Jean-Baptiste/camembert-ner
 ARG CAMEMBERT_REVISION=ef35fe7767c1dad71f5c853838cdd80d0b3441ed
+# Empreinte SHA-256 des poids (model.safetensors) à cette révision, celle que publie Hugging Face
+# pour ce fichier : des poids qui en diffèrent arrêtent la construction.
+ARG CAMEMBERT_WEIGHTS_SHA256=decc811bc764b0e94f1adc16b37a127300201eb8b5e4b733a89185d68b9d81c9
 RUN python -c "from huggingface_hub import snapshot_download; \
 snapshot_download(repo_id='${CAMEMBERT_REPO}', revision='${CAMEMBERT_REVISION}', \
 local_dir='/app/models/camembert-ner', \
 allow_patterns=['config.json','model.safetensors','sentencepiece.bpe.model','special_tokens_map.json','tokenizer_config.json','README.md'])" \
+ && echo "${CAMEMBERT_WEIGHTS_SHA256}  /app/models/camembert-ner/model.safetensors" | sha256sum -c - \
  && rm -rf /app/models/camembert-ner/.cache /root/.cache/huggingface \
  && HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -c "from transformers import AutoTokenizer, pipeline; \
 p='/app/models/camembert-ner'; t=AutoTokenizer.from_pretrained(p); assert t.is_fast, 'fast tokenizer needed for offsets'; \
@@ -69,7 +73,7 @@ ENV NLP_CONF_FILE=/app/conf/fr/nlp.yaml \
 # Le reconnaisseur propre à cette image, et le serveur de Presidio lancé par un module qui
 # l'importe. Même commande que l'entrypoint.sh de l'image de base, au nom du module près et aux
 # options --no-control-socket et --timeout près (voir la commande, en bas).
-COPY --chown=presidio:presidio mapped_ner_recognizer.py analyzer_app.py recognizer_check.py /app/
+COPY --chown=presidio:presidio mapped_ner_recognizer.py analyzer_app.py recognizer_check.py server_check.py /app/
 # Les contrôles du reconnaisseur (découpage, réunion des trouvailles de deux morceaux, filtre des
 # étiquettes, erreur d'inférence), sans le modèle : un contrôle qui échoue, ou un nom interne de
 # Presidio qui manque, arrête la construction. Le fichier reste dans l'image (voir le README).
@@ -77,6 +81,12 @@ RUN python -B /app/recognizer_check.py
 
 # Utilisateur non privilégié de l'image de base (presidio).
 USER 1001
+# Le contrôle du serveur, avec le vrai modèle, sous l'utilisateur de l'image et réseau interdit
+# (variables ci-dessus) : l'application est créée comme gunicorn la crée, par le registre et les
+# trois fichiers de configuration, une phrase française lui est envoyée, et la personne doit
+# revenir du reconnaisseur de cette image, sans type d'entité hors de la liste déclarée. Un nom de
+# Presidio ou de transformers qui a changé arrête ici la construction.
+RUN python -B /app/server_check.py
 # --no-control-socket : gunicorn 25.1.0 (celui de l'image de base) ouvre un socket de contrôle
 # dans un thread juste avant de créer son worker par fork. Si le fork tombe pendant que ce thread
 # écrit dans le journal, le worker hérite d'un verrou que personne ne relâchera : il ne démarre
