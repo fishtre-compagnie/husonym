@@ -221,6 +221,11 @@ func (b *Builder) diagnostics(ctx context.Context, day, now time.Time) (*telemet
 		// Empty for now: the lists its rows are of are declared, and nothing fills it yet.
 		Errors: []telemetry.ErrorCount{},
 		Users:  inventory.Users,
+		Unread: telemetry.Unread{
+			Jobs:        int(inventory.Unread.Jobs),
+			Connections: int(inventory.Unread.Connections),
+			Accounts:    int(inventory.Unread.Accounts),
+		},
 	}, nil
 }
 

@@ -247,6 +247,7 @@ func newFixture(t testing.TB) *fixture {
 			},
 			AccountOidcProviders: 1,
 			SourceTypeOfJob:      map[string]string{jobOne: "postgres", jobTwo: "postgres", jobThree: "mysql"},
+			Unread:               Unread{Jobs: 1, Connections: 2, Accounts: 3},
 		}},
 		instance: &fakeInstance{sources: 3, postgresMajor: 16, temporalVersion: "1.25.2", workers: 2},
 		facts: Facts{
@@ -301,7 +302,7 @@ func Test_Build_TheFullReportIsTheReferenceFile(t *testing.T) {
 	require.Equal(t, reportNow, f.inventory.now)
 
 	// Neither the key nor what a person wrote in it is in the document or in the logs.
-	require.NotContains(t, string(sealed.Document), leak)
+	requireNoLeak(t, string(sealed.Document))
 	require.NotContains(t, string(sealed.Document), f.keys.value)
 	require.NotContains(t, output.String(), f.keys.value)
 	require.Empty(t, output.String(), "a report that reads everything logs nothing")
@@ -549,7 +550,7 @@ func Test_Build_ValuesOutsideTheirLists(t *testing.T) {
 	sealed, err := f.builder().Build(t.Context(), reportDay, reportNow)
 	require.NoError(t, err)
 	require.NoError(t, telemetry.Validate(sealed.Document))
-	require.NotContains(t, string(sealed.Document), leak)
+	requireNoLeak(t, string(sealed.Document))
 
 	read := tree(t, sealed.Document)
 	require.Equal(t, "other", block(t, read, "identification")["license_id"])
@@ -704,5 +705,5 @@ func Test_Build_AnUnexpectedEnvironment(t *testing.T) {
 	require.Equal(t, "other", block(t, diagnostics, "installation")["kind"])
 	require.Equal(t, "other", block(t, diagnostics, "configuration")["auth_provider"])
 	require.NotContains(t, string(sealed.Document), "my-cluster")
-	require.NotContains(t, string(sealed.Document), leak)
+	requireNoLeak(t, string(sealed.Document))
 }

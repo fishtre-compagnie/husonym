@@ -592,6 +592,26 @@
           ],
           "type": "object"
         },
+        "unread": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "$ref": "#/$defs/count"
+            },
+            "connections": {
+              "$ref": "#/$defs/count"
+            },
+            "jobs": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "jobs",
+            "connections",
+            "accounts"
+          ],
+          "type": "object"
+        },
         "users": {
           "additionalProperties": false,
           "properties": {
@@ -644,7 +664,8 @@
         "refusals",
         "runs",
         "errors",
-        "users"
+        "users",
+        "unread"
       ],
       "type": "object"
     },

@@ -63,6 +63,7 @@ func fullReport() *Report {
 				Accounts: 1, Users: 10, Active30d: intp(6),
 				ByRole: []RoleCount{{Role: "admin", Count: 2}, {Role: "job_viewer", Count: 8}},
 			},
+			Unread: Unread{Jobs: 1},
 		},
 	}
 }
@@ -129,6 +130,27 @@ func Test_Report_WithoutDiagnosticsOrOptionalFieldsOmitsThem(t *testing.T) {
 	require.NotContains(t, string(document), "diagnostics")
 }
 
+// What could not be read is told even when it is nothing: a report that says nothing of it
+// would read as one made from the whole instance.
+func Test_Report_AlwaysTellsWhatWasNotRead(t *testing.T) {
+	r := fullReport()
+	r.Diagnostics.Unread = Unread{}
+	document, err := r.Marshal()
+	require.NoError(t, err)
+	require.Contains(t, string(document), `"unread":{"jobs":0,"connections":0,"accounts":0}`)
+	require.NoError(t, Validate(document))
+
+	var tree map[string]any
+	require.NoError(t, json.Unmarshal(document, &tree))
+	unread := tree["diagnostics"].(map[string]any)["unread"].(map[string]any)
+	delete(unread, "connections")
+	partial, _ := json.Marshal(tree)
+	require.Error(t, Validate(partial))
+	delete(tree["diagnostics"].(map[string]any), "unread")
+	without, _ := json.Marshal(tree)
+	require.Error(t, Validate(without))
+}
+
 func Test_Report_ErrorsIsAnEmptyArrayNotNull(t *testing.T) {
 	r := fullReport()
 	r.Diagnostics.Errors = nil
@@ -192,6 +214,7 @@ func Test_Validate_RefusesAValueOutsideOfItsList(t *testing.T) {
 		"fingerprint":      func(r *Report) { r.Identification.KeyFingerprint = "abc" },
 		"instance id":      func(r *Report) { r.Identification.InstanceID = "my-host" },
 		"negative count":   func(r *Report) { r.Sources.Count = -1 },
+		"negative unread":  func(r *Report) { r.Diagnostics.Unread.Accounts = -1 },
 		"schema version":   func(r *Report) { r.SchemaVersion = 2 },
 	} {
 		t.Run(name, func(t *testing.T) {

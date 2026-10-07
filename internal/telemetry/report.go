@@ -61,6 +61,7 @@ type Diagnostics struct {
 	Runs          Runs              `json:"runs"`
 	Errors        []ErrorCount      `json:"errors"`
 	Users         Users             `json:"users"`
+	Unread        Unread            `json:"unread"`
 }
 
 // Installation is where the instance runs. What cannot be read is absent.
@@ -180,6 +181,14 @@ type Users struct {
 	// Active30d is nil when authentication is off, as nobody signs in.
 	Active30d *int        `json:"active_30d,omitempty"`
 	ByRole    []RoleCount `json:"by_role"`
+}
+
+// Unread counts what the instance holds and could not read: each is left out of the blocks that
+// tell a state, so that a report made from part of the instance says so.
+type Unread struct {
+	Jobs        int `json:"jobs"`
+	Connections int `json:"connections"`
+	Accounts    int `json:"accounts"`
 }
 
 // RoleCount is how many users hold a role.

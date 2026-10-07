@@ -32,8 +32,9 @@ type Querier interface {
 	// running counts for no day.
 	CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)
 	// The types of the columns the runs saw, counted by type. The schema, the table and the column
-	// are not selected.
-	CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error)
+	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
+	// could not read, which it leaves out of every count.
+	CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error)
 	CountUserDefinedTransformersOfInstance(ctx context.Context, db DBTX) (int64, error)
 	CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error)
 	// People only: the user of an API key is not counted.

@@ -22,6 +22,18 @@ Every input that is not a number passes through one of the functions of this pac
 it is placed in a `Report`. The schema has `additionalProperties: false` at each level and an
 `enum` for each closed list, so `Validate` refuses a document that carries anything else.
 
+## What the counts mean
+
+- `transformers.system[].columns` is the number of columns a transformer runs on. A column whose
+  transformer is a PII text counts under that transformer and under each transformer it hands its
+  findings to, so these counts can sum to more than `jobs.columns`.
+- `users.users` counts people once; `users.by_role` counts a person once per account they are a
+  member of, under the role held there, so the roles can sum to more than `users.users`.
+- `unread` counts the jobs, the connections and the accounts the instance holds and could not
+  read. A job or a connection that is not read is in no other count; an account that is not read
+  is left out of the features in use and of the roles. The block is always there, with zeros when
+  everything was read.
+
 ## Stable bytes
 
 `Report.Marshal` sorts every array by its keys and writes no `null` array, so one state always

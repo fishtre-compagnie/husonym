@@ -31,10 +31,12 @@ FROM husonym_api.job_destination_connection_associations jdca
 ORDER BY jdca.job_id, jdca.connection_id;
 
 -- The types of the columns the runs saw, counted by type. The schema, the table and the column
--- are not selected.
+-- are not selected. The columns of the jobs given are not counted: they are the jobs the caller
+-- could not read, which it leaves out of every count.
 -- name: CountSourceColumnTypesOfInstance :many
 SELECT jsc.data_type, count(*)::bigint AS columns
 FROM husonym_api.job_source_columns jsc
+WHERE NOT (jsc.job_id = ANY(sqlc.arg('excludedJobIds')::uuid[]))
 GROUP BY jsc.data_type
 ORDER BY jsc.data_type;
 

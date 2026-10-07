@@ -680,8 +680,8 @@ func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) RunAndReturn(run func(ctx
 }
 
 // CountSourceColumnTypesOfInstance provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error) {
-	ret := _mock.Called(ctx, db)
+func (_mock *MockQuerier) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error) {
+	ret := _mock.Called(ctx, db, excludedjobids)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CountSourceColumnTypesOfInstance")
@@ -689,18 +689,18 @@ func (_mock *MockQuerier) CountSourceColumnTypesOfInstance(ctx context.Context, 
 
 	var r0 []CountSourceColumnTypesOfInstanceRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]CountSourceColumnTypesOfInstanceRow, error)); ok {
-		return returnFunc(ctx, db)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error)); ok {
+		return returnFunc(ctx, db, excludedjobids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []CountSourceColumnTypesOfInstanceRow); ok {
-		r0 = returnFunc(ctx, db)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, []pgtype.UUID) []CountSourceColumnTypesOfInstanceRow); ok {
+		r0 = returnFunc(ctx, db, excludedjobids)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]CountSourceColumnTypesOfInstanceRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
-		r1 = returnFunc(ctx, db)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, []pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, excludedjobids)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -715,11 +715,12 @@ type MockQuerier_CountSourceColumnTypesOfInstance_Call struct {
 // CountSourceColumnTypesOfInstance is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db DBTX
-func (_e *MockQuerier_Expecter) CountSourceColumnTypesOfInstance(ctx any, db any) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
-	return &MockQuerier_CountSourceColumnTypesOfInstance_Call{Call: _e.mock.On("CountSourceColumnTypesOfInstance", ctx, db)}
+//   - excludedjobids []pgtype.UUID
+func (_e *MockQuerier_Expecter) CountSourceColumnTypesOfInstance(ctx any, db any, excludedjobids any) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+	return &MockQuerier_CountSourceColumnTypesOfInstance_Call{Call: _e.mock.On("CountSourceColumnTypesOfInstance", ctx, db, excludedjobids)}
 }
 
-func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Run(run func(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -729,9 +730,14 @@ func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Run(run func(ctx co
 		if args[1] != nil {
 			arg1 = args[1].(DBTX)
 		}
+		var arg2 []pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].([]pgtype.UUID)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -742,7 +748,7 @@ func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) Return(countSourceC
 	return _c
 }
 
-func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
+func (_c *MockQuerier_CountSourceColumnTypesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error)) *MockQuerier_CountSourceColumnTypesOfInstance_Call {
 	_c.Call.Return(run)
 	return _c
 }

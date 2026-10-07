@@ -40,6 +40,7 @@ func (q *Queries) CountAccounts(ctx context.Context, db DBTX) (int64, error) {
 const countSourceColumnTypesOfInstance = `-- name: CountSourceColumnTypesOfInstance :many
 SELECT jsc.data_type, count(*)::bigint AS columns
 FROM husonym_api.job_source_columns jsc
+WHERE NOT (jsc.job_id = ANY($1::uuid[]))
 GROUP BY jsc.data_type
 ORDER BY jsc.data_type
 `
@@ -50,9 +51,10 @@ type CountSourceColumnTypesOfInstanceRow struct {
 }
 
 // The types of the columns the runs saw, counted by type. The schema, the table and the column
-// are not selected.
-func (q *Queries) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX) ([]CountSourceColumnTypesOfInstanceRow, error) {
-	rows, err := db.Query(ctx, countSourceColumnTypesOfInstance)
+// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
+// could not read, which it leaves out of every count.
+func (q *Queries) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error) {
+	rows, err := db.Query(ctx, countSourceColumnTypesOfInstance, excludedjobids)
 	if err != nil {
 		return nil, err
 	}

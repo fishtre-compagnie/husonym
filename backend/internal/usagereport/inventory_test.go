@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
@@ -21,7 +24,28 @@ import (
 )
 
 // leak is in every name the tests give, and must be in nothing the inventory says or logs.
-const leak = "zzleak"
+// It is in mixed case, and looked for whatever the case: see requireNoLeak.
+const leak = "zzLeak"
+
+// requireNoLeak fails when the text holds the marker, in any case.
+func requireNoLeak(t testing.TB, text string, where ...any) {
+	t.Helper()
+	require.NotContains(t, strings.ToLower(text), strings.ToLower(leak), where...)
+}
+
+// definitionOnly gives the features a job uses by its definition alone, as for an instance
+// where no job has a hook and no transformer is stored.
+func definitionOnly(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
+	return licensegate.FeaturesUsedBy(ctx, licensegate.JobFacts{Job: job}, nil)
+}
+
+// counted reads the jobs of an instance whose database tells nothing more of them.
+func counted(ctx context.Context, t testing.TB, rows ...jobRow) *jobsRead {
+	t.Helper()
+	read, err := readJobs(ctx, rows, definitionOnly)
+	require.NoError(t, err)
+	return read
+}
 
 const (
 	jobOne   = "00000000-0000-0000-0000-0000000000a1"
@@ -146,7 +170,7 @@ func Test_readJobs_CountsByKindAndBySchedule(t *testing.T) {
 	detection := jobOf(t, jobOne, postgresFrom(connectionOne))
 	detection.JobtypeConfig = piiDetect(t)
 
-	read := readJobs(t.Context(), []jobRow{
+	read := counted(t.Context(), t,
 		scheduled(jobOf(t, jobOne, postgresFrom(connectionOne)), "0 3 * * *"),
 		scheduled(jobOf(t, jobTwo, postgresFrom(connectionOne)), "0 4 * * *"),
 		// The schedule of a job that was given none, and no schedule at all.
@@ -155,7 +179,7 @@ func Test_readJobs_CountsByKindAndBySchedule(t *testing.T) {
 		jobOf(t, jobOne, generation),
 		scheduled(jobOf(t, jobOne, byModel), "0 5 * * *"),
 		detection,
-	})
+	)
 
 	require.Equal(t, []telemetry.JobKindCount{
 		{Kind: "ai_generate", Scheduled: true, Count: 1},
@@ -167,7 +191,7 @@ func Test_readJobs_CountsByKindAndBySchedule(t *testing.T) {
 }
 
 func Test_readJobs_SumsTheTablesAndTheColumnsOfEveryJob(t *testing.T) {
-	read := readJobs(t.Context(), []jobRow{
+	read := counted(t.Context(), t,
 		jobOf(t, jobOne, postgresFrom(connectionOne),
 			passthrough(t, "s", "a", "c1"), passthrough(t, "s", "a", "c2"), passthrough(t, "s", "b", "c1"),
 			// The same table name in another schema is another table.
@@ -175,26 +199,26 @@ func Test_readJobs_SumsTheTablesAndTheColumnsOfEveryJob(t *testing.T) {
 		),
 		// A table two jobs map is counted for each: nothing says they read the same database.
 		jobOf(t, jobTwo, postgresFrom(connectionTwo), passthrough(t, "s", "a", "c1")),
-	})
+	)
 
 	require.Equal(t, 4, read.jobs.Tables)
 	require.Equal(t, 5, read.jobs.Columns)
 }
 
 func Test_readJobs_CountsTheJobsWithAWhereClause(t *testing.T) {
-	read := readJobs(t.Context(), []jobRow{
+	read := counted(t.Context(), t,
 		jobOf(t, jobOne, postgresFrom(connectionOne, "", leak+" = 1")),
 		// A clause of spaces subsets nothing, as the license gate has it.
 		jobOf(t, jobTwo, postgresFrom(connectionOne, "  ")),
 		jobOf(t, jobThree, postgresFrom(connectionOne)),
-	})
+	)
 
 	require.Equal(t, 1, read.jobs.WithSubset)
 }
 
 func Test_readJobs_CountsTheColumnsOfEachTransformer(t *testing.T) {
 	email := configOf(mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL)
-	read := readJobs(t.Context(), []jobRow{
+	read := counted(t.Context(), t,
 		jobOf(t, jobOne, postgresFrom(connectionOne),
 			mapping(t, "s", "t", "a", email),
 			mapping(t, "s", "t", "b", email),
@@ -209,7 +233,7 @@ func Test_readJobs_CountsTheColumnsOfEachTransformer(t *testing.T) {
 			mapping(t, "s", "t", "b", piiText(email)),
 			mapping(t, "s", "t", "c", piiText(userDefined(leak))),
 		),
-	})
+	)
 
 	require.Equal(t, []telemetry.TransformerColumns{
 		{Name: "generate_email", Columns: 4},
@@ -224,9 +248,9 @@ func Test_readJobs_CountsTheColumnsOfEachTransformer(t *testing.T) {
 // column of that transformer.
 func Test_readJobs_CountsAColumnOncePerTransformer(t *testing.T) {
 	piiTwice := piiText(piiText(nil))
-	read := readJobs(t.Context(), []jobRow{
+	read := counted(t.Context(), t,
 		jobOf(t, jobOne, postgresFrom(connectionOne), mapping(t, "s", "t", "a", piiTwice)),
-	})
+	)
 
 	require.Equal(t, []telemetry.TransformerColumns{{Name: "transform_pii_text", Columns: 1}}, read.system)
 }
@@ -241,18 +265,27 @@ func Test_readJobs_LeavesOutAJobThatCannotBeRead(t *testing.T) {
 		"source options that are null":    func(row *jobRow) { row.ConnectionOptions = []byte(`null`) },
 		"source options of no engine":     func(row *jobRow) { row.ConnectionOptions = []byte(`{"` + leak + `": 1}`) },
 		"source options of another shape": func(row *jobRow) { row.ConnectionOptions = []byte(`{"postgresOptions": "` + leak + `"}`) },
-		"a type that cannot be read":      func(row *jobRow) { row.JobtypeConfig = []byte(`{"` + leak + `": 1}`) },
+		// Nulls the models read without asking: each would panic in them.
+		"a schema that is null": func(row *jobRow) {
+			row.ConnectionOptions = []byte(`{"postgresOptions": {"connectionId": "` + leak + `", "schemas": [null]}}`)
+		},
+		"a table that is null": func(row *jobRow) {
+			row.ConnectionOptions = []byte(`{"mysqlOptions": {"schemas": [{"schema": "` + leak + `", "tables": [null]}]}}`)
+		},
+		"a table to generate that is null": func(row *jobRow) {
+			row.ConnectionOptions = []byte(`{"generateOptions": {"schemas": [{"schema": "` + leak + `", "tables": [null]}]}}`)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx, output := logged(t)
 			damaged := jobOf(t, jobTwo, postgresFrom(connectionTwo, "x = 1"), passthrough(t, "s", "t", "a"))
 			damage(&damaged)
 
-			read := readJobs(ctx, []jobRow{
+			read := counted(ctx, t,
 				jobOf(t, jobOne, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
 				damaged,
 				jobOf(t, jobThree, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
-			})
+			)
 
 			require.Equal(t, []telemetry.JobKindCount{{Kind: "sync", Count: 2}}, read.jobs.ByKind)
 			require.Equal(t, 2, read.jobs.Tables)
@@ -260,13 +293,107 @@ func Test_readJobs_LeavesOutAJobThatCannotBeRead(t *testing.T) {
 			require.Zero(t, read.jobs.WithSubset)
 			require.Equal(t, map[string]string{jobOne: connectionOne, jobThree: connectionOne}, read.sourceOfJob)
 			require.Equal(t, map[string]bool{connectionOne: true}, read.sourceConnections)
+			require.Equal(t, []pgtype.UUID{uuidOf(t, jobTwo)}, read.unread)
 
 			// The job is named by its id, and nothing of what it holds is written.
 			require.Contains(t, output.String(), jobTwo)
 			require.Contains(t, output.String(), `"level":"WARN"`)
-			require.NotContains(t, output.String(), leak)
+			requireNoLeak(t, output.String())
 		})
 	}
+}
+
+// A job whose type cannot be read is a synchronization, as the license counts it: it is not
+// left out for that.
+func Test_readJobs_CountsAJobWhoseTypeCannotBeReadAsASynchronization(t *testing.T) {
+	for name, jobType := range map[string][]byte{
+		"a field the type does not have": []byte(`{"` + leak + `": 1}`),
+		"not JSON":                       []byte(`{"` + leak),
+		"nothing":                        nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx, output := logged(t)
+			row := jobOf(t, jobOne, postgresFrom(connectionOne, "x = 1"), passthrough(t, "s", "t", "a"))
+			row.JobtypeConfig = jobType
+
+			read := counted(ctx, t, row)
+
+			require.Equal(t, []telemetry.JobKindCount{{Kind: "sync", Count: 1}}, read.jobs.ByKind)
+			require.Equal(t, 1, read.jobs.Columns)
+			require.Equal(t, 1, read.jobs.WithSubset)
+			require.Empty(t, read.unread)
+			require.Empty(t, output.String())
+		})
+	}
+}
+
+// A job whose reading panics, or whose features cannot be told, is left out like any other, and
+// what the panic or the error said is not written.
+func Test_readJobs_LeavesOutAJobWhoseReadingPanicsOrFails(t *testing.T) {
+	for name, features := range map[string]jobFeatures{
+		"a panic": func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
+			if job.GetId() == jobTwo {
+				panic("cannot read " + leak)
+			}
+			return definitionOnly(ctx, job)
+		},
+		"an error": func(ctx context.Context, job *mgmtv1alpha1.Job) ([]license.Feature, error) {
+			if job.GetId() == jobTwo {
+				return nil, errors.New("cannot read " + leak)
+			}
+			return definitionOnly(ctx, job)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx, output := logged(t)
+
+			read, err := readJobs(ctx, []jobRow{
+				jobOf(t, jobOne, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
+				scheduled(jobOf(t, jobTwo, postgresFrom(connectionTwo, "x = 1"), passthrough(t, "s", "t", "a")), "0 3 * * *"),
+				jobOf(t, jobThree, postgresFrom(connectionOne), passthrough(t, "s", "t", "a")),
+			}, features)
+
+			require.NoError(t, err)
+			require.Equal(t, []telemetry.JobKindCount{{Kind: "sync", Count: 2}}, read.jobs.ByKind)
+			require.Equal(t, 2, read.jobs.Columns)
+			require.Empty(t, read.features)
+			require.Equal(t, map[string]bool{connectionOne: true}, read.sourceConnections)
+			require.Equal(t, []pgtype.UUID{uuidOf(t, jobTwo)}, read.unread)
+			require.Contains(t, output.String(), jobTwo)
+			requireNoLeak(t, output.String())
+		})
+	}
+}
+
+// A reading the context ended is not a job that cannot be read: nothing is reported.
+func Test_readJobs_FailsWhenTheContextIsDone(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	_, err := readJobs(ctx, []jobRow{jobOf(t, jobOne, postgresFrom(connectionOne))},
+		func(ctx context.Context, _ *mgmtv1alpha1.Job) ([]license.Feature, error) {
+			cancel()
+			return nil, ctx.Err()
+		})
+
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func Test_readJobs_TellsTheFeaturesTheJobsUse(t *testing.T) {
+	detection := jobOf(t, jobThree, postgresFrom(connectionOne))
+	detection.JobtypeConfig = piiDetect(t)
+
+	read := counted(t.Context(), t,
+		scheduled(jobOf(t, jobOne, postgresFrom(connectionOne, "x = 1")), "0 3 * * *"),
+		// The schedule of a job that was given none is no schedule.
+		scheduled(jobOf(t, jobTwo, postgresFrom(connectionOne), mapping(t, "s", "t", "a", userDefined(jobOne))), job_util.UnscheduledCron),
+		detection,
+	)
+
+	require.Equal(t, map[license.Feature]bool{
+		license.FeatureScheduling:         true,
+		license.FeatureSubsetting:         true,
+		license.FeatureCustomTransformers: true,
+		license.FeaturePiiDetection:       true,
+	}, read.features)
 }
 
 func Test_readJobs_TellsTheConnectionsEachSourceNames(t *testing.T) {
@@ -302,9 +429,10 @@ func Test_readJobs_TellsTheConnectionsEachSourceNames(t *testing.T) {
 		},
 		"a generation by a model": {
 			&pg_models.JobSourceOptions{AiGenerateOptions: &pg_models.AiGenerateSourceOptions{AiConnectionId: connectionTwo}},
-			connectionTwo, []string{connectionTwo},
+			"", []string{connectionTwo},
 		},
-		// The database is the source of the job; the model is a connection its source names too.
+		// The database is the source of the job; the model is a connection its source names too,
+		// and never the source the runs are counted under.
 		"a generation by a model that reads the shape of a database": {
 			&pg_models.JobSourceOptions{AiGenerateOptions: &pg_models.AiGenerateSourceOptions{
 				AiConnectionId: connectionTwo, FkSourceConnectionId: &foreignKeys,
@@ -313,7 +441,7 @@ func Test_readJobs_TellsTheConnectionsEachSourceNames(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			read := readJobs(t.Context(), []jobRow{jobOf(t, jobOne, tc.options)})
+			read := counted(t.Context(), t, jobOf(t, jobOne, tc.options))
 
 			wantSource := map[string]string{}
 			if tc.source != "" {
@@ -351,7 +479,7 @@ func mysqlConnection() *pg_models.ConnectionConfig {
 func Test_connectionTypes_NamesEachTypeAndLeavesOutWhatCannotBeRead(t *testing.T) {
 	ctx, output := logged(t)
 
-	types := connectionTypes(ctx, []connectionRow{
+	types, unread := connectionTypes(ctx, []connectionRow{
 		connectionOf(t, connectionOne, postgresConnection()),
 		connectionOf(t, connectionTwo, mysqlConnection()),
 		// A type the report has no name for.
@@ -364,9 +492,10 @@ func Test_connectionTypes_NamesEachTypeAndLeavesOutWhatCannotBeRead(t *testing.T
 	require.Equal(t, map[string]string{
 		connectionOne: "postgres", connectionTwo: "mysql", connectionThree: "other",
 	}, types)
+	require.EqualValues(t, 1, unread)
 	require.Contains(t, output.String(), connectionFour)
 	require.Contains(t, output.String(), `"level":"WARN"`)
-	require.NotContains(t, output.String(), leak)
+	requireNoLeak(t, output.String())
 }
 
 func Test_countConnections_CountsByTypeAndRole(t *testing.T) {
@@ -387,6 +516,21 @@ func Test_countConnections_CountsByTypeAndRole(t *testing.T) {
 		{Type: "postgres", Role: "destination", Count: 1},
 		{Type: "postgres", Role: "source", Count: 2},
 	}, counts)
+}
+
+func Test_destinationsOf_LeavesOutWhatAJobThatIsNotReadWritesTo(t *testing.T) {
+	rows := []db_queries.ListJobDestinationsOfInstanceRow{
+		{JobID: uuidOf(t, jobOne), ConnectionID: uuidOf(t, connectionOne)},
+		{JobID: uuidOf(t, jobTwo), ConnectionID: uuidOf(t, connectionTwo)},
+		// Written to by a job that is read and by one that is not: it is a destination.
+		{JobID: uuidOf(t, jobTwo), ConnectionID: uuidOf(t, connectionThree)},
+		{JobID: uuidOf(t, jobThree), ConnectionID: uuidOf(t, connectionThree)},
+	}
+
+	require.Equal(t,
+		map[string]bool{connectionOne: true, connectionThree: true},
+		destinationsOf(rows, []pgtype.UUID{uuidOf(t, jobTwo)}),
+	)
 }
 
 func Test_sourceTypes_LeavesOutAJobWhoseConnectionIsGone(t *testing.T) {
