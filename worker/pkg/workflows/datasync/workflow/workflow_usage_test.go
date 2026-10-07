@@ -138,6 +138,41 @@ func Test_Workflow_KeepsWhatFinishedTablesCountedWhenAnotherFails(t *testing.T) 
 	require.Equal(t, workflow_shared.RunTotals{RowsRead: 35, RowsDiscarded: 1}, *totals)
 }
 
+// A table counts once among those not counted, whatever passes it went through, and only
+// when it finished.
+func Test_Workflow_CountsTheTablesItCouldNotCount(t *testing.T) {
+	results := map[string]*tablesync_workflow.TableSyncResponse{
+		"public.users":        {RowsRead: 35},
+		"public.accounts":     {Uncounted: true},
+		"public.orders":       {Uncounted: true},
+		"public.orders.again": {Uncounted: true},
+	}
+	secondPass := usageTestConfig("orders")
+	secondPass.Name = "public.orders.again"
+	totals, err := runUsageWorkflow(t,
+		[]*benthosbuilder.BenthosConfigResponse{
+			usageTestConfig("users"), usageTestConfig("accounts"), usageTestConfig("orders"), secondPass,
+		},
+		func(req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			return results[req.Id], nil
+		})
+	require.NoError(t, err)
+	require.Equal(t, workflow_shared.RunTotals{RowsRead: 35, TablesUncounted: 2}, *totals)
+}
+
+func Test_Workflow_ATableThatFailsIsNotAmongThoseNotCounted(t *testing.T) {
+	totals, err := runUsageWorkflow(t,
+		[]*benthosbuilder.BenthosConfigResponse{usageTestConfig("users"), usageTestConfig("foo", "users")},
+		func(req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			if req.TableName == "foo" {
+				return &tablesync_workflow.TableSyncResponse{Uncounted: true}, errors.New("TestFailure")
+			}
+			return &tablesync_workflow.TableSyncResponse{Uncounted: true}, nil
+		})
+	require.Error(t, err)
+	require.Equal(t, workflow_shared.RunTotals{TablesUncounted: 1}, *totals)
+}
+
 // reportedUsage is what a run told the API of itself.
 type reportedUsage struct {
 	mu      sync.Mutex
@@ -219,6 +254,61 @@ func Test_Workflow_ReportsTheRowsOfARunThatCompletes(t *testing.T) {
 	require.Equal(t, int64(42), ended.RowsRead)
 	require.Equal(t, int64(1), ended.RowsDiscarded)
 	require.Equal(t, int64(2), ended.Retries)
+}
+
+// preflightTellsTheSourceVersion has the pre-flight check of the run answer with a version.
+// It is to be called before the other activities of the run are mocked: the first answer
+// registered is the one given.
+func preflightTellsTheSourceVersion(env *testsuite.TestWorkflowEnvironment, major string) {
+	var preflightActivity *preflight_activity.Activity
+	env.OnActivity(preflightActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{SourceVersionMajor: major}, nil).Maybe()
+}
+
+func Test_Workflow_ReportsTheTablesNotCountedAndTheVersionOfItsSource(t *testing.T) {
+	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
+	preflightTellsTheSourceVersion(env, "16")
+	results := map[string]*tablesync_workflow.TableSyncResponse{
+		"users":    {RowsRead: 35},
+		"accounts": {Uncounted: true},
+	}
+	ended, err := reportUsageOfRun(t, env,
+		[]*benthosbuilder.BenthosConfigResponse{usageTestConfig("users"), usageTestConfig("accounts")},
+		func(_ workflow.Context, req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			return results[req.TableName], nil
+		})
+	require.NoError(t, err)
+	require.Equal(t, int64(35), ended.RowsRead)
+	require.Equal(t, int64(1), ended.TablesUncounted)
+	require.Equal(t, "16", ended.SourceVersionMajor)
+}
+
+// A run that fails after its pre-flight check still tells the version it read.
+func Test_Workflow_ReportsTheVersionOfTheSourceOfARunThatFails(t *testing.T) {
+	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
+	preflightTellsTheSourceVersion(env, "8.0")
+	ended, err := reportUsageOfRun(t, env,
+		[]*benthosbuilder.BenthosConfigResponse{usageTestConfig("users")},
+		func(workflow.Context, *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			return nil, errors.New("TestFailure")
+		})
+	require.ErrorContains(t, err, "TestFailure")
+	require.Equal(t, "8.0", ended.SourceVersionMajor)
+	require.Zero(t, ended.TablesUncounted)
+}
+
+// A run whose start was checked before the pre-flight check existed asks no version.
+func Test_Workflow_EarlierPrivilegeChecksTellNoVersion(t *testing.T) {
+	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
+	env.OnGetVersion("run-privilege-check", workflow.DefaultVersion, 3).Return(workflow.Version(2))
+	preflightTellsTheSourceVersion(env, "16")
+	ended, err := reportUsageOfRun(t, env,
+		[]*benthosbuilder.BenthosConfigResponse{usageTestConfig("users")},
+		func(workflow.Context, *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			return &tablesync_workflow.TableSyncResponse{RowsRead: 35}, nil
+		})
+	require.NoError(t, err)
+	require.Empty(t, ended.SourceVersionMajor)
 }
 
 // What a failed run read is at least what its finished tables counted.

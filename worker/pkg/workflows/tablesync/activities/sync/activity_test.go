@@ -2,6 +2,7 @@ package sync_activity
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/mongoprovider"
 	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
 	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 
@@ -211,6 +214,122 @@ output:
 	var resp *SyncTableResponse
 	require.NoError(t, env.GetWorkflowResult(&resp))
 	require.EqualValues(t, 1, resp.Retries)
+}
+
+// Benthos counts no row: a page it ran says so, where a page Athanor answered for does not.
+func Test_Sync_Response_TellsAPageThatWasNotCounted(t *testing.T) {
+	benthosConfig := strings.TrimSpace(`
+input:
+  generate:
+    count: 1
+    interval: ""
+    mapping: 'root = { "id": uuid_v4() }'
+output:
+  label: ""
+  stdout:
+    codec: lines
+`)
+	// An update pass the insert pass already covered: Athanor answers without a database.
+	plan, err := json.Marshal(&tableplan.TablePlan{
+		Id: "test", Schema: "public", Table: "test", Query: "SELECT 1", RunType: runconfigs.RunTypeUpdate,
+	})
+	require.NoError(t, err)
+
+	for name, tt := range map[string]struct {
+		engine    mgmtv1alpha1.JobEngine
+		uncounted bool
+	}{
+		"a page Athanor answered for": {mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR, false},
+		"a page Benthos ran":          {mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			testSuite := &testsuite.WorkflowTestSuite{}
+			testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+			env := testSuite.NewTestActivityEnvironment()
+			accountId := uuid.NewString()
+			jobId := uuid.NewString()
+
+			mux := http.NewServeMux()
+			mux.Handle(mgmtv1alpha1connect.JobServiceGetRunContextProcedure, connect.NewUnaryHandler(
+				mgmtv1alpha1connect.JobServiceGetRunContextProcedure,
+				func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetRunContextRequest]) (*connect.Response[mgmtv1alpha1.GetRunContextResponse], error) {
+					switch r.Msg.GetId().GetExternalId() {
+					case shared.GetBenthosConfigExternalId("test"):
+						return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: []byte(benthosConfig)}), nil
+					case shared.GetConnectionIdsExternalId():
+						return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: []byte(`["source", "destination"]`)}), nil
+					case shared.GetTablePlanExternalId("test"):
+						return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: plan}), nil
+					}
+					return nil, errors.New("unexpected run context")
+				},
+			))
+			mux.Handle(mgmtv1alpha1connect.JobServiceGetJobProcedure, connect.NewUnaryHandler(
+				mgmtv1alpha1connect.JobServiceGetJobProcedure,
+				func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetJobRequest]) (*connect.Response[mgmtv1alpha1.GetJobResponse], error) {
+					return connect.NewResponse(&mgmtv1alpha1.GetJobResponse{Job: &mgmtv1alpha1.Job{
+						Id:        jobId,
+						AccountId: accountId,
+						Source: &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
+							Config: &mgmtv1alpha1.JobSourceOptions_Postgres{
+								Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{ConnectionId: "source"},
+							},
+						}},
+						Destinations:    []*mgmtv1alpha1.JobDestination{{ConnectionId: "destination"}},
+						WorkflowOptions: &mgmtv1alpha1.WorkflowOptions{Engine: tt.engine},
+					}}), nil
+				},
+			))
+			mux.Handle(mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure, connect.NewUnaryHandler(
+				mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
+				func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
+					return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
+						Connection: &mgmtv1alpha1.Connection{
+							Id:        r.Msg.GetId(),
+							AccountId: accountId,
+							ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+								Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{}},
+							},
+						},
+					}), nil
+				},
+			))
+			srv := startHTTPServer(t, mux)
+
+			var meter metric.Meter
+			act := New(
+				mgmtv1alpha1connect.NewConnectionServiceClient(srv.Client(), srv.URL),
+				mgmtv1alpha1connect.NewJobServiceClient(srv.Client(), srv.URL),
+				connectionmanager.NewConnectionManager(
+					sqlprovider.NewProvider(&sqlconnect.SqlOpenConnector{}),
+					connectionmanager.WithCloseOnRelease(),
+				),
+				connectionmanager.NewConnectionManager(mongoprovider.NewProvider(), connectionmanager.WithCloseOnRelease()),
+				meter,
+				benthosstream.NewBenthosStreamManager(),
+				tmprl_mocks.NewClient(t),
+				nil, nil, nil,
+				engineConfigWithoutAccountSettings(t),
+			)
+			env.RegisterActivity(act.SyncTable)
+
+			val, err := env.ExecuteActivity(act.SyncTable, &SyncTableRequest{
+				Id: "test", AccountId: accountId, JobRunId: jobId + "-2026-10-07T09:00:00Z",
+			}, &SyncMetadata{Schema: "public", Table: "test"})
+			require.NoError(t, err)
+			var resp SyncTableResponse
+			require.NoError(t, val.Get(&resp))
+			require.Equal(t, tt.uncounted, resp.Uncounted)
+		})
+	}
+}
+
+// The serialized form of the response is in the histories of the runs: a page that was
+// counted leaves the member out.
+func Test_SyncTableResponse_LeavesOutACountedPage(t *testing.T) {
+	payload, err := json.Marshal(&SyncTableResponse{})
+	require.NoError(t, err)
+	require.JSONEq(t, `{"ContinuationToken": null}`, string(payload))
 }
 
 func Test_Sync_RunContext_WithContinuationToken(t *testing.T) {

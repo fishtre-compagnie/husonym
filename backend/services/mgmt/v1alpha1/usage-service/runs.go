@@ -65,7 +65,8 @@ func (s *Service) RecordRunEnded(
 		// row is created, but a row already there is closed.
 		err = s.store.CloseRun(
 			ctx, req.Msg.GetRunId(), status, req.Msg.GetEndedAt().AsTime(),
-			req.Msg.GetRowsRead(), req.Msg.GetRowsDiscarded(), req.Msg.GetRetries(), 0, "",
+			req.Msg.GetRowsRead(), req.Msg.GetRowsDiscarded(), req.Msg.GetRetries(),
+			req.Msg.GetTablesUncounted(), req.Msg.GetSourceVersionMajor(),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to close the run of a job that is gone: %w", err)
@@ -84,6 +85,9 @@ func (s *Service) RecordRunEnded(
 		RowsRead:      req.Msg.GetRowsRead(),
 		RowsDiscarded: req.Msg.GetRowsDiscarded(),
 		Retries:       req.Msg.GetRetries(),
+
+		TablesUncounted:    req.Msg.GetTablesUncounted(),
+		SourceVersionMajor: req.Msg.GetSourceVersionMajor(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to keep the end of the run: %w", err)

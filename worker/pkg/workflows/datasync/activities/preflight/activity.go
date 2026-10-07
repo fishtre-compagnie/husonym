@@ -118,7 +118,11 @@ type RunPreflightRequest struct {
 	Findings []*preflight.Finding
 }
 
-type RunPreflightResponse struct{}
+type RunPreflightResponse struct {
+	// SourceVersionMajor is the major version of the source of the job, as "16" or "8.0";
+	// empty when it could not be read. Members are only ever added and left out when empty.
+	SourceVersionMajor string `json:",omitempty"`
+}
 
 // RunPreflight completes the report of the run with what the connections tell, keeps it in
 // the run context of the run, and fails on a blocking finding.
@@ -128,7 +132,7 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 	defer stop()
 
 	// The job is read after the run brought it in step with its source.
-	report, findings, err := a.report(ctx, req.JobId, nil, req.Tables, req.Findings, slogger)
+	report, findings, sourceVersionMajor, err := a.report(ctx, req.JobId, nil, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +151,7 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 			"PreflightBlocking", nil)
 	}
 	logger.Debug("pre-flight check passed", "findings", len(findings))
-	return &RunPreflightResponse{}, nil
+	return &RunPreflightResponse{SourceVersionMajor: sourceVersionMajor}, nil
 }
 
 type CheckPreflightRequest struct {
@@ -173,7 +177,7 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 	stop := heartbeat(ctx)
 	defer stop()
 
-	report, _, err := a.report(ctx, req.JobId, req.Mappings, req.Tables, req.Findings, slogger)
+	report, _, _, err := a.report(ctx, req.JobId, req.Mappings, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +186,8 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 
 // report adds to what the plan told what the connections tell: whether the engine can run
 // the job, what each connection lacks for its role, which destination triggers the run
-// takes out of its way.
+// takes out of its way. It gives beside the report the major version of the source, which is
+// no part of it.
 func (a *Activity) report(
 	ctx context.Context,
 	jobID string,
@@ -190,21 +195,21 @@ func (a *Activity) report(
 	tables []*TableColumns,
 	planned []*preflight.Finding,
 	slogger *slog.Logger,
-) (*mgmtv1alpha1.PreflightReport, []*preflight.Finding, error) {
+) (report *mgmtv1alpha1.PreflightReport, findings []*preflight.Finding, sourceVersionMajor string, err error) {
 	job, err := a.job(ctx, jobID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	if mappings != nil {
 		job.Mappings = mappings
 	}
 	usesAthanor := a.athanor.UsesAthanor(job)
-	findings := slices.Clone(planned)
+	findings = slices.Clone(planned)
 
 	if err := a.engineRuns(ctx, job, usesAthanor); err != nil {
 		var unsupported *shared.EngineUnsupportedError
 		if !errors.As(err, &unsupported) {
-			return nil, nil, err
+			return nil, nil, "", err
 		}
 		findings = append(findings, &preflight.Finding{
 			Kind:    mgmtv1alpha1.PreflightFinding_KIND_ENGINE_UNSUPPORTED,
@@ -219,7 +224,7 @@ func (a *Activity) report(
 	defer a.sqlconnmanager.ReleaseSession(session, slogger)
 	found, err := a.connectionFindings(ctx, session, job, tables, usesAthanor, slogger)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	// The run knows its engine: what a connection lacks stops it, as it always did. A
 	// warning is what the API gives when it cannot tell the engine.
@@ -229,7 +234,7 @@ func (a *Activity) report(
 	findings = append(findings, found...)
 	found, err = a.triggerFindings(ctx, session, job, tables, slogger)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	findings = append(findings, found...)
 	preflight.Sort(findings)
@@ -238,7 +243,43 @@ func (a *Activity) report(
 	if usesAthanor {
 		engine = mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR
 	}
-	return preflight.Report(engine, findings), findings, nil
+	return preflight.Report(engine, findings), findings, a.sourceVersionMajor(ctx, session, job, slogger), nil
+}
+
+// sourceConnectionID is the connection a job reads when its source is MySQL or PostgreSQL,
+// and empty otherwise.
+func sourceConnectionID(job *mgmtv1alpha1.Job) string {
+	options := job.GetSource().GetOptions()
+	if id := options.GetMysql().GetConnectionId(); id != "" {
+		return id
+	}
+	return options.GetPostgres().GetConnectionId()
+}
+
+// sourceVersionMajor asks the source of a job its major version, as "16" or "8.0". The run
+// does nothing with it but tell it at its end: whatever keeps it from being read leaves it
+// empty, and stops nothing.
+func (a *Activity) sourceVersionMajor(
+	ctx context.Context,
+	session connectionmanager.SessionInterface,
+	job *mgmtv1alpha1.Job,
+	slogger *slog.Logger,
+) string {
+	sourceID := sourceConnectionID(job)
+	if sourceID == "" {
+		return ""
+	}
+	major := ""
+	_, err := a.check(ctx, session, sourceID, slogger,
+		func(_ string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
+			major = connectionchecks.VersionMajor(ctx, db, dialect)
+			return nil, nil
+		})
+	if err != nil {
+		slogger.Warn("the version of the source was not read", "error", err)
+		return ""
+	}
+	return major
 }
 
 type CheckRunPrivilegesRequest struct {
@@ -312,12 +353,7 @@ func (a *Activity) connectionFindings(
 	}
 	var findings []*preflight.Finding
 
-	sourceOptions := job.GetSource().GetOptions()
-	sourceID := sourceOptions.GetMysql().GetConnectionId()
-	if sourceID == "" {
-		sourceID = sourceOptions.GetPostgres().GetConnectionId()
-	}
-	if sourceID != "" {
+	if sourceID := sourceConnectionID(job); sourceID != "" {
 		found, err := a.check(ctx, session, sourceID, slogger,
 			func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
 				return connectionchecks.Source(ctx, db, dialect, name, tables)
