@@ -341,6 +341,9 @@ func TestSetAccountSettingRefusesAnIssuerOutOfReach(t *testing.T) {
 		t.Run(issuer, func(t *testing.T) {
 			f := newFixture(t, &Config{})
 			f.allowUser(t, true)
+			// The account declares its first provider: the read that the license gate makes.
+			f.querier.On("GetAccountOidcProvider", mock.Anything, mock.Anything, mock.Anything).
+				Once().Return(nil, pgx.ErrNoRows)
 			f.querier.On("CountOtherAccountsDeclaringIssuer", mock.Anything, mock.Anything, mock.Anything).
 				Once().Return(int64(0), nil)
 

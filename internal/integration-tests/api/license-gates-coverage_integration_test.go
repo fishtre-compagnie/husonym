@@ -23,14 +23,13 @@ import (
 const modulePath = "github.com/fishtre-compagnie/husonym/"
 
 // gateProbes is the ground the probes of Test_EveryFeatureHasAGate share: an account for what
-// belongs to a job, a team account for roles and one for identity providers.
+// belongs to a job and a team account for roles.
 type gateProbes struct {
 	s            *IntegrationTestSuite
 	jobs         *gateGround
 	jobId        string
 	accountHooks mgmtv1alpha1connect.AccountHookServiceClient
 	roles        *rolesGround
-	sso          *ssoGround
 	// memberId is a member of the roles account who is not its administrator.
 	memberId string
 }
@@ -153,8 +152,11 @@ func (s *IntegrationTestSuite) Test_EveryFeatureHasAGate() {
 		license.FeatureRbac: {probe: func(p *gateProbes) error {
 			return p.roles.setRole(s, p.memberId, viewer)
 		}},
-		license.FeatureSso: {probe: func(p *gateProbes) error {
-			return p.sso.set(s, oidcSetting(publicIssuer(), "a-client"))
+		license.FeatureSso: {probe: func(*gateProbes) error {
+			// The gate is on the first provider of an account, so each call declares one for
+			// an account that has none: the served call must not open the way to the next.
+			g := s.newSsoGround("every-feature-gate-sso-" + uuid.NewString())
+			return g.set(s, oidcSetting(publicIssuer(), "a-client"))
 		}},
 		license.FeatureApiKeys: {
 			referencePackage: modulePath + "backend/services/mgmt/v1alpha1/api-key-service",
@@ -224,7 +226,6 @@ func (s *IntegrationTestSuite) newGateProbes() *gateProbes {
 	p.roles = s.newRolesGround("every-feature-gate-roles")
 	member := p.roles.member(s, "every-feature-gate-member", mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED)
 	p.memberId = memberIdOf(s, member)
-	p.sso = s.newSsoGround("every-feature-gate-sso")
 	return p
 }
 

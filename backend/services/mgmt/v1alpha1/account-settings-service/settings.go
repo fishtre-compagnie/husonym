@@ -66,7 +66,9 @@ func (s *Service) SetAccountSetting(
 	if err != nil {
 		return nil, err
 	}
-	if err := enforceSsoForProvider(ctx, user, req.Msg.GetAccountId(), req.Msg.GetConfig()); err != nil {
+	if err := s.enforceSsoToDeclareProvider(
+		ctx, user, req.Msg.GetAccountId(), accountUuid, req.Msg.GetConfig(),
+	); err != nil {
 		return nil, err
 	}
 
@@ -98,17 +100,31 @@ func (s *Service) SetAccountSetting(
 	return connect.NewResponse(&mgmtv1alpha1.SetAccountSettingResponse{Setting: setting}), nil
 }
 
-// enforceSsoForProvider asks for the sso feature when the setting declares an identity provider.
-// The consistency key goes through the same RPC and is not part of that feature. Reading the
-// settings, and the sign-in of an account that declared its provider, do not come through here.
-func enforceSsoForProvider(
+// enforceSsoToDeclareProvider asks for the sso feature when the setting declares the identity
+// provider of an account that has none yet. The consistency key goes through the same RPC and
+// is not part of that feature. Reading the settings, and the sign-in of an account that
+// declared its provider, do not come through here.
+//
+// The gate is on declaring a provider, not on keeping one working. This RPC is the only writer
+// of the provider and nothing removes one, so an account that already holds one writes and
+// tries it whatever the license says, in force or not: an identity provider that changes its
+// issuer or its client id would otherwise leave the account with a sign-in nobody can repair.
+func (s *Service) enforceSsoToDeclareProvider(
 	ctx context.Context,
 	user *userdata.User,
 	accountId string,
+	accountUuid pgtype.UUID,
 	config *mgmtv1alpha1.AccountSettingConfig,
 ) error {
 	if _, ok := config.GetConfig().(*mgmtv1alpha1.AccountSettingConfig_OidcProvider); !ok {
 		return nil
+	}
+	_, err := s.db.Q.GetAccountOidcProvider(ctx, s.db.Db, accountUuid)
+	if err == nil {
+		return nil
+	}
+	if !husonymdb.IsNoRows(err) {
+		return fmt.Errorf("unable to get the identity provider of the account: %w", err)
 	}
 	return user.EnforceFeature(ctx, accountId, license.FeatureSso)
 }

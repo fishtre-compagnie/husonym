@@ -141,7 +141,9 @@ When a feature is not included:
 
 The features `rbac`, `sso` and `api_keys` only forbid making changes: roles that are already
 assigned, an identity provider that is already declared and API keys that already exist
-keep working. Likewise `scheduling` is checked when a schedule is set or resumed: a schedule
+keep working. An account that has already declared its identity provider can always replace
+it, for instance when the provider changes its issuer or its client id, whatever the
+license; only declaring the first one needs `sso`. Likewise `scheduling` is checked when a schedule is set or resumed: a schedule
 that already runs keeps running. The logs of a run are not served when `run_logs` is not
 included, while the run, its status and its events stay readable.
 

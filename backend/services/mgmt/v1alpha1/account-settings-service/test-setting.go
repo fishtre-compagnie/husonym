@@ -23,11 +23,13 @@ func (s *Service) TestAccountSetting(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.TestAccountSettingRequest],
 ) (*connect.Response[mgmtv1alpha1.TestAccountSettingResponse], error) {
-	user, _, err := s.enforce(ctx, req.Msg.GetAccountId(), rbac.AccountAction_Edit)
+	user, accountUuid, err := s.enforce(ctx, req.Msg.GetAccountId(), rbac.AccountAction_Edit)
 	if err != nil {
 		return nil, err
 	}
-	if err := enforceSsoForProvider(ctx, user, req.Msg.GetAccountId(), req.Msg.GetConfig()); err != nil {
+	if err := s.enforceSsoToDeclareProvider(
+		ctx, user, req.Msg.GetAccountId(), accountUuid, req.Msg.GetConfig(),
+	); err != nil {
 		return nil, err
 	}
 

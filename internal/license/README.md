@@ -199,7 +199,7 @@ license: a feature is never granted by a license that is not in force.
 | `api_keys` | creating and regenerating an API key | none: existing keys keep authenticating |
 | `mcp` | none: the gate is in the CLI's MCP server | tool calls of the MCP server are refused |
 | `rbac` | giving a member a role other than administrator | none: existing roles keep applying |
-| `sso` | declaring an OIDC provider for an account | none: a declared provider keeps signing in |
+| `sso` | declaring, or trying, the OIDC provider of an account that has none yet | none: a declared provider keeps signing in, and can be replaced and tried whatever the license |
 | `run_logs` | none | the logs of a run are not served |
 
 The semantics of the list in a key (`Key.HasFeature`):
@@ -232,7 +232,13 @@ The semantics of the list in a key (`Key.HasFeature`):
 
 The exception is `rbac`, `sso` and `api_keys`: they only forbid **changes**. Roles already
 assigned, an OIDC provider already declared and API keys that exist keep working, since
-closing them would lock out the people who administer the instance. `run_logs` closes a
+closing them would lock out the people who administer the instance. `sso` goes one step
+further: the gate is on **declaring** a provider, not on keeping one working.
+`SetAccountSetting` is the only writer of the provider and nothing removes one, so an
+account that already holds a provider replaces it and tries it (`TestAccountSetting`)
+whatever the license says, in force or not, feature or not: an identity provider that
+changes its issuer or its client id must not leave an account unable to repair its sign-in.
+Only an account with no provider stored is asked for `sso`. `run_logs` closes a
 read instead: the logs are not served, while the run, its status and its events stay
 readable. Like every feature it goes through `EnforceFeature`, which asks for a license in
 force first, so run logs are no longer served once the license is frozen or absent: this

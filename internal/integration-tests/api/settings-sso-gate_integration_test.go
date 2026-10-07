@@ -45,8 +45,8 @@ func (g *ssoGround) stored(s *IntegrationTestSuite) []*mgmtv1alpha1.AccountSetti
 	return resp.Msg.GetSettings()
 }
 
-// Declaring an identity provider, and trying one, is sso. A license without the feature refuses
-// both and writes nothing; reading what the account holds is served.
+// Declaring the identity provider of an account that has none, and trying one, is sso. A license
+// without the feature refuses both and writes nothing; reading what the account holds is served.
 func (s *IntegrationTestSuite) Test_OidcProviderSetting_IsGatedBySso() {
 	t := s.T()
 	g := s.newSsoGround("sso-gate")
@@ -78,6 +78,61 @@ func (s *IntegrationTestSuite) Test_OidcProviderSetting_IsGatedBySso() {
 		require.NoError(t, g.set(s, oidcSetting(issuer, "a-client")))
 		require.Len(t, g.stored(s), 1)
 	})
+}
+
+// The gate is on declaring a provider, not on keeping one working. This RPC is the only writer
+// of the provider and nothing removes one: an account whose identity provider changes its issuer
+// or its client id has to be able to repair its sign-in, whatever has become of the license.
+func (s *IntegrationTestSuite) Test_OidcProviderSetting_AlreadyDeclaredCanBeRepaired() {
+	t := s.T()
+	g := s.newSsoGround("sso-repair")
+	issuer := publicIssuer()
+	require.NoError(t, g.set(s, oidcSetting(issuer, "a-client")))
+
+	storedClientId := func() string {
+		stored := g.stored(s)
+		require.Len(t, stored, 1)
+		return stored[0].GetConfig().GetOidcProvider().GetClientId()
+	}
+	try := func() error {
+		_, err := g.settings.TestAccountSetting(s.ctx, connect.NewRequest(&mgmtv1alpha1.TestAccountSettingRequest{
+			AccountId: g.accountId,
+			Config:    oidcSetting("not-an-https-url", ""),
+		}))
+		return err
+	}
+
+	t.Run("under a license that does not include the feature", func(t *testing.T) {
+		s.closeFeature(license.FeatureSso)
+		t.Cleanup(s.Mocks.ExpiringLicense.ClearFeatures)
+
+		require.NoError(t, g.set(s, oidcSetting(issuer, "a-second-client")))
+		require.Equal(t, "a-second-client", storedClientId())
+		require.NoError(t, try())
+	})
+
+	t.Run("under a license that is not in force", func(t *testing.T) {
+		s.Mocks.ExpiringLicense.SetValid(false)
+		t.Cleanup(func() { s.Mocks.ExpiringLicense.SetValid(true) })
+
+		require.NoError(t, g.set(s, oidcSetting(issuer, "a-third-client")))
+		require.Equal(t, "a-third-client", storedClientId())
+		require.NoError(t, try())
+	})
+}
+
+// An account that has declared no provider yet is declaring one, which asks for a license in
+// force like any other configuration.
+func (s *IntegrationTestSuite) Test_OidcProviderSetting_FirstDeclarationNeedsALicenseInForce() {
+	t := s.T()
+	g := s.newSsoGround("sso-first-lapsed")
+	s.Mocks.ExpiringLicense.SetValid(false)
+	t.Cleanup(func() { s.Mocks.ExpiringLicense.SetValid(true) })
+
+	err := g.set(s, oidcSetting(publicIssuer(), "a-client"))
+	require.Error(t, err)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.Empty(t, g.stored(s))
 }
 
 // The consistency key is written by the same RPC as the provider, and is not sso: it is tried and
