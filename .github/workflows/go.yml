@@ -6,6 +6,8 @@ on:
       - worker/**.go
       - internal/**.go
       - bench/**.go
+      # Not only the Go files: the SQL of the migrations is embedded in the binary.
+      - controlplane/**
       - go.mod
       - go.sum
       - tools/go.mod
@@ -20,6 +22,7 @@ on:
       - worker/**.go
       - internal/**.go
       - bench/**.go
+      - controlplane/**
       - go.mod
       - go.sum
 
@@ -176,6 +179,27 @@ jobs:
       - name: Run Integration Tests
         run: |
           go test -race -timeout 1800s -coverprofile=integration-coverage.out -covermode=atomic ./internal/integration-tests/...
+        env:
+          INTEGRATION_TESTS_ENABLED: 1
+
+  # The tests of the control plane that need a database return early without the variable: the
+  # unit job does not run them.
+  controlplane-integration-tests:
+    name: Control Plane Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Run Integration Tests
+        run: |
+          go test -race -count=1 -timeout 1800s ./controlplane/... ./backend/internal/usagereport/...
         env:
           INTEGRATION_TESTS_ENABLED: 1
 
