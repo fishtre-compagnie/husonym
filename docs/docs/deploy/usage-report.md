@@ -11,12 +11,12 @@ provides for it, the instance sends that report to Husonym.
 
 ## What it contains
 
-Counts and version numbers that describe the instance: how it is installed and
-configured, what it holds, how its license is used, and the runs of the day.
-Part of it, the diagnostics, can be turned off.
+Counts and version numbers that describe the instance, along with the identifiers
+of the instance and of its license: how it is installed and configured, what it
+holds, how its license is used, and the runs of the day. Part of it, the
+diagnostics, can be turned off.
 
-The report of each day is shown in full on the License page of your instance,
-before it is sent.
+The report of each day is shown in full on the License page of your instance.
 
 ## What it never contains
 
