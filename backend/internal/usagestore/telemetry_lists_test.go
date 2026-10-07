@@ -52,15 +52,21 @@ func Test_TheStoreLists_ListEveryConstantAndEveryValueOfTheTable(t *testing.T) {
 
 	migration, err := os.ReadFile(filepath.Join("..", "..", "sql", "postgresql", "schema", "20261007100000_adds-usage.up.sql"))
 	require.NoError(t, err)
-	for _, m := range checkValues.FindAllStringSubmatch(string(migration), -1) {
+	// A migration written another way would match nothing, and check nothing.
+	constraints := checkValues.FindAllStringSubmatch(string(migration), -1)
+	require.NotEmpty(t, constraints, "no CHECK constraint on job_kind or status was found in the migration")
+	checked := map[string]bool{}
+	for _, m := range constraints {
 		var values []string
 		for _, q := range quoted.FindAllStringSubmatch(m[2], -1) {
 			values = append(values, q[1])
 		}
+		checked[m[1]] = true
 		if m[1] == "job_kind" {
 			require.ElementsMatch(t, values, names(JobKinds()))
 		} else {
 			require.ElementsMatch(t, values, names(Statuses()))
 		}
 	}
+	require.Equal(t, map[string]bool{"job_kind": true, "status": true}, checked)
 }

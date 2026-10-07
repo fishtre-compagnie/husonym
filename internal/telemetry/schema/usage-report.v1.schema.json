@@ -723,7 +723,7 @@
       "additionalProperties": false,
       "properties": {
         "husonym": {
-          "pattern": "^(other|v?[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16}){0,3})?)$",
+          "pattern": "^(other|v?[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}(-[0-9A-Za-z]{1,16}(\\.[0-9A-Za-z]{1,16})?)?)$",
           "type": "string"
         }
       },

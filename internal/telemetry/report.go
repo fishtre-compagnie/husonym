@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// SchemaVersion is the version of the report this package writes. A version only ever gains
-// optional fields.
+// SchemaVersion is the version of the report this package writes. Within a version a closed
+// list may gain members and the document may gain blocks; a field is never removed nor re-typed.
 const SchemaVersion = 1
 
 // Report is the usage report of the instance for one day. Every value in it is a number, a

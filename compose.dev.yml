@@ -94,6 +94,8 @@ services:
 
       - AUTH_ENABLED=false
 
+      - HUSONYM_INSTALL_KIND=compose
+
       # Mot de passe de chiffrement des secrets d'un réglage de compte. De
       # développement uniquement : en production, fournir un secret propre.
       - HUSONYM_SYM_ENCRYPTION_PASSWORD=husonym-dev-only-encryption-password

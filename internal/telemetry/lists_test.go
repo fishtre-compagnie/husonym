@@ -251,12 +251,35 @@ func Test_ListMappings_SendWhatIsUnknownToOther(t *testing.T) {
 	require.Equal(t, "other", LicenseState("lifetime"))
 }
 
+// A release, or a build stamped with a short suffix of two parts at most: a longer tail could
+// be the name of a host.
 func Test_HusonymVersion(t *testing.T) {
 	for raw, want := range map[string]string{
 		"v0.3.0": "v0.3.0", "0.3.0": "0.3.0", "v0.3.0-rc.1": "v0.3.0-rc.1", "v0.0.0-main": "v0.0.0-main",
+		"v1.2.3-0123456789abcdef.0123456789abcdef": "v1.2.3-0123456789abcdef.0123456789abcdef",
 		"main": "other", "feat/usage": "other", "1.2.3-db.prod.customer.example.com": "other", "": "other",
+		"v1.2.3-db01.corp.example.com": "other", "v1.2.3-db01.corp.example": "other",
+		"v1.2.3-0123456789abcdefg": "other", "v1.2.3-rc.": "other", "v1.2.3-rc_1": "other",
 	} {
 		require.Equal(t, want, HusonymVersion(raw), raw)
+	}
+}
+
+// The schema holds the same shape as HusonymVersion: what one refuses, the other does.
+func Test_Schema_TakesTheVersionsHusonymVersionTakes(t *testing.T) {
+	for _, raw := range []string{
+		"v0.3.0", "0.3.0", "v0.3.0-rc.1", "v0.0.0-main", "v1.2.3-0123456789abcdef.0123456789abcdef", "other",
+		"main", "v1.2.3-db01.corp.example.com", "v1.2.3-db01.corp.example", "v1.2.3-0123456789abcdefg", "v1.2.3-rc.",
+	} {
+		report := fullReport()
+		report.Version.Husonym = raw
+		document, err := report.Marshal()
+		require.NoError(t, err)
+		if raw == "other" || HusonymVersion(raw) == raw {
+			require.NoError(t, Validate(document), raw)
+		} else {
+			require.Error(t, Validate(document), raw)
+		}
 	}
 }
 

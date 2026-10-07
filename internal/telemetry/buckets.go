@@ -29,9 +29,10 @@ func SourceMajor(raw string) string {
 }
 
 // versionShape is the version of the software: a release, or a build stamped with a short suffix
-// such as the default v0.0.0-main.
+// such as -rc.1 or the default v0.0.0-main. The suffix is one or two parts of letters and digits,
+// sixteen at most each, joined by a dot: a longer tail could be the name of a host.
 var versionShape = regexp.MustCompile(
-	`^v?\d{1,4}\.\d{1,4}\.\d{1,4}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?$`)
+	`^v?\d{1,4}\.\d{1,4}\.\d{1,4}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16})?)?$`)
 
 // HusonymVersion is the version when it has the shape of a release, other otherwise.
 func HusonymVersion(raw string) string {

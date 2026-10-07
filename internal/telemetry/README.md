@@ -71,8 +71,15 @@ a new one, which every other implementation then has to follow.
 
 ## Evolving the schema
 
-`schema_version` is 1. A version only gains optional fields: nothing is renamed, removed or made
-required, and every addition is announced in the release notes.
+`schema_version` is 1. Within a version:
+
+- a closed list may gain members, and the document may gain blocks;
+- a field is never removed and never changes type.
+
+The schema refuses what it does not know (`additionalProperties: false`, an `enum` per list), so a
+document is validated with the schema of the revision that produced it, or of a later one: an
+earlier schema refuses a member or a block it has not heard of. Every addition is announced in
+the release notes.
 
 The `enum` of the schema are generated from the lists of this package (transformer names, gates,
 features, roles, ...), so they are kept in one place. When a list grows (a new transformer in the
