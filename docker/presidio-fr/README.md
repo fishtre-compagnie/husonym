@@ -17,9 +17,12 @@ françaises réelles :
   passe Luhn par hasard ;
 - villes françaises reconnues sur 12 valeurs sur 24.
 
-Mesuré au banc `scripts/testdata/bench-presidio.py`, le passage au catalogue
-français fait progresser le F1 de **0,72 à 0,80** (rappel 71 % → 77 %,
-précision 73 % → 83 %) et supprime le seul faux positif.
+Mesuré au banc `scripts/testdata/bench-presidio.py` avec le moteur français
+précédent (spaCy pour les personnes, avant CamemBERT), le passage au catalogue
+français faisait progresser le F1 de **0,72 à 0,80** (rappel 71 % → 77 %,
+précision 73 % → 83 %) et supprimait le seul faux positif. Ces chiffres n'ont
+pas été refaits avec CamemBERT ; la mesure faite sur cette image est plus bas
+(« Reconnaissance mesurée sur des textes métier »).
 
 ## Contenu
 
@@ -32,6 +35,7 @@ précision 73 % → 83 %) et supprime le seul faux positif.
 | `mapped_ner_recognizer.py` | le reconnaisseur des personnes en français (sous-classe de celui de Presidio) |
 | `analyzer_app.py` | point d'entrée du serveur : importe le reconnaisseur, puis lance l'application de Presidio |
 | `recognizer_check.py` | contrôles du reconnaisseur sans PyTorch ni modèle, exécutés à la construction |
+| `server_check.py` | contrôle du serveur avec le vrai modèle, exécuté à la construction : une phrase française, une personne rendue par le reconnaisseur de l'image |
 
 **Les trois fichiers de configuration sont requis ensemble.** Le moteur refuse
 de démarrer si ses langues ne correspondent pas exactement à celles du registre
@@ -50,7 +54,14 @@ langues : `CREDIT_CARD`, `CRYPTO`, `DATE_TIME`, `EMAIL_ADDRESS`, `FR_NIR`,
 spaCy reste le moteur NLP des deux langues. En anglais rien ne change : les
 personnes viennent du `SpacyRecognizer`. En français :
 
-- le `SpacyRecognizer` ne rend plus que `LOCATION`, `DATE_TIME` et `NRP` ;
+- le `SpacyRecognizer` ne rend que `LOCATION` : `fr_core_news_md` n'a que les
+  étiquettes `LOC`, `MISC`, `ORG` et `PER`, et `PERSON` ne lui est plus demandé.
+  `DATE_TIME` et `NRP` restent dans sa déclaration (`recognizers.yaml`) parce
+  que la liste de `/supportedentities` en est déduite, mais spaCy ne les rend
+  pas en français, et c'était déjà le cas avant CamemBERT : une date en
+  chiffres (« 03/03/1984 ») vient du `DateRecognizer`, qui travaille par
+  motifs ; une date écrite en lettres (« née le 3 mars 1984 ») n'est pas
+  désignée ; `NRP` est déclaré et n'est jamais rendu ;
 - les personnes viennent de `MappedLabelsNerRecognizer`, qui interroge le modèle
   [`Jean-Baptiste/camembert-ner`](https://huggingface.co/Jean-Baptiste/camembert-ner)
   embarqué dans l'image (`/app/models/camembert-ner`), avec l'agrégation
@@ -167,25 +178,62 @@ Le service est déclaré dans `compose.dev.yml` :
 docker compose -f compose.dev.yml up -d --build presidio-analyzer
 ```
 
-`--build` compte : sans lui, `docker compose up` ne construit l'image que si
-elle n'existe pas. Une image locale construite avant l'arrivée de CamemBERT, ou
-avant une modification de ce dossier, serait relancée telle quelle — sans la
-configuration, qui n'est plus montée.
+Le service porte `pull_policy: build` : `docker compose up` construit l'image à
+chaque lancement, avec ou sans `--build` (les couches inchangées viennent du
+cache). Sans cela, une image locale construite quand la configuration était
+encore montée par le fichier compose serait relancée telle quelle, sans
+configuration française. **Le symptôme** : le conteneur démarre, `/health`
+répond, et chaque appel en français reçoit une erreur 500 « No matching
+recognizers were found ». Le même symptôme se voit avec un fichier compose qui
+n'a pas `pull_policy: build`, ou avec une image lancée par `docker run` sans
+avoir été reconstruite : reconstruire l'image le fait disparaître.
 
 La langue par défaut du backend doit suivre : `PRESIDIO_DEFAULT_LANGUAGE=fr`.
 
-**La construction a besoin du réseau** : elle télécharge le modèle spaCy
-(github.com), PyTorch (download.pytorch.org), transformers (PyPI) et le modèle
-CamemBERT (huggingface.co). Elle vérifie ensuite, réseau interdit, que le modèle
-embarqué se charge et reconnaît une personne.
+**La construction a besoin du réseau.** Au-delà du registre de l'image de base,
+les hôtes observés à une construction :
+
+| Ce qui est téléchargé | Hôtes |
+|---|---|
+| modèle spaCy | `github.com`, qui redirige vers `release-assets.githubusercontent.com` |
+| PyTorch | `download.pytorch.org` (index), `download-r2.pytorch.org` (fichiers) |
+| transformers et les autres paquets | PyPI : `pypi.org` (index), `files.pythonhosted.org` (fichiers) |
+| modèle CamemBERT | `huggingface.co`, et pour les poids les hôtes de fichiers de Hugging Face sous `hf.co` : `cas-server.xethub.hf.co` avec le client `hf_xet` que la construction installe, `us.aws.cdn.hf.co` par la redirection de `huggingface.co` sans lui |
+
+Les hôtes de fichiers sont ceux d'un jour donné : ils peuvent changer sans que
+ce dossier change.
+
+La construction contrôle ensuite ce qu'elle a téléchargé et assemblé :
+
+- les poids (`model.safetensors`) sont comparés à leur empreinte SHA-256
+  (`ARG CAMEMBERT_WEIGHTS_SHA256`), celle que Hugging Face publie pour ce
+  fichier à la révision épinglée ; s'ils diffèrent, la construction s'arrête ;
+- réseau interdit, le modèle embarqué se charge avec transformers et reconnaît
+  une personne ;
+- `recognizer_check.py` contrôle le reconnaisseur sans le modèle ;
+- `server_check.py` crée l'application comme gunicorn la crée
+  (`analyzer_app.create_app()` : le registre, les trois fichiers de
+  configuration, le vrai modèle), sous l'utilisateur de l'image et réseau
+  interdit, lui envoie une phrase française et exige une trouvaille `PERSON`
+  du `MappedLabelsNerRecognizer`, d'un score entre 0,8 et 1, sans type d'entité
+  hors des seize déclarés. Un nom de Presidio ou de transformers qui a changé
+  arrête la construction ici.
 
 **En fonctionnement l'image ne joint jamais le réseau** : `HF_HUB_OFFLINE=1` et
 `TRANSFORMERS_OFFLINE=1` y sont fixés, et le modèle est chargé depuis un chemin
 local. Un conteneur lancé avec `--network none` répond normalement.
 
 Le modèle est chargé au démarrage : `/health` ne répond qu'une fois l'image prête
-à analyser. L'image tourne sous l'utilisateur non privilégié de l'image de base
-(`presidio`, uid 1001).
+à analyser. Ce délai dépend du CPU alloué — observé, une fois par cas : 8 à
+10 s sans quota, 12 s et 24 s (deux observations) avec `--cpus 1`, 36 s avec
+`--cpus 0.5`. Le contrôle de santé hérité de l'image de base (un essai toutes
+les 30 s, 3 s d'attente, 30 s de période de démarrage, 3 essais) laisse le
+conteneur « starting » pendant ce délai ; un contrôle plus strict
+(`healthcheck` de compose, sondes de Kubernetes) doit laisser au moins ce délai
+avant de déclarer le conteneur en échec. Le même délai
+s'ajoute à la première requête servie par un worker que gunicorn vient de
+remplacer (voir `WORKER_TIMEOUT`, plus bas). L'image tourne sous l'utilisateur
+non privilégié de l'image de base (`presidio`, uid 1001).
 
 **La commande de démarrage porte `--no-control-socket`.** gunicorn 25.1.0, celui
 de l'image de base, ouvre un socket de contrôle dans un thread juste avant de
@@ -218,6 +266,7 @@ Ce que le `Dockerfile` installe nommément y est fixé :
 | transformers | `5.19.0` | `ARG TRANSFORMERS_VERSION` |
 | sentencepiece, protobuf | `0.2.2`, `7.36.2` | `ARG SENTENCEPIECE_VERSION`, `ARG PROTOBUF_VERSION` |
 | Modèle CamemBERT | `Jean-Baptiste/camembert-ner`, commit `ef35fe7767c1dad71f5c853838cdd80d0b3441ed`, poids au seul format safetensors | `ARG CAMEMBERT_REVISION` |
+| Poids du modèle | SHA-256 de `model.safetensors`, `decc811b…81c9`, vérifié à la construction | `ARG CAMEMBERT_WEIGHTS_SHA256` |
 
 **Ce qui ne l'est pas** : les dépendances que ces paquets entraînent
 (`huggingface_hub`, `hf_xet`, `tokenizers`, `safetensors`, `fsspec`, `networkx`,
@@ -235,7 +284,9 @@ Pour faire évoluer une version :
   version de Presidio : les relire à chaque montée ;
 - **PyTorch, transformers, modèle** : changer l'`ARG`. La construction échoue si
   le tokenizer rapide n'est plus disponible ou si la fenêtre du modèle n'est plus
-  de 512 tokens ;
+  de 512 tokens. Une autre révision du modèle demande aussi l'empreinte de ses
+  poids (`ARG CAMEMBERT_WEIGHTS_SHA256`) : celle que la page du fichier
+  `model.safetensors` affiche sur huggingface.co pour cette révision ;
 - dans tous les cas, relancer les tests de l'image (ci-dessous).
 
 ## Réglages
@@ -248,23 +299,71 @@ Pour faire évoluer une version :
   gunicorn. Chaque processus charge ses propres modèles et son propre pool de
   threads : la mémoire ci-dessous se compte par processus, et
   `WORKERS × OMP_NUM_THREADS` ne devrait pas dépasser les CPU alloués.
+- **`WORKER_TIMEOUT`** (120 par défaut, propre à cette image) : durée, en
+  secondes, au bout de laquelle gunicorn tue un worker qui n'a pas fini sa
+  requête ; c'est son option `--timeout`, qui vaut 30 sans ce réglage. Un worker
+  tué répond par une erreur 500 (une page HTML, pas du JSON), le journal porte
+  `[CRITICAL] WORKER TIMEOUT`, et son remplaçant recharge les modèles : observé,
+  la requête courte suivante a attendu 13 s. La valeur par défaut est au-dessus
+  des 60 s qu'attend le client de Husonym (`backend/pkg/presidio`) : c'est la
+  limite du client qu'un appelant rencontre, pas celle du worker. Avec un autre
+  client, régler `WORKER_TIMEOUT` au-dessus de sa limite. Le worker de gunicorn
+  ne traite qu'une requête à la fois et ne sait pas que l'appelant a renoncé :
+  il finit le texte abandonné, ou est tué à `WORKER_TIMEOUT`, et les requêtes
+  suivantes attendent derrière lui.
 
 ## Coûts mesurés
 
-Une observation par cas, sur un hôte à 16 cœurs, pour un texte français de
-2 000 caractères (un seul `POST /analyze`, après une première requête courte) :
+Une observation par chiffre, sur un hôte à 16 cœurs : un seul `POST /analyze` en
+français après une première requête courte, `OMP_NUM_THREADS=2` sauf mention.
+Deux chiffres dans une case sont deux observations faites à des moments
+différents. Ce ne sont pas des garanties : le temps dépend de la machine.
 
 | | Cette image | Avant CamemBERT |
 |---|---|---|
 | Taille de l'image, décompressée | 3,9 Go | 1,69 Go |
 | Taille de l'image, compressée | 1,31 Go | 614 Mo |
-| Mémoire après démarrage | 1,31 Gio | 1,12 Gio |
-| Démarrage jusqu'à `/health` | 8 à 10 s | 6,5 s |
-| 2 000 caractères, sans quota | 0,56 s | 0,07 s |
-| 2 000 caractères, `--cpus 2` | 0,53 s | — |
-| 2 000 caractères, `--cpus 2` et `OMP_NUM_THREADS` non fixé | 1,66 s | — |
+| Mémoire après démarrage | 1,31 à 1,33 Gio | 1,12 Gio |
+| Démarrage jusqu'à `/health`, sans quota | 8 à 10 s | 6,5 s |
+| Démarrage jusqu'à `/health`, `--cpus 1` | 12 s, 24 s | — |
+| Démarrage jusqu'à `/health`, `--cpus 0.5` | 36 s | — |
 
-Un texte de 5 000 caractères sans aucun blanc prend environ 3 s sans quota.
+**Temps d'analyse d'un texte.** Il croît avec la longueur du texte, et dépend de
+deux choses : le CPU alloué, et la part de blancs du texte. Un texte pauvre en
+blancs (JSON compact, liste de références, journal sans espaces) a coûté ici
+d'une fois et demie à deux fois et demie ce que coûte une prose de même
+longueur.
+
+| Texte | CPU | Temps | Par 1 000 caractères |
+|---|---|---|---|
+| prose, 2 000 caractères | sans quota | 0,56 s, 0,63 s | 0,3 s |
+| prose, 20 000 caractères | sans quota | 5,4 s, 6,6 s | 0,3 s |
+| JSON compact, 5 000 caractères | sans quota | 3,7 s, 4,1 s | 0,7 à 0,8 s |
+| JSON compact, 50 000 caractères | sans quota | pas de réponse après 30 s | plus de 0,6 s |
+| prose, 2 000 caractères | `--cpus 2` | 0,53 s | 0,3 s |
+| prose, 2 000 caractères | `--cpus 2`, `OMP_NUM_THREADS` non fixé | 1,66 s | 0,8 s |
+| prose, 2 000 caractères | `--cpus 1` | 1,8 s, 2,1 s | 0,9 à 1,1 s |
+| prose, 10 000 caractères | `--cpus 1` | 11,9 s | 1,2 s |
+| JSON compact, 5 000 caractères | `--cpus 1` | 8,9 s | 1,8 s |
+| prose, 2 000 caractères | `--cpus 0.5` | 4,4 s | 2,2 s |
+
+Le texte de 50 000 caractères a été envoyé quand gunicorn gardait sa limite de
+30 s : le worker a été tué à 30,4 s. C'est ce cas qui a donné `WORKER_TIMEOUT`.
+
+**Par rapport à l'image d'avant CamemBERT.** Le seul chiffre commun aux deux
+images est celui d'une prose de 2 000 caractères sans quota : 0,56 s contre
+0,07 s, soit huit fois plus. Il ne vaut que pour des valeurs courtes : un texte
+long ou pauvre en blancs est 20 à 50 fois plus lent qu'avec le moteur précédent.
+
+**Un texte dont l'analyse dépasse la limite du client échoue.** Le client de
+Husonym attend 60 s. Passé ce délai, la valeur échoue : le transformer
+`Transform PII Text` arrête le run sur elle, et le scan de contenu signale la
+colonne comme non analysée, ainsi que celles qu'il lui restait à lire. Ordres de grandeur déduits des débits ci-dessus, non mesurés :
+60 s correspondent à environ 200 000 caractères de prose sans quota, 80 000
+caractères de JSON compact sans quota, 50 000 caractères de prose à un CPU,
+30 000 caractères de JSON compact à un CPU, 27 000 caractères de prose à un
+demi-CPU. Des requêtes simultanées se partagent le même CPU et attendent l'une
+derrière l'autre : ces longueurs sont des plafonds, pas des marges.
 
 ## Reconnaissance mesurée sur des textes métier
 
@@ -288,8 +387,8 @@ textes. Les jeux comptent 32 noms dans chaque langue.
 
 En français, les 31 passages justes ont exactement les bornes du nom annoté. Sur
 les mêmes valeurs et le même seuil, l'image d'avant CamemBERT désignait 32
-valeurs des colonnes sans personne (mesure par valeur faite lors de la mise au
-point, non rejouable avec ce dépôt). L'anglais n'a pas changé : ses chiffres sont ceux de l'image de base.
+valeurs des colonnes sans personne, et trouvait les 32 noms. L'anglais n'a pas
+changé : ses personnes viennent toujours du modèle spaCy de l'image de base.
 
 **Ce que la mesure a manqué ou désigné à tort, à lire comme des limites :**
 
@@ -304,8 +403,9 @@ point, non rejouable avec ce dépôt). L'anglais n'a pas changé : ses chiffres 
   « Draper » après « Mr ») ; 18 passages à tort : noms de sociétés, un nom
   commun en début de phrase, numéros de commande (« SO-362398 »), un mot d'état
   (« Voicemail ») ;
-- `LOCATION` vient toujours de spaCy en français, comme `DATE_TIME` et `NRP` :
-  CamemBERT n'y change rien. Dans les colonnes françaises sans personne, des
+- `LOCATION` vient toujours de spaCy en français : CamemBERT n'y change rien.
+  spaCy ne rend ni `DATE_TIME` ni `NRP` en français (voir plus haut). Dans les
+  colonnes françaises sans personne, des
   valeurs portent encore des types sensibles autres que `PERSON` (sur 300
   valeurs : 73 `LOCATION`, 30 `PHONE_NUMBER`, 9 `FR_PHONE_NUMBER`, 8
   `FR_SIRET`) ;

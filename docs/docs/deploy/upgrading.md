@@ -68,24 +68,43 @@ The API calls the Presidio analyzer only. `PRESIDIO_ANONYMIZER_URL` is no longer
 ### The analyzer image
 
 If you run the analyzer image of `docker/presidio-fr/`, rebuild it:
-`docker compose -f compose.dev.yml up -d --build presidio-analyzer`. Without `--build`, an
-image built earlier is started as it is. Building needs the network; running does not.
+`docker compose -f compose.dev.yml up -d --build presidio-analyzer`. Building needs the
+network; running does not. The service of `compose.dev.yml` now carries
+`pull_policy: build`, so `up` builds the image every time. With a compose file of your own
+that does not, or with `docker run`, an image built before this version is started as it
+is: it starts, answers on `/health`, and answers every French call with a 500 error,
+"No matching recognizers were found". Rebuilding the image is the fix.
 
 The image recognizes French persons with a language model, so it is larger and slower per
 French text. Measured once on one host, against the image before the change: 3.9 GB
-instead of 1.69 GB, 1.31 GiB of memory after start-up instead of 1.12 GiB, 8 to 10 s
-before `/health` answers instead of 6.5 s, and 0.56 s instead of 0.07 s for a
-2,000-character French text. Each analyzer process loads the model: size `WORKERS` and
+instead of 1.69 GB, 1.31 GiB of memory after start-up instead of 1.12 GiB, and 8 to 10 s
+before `/health` answers instead of 6.5 s without a CPU quota (12 to 24 s on one CPU, 36 s
+on half a CPU). Each analyzer process loads the model: size `WORKERS` and
 `OMP_NUM_THREADS` of the image as its `README.md` says.
+
+The time a French text takes now grows with its length. Observed per 1,000 characters:
+0.3 s for prose and 0.7 to 0.8 s for text with little whitespace, such as compact JSON,
+without a CPU quota; 0.9 to 1.2 s for prose and 1.8 s for compact JSON on one CPU; 2.2 s
+for prose on half a CPU. A 2,000-character prose text took 0.56 s instead of 0.07 s; that
+ratio holds for short values only, and a long text or one with little whitespace is 20 to
+50 times slower than with the previous engine. Husonym waits 60 seconds for the analyzer:
+a text whose analysis takes longer fails the value, where the previous engine answered.
+Check the longest French values of the columns you map to `Transform PII Text` against
+these rates and the CPUs you give the analyzer. The image's worker timeout is now a
+setting, `WORKER_TIMEOUT`, 120 seconds by default.
 
 The configuration is now inside the image. Files that an older compose file mounted over
 it are no longer needed, and would override it: remove those mounts.
 
 French verdicts and rewritten passages change. On the invented business text of the
 image's measure, 1 value of 300 in columns that name no person was designated as a person,
-against 32 before; fewer product and company names are taken for persons. Review the
-verdicts of the PII content scan again, and the output of `Transform PII Text` on French
-text. See [Transform PII Text](/transformers/system#transform-pii-text).
+against 32 before; fewer product and company names are taken for persons. The gain has a
+price: on the same text the previous engine found 32 of the 32 names, among 106 passages
+of which 32 were on a name, and the new one finds 31 of 32. A name can occasionally be
+left as it is where it used to be rewritten; the measured case is a family name in
+capitals placed first, before the given name. Review the verdicts of the PII content scan
+again, and the output of `Transform PII Text` on French text. See
+[Transform PII Text](/transformers/system#transform-pii-text).
 
 ### Microsoft SQL Server destinations
 

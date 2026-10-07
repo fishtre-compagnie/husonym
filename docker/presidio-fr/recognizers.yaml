@@ -52,8 +52,13 @@ recognizers:
   # --- Personnes en français : CamemBERT, et non spaCy ------------------------
   # spaCy reste le moteur NLP des deux langues (tokens, lemmes des mots de contexte).
   # Anglais : rien n'est déclaré, Presidio ajoute son SpacyRecognizer comme avant.
-  # Français : le SpacyRecognizer est déclaré SANS PERSON ; fr_core_news_md donne
-  # toujours LOCATION (dont l'affinage côté Go a besoin), DATE_TIME et NRP.
+  # Français : le SpacyRecognizer est déclaré SANS PERSON. fr_core_news_md n'a que
+  # les étiquettes LOC, MISC, ORG et PER : en français spaCy ne rend donc que
+  # LOCATION (dont l'affinage côté Go a besoin). DATE_TIME et NRP restent dans la
+  # liste parce que /supportedentities en est déduit : NRP n'est déclaré en
+  # français que par cette ligne, et n'y est jamais rendu ; les dates en chiffres
+  # viennent du DateRecognizer (motifs), une date écrite en lettres n'est pas
+  # désignée.
   # Ne pas le désactiver par « enabled: false » : cela le retire aussi de l'anglais.
   - name: SpacyRecognizer
     type: predefined

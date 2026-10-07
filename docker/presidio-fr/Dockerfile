@@ -3,8 +3,15 @@
 # L'image officielle n'embarque que en_core_web_lg : sans modèle français, toute requête
 # avec language=fr est rejetée (« No matching recognizers were found »).
 #
-# La construction a besoin du réseau (PyPI, download.pytorch.org, github.com, huggingface.co) ;
-# l'image, elle, ne le joint jamais : tout ce qu'elle charge est dans ses couches.
+# La construction a besoin du réseau, au-delà du registre de l'image de base :
+#   - PyPI : pypi.org pour l'index, files.pythonhosted.org pour les fichiers ;
+#   - PyTorch : download.pytorch.org pour l'index, download-r2.pytorch.org pour les fichiers ;
+#   - modèle spaCy : github.com, qui redirige vers release-assets.githubusercontent.com ;
+#   - CamemBERT : huggingface.co, et pour les poids les hôtes de fichiers de Hugging Face sous
+#     hf.co (cas-server.xethub.hf.co avec le client hf_xet installé ici ; us.aws.cdn.hf.co
+#     par la redirection de huggingface.co sans lui).
+# Ces hôtes sont ceux observés à une construction ; ceux des fichiers peuvent changer.
+# L'image, elle, ne joint jamais le réseau : tout ce qu'elle charge est dans ses couches.
 #
 # Image de base épinglée par étiquette ET par empreinte (voir le README pour la faire évoluer).
 FROM mcr.microsoft.com/presidio-analyzer:2.2.362@sha256:286e3fa7f3a7426e775e8564fe1870f1ba8f999d3ab8bbb8cc46a44355d9d6e9
@@ -90,6 +97,8 @@ RUN python -B /app/server_check.py
 # --no-control-socket : gunicorn 25.1.0 (celui de l'image de base) ouvre un socket de contrôle
 # dans un thread juste avant de créer son worker par fork. Si le fork tombe pendant que ce thread
 # écrit dans le journal, le worker hérite d'un verrou que personne ne relâchera : il ne démarre
-# jamais et /health ne répond pas (gunicorn #3509, corrigé en 25.2.0). Ce socket ne sert pas ici.
+# jamais et /health ne répond pas. Défaut décrit dans l'issue 3529 de github.com/benoitc/gunicorn
+# et corrigé par sa pull request 3520, dans gunicorn 25.2.0. Ce socket ne sert pas ici.
 # À retirer quand l'image de base embarquera gunicorn 25.2.0 ou plus.
+# --timeout : voir WORKER_TIMEOUT, plus haut.
 CMD ["sh", "-c", "exec poetry run gunicorn --no-control-socket --timeout \"$WORKER_TIMEOUT\" -w \"$WORKERS\" -b \"0.0.0.0:$PORT\" \"analyzer_app:create_app()\""]

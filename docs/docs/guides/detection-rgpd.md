@@ -207,10 +207,13 @@ Deux ajustements maison :
   (voir `docker/presidio-fr/`).
 - **Personnes en français.** L'image reconnaît les personnes avec le modèle
   CamemBERT `Jean-Baptiste/camembert-ner` ; spaCy fournit toujours les lieux
-  (`LOCATION`) et les dates en français. En anglais, rien ne change : spaCy
-  reconnaît aussi les personnes. L'image demande le réseau pour se construire et
-  aucun pour tourner ; elle est plus lourde que l'image officielle (voir son
-  `README.md` pour les poids et les durées mesurés).
+  (`LOCATION`), et rien d'autre en français : une date en chiffres est reconnue
+  par motif, une date écrite en lettres (« née le 3 mars 1984 ») n'est pas
+  désignée par l'IA. En anglais, rien ne change : spaCy reconnaît aussi les
+  personnes. L'image demande le réseau pour se construire et aucun pour tourner ;
+  elle est plus lourde et plus lente que l'image officielle, surtout sur un texte
+  long ou pauvre en espaces (voir son `README.md` pour les poids et les durées
+  mesurés).
 - **Affinage local.** Presidio dit `PERSON` pour un prénom, un nom ou un nom complet
   indifféremment, et `LOCATION` pour une ville comme pour une adresse. Husonym
   tranche ensuite sur la forme des valeurs : plusieurs mots → nom complet ; numéro en
@@ -299,26 +302,32 @@ api:
 ```
 
 :::note Pourquoi `fr` alors que Presidio est meilleur en anglais
-Mesuré **isolément**, le modèle français est moins bon (F1 0,47 contre 0,63). Mesuré
-**dans le pipeline**, il gagne (F1 0,90 contre 0,88). La raison : sur une colonne
-d'adresses, Presidio émet `LOCATION` en français et _rien_ en anglais — et l'affinage
-Husonym sait reclasser ce `LOCATION` en adresse. Un signal mal étiqueté qu'un étage
-aval corrige vaut mieux qu'aucun signal.
+Les personnes ne sont reconnues par CamemBERT qu'en français. Les lieux comptent
+aussi : sur une colonne d'adresses, Presidio émet `LOCATION` en français et _rien_ en
+anglais — et l'affinage Husonym sait reclasser ce `LOCATION` en adresse. Un signal mal
+étiqueté qu'un étage aval corrige vaut mieux qu'aucun signal.
+
+Mesuré avec le moteur français précédent (spaCy pour les personnes, avant
+CamemBERT) : **isolément**, le modèle français était moins bon que l'anglais (F1 0,47
+contre 0,63) ; **dans le pipeline**, il gagnait (F1 0,90 contre 0,88). Ces chiffres
+n'ont pas été refaits avec CamemBERT.
 :::
 
 ## Performances mesurées
 
-Sur un jeu de test de 34 colonnes françaises à vérité terrain connue
-(`scripts/testdata/`) :
+Ces mesures datent du moteur français précédent (spaCy pour les personnes, avant
+CamemBERT) et n'ont pas été refaites depuis. Sur un jeu de test de 34 colonnes
+françaises à vérité terrain connue (`scripts/testdata/`) :
 
 | Configuration                   | Rappel   | Précision | F1       |
 | ------------------------------- | -------- | --------- | -------- |
 | Presidio seul, image officielle | 71 %     | 73 %      | 0,72     |
 | **Pipeline Husonym complet**    | **84 %** | **96 %**  | **0,90** |
 
-**Zéro faux positif** — aucune colonne anodine n'est signalée à tort. C'est le
-chiffre qui compte le plus : un signal qui se déclenche à tort dégrade la confiance
-dans tous les autres.
+**Zéro faux positif** sur cette mesure — aucune colonne anodine n'y était signalée à
+tort. C'est le chiffre qui compte le plus : un signal qui se déclenche à tort dégrade
+la confiance dans tous les autres. Ce que l'image actuelle désigne à tort sur des
+textes métier est mesuré à part (voir « Limites connues »).
 
 Le banc est rejouable :
 
