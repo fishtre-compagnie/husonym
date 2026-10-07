@@ -15,9 +15,9 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"google.golang.org/protobuf/proto"
 )
@@ -75,10 +75,8 @@ func (s *Service) DetectPiiInConnectionData(
 	}
 	// The connection service has answered, so the caller may use the connection. This service
 	// holds no user to ask about the account: it reads the license as the column preview does.
-	if !s.transformers.License.HasFeature(license.FeaturePiiDetection) {
-		return nil, husonymerrors.NewForbidden(
-			fmt.Sprintf("this license does not include %s", license.FeaturePiiDetection),
-		)
+	if err := userdata.FeatureRefusal(s.transformers.License, license.FeaturePiiDetection); err != nil {
+		return nil, err
 	}
 	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connResp.Msg.GetConnection())
 	if err != nil {

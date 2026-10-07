@@ -315,12 +315,24 @@ func Test_DetectPiiInConnectionData_ASingleFilledValue(t *testing.T) {
 // The scan of the content is a feature of the license: a license without it refuses the call
 // once the connection is known, and before the connection is opened or a value is sampled.
 func Test_DetectPiiInConnectionData_NeedsThePiiDetectionFeature(t *testing.T) {
-	for name, eelicense := range map[string]*testutil.FakeEELicense{
-		"a license that includes every other feature": testutil.NewFakeEELicense(
-			testutil.WithIsValid(), testutil.WithFeatures(license.FeaturePiiText, license.FeatureCustomTransformers),
-		),
-		"a license that is not in force": testutil.NewFakeEELicense(),
+	for name, tc := range map[string]struct {
+		eelicense *testutil.FakeEELicense
+		refusal   string
+	}{
+		"a license that includes every other feature": {
+			eelicense: testutil.NewFakeEELicense(
+				testutil.WithIsValid(), testutil.WithFeatures(license.FeaturePiiText, license.FeatureCustomTransformers),
+			),
+			refusal: "this license does not include pii_detection",
+		},
+		// No feature is included then: the refusal says that no license is in force, not that
+		// this one is missing from it.
+		"a license that is not in force": {
+			eelicense: testutil.NewFakeEELicense(),
+			refusal:   "account does not have an active license",
+		},
 	} {
+		eelicense := tc.eelicense
 		t.Run("refused under "+name, func(t *testing.T) {
 			// The builder expects no call: opening the connection would fail the test. So would an
 			// analyzer call, since none is answered.
@@ -343,7 +355,7 @@ func Test_DetectPiiInConnectionData_NeedsThePiiDetectionFeature(t *testing.T) {
 
 			require.Nil(t, resp)
 			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
-			require.ErrorContains(t, err, "this license does not include pii_detection")
+			require.Equal(t, "permission_denied: "+tc.refusal, err.Error())
 			require.Equal(t, presidiotest.Calls{}, fake.Calls())
 		})
 	}

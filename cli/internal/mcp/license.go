@@ -8,6 +8,12 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ErrNoLicenseInForce is what Options.Allowed answers for an instance that has no license in
+// force, none at all or one past its grace period. It is an answer of the API, not a failure to
+// read it: such an instance includes no feature, which is not the same as a license that lacks
+// this one.
+var ErrNoLicenseInForce = errors.New("no license is in force on this instance")
+
 // requiresFeature refuses the tool calls of an instance whose license does not include the
 // mcp feature. Every other method goes through, the initialization and the listing of the
 // tools among them: a client must be able to connect and see the tools to read the refusal.
@@ -22,6 +28,9 @@ func requiresFeature(allowed func(ctx context.Context) (bool, error)) mcp.Middle
 				return next(ctx, method, req)
 			}
 			ok, err := allowed(ctx)
+			if errors.Is(err, ErrNoLicenseInForce) {
+				return toolError(ErrNoLicenseInForce), nil
+			}
 			if err != nil {
 				return toolError(fmt.Errorf("unable to read the license: %w", err)), nil
 			}

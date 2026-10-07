@@ -25,7 +25,7 @@ type Options struct {
 	Values      *rowvalues.Reader
 	Jobs        *jobs.Reader
 	// Allowed says whether the license of the instance includes the mcp feature. It is asked of
-	// each tool call.
+	// each tool call. It answers ErrNoLicenseInForce for an instance without a license in force.
 	Allowed   func(ctx context.Context) (bool, error)
 	AccountId string
 	Version   string

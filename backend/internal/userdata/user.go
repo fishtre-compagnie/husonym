@@ -58,7 +58,7 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 		return err
 	}
 	if !ok {
-		return husonymerrors.NewUnauthorized("account does not have an active license")
+		return husonymerrors.NewUnauthorized(license.NotInForceMessage)
 	}
 	return nil
 }
@@ -70,7 +70,7 @@ func (u *User) EnforceFeature(ctx context.Context, accountId string, f license.F
 		return err
 	}
 	if !u.HasFeature(f) {
-		return husonymerrors.NewForbidden("this license does not include " + string(f))
+		return husonymerrors.NewForbidden(license.NotIncludedMessage(f))
 	}
 	return nil
 }

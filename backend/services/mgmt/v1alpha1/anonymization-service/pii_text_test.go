@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -298,12 +299,23 @@ func Test_AnonymizeSingle_PiiTextRefusalCode(t *testing.T) {
 // AnonymizeMany is refused whole to a license without pii_text, with the code it always had, and
 // the message names the feature.
 func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
-	for name, eelicense := range map[string]*testutil.FakeEELicense{
-		"a license that lacks pii_text":  testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
-		"a license that is not in force": testutil.NewFakeEELicense(),
+	for name, tc := range map[string]struct {
+		eelicense *testutil.FakeEELicense
+		refusal   string
+	}{
+		"a license that lacks pii_text": {
+			eelicense: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
+			refusal:   "this license does not include pii_text",
+		},
+		// No feature is included then: the refusal says that no license is in force, not that
+		// this one is missing from it.
+		"a license that is not in force": {
+			eelicense: testutil.NewFakeEELicense(),
+			refusal:   "account does not have an active license",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			s := service(t, eelicense, presidiotest.New(t), nil)
+			s := service(t, tc.eelicense, presidiotest.New(t), nil)
 
 			resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
 				AccountId: uuid.NewString(),
@@ -311,7 +323,30 @@ func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
 
 			require.Nil(t, resp)
 			require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
-			require.ErrorContains(t, err, "this license does not include pii_text")
+			require.ErrorContains(t, err, tc.refusal)
+			require.Equal(t, 1, strings.Count(err.Error(), "license"), "one cause is told: %v", err)
+		})
+	}
+}
+
+// Under a license that is not in force, AnonymizeSingle answers what every gated call answers
+// then, whichever feature the request would have needed.
+func Test_AnonymizeSingle_WithoutALicenseInForceSaysSo(t *testing.T) {
+	script := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{Code: `return "x";`},
+	}}
+	for name, config := range map[string]*mgmtv1alpha1.TransformerConfig{
+		"a PII text":           piiTextConfig(&mgmtv1alpha1.TransformPiiText{}),
+		"a custom transformer": script,
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+
+			_, err := anonymized(asTheWorker(), s, uuid.NewString(), config, nil)
+
+			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, "account does not have an active license")
+			require.NotContains(t, err.Error(), "does not include")
 		})
 	}
 }

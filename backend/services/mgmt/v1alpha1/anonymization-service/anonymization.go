@@ -33,24 +33,24 @@ const (
 	outputErrorCounterStr = "output_error"
 )
 
-// piiTextNotIncluded is what a call is told when the license does not include PII text.
-var piiTextNotIncluded = license.NotIncludedMessage(license.FeaturePiiText)
-
-// customTransformersNotIncluded is what a call is told when it carries a transformer a person
-// wrote and the license does not include them.
-var customTransformersNotIncluded = license.NotIncludedMessage(license.FeatureCustomTransformers)
-
-// refusesCustomTransformers tells whether the request carries a transformer that the license
-// does not let it run: JavaScript, to transform or to generate, or a user-defined transformer,
-// in a mapping, as a default transformer or among the anonymizers of a PII text. The request
-// executes what it carries, so it is refused whole: a user-defined transformer is not even
-// resolved.
-func (s *Service) refusesCustomTransformers(msg transformerMsgToValidate) bool {
-	if s.license.HasFeature(license.FeatureCustomTransformers) {
-		return false
-	}
+// customTransformersRefusal gives the reason the license does not let the request run a
+// transformer it carries, or nothing: JavaScript, to transform or to generate, or a
+// user-defined transformer, in a mapping, as a default transformer or among the anonymizers of
+// a PII text. The request executes what it carries, so it is refused whole: a user-defined
+// transformer is not even resolved.
+func (s *Service) customTransformersRefusal(msg transformerMsgToValidate) string {
 	for cfg := range getTransformerConfigsToValidate(msg) {
 		if job_util.RunsCustomTransformer(cfg) {
+			return license.FeatureRefusal(s.license, license.FeatureCustomTransformers)
+		}
+	}
+	return ""
+}
+
+// carriesPiiText tells whether a mapping or a default transformer of the request is a PII text.
+func carriesPiiText(msg transformerMsgToValidate) bool {
+	for cfg := range getTransformerConfigsToValidate(msg) {
+		if cfg.GetTransformPiiTextConfig() != nil {
 			return true
 		}
 	}
@@ -74,11 +74,13 @@ func (s *Service) AnonymizeMany(
 			),
 		)
 	}
-	if !s.license.HasFeature(license.FeaturePiiText) {
-		return nil, notImplemented(piiTextNotIncluded)
+	// A license that is not in force is said as such, as every gated call says it: it includes
+	// no feature, and naming one as missing would name the wrong cause.
+	if reason := license.FeatureRefusal(s.license, license.FeaturePiiText); reason != "" {
+		return nil, notImplemented(reason)
 	}
-	if s.refusesCustomTransformers(req.Msg) {
-		return nil, notImplemented(customTransformersNotIncluded)
+	if reason := s.customTransformersRefusal(req.Msg); reason != "" {
+		return nil, notImplemented(reason)
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -224,24 +226,14 @@ func (s *Service) AnonymizeSingle(
 	}
 
 	licensed := s.license.HasFeature(license.FeaturePiiText)
-	if !licensed {
-		for _, mapping := range req.Msg.GetTransformerMappings() {
-			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
-				return nil, husonymerrors.NewForbidden(piiTextNotIncluded)
-			}
-		}
-		defaultTransforms := req.Msg.GetDefaultTransformers()
-		if defaultTransforms.GetBoolean().GetTransformPiiTextConfig() != nil ||
-			defaultTransforms.GetN().GetTransformPiiTextConfig() != nil ||
-			defaultTransforms.GetS().GetTransformPiiTextConfig() != nil {
-			return nil, husonymerrors.NewForbidden(piiTextNotIncluded)
-		}
+	if !licensed && carriesPiiText(req.Msg) {
+		return nil, userdata.FeatureRefusal(s.license, license.FeaturePiiText)
 	}
 	// The worker calls this during a run for a PII text whose anonymizers may be user-defined.
 	// Such a job does not start without custom_transformers (the job gate counts what the
 	// anonymizers of a PII text run), so a licensed run is never refused here.
-	if s.refusesCustomTransformers(req.Msg) {
-		return nil, husonymerrors.NewForbidden(customTransformersNotIncluded)
+	if s.customTransformersRefusal(req.Msg) != "" {
+		return nil, userdata.FeatureRefusal(s.license, license.FeatureCustomTransformers)
 	}
 
 	for cfg := range getTransformerConfigsToValidate(req.Msg) {

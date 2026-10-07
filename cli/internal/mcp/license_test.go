@@ -28,6 +28,20 @@ func Test_ToolCalls_NeedTheMcpFeature(t *testing.T) {
 	require.Equal(t, "this license does not include mcp", callToolError(t, session, "list_connections", nil))
 }
 
+// An instance without a license in force includes no feature at all: the refusal says that,
+// rather than that mcp is missing from a license.
+func Test_ToolCalls_WithoutALicenseInForceSaySo(t *testing.T) {
+	t.Parallel()
+	session := connectAPI(t, licenseAPI(func(context.Context) (bool, error) {
+		return false, ErrNoLicenseInForce
+	}), nil, "")
+
+	message := callToolError(t, session, "list_connections", nil)
+	require.Equal(t, "no license is in force on this instance", message)
+	require.NotContains(t, message, "does not include")
+	require.NotContains(t, message, "unable to read the license")
+}
+
 // A client must be able to connect and discover the tools to see why they are refused: only the
 // tool calls are.
 func Test_ToolCalls_OtherMethodsAreNeverRefused(t *testing.T) {

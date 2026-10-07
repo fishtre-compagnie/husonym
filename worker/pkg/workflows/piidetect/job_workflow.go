@@ -63,7 +63,7 @@ func (w *JobWorkflow) JobPiiDetect(ctx workflow.Context, req *JobPiiDetectReques
 	// Nothing else holds a run that a schedule starts: this workflow does not ask the API
 	// whether the job may run.
 	if !detectionAllowed {
-		return nil, fmt.Errorf("this license does not include %s", license.FeaturePiiDetection)
+		return nil, errors.New(license.NotIncludedMessage(license.FeaturePiiDetection))
 	}
 	logger := log.With(workflow.GetLogger(ctx), "jobId", req.JobId)
 
