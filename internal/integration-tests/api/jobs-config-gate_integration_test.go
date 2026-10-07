@@ -202,6 +202,44 @@ func (s *IntegrationTestSuite) Test_UpdateJobSourceConnection_GatesTheJobAsItWou
 	})
 }
 
+// A hook that is enabled is part of what the job uses: under a license without hooks, the job
+// cannot be changed while it keeps one, and can be again once the hook is turned off, which
+// needs no feature.
+func (s *IntegrationTestSuite) Test_UpdateJobSourceConnection_AnEnabledHookCountsUntilItIsTurnedOff() {
+	t := s.T()
+	ctx := s.ctx
+	g := s.newGateGround("update-closed-hooks")
+	jobId := s.createJobUnderValidLicense(t, g.jobs, g.jobRequest("update-closed-hooks-job")).GetId()
+	hook := s.createSqlJobHook(
+		ctx, t, g.jobs, "update-closed-hooks-hook", jobId, g.source.GetId(), true,
+		&mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing{
+			Timing: &mgmtv1alpha1.JobHookConfig_JobSqlHook_Timing_PreSync{},
+		},
+	)
+	update := func() error {
+		_, err := g.jobs.UpdateJobSourceConnection(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateJobSourceConnectionRequest{
+			Id:       jobId,
+			Source:   g.sourceWhere(nil),
+			Mappings: []*mgmtv1alpha1.JobMapping{generateBoolMapping("name")},
+		}))
+		return err
+	}
+
+	s.closeFeature(license.FeatureJobHooks)
+	requireJobRefusal(t, update(), "job_hooks")
+	require.Equal(t, "passthrough_config", transformerOf(t, s.storedJob(g, jobId), "name"),
+		"a refused change writes nothing")
+
+	off, err := g.jobs.SetJobHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{
+		Id: hook.GetId(), Enabled: false,
+	}))
+	requireNoErrResp(t, off, err)
+	require.False(t, off.Msg.GetHook().GetEnabled())
+
+	require.NoError(t, update())
+	require.Equal(t, "generate_bool_config", transformerOf(t, s.storedJob(g, jobId), "name"))
+}
+
 // Setting transformers from the review is judged on the mappings as they will be, the columns the
 // request does not name included.
 func (s *IntegrationTestSuite) Test_ApplyMappingChanges_GatesTheMappingsAsTheyWouldBe() {

@@ -176,13 +176,14 @@ func (s *Service) ApplyMappingChanges(
 			return err
 		}
 		// The job is judged on the mappings it is about to have, the columns the request leaves
-		// alone included. A refusal ends the transaction before anything is written.
+		// alone included. A refusal ends the transaction before anything is written. The gate
+		// reads through the transaction, which holds the job: it takes no other connection.
 		job.Mappings = mappings
 		candidate, err := dtomaps.ToJobDto(&job, nil)
 		if err != nil {
 			return fmt.Errorf("unable to convert job to dto: %w", err)
 		}
-		if err := s.jobgate.Check(ctx, candidate); err != nil {
+		if err := s.jobgate.CheckIn(ctx, dbtx, candidate); err != nil {
 			return err
 		}
 		if _, err := s.db.Q.UpdateJobMappings(ctx, dbtx, db_queries.UpdateJobMappingsParams{

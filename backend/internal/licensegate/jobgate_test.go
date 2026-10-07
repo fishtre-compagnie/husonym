@@ -252,6 +252,64 @@ func (s *hooksDown) GetActiveJobHooks(context.Context, db_queries.DBTX, pgtype.U
 	return nil, s.fails
 }
 
+// handleRecorder is a store that remembers through which handle each query was made.
+type handleRecorder struct {
+	*gateStore
+	handles []db_queries.DBTX
+}
+
+func (s *handleRecorder) GetActiveJobHooks(ctx context.Context, db db_queries.DBTX, jobID pgtype.UUID) ([]db_queries.HusonymApiJobHook, error) {
+	s.handles = append(s.handles, db)
+	return s.gateStore.GetActiveJobHooks(ctx, db, jobID)
+}
+
+func (s *handleRecorder) GetUserDefinedTransformerById(ctx context.Context, db db_queries.DBTX, id pgtype.UUID) (db_queries.HusonymApiTransformer, error) {
+	s.handles = append(s.handles, db)
+	return s.gateStore.GetUserDefinedTransformerById(ctx, db, id)
+}
+
+// aHandle is a database handle no query is really made through, told from another by its address.
+type aHandle struct{ husonymdb.DBTX }
+
+// A caller inside a transaction gives it to the gate, and every read of the gate goes through it:
+// one through the pool would take a second connection while the transaction holds the first.
+func Test_JobGate_CheckIn_ReadsThroughTheGivenHandle(t *testing.T) {
+	pool, tx := &aHandle{}, &aHandle{}
+	newRecorder := func() (*handleRecorder, *mgmtv1alpha1.Job) {
+		store := &handleRecorder{gateStore: newGateStore()}
+		job := aJob()
+		// Two transformers to look up, and the hooks: three reads.
+		job.Mappings = mappingWith(
+			userDefined(store.addTransformer(t, job.GetAccountId(), piiText())),
+			userDefined(store.addTransformer(t, job.GetAccountId(), passthrough())),
+		)
+		store.addHook(job.GetId(), true)
+		return store, job
+	}
+
+	t.Run("CheckIn reads through the handle it is given", func(t *testing.T) {
+		store, job := newRecorder()
+		gate := NewJobGate(husonymdb.New(pool, store), licenseWith())
+
+		requireRefusal(t, gate.CheckIn(context.Background(), tx, job), "job_hooks, pii_text, custom_transformers")
+		require.Len(t, store.handles, 3)
+		for _, handle := range store.handles {
+			require.Same(t, tx, handle)
+		}
+	})
+
+	t.Run("Check reads through the pool", func(t *testing.T) {
+		store, job := newRecorder()
+		gate := NewJobGate(husonymdb.New(pool, store), licenseWith())
+
+		requireRefusal(t, gate.Check(context.Background(), job), "job_hooks, pii_text, custom_transformers")
+		require.Len(t, store.handles, 3)
+		for _, handle := range store.handles {
+			require.Same(t, pool, handle)
+		}
+	})
+}
+
 func Test_JobGate_Check_UserDefinedTransformers(t *testing.T) {
 	t.Run("one that stores a PII text uses pii_text", func(t *testing.T) {
 		store := newGateStore()

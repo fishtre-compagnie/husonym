@@ -36,6 +36,13 @@ func NewJobGate(db *husonymdb.HusonymDb, lic license.EEInterface) *JobGate {
 // The job may be one that is not stored yet, without an id: it is checked on its definition
 // alone, since a job being created has no hook.
 func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
+	return g.CheckIn(ctx, g.db.Db, job)
+}
+
+// CheckIn is Check reading through the given handle. A caller that holds a transaction gives
+// it: reading through the pool instead would take a second connection while the first is held,
+// and callers queued on the same row could then exhaust the pool and wait on one another.
+func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgmtv1alpha1.Job) error {
 	accountUuid, err := husonymdb.ToUuid(job.GetAccountId())
 	if err != nil {
 		return err
@@ -48,7 +55,7 @@ func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
 			return err
 		}
 		// A hook of any timing counts, as long as it is enabled: a disabled one does not run.
-		hooks, err := g.db.Q.GetActiveJobHooks(ctx, g.db.Db, jobUuid)
+		hooks, err := g.db.Q.GetActiveJobHooks(ctx, dbtx, jobUuid)
 		if err != nil {
 			return fmt.Errorf("unable to get the enabled hooks of job %s: %w", job.GetId(), err)
 		}
@@ -60,7 +67,7 @@ func (g *JobGate) Check(ctx context.Context, job *mgmtv1alpha1.Job) error {
 		if err != nil {
 			return nil, err
 		}
-		transformer, err := g.db.Q.GetUserDefinedTransformerById(ctx, g.db.Db, transformerUuid)
+		transformer, err := g.db.Q.GetUserDefinedTransformerById(ctx, dbtx, transformerUuid)
 		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, err
 		}

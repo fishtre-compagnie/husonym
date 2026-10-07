@@ -177,7 +177,7 @@ func (s *IntegrationTestSuite) Test_IsAccountStatusValid_RefusesByJob() {
 
 	s.closeFeature(license.FeatureSubsetting)
 
-	forTheJob, err =users.IsAccountStatusValid(ctx, connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
+	forTheJob, err = users.IsAccountStatusValid(ctx, connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
 		AccountId: accountId, JobId: &jobId,
 	}))
 	requireNoErrResp(t, forTheJob, err)
