@@ -633,22 +633,6 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	usageService := v1alpha1_usageservice.New(
-		&v1alpha1_usageservice.Config{WorkerOnly: workerOnly},
-		db,
-		userdataclient,
-		usageStore,
-	)
-	api.Handle(
-		mgmtv1alpha1connect.NewUsageServiceHandler(
-			usageService,
-			connect.WithInterceptors(stdInterceptors...),
-			connect.WithInterceptors(stdAuthInterceptors...),
-			connect.WithInterceptors(handlerBookendInterceptor),
-			connect.WithRecover(recoverHandler),
-		),
-	)
-
 	apiKeyService := v1alpha1_apikeyservice.New(&v1alpha1_apikeyservice.Config{
 		IsAuthEnabled: isAuthEnabled,
 	}, db, userdataclient)
@@ -752,6 +736,10 @@ func serve(ctx context.Context) error {
 	// The usage report of the instance is assembled from what the usage store counted, what
 	// the instance holds and what this start resolved. The one of the day before is prepared once a
 	// day, whichever replica gets to it first.
+	usageFacts := getUsageFacts(isAuthEnabled, presidioClients, runLogConfig)
+	usageKey := usagereport.NewInstanceKey(licenseStore, licenseRing)
+	usageModeSetting := usagereport.ModeSettingFromEnvironment()
+
 	usageReports := usagereport.NewBuilder(
 		usageStore,
 		usagereport.NewInventoryReader(db, licenseUsage, rbacclient, usageStore, isAuthEnabled),
@@ -759,7 +747,7 @@ func serve(ctx context.Context) error {
 		eelicense,
 		licenseStore,
 		licenseRing,
-		getUsageFacts(isAuthEnabled, presidioClients, runLogConfig),
+		usageFacts,
 	)
 	// Each pass then sends the reports that are due, when the license provides for it and the
 	// operator did not set otherwise. It runs apart from every request and every run.
@@ -774,13 +762,36 @@ func serve(ctx context.Context) error {
 		usagereport.NewSender(
 			usageStore,
 			eelicense,
-			usagereport.NewInstanceKey(licenseStore, licenseRing),
-			usagereport.ModeSettingFromEnvironment(),
+			usageKey,
+			usageModeSetting,
 			usageReportTransport,
 			slogger,
 		),
 		slogger,
 	).Every(licenseCtx, usageReportInterval)
+
+	// The interface and the CLI read the mode the report is sent under from the same key, setting
+	// and facts the daily pass works from.
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{
+			WorkerOnly:  workerOnly,
+			ModeSetting: usageModeSetting,
+			Diagnostics: usageFacts.Diagnostics,
+		},
+		db,
+		userdataclient,
+		usageStore,
+		usageKey,
+	)
+	api.Handle(
+		mgmtv1alpha1connect.NewUsageServiceHandler(
+			usageService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,

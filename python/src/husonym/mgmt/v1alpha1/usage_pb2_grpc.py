@@ -25,6 +25,16 @@ class UsageServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedResponse.FromString,
                 _registered_method=True)
+        self.GetUsageReporting = channel.unary_unary(
+                '/mgmt.v1alpha1.UsageService/GetUsageReporting',
+                request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingResponse.FromString,
+                _registered_method=True)
+        self.GetUsageReport = channel.unary_unary(
+                '/mgmt.v1alpha1.UsageService/GetUsageReport',
+                request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.FromString,
+                _registered_method=True)
 
 
 class UsageServiceServicer:
@@ -45,6 +55,20 @@ class UsageServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetUsageReporting(self, request, context):
+        """Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetUsageReport(self, request, context):
+        """Gives the usage report of a day, as it is kept.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_UsageServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -57,6 +81,16 @@ def add_UsageServiceServicer_to_server(servicer, server):
                     servicer.RecordRunEnded,
                     request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedResponse.SerializeToString,
+            ),
+            'GetUsageReporting': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetUsageReporting,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingResponse.SerializeToString,
+            ),
+            'GetUsageReport': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetUsageReport,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -114,6 +148,60 @@ class UsageService:
             '/mgmt.v1alpha1.UsageService/RecordRunEnded',
             mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_usage__pb2.RecordRunEndedResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetUsageReporting(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UsageService/GetUsageReporting',
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportingResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetUsageReport(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UsageService/GetUsageReport',
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetUsageReportResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagereport"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
@@ -413,6 +414,7 @@ func (s *HusonymApiTestClient) setupMux(
 		husonymDb,
 		userclient,
 		usagestore.New(husonymDb),
+		usagereport.NewInstanceKey(s.licenseStore(pgcontainer), s.LicenseKeyring),
 	)
 
 	mux := http.NewServeMux()

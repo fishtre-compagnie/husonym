@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/metrics.proto";
 import "mgmt/v1alpha1/permission.proto";
 
 // How a run ended.
@@ -54,6 +55,79 @@ message RecordRunEndedRequest {
 }
 message RecordRunEndedResponse {}
 
+// What the instance does with its usage report.
+enum UsageReportingMode {
+  USAGE_REPORTING_MODE_UNSPECIFIED = 0;
+  // The report is prepared and sent.
+  USAGE_REPORTING_MODE_ONLINE = 1;
+  // The report is prepared and kept, to be given as a file.
+  USAGE_REPORTING_MODE_OFFLINE_REPORT = 2;
+  // No report is prepared nor sent.
+  USAGE_REPORTING_MODE_NONE = 3;
+}
+
+// What became of the usage report of a day.
+enum UsageReportStatus {
+  USAGE_REPORT_STATUS_UNSPECIFIED = 0;
+  // The report is kept, and is not to be sent.
+  USAGE_REPORT_STATUS_KEPT = 1;
+  // The report is waiting to be sent, and no attempt was made yet.
+  USAGE_REPORT_STATUS_TO_BE_SENT = 2;
+  // The report was sent.
+  USAGE_REPORT_STATUS_SENT = 3;
+  // The report was tried and could not be sent; it is tried again later.
+  USAGE_REPORT_STATUS_NOT_SENT = 4;
+}
+
+message GetUsageReportingRequest {
+  // The unique identifier of the account that asks.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetUsageReportingResponse {
+  // What the license key provides for the usage report. Unspecified when no key is in force.
+  UsageReportingMode license_mode = 1;
+  // The mode in force. Unspecified when no key is in force.
+  UsageReportingMode mode = 2;
+  // Whether the operator lowered the mode below what the key provides.
+  bool below_license = 3;
+  // Whether the part of the report that describes the instance is on.
+  bool diagnostics = 4;
+  // Since when the instance sends its report. Absent when it does not.
+  google.protobuf.Timestamp sending_since = 5;
+  // When the first report is sent. Present only during the first 24 hours of sending.
+  google.protobuf.Timestamp first_send_at = 6;
+  // When a report was last sent. Absent when none ever was.
+  google.protobuf.Timestamp last_sent_at = 7;
+  // Whether the instance sends its report and nothing was sent for 30 days.
+  bool silent = 8;
+  // What became of the reports of the last 30 days, the newest first.
+  repeated UsageReportSummary reports = 9;
+}
+message UsageReportSummary {
+  // The UTC day the report counts.
+  mgmt.v1alpha1.Date day = 1;
+  UsageReportStatus status = 2;
+  // When the report was sent. Absent while it was not.
+  google.protobuf.Timestamp sent_at = 3;
+  // How many times the report was tried.
+  int32 attempts = 4;
+}
+
+message GetUsageReportRequest {
+  // The unique identifier of the account that asks.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The UTC day of the report: a day of the calendar that is not in the future.
+  mgmt.v1alpha1.Date day = 2 [(buf.validate.field).required = true];
+}
+message GetUsageReportResponse {
+  // The report as it is kept, byte for byte.
+  string document = 1;
+  // The seal of the document.
+  string seal = 2;
+  // The fingerprint of the key that sealed it.
+  string key_fingerprint = 3;
+}
+
 // Holds the counters of what the instance runs.
 service UsageService {
   // Tells that a run has begun. Only the worker calls this, with its key.
@@ -64,5 +138,21 @@ service UsageService {
   // Tells that a run has ended, and what it did. Only the worker calls this, with its key.
   rpc RecordRunEnded(RecordRunEndedRequest) returns (RecordRunEndedResponse) {
     option (mgmt.v1alpha1.requires) = {none: true};
+  }
+
+  // Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+  rpc GetUsageReporting(GetUsageReportingRequest) returns (GetUsageReportingResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Gives the usage report of a day, as it is kept.
+  rpc GetUsageReport(GetUsageReportRequest) returns (GetUsageReportResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

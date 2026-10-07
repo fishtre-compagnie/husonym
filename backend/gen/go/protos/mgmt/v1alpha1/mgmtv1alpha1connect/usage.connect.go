@@ -39,6 +39,12 @@ const (
 	// UsageServiceRecordRunEndedProcedure is the fully-qualified name of the UsageService's
 	// RecordRunEnded RPC.
 	UsageServiceRecordRunEndedProcedure = "/mgmt.v1alpha1.UsageService/RecordRunEnded"
+	// UsageServiceGetUsageReportingProcedure is the fully-qualified name of the UsageService's
+	// GetUsageReporting RPC.
+	UsageServiceGetUsageReportingProcedure = "/mgmt.v1alpha1.UsageService/GetUsageReporting"
+	// UsageServiceGetUsageReportProcedure is the fully-qualified name of the UsageService's
+	// GetUsageReport RPC.
+	UsageServiceGetUsageReportProcedure = "/mgmt.v1alpha1.UsageService/GetUsageReport"
 )
 
 // UsageServiceClient is a client for the mgmt.v1alpha1.UsageService service.
@@ -47,6 +53,10 @@ type UsageServiceClient interface {
 	RecordRunStarted(context.Context, *connect.Request[v1alpha1.RecordRunStartedRequest]) (*connect.Response[v1alpha1.RecordRunStartedResponse], error)
 	// Tells that a run has ended, and what it did. Only the worker calls this, with its key.
 	RecordRunEnded(context.Context, *connect.Request[v1alpha1.RecordRunEndedRequest]) (*connect.Response[v1alpha1.RecordRunEndedResponse], error)
+	// Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+	GetUsageReporting(context.Context, *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error)
+	// Gives the usage report of a day, as it is kept.
+	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
 }
 
 // NewUsageServiceClient constructs a client for the mgmt.v1alpha1.UsageService service. By default,
@@ -72,13 +82,29 @@ func NewUsageServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(usageServiceMethods.ByName("RecordRunEnded")),
 			connect.WithClientOptions(opts...),
 		),
+		getUsageReporting: connect.NewClient[v1alpha1.GetUsageReportingRequest, v1alpha1.GetUsageReportingResponse](
+			httpClient,
+			baseURL+UsageServiceGetUsageReportingProcedure,
+			connect.WithSchema(usageServiceMethods.ByName("GetUsageReporting")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getUsageReport: connect.NewClient[v1alpha1.GetUsageReportRequest, v1alpha1.GetUsageReportResponse](
+			httpClient,
+			baseURL+UsageServiceGetUsageReportProcedure,
+			connect.WithSchema(usageServiceMethods.ByName("GetUsageReport")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // usageServiceClient implements UsageServiceClient.
 type usageServiceClient struct {
-	recordRunStarted *connect.Client[v1alpha1.RecordRunStartedRequest, v1alpha1.RecordRunStartedResponse]
-	recordRunEnded   *connect.Client[v1alpha1.RecordRunEndedRequest, v1alpha1.RecordRunEndedResponse]
+	recordRunStarted  *connect.Client[v1alpha1.RecordRunStartedRequest, v1alpha1.RecordRunStartedResponse]
+	recordRunEnded    *connect.Client[v1alpha1.RecordRunEndedRequest, v1alpha1.RecordRunEndedResponse]
+	getUsageReporting *connect.Client[v1alpha1.GetUsageReportingRequest, v1alpha1.GetUsageReportingResponse]
+	getUsageReport    *connect.Client[v1alpha1.GetUsageReportRequest, v1alpha1.GetUsageReportResponse]
 }
 
 // RecordRunStarted calls mgmt.v1alpha1.UsageService.RecordRunStarted.
@@ -91,12 +117,26 @@ func (c *usageServiceClient) RecordRunEnded(ctx context.Context, req *connect.Re
 	return c.recordRunEnded.CallUnary(ctx, req)
 }
 
+// GetUsageReporting calls mgmt.v1alpha1.UsageService.GetUsageReporting.
+func (c *usageServiceClient) GetUsageReporting(ctx context.Context, req *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error) {
+	return c.getUsageReporting.CallUnary(ctx, req)
+}
+
+// GetUsageReport calls mgmt.v1alpha1.UsageService.GetUsageReport.
+func (c *usageServiceClient) GetUsageReport(ctx context.Context, req *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error) {
+	return c.getUsageReport.CallUnary(ctx, req)
+}
+
 // UsageServiceHandler is an implementation of the mgmt.v1alpha1.UsageService service.
 type UsageServiceHandler interface {
 	// Tells that a run has begun. Only the worker calls this, with its key.
 	RecordRunStarted(context.Context, *connect.Request[v1alpha1.RecordRunStartedRequest]) (*connect.Response[v1alpha1.RecordRunStartedResponse], error)
 	// Tells that a run has ended, and what it did. Only the worker calls this, with its key.
 	RecordRunEnded(context.Context, *connect.Request[v1alpha1.RecordRunEndedRequest]) (*connect.Response[v1alpha1.RecordRunEndedResponse], error)
+	// Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+	GetUsageReporting(context.Context, *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error)
+	// Gives the usage report of a day, as it is kept.
+	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
 }
 
 // NewUsageServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -118,12 +158,30 @@ func NewUsageServiceHandler(svc UsageServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(usageServiceMethods.ByName("RecordRunEnded")),
 		connect.WithHandlerOptions(opts...),
 	)
+	usageServiceGetUsageReportingHandler := connect.NewUnaryHandler(
+		UsageServiceGetUsageReportingProcedure,
+		svc.GetUsageReporting,
+		connect.WithSchema(usageServiceMethods.ByName("GetUsageReporting")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	usageServiceGetUsageReportHandler := connect.NewUnaryHandler(
+		UsageServiceGetUsageReportProcedure,
+		svc.GetUsageReport,
+		connect.WithSchema(usageServiceMethods.ByName("GetUsageReport")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.UsageService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UsageServiceRecordRunStartedProcedure:
 			usageServiceRecordRunStartedHandler.ServeHTTP(w, r)
 		case UsageServiceRecordRunEndedProcedure:
 			usageServiceRecordRunEndedHandler.ServeHTTP(w, r)
+		case UsageServiceGetUsageReportingProcedure:
+			usageServiceGetUsageReportingHandler.ServeHTTP(w, r)
+		case UsageServiceGetUsageReportProcedure:
+			usageServiceGetUsageReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -139,4 +197,12 @@ func (UnimplementedUsageServiceHandler) RecordRunStarted(context.Context, *conne
 
 func (UnimplementedUsageServiceHandler) RecordRunEnded(context.Context, *connect.Request[v1alpha1.RecordRunEndedRequest]) (*connect.Response[v1alpha1.RecordRunEndedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.RecordRunEnded is not implemented"))
+}
+
+func (UnimplementedUsageServiceHandler) GetUsageReporting(context.Context, *connect.Request[v1alpha1.GetUsageReportingRequest]) (*connect.Response[v1alpha1.GetUsageReportingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetUsageReporting is not implemented"))
+}
+
+func (UnimplementedUsageServiceHandler) GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetUsageReport is not implemented"))
 }

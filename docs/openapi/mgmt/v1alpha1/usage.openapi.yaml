@@ -98,6 +98,142 @@ components:
         - "2024-12-25T12:00:00Z"
       format: date-time
       description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
+    mgmt.v1alpha1.Date:
+      type: object
+      properties:
+        year:
+          type: integer
+          title: year
+          maximum: 9999
+          minimum: 0
+          description: |-
+            Year of the date. Must be from 1 to 9999, or 0 to specify a date without
+             a year.
+        month:
+          type: integer
+          title: month
+          maximum: 31
+          minimum: 0
+          description: |-
+            Month of a year. Must be from 1 to 12, or 0 to specify a year without a
+             month and day.
+        day:
+          type: integer
+          title: day
+          maximum: 31
+          minimum: 0
+          description: |-
+            Day of a month. Must be from 1 to 31 and valid for the year and month, or 0
+             to specify a year by itself or a year and month where the day isn't
+             significant.
+      title: Date
+      additionalProperties: false
+      description: |-
+        Represents a whole or partial calendar date, such as a birthday. The time of
+         day and time zone are either specified elsewhere or are insignificant. The
+         date is relative to the Gregorian Calendar. This can represent one of the
+         following:
+
+         * A full date, with non-zero year, month, and day values
+         * A month and day value, with a zero year, such as an anniversary
+         * A year on its own, with zero month and day values
+         * A year and month value, with a zero day, such as a credit card expiration
+         date
+
+         Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
+         `google.protobuf.Timestamp`.
+    mgmt.v1alpha1.GetUsageReportRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account that asks.
+        day:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: day
+          description: 'The UTC day of the report: a day of the calendar that is not in the future.'
+      title: GetUsageReportRequest
+      required:
+        - day
+      additionalProperties: false
+    mgmt.v1alpha1.GetUsageReportResponse:
+      type: object
+      properties:
+        document:
+          type: string
+          title: document
+          description: The report as it is kept, byte for byte.
+        seal:
+          type: string
+          title: seal
+          description: The seal of the document.
+        keyFingerprint:
+          type: string
+          title: key_fingerprint
+          description: The fingerprint of the key that sealed it.
+      title: GetUsageReportResponse
+      additionalProperties: false
+    mgmt.v1alpha1.GetUsageReportingRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account that asks.
+      title: GetUsageReportingRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetUsageReportingResponse:
+      type: object
+      properties:
+        licenseMode:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageReportingMode'
+          title: license_mode
+          description: What the license key provides for the usage report. Unspecified when no key is in force.
+        mode:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageReportingMode'
+          title: mode
+          description: The mode in force. Unspecified when no key is in force.
+        belowLicense:
+          type: boolean
+          title: below_license
+          description: Whether the operator lowered the mode below what the key provides.
+        diagnostics:
+          type: boolean
+          title: diagnostics
+          description: Whether the part of the report that describes the instance is on.
+        sendingSince:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sending_since
+          description: Since when the instance sends its report. Absent when it does not.
+        firstSendAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: first_send_at
+          description: When the first report is sent. Present only during the first 24 hours of sending.
+        lastSentAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: last_sent_at
+          description: When a report was last sent. Absent when none ever was.
+        silent:
+          type: boolean
+          title: silent
+          description: Whether the instance sends its report and nothing was sent for 30 days.
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.UsageReportSummary'
+          title: reports
+          description: What became of the reports of the last 30 days, the newest first.
+      title: GetUsageReportingResponse
+      additionalProperties: false
     mgmt.v1alpha1.RecordRunEndedRequest:
       type: object
       properties:
@@ -202,9 +338,132 @@ components:
         - RUN_OUTCOME_FAILED
         - RUN_OUTCOME_CANCELED
       description: How a run ended.
+    mgmt.v1alpha1.UsageReportStatus:
+      type: string
+      title: UsageReportStatus
+      enum:
+        - USAGE_REPORT_STATUS_UNSPECIFIED
+        - USAGE_REPORT_STATUS_KEPT
+        - USAGE_REPORT_STATUS_TO_BE_SENT
+        - USAGE_REPORT_STATUS_SENT
+        - USAGE_REPORT_STATUS_NOT_SENT
+      description: What became of the usage report of a day.
+    mgmt.v1alpha1.UsageReportSummary:
+      type: object
+      properties:
+        day:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: day
+          description: The UTC day the report counts.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageReportStatus'
+          title: status
+        sentAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: sent_at
+          description: When the report was sent. Absent while it was not.
+        attempts:
+          type: integer
+          title: attempts
+          format: int32
+          description: How many times the report was tried.
+      title: UsageReportSummary
+      additionalProperties: false
+    mgmt.v1alpha1.UsageReportingMode:
+      type: string
+      title: UsageReportingMode
+      enum:
+        - USAGE_REPORTING_MODE_UNSPECIFIED
+        - USAGE_REPORTING_MODE_ONLINE
+        - USAGE_REPORTING_MODE_OFFLINE_REPORT
+        - USAGE_REPORTING_MODE_NONE
+      description: What the instance does with its usage report.
 security:
   - BearerAuth: []
 paths:
+  /mgmt.v1alpha1.UsageService/GetUsageReport:
+    post:
+      tags:
+        - mgmt.v1alpha1.UsageService
+      summary: GetUsageReport
+      description: Gives the usage report of a day, as it is kept.
+      operationId: mgmt.v1alpha1.UsageService.GetUsageReport
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetUsageReportRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetUsageReportResponse'
+  /mgmt.v1alpha1.UsageService/GetUsageReporting:
+    post:
+      tags:
+        - mgmt.v1alpha1.UsageService
+      summary: GetUsageReporting
+      description: Tells under which mode the usage report of the instance is sent, and what became of the reports of the last 30 days.
+      operationId: mgmt.v1alpha1.UsageService.GetUsageReporting
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetUsageReportingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetUsageReportingResponse'
   /mgmt.v1alpha1.UsageService/RecordRunEnded:
     post:
       tags:
