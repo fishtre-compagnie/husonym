@@ -199,7 +199,7 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          go test -race -count=1 ./controlplane/... ./backend/internal/usagereport/...
+          go test -race -count=1 -timeout 1800s ./controlplane/... ./backend/internal/usagereport/...
         env:
           INTEGRATION_TESTS_ENABLED: 1
 

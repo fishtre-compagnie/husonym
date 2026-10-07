@@ -43,8 +43,10 @@ func Run(
 	for i := range registry.Entries {
 		entry := &registry.Entries[i]
 		// Whitespace around a key is not part of it: the product trims the key it is given, and
-		// so do the fingerprint and the seal.
-		key, err := license.ParseWith(strings.TrimSpace(entry.Encoded), ring)
+		// so do the fingerprint and the seal. What is stored is the key without it, so that the
+		// stored fingerprint is the SHA-256 of the stored key.
+		entry.Encoded = strings.TrimSpace(entry.Encoded)
+		key, err := license.ParseWith(entry.Encoded, ring)
 		if err != nil || key.Id != entry.Id || key.CustomerId == "" {
 			result.Refused++
 			continue

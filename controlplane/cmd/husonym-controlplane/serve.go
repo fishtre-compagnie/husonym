@@ -74,7 +74,9 @@ func newServeCmd() *cobra.Command {
 
 // newPublicServer is the server of the public API around handler. What net/http logs by itself
 // is dropped: its lines name the remote address of the caller, and the line of a panic carries
-// what was panicked with. The handler says in its own words what there is to say.
+// what was panicked with. The handler says in its own words what there is to say. The lines of
+// a failing accept are dropped with the rest: a listener that no longer accepts shows in the
+// health check.
 func newPublicServer(handler http.Handler) *http.Server {
 	return &http.Server{
 		Handler:           handler,

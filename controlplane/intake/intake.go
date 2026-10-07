@@ -198,8 +198,10 @@ func (i *Intake) promote(
 	if !told.says(issued) {
 		return false, i.store.DiscardPendingReport(ctx, pending)
 	}
+	// The cap is judged from that moment too: a window taken from now would leave out the
+	// instances of a report that waited, and each of them would see room.
 	outcome, err := i.store.PromotePendingReport(ctx, pending,
-		told.report(issued, pending.Document, pending.Seal, pending.ReceivedAt), instanceCap(i.now()))
+		told.report(issued, pending.Document, pending.Seal, pending.ReceivedAt), instanceCap(pending.ReceivedAt))
 	if err != nil {
 		return false, err
 	}
