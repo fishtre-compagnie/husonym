@@ -97,6 +97,9 @@ type Querier interface {
 	// Distinct, because two accounts pointing at the same provider is a list of one issuer,
 	// not two -- the list says which tokens are authentic, never which account they open.
 	GetDeclaredIssuers(ctx context.Context, db DBTX) ([]string, error)
+	// The usage counters belong to the instance. They hold counts and identifiers, never a name or
+	// a message a customer entered.
+	GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, error)
 	GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error)
 	GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (HusonymApiJob, error)
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
@@ -133,9 +136,12 @@ type Querier interface {
 	GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
+	IncrementGateRefusal(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
 	InsertLicenseKey(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)
+	// A run already there is left as it is.
+	InsertRunUsageStarted(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams) error
 	IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error)
 	IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConnectionInAccountParams) (int64, error)
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
@@ -155,6 +161,7 @@ type Querier interface {
 	// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
 	// A mappings value that is null or not an array yields no schema rather than an error.
 	ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)
+	ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
 	// Held until the transaction ends, so that two changes of the role of one member in one
@@ -230,6 +237,8 @@ type Querier interface {
 	// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
 	// waits longer fails with lock_not_available instead of holding what the transaction has locked.
 	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
+	// Only a run still open is settled.
+	SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)
@@ -248,6 +257,9 @@ type Querier interface {
 	// The kind of setting is the generated column, so the conflict is named by its constraint
 	// rather than by the columns it covers.
 	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
+	// Creates the row when the start was never recorded; a row already finished keeps what it
+	// holds, so that the first end told wins.
+	UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error
 }
 
 var _ Querier = (*Queries)(nil)
