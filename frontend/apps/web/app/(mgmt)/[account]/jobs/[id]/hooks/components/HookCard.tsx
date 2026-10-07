@@ -10,6 +10,7 @@ import {
 } from '@husonym/sdk';
 import { ClockIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
+import DisableHookButton from './DisableHookButton';
 import EditHookButton from './EditHookButton';
 import RemoveHookButton from './RemoveHookButton';
 
@@ -66,6 +67,9 @@ export default function HookCard(props: Props): ReactElement {
             </div>
 
             <div className="flex items-center gap-2">
+              {hook.enabled && (
+                <DisableHookButton hook={hook} onDisabled={onEdited} />
+              )}
               <EditHookButton
                 hook={hook}
                 onEdited={onEdited}

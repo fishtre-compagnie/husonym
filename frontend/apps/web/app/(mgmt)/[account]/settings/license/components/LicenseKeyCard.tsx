@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { formatDate } from '@/libs/license/license';
+import { formatDate, isKeyAlreadyInForce } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation } from '@connectrpc/connect-query';
@@ -27,12 +27,14 @@ import { toast } from 'sonner';
 
 interface Props {
   accountId: string;
+  // The license the page shows, to tell a key that is already the one in force.
+  current?: SystemLicense;
   // Reads again what the page shows, once a key was taken.
   onInstalled(): Promise<unknown>;
 }
 
 export default function LicenseKeyCard(props: Props): ReactElement {
-  const { accountId, onInstalled } = props;
+  const { accountId, current, onInstalled } = props;
   const { mutateAsync: setLicense } = useMutation(
     UserAccountService.method.setSystemLicense
   );
@@ -53,9 +55,14 @@ export default function LicenseKeyCard(props: Props): ReactElement {
       return;
     }
     setKey('');
-    toast.success('License key installed', {
-      description: installedDescription(installed),
-    });
+    // The API answers the key in force pasted again like a new one: nothing was
+    // installed then, and the page does not say that something was.
+    toast.success(
+      isKeyAlreadyInForce(current, installed)
+        ? 'This key is already in force'
+        : 'License key installed',
+      { description: installedDescription(installed) }
+    );
     // Outside of what catches a refusal: the key is installed by now, and a page that
     // fails to read itself again must not say it was not.
     await onInstalled();

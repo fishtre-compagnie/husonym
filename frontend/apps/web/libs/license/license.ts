@@ -7,8 +7,9 @@ import type {
 } from '@husonym/sdk';
 
 // The features a license key can allow, by the names the API uses, in the order they
-// are shown.
-export const LICENSE_FEATURES: string[] = [
+// are shown. A test of the API (internal/license) reads this list and holds it to the
+// one the API declares.
+export const LICENSE_FEATURES = [
   'job_hooks',
   'account_hooks',
   'pii_text',
@@ -22,9 +23,24 @@ export const LICENSE_FEATURES: string[] = [
   'rbac',
   'sso',
   'run_logs',
+] as const;
+
+// The name of a feature. A name that is not one of the list does not compile.
+export type LicenseFeature = (typeof LICENSE_FEATURES)[number];
+
+// The features whose use keeps a job from starting when the license does not include
+// them: the ones the job gate of the API counts
+// (backend/internal/licensegate/usage.go). The others, in use without being included,
+// block nothing: what exists keeps working, and changes are refused.
+export const BLOCKING_FEATURES: readonly LicenseFeature[] = [
+  'job_hooks',
+  'pii_text',
+  'pii_detection',
+  'custom_transformers',
+  'subsetting',
 ];
 
-const FEATURE_LABELS: Record<string, string> = {
+const FEATURE_LABELS: Record<LicenseFeature, string> = {
   job_hooks: 'Job hooks',
   account_hooks: 'Account hooks',
   pii_text: 'PII text anonymization',
@@ -40,16 +56,15 @@ const FEATURE_LABELS: Record<string, string> = {
   run_logs: 'Run logs',
 };
 
-// A name this version has no label for is shown as it is, rather than hidden.
-export function featureLabel(name: string): string {
-  return FEATURE_LABELS[name] ?? name;
+export function featureLabel(name: LicenseFeature): string {
+  return FEATURE_LABELS[name];
 }
 
 // Whether the license in force allows a feature. A key that is not valid allows
 // nothing, whatever it lists.
 export function isFeatureAllowed(
   license: SystemLicense | undefined,
-  name: string
+  name: LicenseFeature
 ): boolean {
   if (!license?.isValid) {
     return false;
@@ -68,9 +83,20 @@ export function isFeatureAllowed(
 export function isFeatureAvailable(
   wasRead: boolean,
   license: SystemLicense | undefined,
-  name: string
+  name: LicenseFeature
 ): boolean {
   return !wasRead || isFeatureAllowed(license, name);
+}
+
+// Why the actions of a feature are greyed out. With no license in force, none or a
+// frozen one, no feature is included: saying that this one is missing from "your
+// license" would name the wrong cause.
+export function featureNoticeMessage(
+  license: SystemLicense | undefined
+): string {
+  return license?.isValid
+    ? 'This feature is not included in your license.'
+    : 'No license is in force.';
 }
 
 // Whether the logs of a run are hidden. Reading keeps working when a license has lapsed
@@ -104,24 +130,68 @@ export function invitationRole(
 }
 
 export type FeatureRow = {
-  name: string;
+  name: LicenseFeature;
   allowed: boolean;
   inUse: boolean;
-  // Used by the account and not allowed by the license: what keeps its jobs from
-  // starting.
+  // Used by the account, not allowed by the license, and one of the features that
+  // keep a job from starting.
   blocking: boolean;
 };
 
 export function featureRows(
-  all: string[],
+  all: readonly LicenseFeature[],
   license: SystemLicense | undefined,
-  inUse: string[]
+  inUse: readonly string[]
 ): FeatureRow[] {
   return all.map((name) => {
     const allowed = isFeatureAllowed(license, name);
     const used = inUse.includes(name);
-    return { name, allowed, inUse: used, blocking: used && !allowed };
+    return {
+      name,
+      allowed,
+      inUse: used,
+      blocking: used && !allowed && BLOCKING_FEATURES.includes(name),
+    };
   });
+}
+
+// What a row says about the use the account makes of a feature. A feature in use that
+// the license does not include, and that blocks no job, gets its own words: nothing
+// stops, only changes are refused.
+export function featureUseNote(row: FeatureRow): string {
+  if (!row.inUse) {
+    return '';
+  }
+  if (!row.allowed && !row.blocking) {
+    return 'In use, not included — what exists keeps working, changes are refused';
+  }
+  return 'In use by this account';
+}
+
+// What the Status card says in place of the details of a key. A key that was given and
+// could not be read is not "no key installed".
+export function missingKeyMessage(license: SystemLicense | undefined): string {
+  return license?.problem
+    ? 'A license key was given and could not be read, so none is in force. You can paste one below.'
+    : 'No license key is installed. You can paste one below.';
+}
+
+// Whether the answer to installing a key describes the key the page already showed.
+// The API answers the key in force pasted again as it answers a new one, with the
+// description of the license: the key is the same when it was stored at the same
+// moment, the same way.
+export function isKeyAlreadyInForce(
+  before: SystemLicense | undefined,
+  after: SystemLicense | undefined
+): boolean {
+  if (!before?.installedAt || !after?.installedAt) {
+    return false;
+  }
+  return (
+    before.origin === after.origin &&
+    before.installedAt.seconds === after.installedAt.seconds &&
+    before.installedAt.nanos === after.installedAt.nanos
+  );
 }
 
 // The caps of the license in force. A key that is not in force (frozen, or none at all)

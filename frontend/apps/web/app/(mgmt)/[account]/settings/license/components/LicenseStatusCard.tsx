@@ -4,7 +4,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge, BadgeProps } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate, LicenseState, licenseState } from '@/libs/license/license';
+import {
+  formatDate,
+  LicenseState,
+  licenseState,
+  missingKeyMessage,
+} from '@/libs/license/license';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { SystemLicense } from '@husonym/sdk';
 import { ReactElement, ReactNode } from 'react';
@@ -48,12 +53,6 @@ const ORIGIN_LABELS: Record<string, string> = {
   renewal: 'Received as a renewal',
 };
 
-const TELEMETRY_LABELS: Record<string, string> = {
-  online: 'Usage is reported online',
-  offline_report: 'Usage is reported offline, through a report',
-  none: 'No usage is reported',
-};
-
 export default function LicenseStatusCard(props: Props): ReactElement {
   const { license, isLoading } = props;
 
@@ -81,9 +80,7 @@ export default function LicenseStatusCard(props: Props): ReactElement {
         {license && state !== 'none' ? (
           <LicenseDetails license={license} state={state} />
         ) : (
-          <p className="text-sm">
-            No license key is installed. You can paste one below.
-          </p>
+          <p className="text-sm">{missingKeyMessage(license)}</p>
         )}
       </CardContent>
     </Card>
@@ -101,7 +98,6 @@ function LicenseDetails({
   const graceEndsOn = formatTimestamp(license.graceEndsAt);
   const installedOn = formatTimestamp(license.installedAt);
   const origin = ORIGIN_LABELS[license.origin] ?? license.origin;
-  const telemetry = TELEMETRY_LABELS[license.telemetry] ?? license.telemetry;
 
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm">
@@ -128,7 +124,6 @@ function LicenseDetails({
             .join(', ')}
         </Detail>
       )}
-      {telemetry && <Detail term="Usage reporting">{telemetry}</Detail>}
     </dl>
   );
 }

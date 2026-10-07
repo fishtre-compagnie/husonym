@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { Transformer } from '@/shared/transformers';
 import {
   convertJobMappingTransformerToForm,
@@ -153,6 +154,8 @@ export function SchemaTable(props: Props): ReactElement {
     new Set()
   );
   const [isScanningPii, setIsScanningPii] = useState(false);
+  const { allowed: isPiiDetectionAllowed, isLoading: isLicenseLoading } =
+    useLicenseFeature('pii_detection');
   const { mutateAsync: detectPii } = useMutation(
     ConnectionDataService.method.detectPiiInConnectionData
   );
@@ -484,13 +487,27 @@ export function SchemaTable(props: Props): ReactElement {
   //
   // Il reprend à chaque table ajoutée : onScanContent('new') n'analyse que celles
   // qu'il n'a pas encore vues, et ne fait rien quand il n'en reste aucune.
+  //
+  // Le scan est la fonctionnalité pii_detection de la licence. Personne ne l'a
+  // demandé : sans elle il n'est pas lancé, plutôt que de laisser l'API refuser
+  // chaque table et l'écran annoncer « N table(s) not scanned » sans dire pourquoi.
+  // Il attend que la licence soit lue, pour ne pas partir avant de le savoir.
   useEffect(() => {
     if (!sourceConnectionId || data.length === 0 || isScanningPii) {
       return;
     }
+    if (isLicenseLoading || !isPiiDetectionAllowed) {
+      return;
+    }
     void onScanContent('new');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceConnectionId, data.length, isScanningPii]);
+  }, [
+    sourceConnectionId,
+    data.length,
+    isScanningPii,
+    isLicenseLoading,
+    isPiiDetectionAllowed,
+  ]);
 
   const piiScanProps = {
     showPiiScan: !!sourceConnectionId,

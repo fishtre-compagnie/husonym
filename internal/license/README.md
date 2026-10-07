@@ -370,8 +370,8 @@ go run ./internal/license/cmd/husonym-license issue \
 
 It prints the key value and records the issuance in the registry. `--features`, `--max-sources`,
 `--plan` and `--telemetry` say what the key carries beyond that (`plan` is a label shown to the
-customer and gates nothing; `telemetry` is a field the key carries and the License page
-shows); `scripts/gen-license.md` has the details and the rules for each. The tool
+customer and gates nothing; `telemetry` is a field the key carries and the API returns,
+on which nothing acts and which the License page does not show); `scripts/gen-license.md` has the details and the rules for each. The tool
 **refuses to sign with a key that does not match the one embedded in this build**, printing
 both fingerprints — that was the one failure mode guaranteed to be found by a customer
 rather than by us.

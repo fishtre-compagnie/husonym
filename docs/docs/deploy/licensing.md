@@ -81,13 +81,17 @@ The **License** page of the settings shows the license of the instance and what 
 account uses of it.
 
 - **Status**: the stage of the license (see below), the licensee, the plan label, the
-  expiry date and, in the grace period, the date the grace period ends, how the key was
-  installed and when, and the usage-reporting mode that the key carries.
+  expiry date and, in the grace period, the date the grace period ends, and how the key was
+  installed and when.
 - **Features**: each feature, whether the license includes it, and which ones your account
-  uses. A feature that your account uses and the license does not include is shown first,
-  in red. The use of the MCP server, of mapping review and of run logs is not tracked.
+  uses. A feature that your account uses, that the license does not include and that keeps
+  jobs from starting (job hooks, PII text, PII detection, custom transformers, subsetting)
+  is shown first, in red. The other features in use that the license does not include stop
+  nothing: what exists keeps working, and changes are refused. The use of the MCP server, of
+  mapping review and of run logs is not tracked.
 - **Limits**: the sources counted against the number the license allows, the sources of
-  this account, and the other limits the license carries.
+  this account, and the other limits the license carries. Sources are counted for the whole
+  instance; the limits on jobs and on connections apply to each account.
 - **License key**: where you install a new key. The key in force is never shown.
 
 ## What the license covers

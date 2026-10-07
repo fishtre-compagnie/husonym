@@ -62,13 +62,18 @@ export default function LicenseLimitsCard(props: Props): ReactElement {
         ) : (
           <Sources license={license} usage={usage} />
         )}
+        {/* Unlike the sources, counted for the whole instance, these two caps apply to
+            each account. */}
         {limits?.maxJobs !== undefined && (
-          <OtherLimit name="Jobs" value={`At most ${limits.maxJobs}`} />
+          <OtherLimit
+            name="Jobs"
+            value={`At most ${limits.maxJobs} per account`}
+          />
         )}
         {limits?.maxConnections !== undefined && (
           <OtherLimit
             name="Connections"
-            value={`At most ${limits.maxConnections}`}
+            value={`At most ${limits.maxConnections} per account`}
           />
         )}
         {!!limits?.allowedConnectionTypes.length && (
@@ -101,7 +106,7 @@ function Sources({
         <span className="text-sm">{count[limit]}</span>
       </div>
       <p className="text-muted-foreground text-sm">
-        The count covers the whole instance, every account included.
+        Sources are counted for the whole instance, every account included.
       </p>
       {over && (
         <Alert variant="warning">

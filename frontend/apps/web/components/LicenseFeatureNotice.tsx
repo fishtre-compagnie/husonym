@@ -1,12 +1,16 @@
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
-import { featureLabel } from '@/libs/license/license';
+import {
+  featureLabel,
+  featureNoticeMessage,
+  LicenseFeature,
+} from '@/libs/license/license';
 import Link from 'next/link';
 import { ReactElement } from 'react';
 import { useAccount } from './providers/account-provider';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface Props {
-  feature: string;
+  feature: LicenseFeature;
   className?: string;
 }
 
@@ -16,7 +20,7 @@ export default function LicenseFeatureNotice(
   props: Props
 ): ReactElement | null {
   const { feature, className } = props;
-  const { allowed } = useLicenseFeature(feature);
+  const { allowed, license } = useLicenseFeature(feature);
   const { account } = useAccount();
 
   if (allowed) {
@@ -27,7 +31,7 @@ export default function LicenseFeatureNotice(
     <Alert variant="warning" className={className}>
       <AlertTitle>{featureLabel(feature)}</AlertTitle>
       <AlertDescription>
-        This feature is not included in your license.{' '}
+        {featureNoticeMessage(license)}{' '}
         <Link href={`/${account?.name}/settings/license`} className="underline">
           View license
         </Link>

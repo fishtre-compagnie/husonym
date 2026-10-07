@@ -3,6 +3,7 @@ import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { featureLabel, featureNoticeMessage } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { JobService, JobStatus } from '@husonym/sdk';
@@ -21,7 +22,9 @@ export default function JobPauseButton({
   onNewStatus,
   jobId,
 }: Props): ReactElement {
-  const { allowed } = useLicenseFeature('scheduling');
+  const { allowed, license } = useLicenseFeature('scheduling');
+  // Pausing stays possible without the feature, resuming does not.
+  const isResumeRefused = !allowed && status === JobStatus.PAUSED;
   const { mutateAsync: setJobPaused } = useMutation(JobService.method.pauseJob);
   const [buttonText, setButtonText] = useState(
     status === JobStatus.PAUSED ? 'Resume Job' : 'Pause Job'
@@ -66,8 +69,13 @@ export default function JobPauseButton({
     <div className="max-w-[300px]">
       <Button
         variant="outline"
-        // Pausing stays possible without the feature, resuming does not.
-        disabled={!allowed && status === JobStatus.PAUSED}
+        disabled={isResumeRefused}
+        // A greyed button says why.
+        title={
+          isResumeRefused
+            ? `Resuming a schedule needs the ${featureLabel('scheduling')} feature. ${featureNoticeMessage(license)}`
+            : undefined
+        }
         onClick={async () => {
           const isCurrentlyPaused = status === JobStatus.PAUSED;
           updateJobStatus(!isCurrentlyPaused);

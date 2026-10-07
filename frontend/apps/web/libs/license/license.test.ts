@@ -9,13 +9,18 @@ import {
 } from '@husonym/sdk';
 import {
   areRunLogsHidden,
+  BLOCKING_FEATURES,
   featureLabel,
+  featureNoticeMessage,
   featureRows,
+  featureUseNote,
   isFeatureAllowed,
   invitationRole,
   isFeatureAvailable,
+  isKeyAlreadyInForce,
   isRoleSelectable,
   LICENSE_FEATURES,
+  missingKeyMessage,
   licenseState,
   limitsInForce,
   sourceUsage,
@@ -65,8 +70,9 @@ describe('featureLabel', () => {
     expect(featureLabel('sso')).toBe('Single sign-on (OIDC)');
   });
 
-  it('shows an unknown name as it is', () => {
-    expect(featureLabel('time_travel')).toBe('time_travel');
+  it('takes the name of a feature and nothing else', () => {
+    // @ts-expect-error a name that is not a feature does not compile
+    featureLabel('time_travel');
   });
 });
 
@@ -227,6 +233,177 @@ describe('featureRows', () => {
       'job_hooks',
       'sso',
     ]);
+  });
+
+  it('blocks for the five features that keep a job from starting', () => {
+    const rows = featureRows(
+      LICENSE_FEATURES,
+      listLicense([]),
+      LICENSE_FEATURES
+    );
+    expect(rows.filter((row) => row.blocking).map((row) => row.name)).toEqual([
+      'job_hooks',
+      'pii_text',
+      'pii_detection',
+      'custom_transformers',
+      'subsetting',
+    ]);
+    expect(BLOCKING_FEATURES).toEqual([
+      'job_hooks',
+      'pii_text',
+      'pii_detection',
+      'custom_transformers',
+      'subsetting',
+    ]);
+  });
+
+  it('does not block for a feature in use that keeps no job from starting', () => {
+    // What exists keeps working without these: only changes are refused.
+    const inUse = [
+      'scheduling',
+      'account_hooks',
+      'api_keys',
+      'sso',
+      'rbac',
+    ] as const;
+    const rows = featureRows(inUse, listLicense([]), [...inUse]);
+    expect(rows.every((row) => row.inUse && !row.allowed)).toBe(true);
+    expect(rows.some((row) => row.blocking)).toBe(false);
+  });
+});
+
+describe('featureUseNote', () => {
+  it('says nothing of a feature the account does not use', () => {
+    expect(
+      featureUseNote({
+        name: 'sso',
+        allowed: false,
+        inUse: false,
+        blocking: false,
+      })
+    ).toBe('');
+  });
+
+  it('says a feature is in use, when the license includes it or when it blocks', () => {
+    expect(
+      featureUseNote({
+        name: 'subsetting',
+        allowed: true,
+        inUse: true,
+        blocking: false,
+      })
+    ).toBe('In use by this account');
+    expect(
+      featureUseNote({
+        name: 'job_hooks',
+        allowed: false,
+        inUse: true,
+        blocking: true,
+      })
+    ).toBe('In use by this account');
+  });
+
+  it('says what happens to a feature in use that is not included and blocks nothing', () => {
+    expect(
+      featureUseNote({
+        name: 'scheduling',
+        allowed: false,
+        inUse: true,
+        blocking: false,
+      })
+    ).toBe(
+      'In use, not included — what exists keeps working, changes are refused'
+    );
+  });
+});
+
+describe('featureNoticeMessage', () => {
+  it('says the feature is not included under a license in force', () => {
+    expect(featureNoticeMessage(listLicense(['subsetting']))).toBe(
+      'This feature is not included in your license.'
+    );
+  });
+
+  it('says no license is in force when there is none, or a frozen one', () => {
+    expect(featureNoticeMessage(undefined)).toBe('No license is in force.');
+    const none = create(SystemLicenseSchema, { isValid: false, state: 'none' });
+    expect(featureNoticeMessage(none)).toBe('No license is in force.');
+    const frozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+      features: ['subsetting'],
+    });
+    expect(featureNoticeMessage(frozen)).toBe('No license is in force.');
+  });
+});
+
+describe('missingKeyMessage', () => {
+  it('invites to paste a key when the instance has none', () => {
+    expect(missingKeyMessage(undefined)).toBe(
+      'No license key is installed. You can paste one below.'
+    );
+    const none = create(SystemLicenseSchema, { state: 'none' });
+    expect(missingKeyMessage(none)).toBe(
+      'No license key is installed. You can paste one below.'
+    );
+  });
+
+  it('does not claim that no key is installed when one could not be read', () => {
+    const unread = create(SystemLicenseSchema, {
+      state: 'none',
+      problem: 'the license key is not valid base64',
+    });
+    expect(missingKeyMessage(unread)).toBe(
+      'A license key was given and could not be read, so none is in force. You can paste one below.'
+    );
+  });
+});
+
+describe('isKeyAlreadyInForce', () => {
+  const storedAt = timestampFromDate(new Date('2026-09-01T10:00:00Z'));
+  const held = create(SystemLicenseSchema, {
+    isValid: true,
+    state: 'valid',
+    origin: 'interface',
+    installedAt: storedAt,
+  });
+
+  it('is true when the answer describes the key the page already showed', () => {
+    const again = create(SystemLicenseSchema, {
+      isValid: true,
+      state: 'valid',
+      origin: 'interface',
+      installedAt: timestampFromDate(new Date('2026-09-01T10:00:00Z')),
+    });
+    expect(isKeyAlreadyInForce(held, again)).toBe(true);
+  });
+
+  it('is false when the key was stored since', () => {
+    const newer = create(SystemLicenseSchema, {
+      isValid: true,
+      state: 'valid',
+      origin: 'interface',
+      installedAt: timestampFromDate(new Date('2026-10-07T08:00:00Z')),
+    });
+    expect(isKeyAlreadyInForce(held, newer)).toBe(false);
+  });
+
+  it('is false when the key came another way', () => {
+    const fromFile = create(SystemLicenseSchema, {
+      isValid: true,
+      state: 'valid',
+      origin: 'file',
+      installedAt: storedAt,
+    });
+    expect(isKeyAlreadyInForce(fromFile, held)).toBe(false);
+  });
+
+  it('is false when the page showed no key, or could not read one', () => {
+    expect(isKeyAlreadyInForce(undefined, held)).toBe(false);
+    const none = create(SystemLicenseSchema, { state: 'none' });
+    expect(isKeyAlreadyInForce(none, held)).toBe(false);
+    expect(isKeyAlreadyInForce(none, none)).toBe(false);
+    expect(isKeyAlreadyInForce(held, undefined)).toBe(false);
   });
 });
 

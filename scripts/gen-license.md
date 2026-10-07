@@ -67,8 +67,9 @@ Four options say what the license carries:
 - `--max-sources 5` caps the number of sources of the instance, every account together;
   without it the number is not capped.
 - `--telemetry online|offline_report|none` is the mode the license asks of the instance, a
-  field the key carries and the License page shows; without it the license says nothing and
-  the instance reads it as online.
+  field the key carries and the API returns (`SystemLicense.telemetry`); without it the
+  license says nothing and the field reads `online`. Nothing in the product acts on it or
+  reports anything, and the License page does not show it.
 
 Everything, with the instance capped on sources:
 

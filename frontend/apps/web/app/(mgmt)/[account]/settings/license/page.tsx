@@ -68,6 +68,7 @@ export default function Page(): ReactElement {
       )}
       <LicenseKeyCard
         accountId={accountId}
+        current={license}
         onInstalled={() => Promise.all([systemInfo.refetch(), usage.refetch()])}
       />
     </div>

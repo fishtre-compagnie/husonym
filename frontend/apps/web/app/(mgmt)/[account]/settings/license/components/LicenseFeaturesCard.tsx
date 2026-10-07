@@ -15,6 +15,7 @@ import {
   featureLabel,
   FeatureRow,
   featureRows,
+  featureUseNote,
   LICENSE_FEATURES,
 } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
@@ -43,12 +44,14 @@ export default function LicenseFeaturesCard(props: Props): ReactElement {
     usage?.featuresInUse ?? []
   );
   const blocking = rows.filter((row) => row.blocking);
+  const others = rows.filter((row) => !row.blocking);
   // A license that is not in force includes nothing: only what the account uses is
   // worth a row then, rather than every feature marked as missing.
   const inForce = !!license?.isValid;
-  const shown = inForce
-    ? [...blocking, ...rows.filter((row) => !row.blocking)]
-    : blocking;
+  const shown = [
+    ...blocking,
+    ...(inForce ? others : others.filter((row) => row.inUse)),
+  ];
 
   return (
     <Card>
@@ -114,7 +117,7 @@ function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
         )}
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {row.inUse ? 'In use by this account' : ''}
+        {featureUseNote(row)}
       </TableCell>
     </TableRow>
   );

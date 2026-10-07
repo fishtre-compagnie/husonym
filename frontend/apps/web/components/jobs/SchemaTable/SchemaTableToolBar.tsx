@@ -3,8 +3,10 @@
 import { ReactTable, RowData } from '@tanstack/react-table';
 
 import ButtonText from '@/components/ButtonText';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { JobMapping } from '@husonym/sdk';
 import {
   Cross2Icon,
@@ -52,6 +54,9 @@ export function SchemaTableToolbar<TData extends RowData>({
   isScanningPii,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.state.columnFilters.length > 0;
+  // The content scan is the pii_detection feature: without it the API refuses every
+  // table, so the button is greyed and the notice below says why.
+  const { allowed: isPiiDetectionAllowed } = useLicenseFeature('pii_detection');
 
   return (
     <div className="flex flex-col items-start w-full gap-2">
@@ -86,7 +91,7 @@ export function SchemaTableToolbar<TData extends RowData>({
             <Button
               variant="outline"
               type="button"
-              disabled={isScanningPii}
+              disabled={isScanningPii || !isPiiDetectionAllowed}
               onClick={() => onScanContent?.()}
               title="Scans the sampled content of the columns (Presidio) to find personal data, including in columns whose name says nothing. The suggested transformers are applied automatically."
             >
@@ -116,6 +121,9 @@ export function SchemaTableToolbar<TData extends RowData>({
           <SchemaTableViewOptions table={table} />
         </div>
       </div>
+      {showPiiScan && (
+        <LicenseFeatureNotice feature="pii_detection" className="w-full" />
+      )}
     </div>
   );
 }
