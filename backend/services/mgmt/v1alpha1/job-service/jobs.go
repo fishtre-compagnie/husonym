@@ -2271,10 +2271,14 @@ func (s *Service) enforceJobLimit(
 		return fmt.Errorf("unable to count existing jobs against the license limit: %w", err)
 	}
 	if len(jobs) >= *limits.MaxJobs {
-		return husonymerrors.NewForbidden(fmt.Sprintf(
-			"this license allows %d job(s) and %d already exist; contact us to raise the limit",
-			*limits.MaxJobs, len(jobs),
-		))
+		return license.NewRefusal(
+			husonymdb.UUIDString(accountUuid),
+			husonymerrors.NewForbidden(fmt.Sprintf(
+				"this license allows %d job(s) and %d already exist; contact us to raise the limit",
+				*limits.MaxJobs, len(jobs),
+			)),
+			license.GateJobCap,
+		)
 	}
 	return nil
 }

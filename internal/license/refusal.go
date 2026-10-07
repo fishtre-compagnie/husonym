@@ -15,6 +15,12 @@ const (
 	GateNotInForce Gate = "license_not_in_force"
 	// GateSourceCap is a refusal because a write would bring the instance over its cap on sources.
 	GateSourceCap Gate = "source_cap"
+	// GateJobCap is a refusal because the account has reached the cap on jobs.
+	GateJobCap Gate = "job_cap"
+	// GateConnectionCap is a refusal because the account has reached the cap on connections.
+	GateConnectionCap Gate = "connection_cap"
+	// GateConnectionType is a refusal because the license does not allow the type of connection.
+	GateConnectionType Gate = "connection_type"
 )
 
 // FeatureGate is the gate of a refusal because the license does not include the feature.
@@ -23,14 +29,15 @@ func FeatureGate(f Feature) Gate {
 }
 
 // AllGates returns every gate, in a stable order: the gate of each feature in the order of
-// AllFeatures, then GateNotInForce and GateSourceCap.
+// AllFeatures, then GateNotInForce, GateSourceCap, GateJobCap,
+// GateConnectionCap and GateConnectionType.
 func AllGates() []Gate {
 	features := AllFeatures()
-	gates := make([]Gate, 0, len(features)+2)
+	gates := make([]Gate, 0, len(features)+5)
 	for _, f := range features {
 		gates = append(gates, FeatureGate(f))
 	}
-	return append(gates, GateNotInForce, GateSourceCap)
+	return append(gates, GateNotInForce, GateSourceCap, GateJobCap, GateConnectionCap, GateConnectionType)
 }
 
 // Refusal is the error of anything the license refuses. Cause is what the caller is answered:

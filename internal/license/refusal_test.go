@@ -21,18 +21,22 @@ func Test_Refusal_Unwraps(t *testing.T) {
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(refusal))
 	require.Equal(t, cause.Error(), refusal.Error())
 	require.Equal(t, "this license does not include rbac", refusal.Message())
+
+	// A cause that is not a Connect error is its own sentence.
+	require.Equal(t, "plain", NewRefusal("acc", errors.New("plain")).Message())
 }
 
 func Test_AllGates(t *testing.T) {
 	gates := AllGates()
-	require.Len(t, gates, 15)
+	require.Len(t, gates, 18)
 	seen := map[Gate]struct{}{}
 	for _, gate := range gates {
 		seen[gate] = struct{}{}
 	}
-	require.Len(t, seen, 15)
+	require.Len(t, seen, 18)
 	for i, f := range AllFeatures() {
 		require.Equal(t, FeatureGate(f), gates[i])
 	}
-	require.Equal(t, []Gate{GateNotInForce, GateSourceCap}, gates[13:])
+	require.Equal(t,
+		[]Gate{GateNotInForce, GateSourceCap, GateJobCap, GateConnectionCap, GateConnectionType}, gates[13:])
 }
