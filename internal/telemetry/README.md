@@ -69,6 +69,26 @@ the reference for any other implementation, and does not change: `-update` leave
 `go test ./internal/telemetry -run Test_Seal_MatchesThePublishedVector -update-seal-vector` mints
 a new one, which every other implementation then has to follow.
 
+## Sending
+
+The sending is in `backend/internal/usagereport` (`sender.go`, `transport.go`). The mode in force
+is computed by `telemetry.EffectiveMode`, from what the key provides and from `HUSONYM_TELEMETRY`,
+which may only lower it; only the mode `online` sends.
+
+- **Address**: `usagereport.DefaultReportURL`.
+- **Request**: a `POST` whose body is the stored document, byte for byte, with three headers:
+  `Content-Type` (`application/json`), `Husonym-Seal` (the seal of the document) and
+  `Husonym-Key-Fingerprint` (the fingerprint of the key that sealed it).
+- **Success**: any 2xx status. A redirect is not followed and counts as a failure; the body of
+  an answer is read up to a limit and dropped.
+- **First sending**: an instance that starts sending waits 24 hours before it sends anything.
+  Leaving the mode `online` forgets since when it was sending, so coming back waits again.
+- **Retry**: a report that could not be sent is tried again after 6 hours, from the oldest, and
+  reports of closed days older than 30 days are no longer sent. A failure is logged and never
+  delays a request or a run.
+- **Twice**: a report may arrive twice, when it left and could not be marked as sent. It is then
+  the same report: same day, same bytes, same seal.
+
 ## The report for a period
 
 On demand the instance makes a second document from its own tables: its usage report for a period

@@ -168,6 +168,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'deploy/usage-report',
+      label: 'Usage report',
+    },
+    {
+      type: 'doc',
       id: 'deploy/upgrading',
       label: 'Upgrading',
     },

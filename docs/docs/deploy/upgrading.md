@@ -85,6 +85,13 @@ Rolling the **API** back keeps the license, with these cares:
 
 The extra table is ignored by the previous version, or removed by the reverse migration.
 
+### Usage report
+
+From this version, an instance prepares a daily report of its usage and sends it when its
+license provides for it; the first report waits 24 hours, and the License page shows it
+beforehand. See [Usage report](usage-report.md). If you filter outbound traffic, the one
+host to allow is `license.husonym.com`, over HTTPS.
+
 ### Roles
 
 The access rules of the four roles are part of the product. The rule rows that earlier

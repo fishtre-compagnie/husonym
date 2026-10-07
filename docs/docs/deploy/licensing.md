@@ -64,8 +64,9 @@ in the file was refused as invalid, the License page shows the reason.
 The license is checked on every request and follows the clock. An expiry never needs a
 restart, and neither does a renewal.
 
-Verification happens entirely offline. Husonym never contacts us to check your license, so
-it works in an air-gapped environment, and we collect nothing about how you use it.
+Verification happens entirely offline: Husonym never contacts us to check your license, so
+it works in an air-gapped environment. Separately, an instance reports its usage as counts:
+see [Usage report](usage-report.md).
 
 :::note
 The worker needs no license setting. It obtains the key from the API, with its API key,
@@ -99,6 +100,9 @@ account uses of it.
   instance; the limits on jobs and on connections apply to each account.
 - **License key**: where you install a new key. The key in force is never shown. Pasting
   the key that is already in force changes nothing, and the page says so.
+- **Usage report**: the reporting in force for the instance, the last thirty reports and
+  what became of each, each report word for word, and a download of the report for a
+  period.
 
 ## What the license covers
 

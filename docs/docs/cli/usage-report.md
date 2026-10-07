@@ -19,6 +19,8 @@ The file has two lines:
 1. The report, exactly as the API returned it.
 2. A JSON object, `{"seal":"…","key_fingerprint":"…"}`, holding the seal of the report and the fingerprint of the key that made it.
 
+What the report contains, and what it never contains, is described in [Usage report](../deploy/usage-report.md).
+
 The file is created with permissions `0600` and is never overwritten unless `--force` is given. The report is not changed between the API and the file, so it can be read before the file is handed over: use `--print` to see an indented copy of it on standard output.
 
 ## Usage

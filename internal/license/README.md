@@ -18,9 +18,9 @@ The verifying public keys are **embedded in the binary** (one `keys/<kid>.pem` p
 `go:embed`). The envelope names the key to verify with in `kid`; it sits outside the signed
 content, so altering it can only make verification fail. A key without a `kid`, which is
 every key issued before kids existed, is verified with `k1` (`license.LegacyKid`).
-Verification is entirely offline: no phone-home, no network call, so an air-gapped
-deployment works and we collect nothing about customer usage. The consequence is that there
-is **no revocation** — a license is valid until it expires.
+Verification is entirely offline, so an air-gapped deployment works; usage reporting is a
+separate mechanism, see `internal/telemetry/README.md`. The consequence of offline
+verification is that there is **no revocation** — a license is valid until it expires.
 
 ### Where the key lives
 
