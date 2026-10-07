@@ -6,6 +6,8 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
@@ -24,4 +26,15 @@ func (s *Service) setRole(ctx context.Context, user rbac.User, account rbac.Acco
 		return nil
 	}
 	return err
+}
+
+// enforceRbacForRole asks for the rbac feature when a role other than administrator is being
+// given. Administrator is the way back to every member being one, and a role not named is not
+// given. Roles already assigned keep applying whatever the license: nothing here, and nothing in
+// the enforcement, reads it.
+func enforceRbacForRole(ctx context.Context, user *userdata.User, accountId string, role mgmtv1alpha1.AccountRole) error {
+	if role == mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED || role == mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN {
+		return nil
+	}
+	return user.EnforceFeature(ctx, accountId, license.FeatureRbac)
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
@@ -819,6 +820,11 @@ func (s *Service) streamLogs(
 		return err
 	}
 	if err := user.EnforceJob(ctx, userdata.NewDomainEntity(req.GetAccountId(), jobRun.GetJobId()), rbac.JobAction_View); err != nil {
+		return err
+	}
+	// The one read the license can close: serving the logs of a run is the feature, while the
+	// run itself, its status and its events stay readable.
+	if err := user.EnforceFeature(ctx, req.GetAccountId(), license.FeatureRunLogs); err != nil {
 		return err
 	}
 

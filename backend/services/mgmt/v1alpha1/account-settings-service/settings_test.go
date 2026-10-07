@@ -11,9 +11,11 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata/userdatatest"
 	"github.com/fishtre-compagnie/husonym/internal/encrypt/protosecret"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -61,9 +63,9 @@ func (f *fixture) allowUser(t *testing.T, allowed bool) {
 	enforcer.On("EnforceAccount", mock.Anything, mock.Anything, mock.Anything).
 		Once().
 		Return(result)
-	f.users.On("GetUser", mock.Anything).Once().Return(&userdata.User{
-		EntityEnforcer: enforcer,
-	}, nil)
+	f.users.On("GetUser", mock.Anything).Once().Return(
+		userdatatest.NewUser(t, testutil.NewFakeEELicense(testutil.WithIsValid()), enforcer), nil,
+	)
 }
 
 // storedRow is what the column holds for a setting: its secrets encrypted one by one.

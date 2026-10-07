@@ -11,6 +11,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/encrypt/protosecret"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -65,6 +66,9 @@ func (s *Service) SetAccountSetting(
 	if err != nil {
 		return nil, err
 	}
+	if err := enforceSsoForProvider(ctx, user, req.Msg.GetAccountId(), req.Msg.GetConfig()); err != nil {
+		return nil, err
+	}
 
 	if err := s.refuseIssuerClaimedElsewhere(ctx, accountUuid, req.Msg.GetConfig()); err != nil {
 		return nil, err
@@ -92,6 +96,21 @@ func (s *Service) SetAccountSetting(
 		return nil, err
 	}
 	return connect.NewResponse(&mgmtv1alpha1.SetAccountSettingResponse{Setting: setting}), nil
+}
+
+// enforceSsoForProvider asks for the sso feature when the setting declares an identity provider.
+// The consistency key goes through the same RPC and is not part of that feature. Reading the
+// settings, and the sign-in of an account that declared its provider, do not come through here.
+func enforceSsoForProvider(
+	ctx context.Context,
+	user *userdata.User,
+	accountId string,
+	config *mgmtv1alpha1.AccountSettingConfig,
+) error {
+	if _, ok := config.GetConfig().(*mgmtv1alpha1.AccountSettingConfig_OidcProvider); !ok {
+		return nil
+	}
+	return user.EnforceFeature(ctx, accountId, license.FeatureSso)
 }
 
 // enforce checks that the caller may act on the account, and hands back the caller and the

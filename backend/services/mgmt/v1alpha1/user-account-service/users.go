@@ -578,6 +578,11 @@ func (s *Service) InviteUserToTeamAccount(
 	if err := s.verifyTeamAccount(ctx, accountUuid); err != nil {
 		return nil, err
 	}
+	// An invitation that names no role is a plain invitation, and the member is given the
+	// viewer role when accepting it: only a role chosen at invitation time is the feature.
+	if err := enforceRbacForRole(ctx, user, req.Msg.GetAccountId(), req.Msg.GetRole()); err != nil {
+		return nil, err
+	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
 	expiresAt, err := husonymdb.ToTimestamp(tomorrow)
@@ -791,6 +796,10 @@ func (s *Service) SetUserRole(
 
 	requestingUserUuid, err := husonymdb.ToUuid(req.Msg.GetUserId())
 	if err != nil {
+		return nil, err
+	}
+
+	if err := enforceRbacForRole(ctx, user, req.Msg.GetAccountId(), req.Msg.GetRole()); err != nil {
 		return nil, err
 	}
 

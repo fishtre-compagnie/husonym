@@ -14,6 +14,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
@@ -100,6 +101,11 @@ func (s *Service) CreateAccountApiKey(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.Msg.GetAccountId()), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
+	// Making a key is the feature; a key that exists keeps authenticating, which nothing here
+	// touches.
+	if err := user.EnforceFeature(ctx, req.Msg.GetAccountId(), license.FeatureApiKeys); err != nil {
+		return nil, err
+	}
 	if err := enforceHeldByCreator(ctx, user, req.Msg.GetAccountId(), req.Msg.GetPermissions()); err != nil {
 		return nil, err
 	}
@@ -165,6 +171,9 @@ func (s *Service) RegenerateAccountApiKey(
 		userdata.NewIdentifier(husonymdb.UUIDString(apiKey.AccountID)),
 		rbac.AccountAction_Edit,
 	); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceFeature(ctx, husonymdb.UUIDString(apiKey.AccountID), license.FeatureApiKeys); err != nil {
 		return nil, err
 	}
 
