@@ -43,6 +43,30 @@ func AllFeatures() []Feature {
 	}
 }
 
+// NotIncludedMessage is what a refusal says for a feature that a license in force does not
+// include. It names the feature and nothing else: never a plan, never the key.
+func NotIncludedMessage(f Feature) string {
+	return "this license does not include " + string(f)
+}
+
+// NotInForceMessage is what a refusal says when no license is in force: there is none, or it
+// is past its grace period.
+const NotInForceMessage = "account does not have an active license"
+
+// FeatureRefusal gives the reason the license refuses the feature, or nothing when it allows
+// it. A license that is not in force is said first: it includes no feature, and "does not
+// include" would then name the wrong cause.
+func FeatureRefusal(lic EEInterface, f Feature) string {
+	switch {
+	case lic == nil || !lic.IsValid():
+		return NotInForceMessage
+	case !lic.HasFeature(f):
+		return NotIncludedMessage(f)
+	default:
+		return ""
+	}
+}
+
 // ParseFeature returns the feature a name designates. The wildcard is not a feature.
 func ParseFeature(name string) (Feature, bool) {
 	f := Feature(name)

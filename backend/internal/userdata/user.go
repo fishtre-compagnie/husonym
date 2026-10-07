@@ -75,6 +75,19 @@ func (u *User) EnforceFeature(ctx context.Context, accountId string, f license.F
 	return nil
 }
 
+// FeatureRefusal is what EnforceFeature answers, for a service that holds the license and no
+// user to ask about an account: nil when the license is in force and includes the feature.
+func FeatureRefusal(lic license.EEInterface, f license.Feature) error {
+	switch reason := license.FeatureRefusal(lic, f); reason {
+	case "":
+		return nil
+	case license.NotInForceMessage:
+		return husonymerrors.NewUnauthorized(reason)
+	default:
+		return husonymerrors.NewForbidden(reason)
+	}
+}
+
 // HasFeature tells whether the license includes the feature. It does not check access to an
 // account: it is for callers that have already done so.
 func (u *User) HasFeature(f license.Feature) bool {

@@ -46,3 +46,26 @@ func Test_User_EnforceFeature(t *testing.T) {
 		require.False(t, (&User{}).HasFeature(license.FeatureMcp))
 	})
 }
+
+// A service that holds the license and no user answers what EnforceFeature answers.
+func Test_FeatureRefusal(t *testing.T) {
+	ctx := context.Background()
+	accountId := uuid.NewString()
+	for name, lic := range map[string]*testutil.FakeEELicense{
+		"a license that is not in force":         testutil.NewFakeEELicense(testutil.WithFeatures(license.FeatureMcp)),
+		"a license in force without the feature": testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureSso)),
+		"a license in force with the feature":    testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			user, err := NewClient(fakeUserService{userId: uuid.NewString()}, allowsEverything{}, lic).GetUser(ctx)
+			require.NoError(t, err)
+			require.Equal(t, user.EnforceFeature(ctx, accountId, license.FeatureMcp), FeatureRefusal(lic, license.FeatureMcp))
+		})
+	}
+
+	t.Run("no license at all is not in force", func(t *testing.T) {
+		err := FeatureRefusal(nil, license.FeatureMcp)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+		require.ErrorContains(t, err, "account does not have an active license")
+	})
+}

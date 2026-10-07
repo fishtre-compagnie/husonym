@@ -190,9 +190,9 @@ license: a feature is never granted by a license that is not in force.
 | --- | --- | --- |
 | `job_hooks` | creating or modifying a job hook, turning one on | a job with an enabled hook does not start |
 | `account_hooks` | creating or modifying an account hook, turning one on | a run that starts without it announces no event to the account hooks |
-| `pii_text` | PII text in a job's mappings; a user-defined transformer that stores it; the bulk anonymization call; the catalog stops offering it | a job that maps it does not start; the call that rewrites each value is refused |
+| `pii_text` | PII text in a job's mappings; a user-defined transformer that stores it; the bulk anonymization call; the column preview of a PII text; the catalog stops offering it | a job that maps it does not start; the call that rewrites each value is refused |
 | `pii_detection` | creating or changing a PII detection job; the PII detection call on a connection | a job of that type does not start; the workflow of a run that a schedule started fails |
-| `custom_transformers` | creating or modifying a user-defined transformer; trying a JavaScript rule; JavaScript or a user-defined transformer in a job's mappings | a job that maps one does not start |
+| `custom_transformers` | creating or modifying a user-defined transformer; trying a JavaScript rule; JavaScript or a user-defined transformer in a job's mappings; an anonymization call (`AnonymizeSingle`, `AnonymizeMany`) or a column preview that carries one, at top level, as a default transformer or among the anonymizers of a PII text | a job that maps one does not start |
 | `subsetting` | setting a WHERE clause on a table of the source (clearing them stays possible) | a job with a WHERE clause does not start |
 | `scheduling` | setting a cron schedule, resuming a paused schedule | none: see the known limits |
 | `mapping_review` | reviewing and applying mapping changes, setting transformers on them | none: the reconciliation a run does is not review |

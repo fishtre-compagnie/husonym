@@ -16,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
@@ -33,24 +34,51 @@ const (
 )
 
 // piiTextNotIncluded is what a call is told when the license does not include PII text.
-var piiTextNotIncluded = fmt.Sprintf("this license does not include %s", license.FeaturePiiText)
+var piiTextNotIncluded = license.NotIncludedMessage(license.FeaturePiiText)
+
+// customTransformersNotIncluded is what a call is told when it carries a transformer a person
+// wrote and the license does not include them.
+var customTransformersNotIncluded = license.NotIncludedMessage(license.FeatureCustomTransformers)
+
+// refusesCustomTransformers tells whether the request carries a transformer that the license
+// does not let it run: JavaScript, to transform or to generate, or a user-defined transformer,
+// in a mapping, as a default transformer or among the anonymizers of a PII text. The request
+// executes what it carries, so it is refused whole: a user-defined transformer is not even
+// resolved.
+func (s *Service) refusesCustomTransformers(msg transformerMsgToValidate) bool {
+	if s.license.HasFeature(license.FeatureCustomTransformers) {
+		return false
+	}
+	for cfg := range getTransformerConfigsToValidate(msg) {
+		if job_util.RunsCustomTransformer(cfg) {
+			return true
+		}
+	}
+	return false
+}
 
 func (s *Service) AnonymizeMany(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.AnonymizeManyRequest],
 ) (*connect.Response[mgmtv1alpha1.AnonymizeManyResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	if !s.license.HasFeature(license.FeaturePiiText) {
-		return nil, husonymerrors.NewNotImplemented(
+	notImplemented := func(reason string) error {
+		return husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented: %s",
 				strings.TrimPrefix(
 					mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
 					"/",
 				),
-				piiTextNotIncluded,
+				reason,
 			),
 		)
+	}
+	if !s.license.HasFeature(license.FeaturePiiText) {
+		return nil, notImplemented(piiTextNotIncluded)
+	}
+	if s.refusesCustomTransformers(req.Msg) {
+		return nil, notImplemented(customTransformersNotIncluded)
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -208,6 +236,12 @@ func (s *Service) AnonymizeSingle(
 			defaultTransforms.GetS().GetTransformPiiTextConfig() != nil {
 			return nil, husonymerrors.NewForbidden(piiTextNotIncluded)
 		}
+	}
+	// The worker calls this during a run for a PII text whose anonymizers may be user-defined.
+	// Such a job does not start without custom_transformers (the job gate counts what the
+	// anonymizers of a PII text run), so a licensed run is never refused here.
+	if s.refusesCustomTransformers(req.Msg) {
+		return nil, husonymerrors.NewForbidden(customTransformersNotIncluded)
 	}
 
 	for cfg := range getTransformerConfigsToValidate(req.Msg) {

@@ -20,6 +20,20 @@ func TransformerConfigsRun(config *mgmtv1alpha1.TransformerConfig) []*mgmtv1alph
 	return configs
 }
 
+// RunsCustomTransformer tells whether a transformer runs one that a person wrote: JavaScript,
+// to transform or to generate, or a user-defined transformer, itself or among the anonymizers
+// of TransformPiiText.
+func RunsCustomTransformer(config *mgmtv1alpha1.TransformerConfig) bool {
+	for _, run := range TransformerConfigsRun(config) {
+		if run.GetTransformJavascriptConfig() != nil ||
+			run.GetGenerateJavascriptConfig() != nil ||
+			run.GetUserDefinedTransformerConfig() != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // UserDefinedTransformerIds lists the user-defined transformers a transformer runs: itself, or
 // those the anonymizers of TransformPiiText hand the PII they find to.
 func UserDefinedTransformerIds(config *mgmtv1alpha1.TransformerConfig) []string {
