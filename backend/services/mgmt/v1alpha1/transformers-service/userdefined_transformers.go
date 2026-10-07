@@ -15,6 +15,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
@@ -125,6 +126,9 @@ func (s *Service) CreateUserDefinedTransformer(
 		rbac.JobAction_Edit,
 	)
 	if err != nil {
+		return nil, err
+	}
+	if err := enforceStorableTransformer(ctx, user, req.Msg.GetAccountId(), req.Msg.GetTransformerConfig()); err != nil {
 		return nil, err
 	}
 	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
@@ -241,6 +245,11 @@ func (s *Service) UpdateUserDefinedTransformer(
 	if err != nil {
 		return nil, err
 	}
+	if err := enforceStorableTransformer(
+		ctx, user, husonymdb.UUIDString(transformer.AccountID), req.Msg.GetTransformerConfig(),
+	); err != nil {
+		return nil, err
+	}
 
 	if err := verifyRunsNoUserDefinedTransformer(req.Msg.GetTransformerConfig()); err != nil {
 		return nil, err
@@ -330,6 +339,24 @@ func (s *Service) ValidateUserRegexCode(
 	return connect.NewResponse(&mgmtv1alpha1.ValidateUserRegexCodeResponse{
 		Valid: err == nil,
 	}), nil
+}
+
+// enforceStorableTransformer refuses unless the license includes what a user-defined transformer
+// is: custom transformers, and PII text as well when the transformer stores a PII-text
+// configuration, which the catalog no longer offers without that feature.
+func enforceStorableTransformer(
+	ctx context.Context,
+	user *userdata.User,
+	accountId string,
+	config *mgmtv1alpha1.TransformerConfig,
+) error {
+	if err := user.EnforceFeature(ctx, accountId, license.FeatureCustomTransformers); err != nil {
+		return err
+	}
+	if config.GetTransformPiiTextConfig() != nil {
+		return user.EnforceFeature(ctx, accountId, license.FeaturePiiText)
+	}
+	return nil
 }
 
 // verifyRunsNoUserDefinedTransformer refuses a user-defined transformer whose configuration runs

@@ -17,6 +17,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/google/uuid"
@@ -31,19 +32,23 @@ const (
 	outputErrorCounterStr = "output_error"
 )
 
+// piiTextNotIncluded is what a call is told when the license does not include PII text.
+var piiTextNotIncluded = fmt.Sprintf("this license does not include %s", license.FeaturePiiText)
+
 func (s *Service) AnonymizeMany(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.AnonymizeManyRequest],
 ) (*connect.Response[mgmtv1alpha1.AnonymizeManyResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	if !s.license.IsValid() {
+	if !s.license.HasFeature(license.FeaturePiiText) {
 		return nil, husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
-				"%s is not implemented in the OSS version of Husonym.",
+				"%s is not implemented: %s",
 				strings.TrimPrefix(
 					mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
 					"/",
 				),
+				piiTextNotIncluded,
 			),
 		)
 	}
@@ -190,22 +195,18 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 
-	licensed := s.license.IsValid()
+	licensed := s.license.HasFeature(license.FeaturePiiText)
 	if !licensed {
 		for _, mapping := range req.Msg.GetTransformerMappings() {
 			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
-				return nil, husonymerrors.NewForbidden(
-					"TransformPiiText is not available for use. Please contact us about upgrading your account.",
-				)
+				return nil, husonymerrors.NewForbidden(piiTextNotIncluded)
 			}
 		}
 		defaultTransforms := req.Msg.GetDefaultTransformers()
 		if defaultTransforms.GetBoolean().GetTransformPiiTextConfig() != nil ||
 			defaultTransforms.GetN().GetTransformPiiTextConfig() != nil ||
 			defaultTransforms.GetS().GetTransformPiiTextConfig() != nil {
-			return nil, husonymerrors.NewForbidden(
-				"TransformPiiText is not available for use. Please contact us about upgrading your account.",
-			)
+			return nil, husonymerrors.NewForbidden(piiTextNotIncluded)
 		}
 	}
 

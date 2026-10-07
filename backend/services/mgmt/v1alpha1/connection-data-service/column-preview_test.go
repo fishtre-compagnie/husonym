@@ -13,6 +13,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
@@ -115,6 +116,20 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
 
 		// What a deployment without Presidio answers: the transformer cannot be built.
+		require.Nil(t, resp)
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+	})
+
+	t.Run("under a valid license that lacks pii_text the transformer is not enabled and Presidio is not called", func(t *testing.T) {
+		presidioFake := presidiotest.New(t)
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			PiiText: engineOf(t, presidioFake),
+			License: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureCustomTransformers)),
+		}}
+
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
+
 		require.Nil(t, resp)
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 		require.ErrorContains(t, err, "TransformPiiText is not enabled")

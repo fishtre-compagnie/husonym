@@ -17,6 +17,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
@@ -232,6 +233,85 @@ func Test_AnonymizeSingle_PiiTextNeedsALicenseOnEveryPath(t *testing.T) {
 			out, err := anonymized(context.Background(), s, account, config, nil)
 			require.Error(t, err)
 			require.Empty(t, out)
+		})
+	}
+}
+
+// A license in force that lacks pii_text refuses the PII text on every path, and says which
+// feature. The refusal is an error: the value is never handed back as it came, so a run that
+// reaches PII text through a script fails rather than writing text that was not anonymized.
+func Test_AnonymizeSingle_PiiTextNeedsItsOwnFeature(t *testing.T) {
+	account := uuid.NewString()
+	withoutPiiText := func() *testutil.FakeEELicense {
+		return testutil.NewFakeEELicense(
+			testutil.WithIsValid(),
+			testutil.WithFeatures(license.FeatureCustomTransformers, license.FeaturePiiDetection),
+		)
+	}
+	script := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{
+			Code: `return husonym.transformPiiText(value, {});`,
+		},
+	}}
+
+	for name, config := range map[string]*mgmtv1alpha1.TransformerConfig{
+		"a mapping":              piiTextConfig(&mgmtv1alpha1.TransformPiiText{}),
+		"a script that calls it": script,
+	} {
+		t.Run(name, func(t *testing.T) {
+			// No answer set on Presidio: a call to it fails the test.
+			s := service(t, withoutPiiText(), presidiotest.New(t), nil)
+
+			out, err := anonymized(asTheWorker(), s, account, config, nil)
+
+			// The script fails in the engine that runs it, which does not name a feature: what
+			// counts is that the call fails and returns nothing.
+			require.Error(t, err)
+			require.Empty(t, out, "the input is never passed through")
+		})
+	}
+
+	t.Run("a transformer that is not PII text is served without the feature", func(t *testing.T) {
+		s := service(t, withoutPiiText(), presidiotest.New(t), nil)
+		passthrough := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
+		}
+
+		out, err := anonymized(asTheWorker(), s, account, passthrough, nil)
+
+		require.NoError(t, err)
+		require.Equal(t, "appeler Zoé demain", out)
+	})
+}
+
+// A mapping that is a PII text is refused with the code the refusal always had, and the message
+// names the feature.
+func Test_AnonymizeSingle_PiiTextRefusalCode(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures()), presidiotest.New(t), nil)
+
+	_, err := anonymized(asTheWorker(), s, uuid.NewString(), piiTextConfig(&mgmtv1alpha1.TransformPiiText{}), nil)
+
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "this license does not include pii_text")
+}
+
+// AnonymizeMany is refused whole to a license without pii_text, with the code it always had, and
+// the message names the feature.
+func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
+	for name, eelicense := range map[string]*testutil.FakeEELicense{
+		"a license that lacks pii_text":  testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
+		"a license that is not in force": testutil.NewFakeEELicense(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := service(t, eelicense, presidiotest.New(t), nil)
+
+			resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+				AccountId: uuid.NewString(),
+			}))
+
+			require.Nil(t, resp)
+			require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, "this license does not include pii_text")
 		})
 	}
 }

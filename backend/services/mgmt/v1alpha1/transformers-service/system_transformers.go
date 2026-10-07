@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 )
 
@@ -37,9 +38,9 @@ func (s *Service) GetSystemTransformerBySource(
 }
 
 func (s *Service) getSystemTransformerSourceMap() map[mgmtv1alpha1.TransformerSource]*mgmtv1alpha1.SystemTransformer {
-	return catalog.BySource(s.license.IsValid())
+	return catalog.BySource(s.license.HasFeature(license.FeaturePiiText))
 }
 
 func (s *Service) getSystemTransformers() []*mgmtv1alpha1.SystemTransformer {
-	return catalog.Transformers(s.license.IsValid())
+	return catalog.Transformers(s.license.HasFeature(license.FeaturePiiText))
 }

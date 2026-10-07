@@ -13,6 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
@@ -115,7 +116,7 @@ func (s *Service) previewAnonymized(
 		}}),
 		jsonanonymizer.WithPiiText(
 			s.transformers.PiiText,
-			s.transformers.PiiText != nil && s.transformers.License.IsValid(),
+			s.transformers.PiiText != nil && s.transformers.License.HasFeature(license.FeaturePiiText),
 			s.transformers.PiiText.AccountHashKey(accountId),
 		),
 		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),

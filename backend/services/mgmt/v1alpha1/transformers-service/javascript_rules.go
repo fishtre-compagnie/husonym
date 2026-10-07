@@ -16,6 +16,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 )
@@ -69,6 +70,9 @@ func (s *Service) TryJavascriptRules(
 	}
 	// Trying a rule is part of writing one: the right to create transformers.
 	if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(req.Msg.GetAccountId()), rbac.JobAction_Edit); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceFeature(ctx, req.Msg.GetAccountId(), license.FeatureCustomTransformers); err != nil {
 		return nil, err
 	}
 
