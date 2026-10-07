@@ -93,13 +93,16 @@ chaque poids) et sur une **plage réduite**. Avec une seule échelle par poids, 
 réglage par défaut de l'outil, ce modèle ne trouve plus aucun nom. La plage
 réduite évite que les produits sur 8 bits saturent sur les processeurs sans
 instructions VNNI : le résultat ne dépend pas du processeur. Avant de garder
-l'export, le script compare les étiquettes du modèle quantifié à celles du
-modèle d'origine sur quelques phrases, token par token, et arrête la
-construction si elles diffèrent.
+l'export, le script contrôle sur six phrases que le tokenizer écrit rend les
+tokens du tokenizer d'origine, et que le modèle quantifié donne à chaque token
+l'étiquette que lui donne le modèle d'origine, avec une probabilité proche
+(0,3 d'écart au plus ; 0,22 observé). C'est un contrôle de l'export, pas une
+mesure du modèle : s'il échoue, la construction s'arrête.
 
-Ce que la quantification coûte, mesuré hors de l'image sur les mêmes textes : rien
-sur du texte métier ordinaire, mais des noms en moins dans du texte presque sans
-espaces (voir « Texte pauvre en espaces », plus bas).
+Ce que la quantification coûte a été mesuré une fois, hors de l'image et hors de
+ce dépôt, sur le second jeu de mesure : 102 noms trouvés sur 109 au lieu de 103,
+et 4 passages à tort au lieu de 1. Elle coûte davantage dans du texte presque
+sans espaces (voir « Texte pauvre en espaces », plus bas).
 
 Le seuil de 0,6 a été choisi sur le premier jeu de mesure (`free-text-fr.json`)
 et vérifié sur un second, écrit sans exécuter de modèle (`free-text-fr-holdout.json`).
@@ -209,20 +212,37 @@ seules espaces sont celles du nom :
 Aux autres positions le nom revient en partie (« Corentin Le », « entin Le
 Guével »), avec un caractère de trop devant lui (un guillemet), ou pas du tout.
 Dans tous les cas une trouvaille ne désigne que des caractères du nom ou des
-deux qui le précèdent.
+deux qui le précèdent. Le test tient chaque compte à cinq positions près : un
+nom que l'image ne retrouverait plus le fait échouer.
 
 Hors de l'image, sur les mêmes textes, le modèle non quantifié rend ces trois
 noms entiers aux 60 positions en JSON compact, mais « Anne-Sophie Marchand » à
 45 positions sur 60 seulement dans la liste de références : la quantification
 explique une part de ces manques, le modèle lui-même le reste.
 
-**Un nom que le modèle ne voit pas.** « Corentin de La Brosse » dans une valeur
-JSON (`{"nom":"Corentin de La Brosse"}`) n'est rendu à aucune position, quantifié
-ou non, alors que « Mathilde Rousseau de Kerbrat » l'est. Deux cas : trop peu
-pour fixer une règle sur les noms à particule.
+**Un nom que le modèle ne rend jamais entier.** « Corentin de La Brosse », dans
+les deux mêmes textes, n'est rendu entier à aucune des 60 positions, quantifié
+ou non ; il revient en partie (« Corentin de La ») à quelques-unes, et pas du
+tout aux autres, y compris dans une valeur JSON courte
+(`{"nom":"Corentin de La Brosse"}`). « Mathilde Rousseau de Kerbrat », lui, est
+rendu. Deux cas : trop peu pour fixer une règle sur les noms à particule.
 
-Dans de la prose, les mêmes noms placés autour d'une coupe reviennent entiers à
-toutes les positions essayées (`Test_Analyzer_French_Names_InProse_AroundAChunkBoundary`).
+Dans de la prose, des noms de plusieurs mots placés autour d'une coupe reviennent
+entiers à toutes les positions essayées
+(`Test_Analyzer_French_Names_InProse_AroundAChunkBoundary`).
+
+### Autres limites du reconnaisseur
+
+- **Caractères qui valent plusieurs tokens.** Un texte fait de tels caractères
+  (« ﷺ », « ½ ») est redécoupé jusqu'à tenir dans la fenêtre du modèle : il
+  coûte bien plus que sa longueur ne le laisse attendre. Observé une fois :
+  400 « ﷺ » suivis d'un nom demandent 16 inférences, contre une seule pour
+  400 caractères de prose.
+- **Jetons spéciaux écrits en clair.** `<s>`, `</s>`, `<pad>`, `<mask>` et
+  `<unk>` écrits tels quels dans un texte sont lus par le tokenizer comme ses
+  propres jetons, et le modèle peut les désigner ou les joindre à un nom voisin
+  (« `<mask>` Paul Durand `<unk>` » rendu en un seul passage). `<s>` est aussi
+  la balise HTML du texte barré.
 
 ## Reconnaisseurs français ajoutés
 
@@ -287,9 +307,22 @@ La construction contrôle ensuite ce qu'elle a téléchargé et assemblé :
   de Presidio, d'ONNX Runtime ou de tokenizers qui a changé arrête la
   construction ici.
 
-**En fonctionnement l'image ne joint jamais le réseau** : le modèle et son
+**En fonctionnement l'image ne joint pas le réseau** : le modèle et son
 tokenizer sont lus dans un dossier de l'image, et rien n'y est téléchargé. Un
 conteneur lancé avec `--network none` répond normalement.
+
+**La télémétrie d'ONNX Runtime est coupée.** Les paquets officiels d'ONNX Runtime
+envoient par défaut des événements d'usage à leur éditeur, en HTTPS, et gardent
+un identifiant et une file d'événements dans le dossier de l'utilisateur
+(`~/.cache/Microsoft`) ; c'est ce que décrit le fichier `Privacy.md` du paquet.
+La variable `ORT_DISABLE_TELEMETRY=1`, posée avant que la bibliothèque
+s'initialise, l'empêche. Elle est posée à trois endroits : dans les deux étapes
+du `Dockerfile`, et par `onnx_ner_recognizer.py` et `export_model.py` avant
+d'importer la bibliothèque, pour que cela tienne même si la variable de l'image
+est retirée au lancement. `server_check.py`, à la construction, et
+`Test_Analyzer_OnnxRuntime_ReportsNoUsage` vérifient qu'après une analyse ce
+dossier n'existe pas. Ce qui est vérifié est l'absence de ces fichiers, pas
+l'absence de toute connexion sortante : aucun trafic n'a été capturé.
 
 Le modèle est chargé au démarrage : `/health` ne répond qu'une fois l'image prête
 à analyser. Ce délai dépend du CPU alloué — observé, une fois par cas : 8 s sans
@@ -372,7 +405,9 @@ Pour faire évoluer une version :
   l'hôte, pas sur le quota CPU du conteneur ; le reconnaisseur de l'image lit
   cette variable pour le fixer. Sous un quota, les threads en trop se disputent
   le temps alloué : donner à `OMP_NUM_THREADS` le nombre de CPU réellement
-  alloués au conteneur. À 0, ONNX Runtime reprend son réglage par défaut.
+  alloués au conteneur. À 0, ou vide, ONNX Runtime reprend son réglage par
+  défaut ; une valeur qui n'est pas un entier positif ou nul empêche l'image de
+  démarrer, avec un message qui nomme la variable.
 - **`WORKERS`** (1 par défaut, hérité de l'image de base) : nombre de processus
   gunicorn. Chaque processus charge ses propres modèles et son propre pool de
   threads : la mémoire ci-dessous se compte par processus, et

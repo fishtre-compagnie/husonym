@@ -16,7 +16,7 @@
 #     Face sous hf.co (cas-server.xethub.hf.co avec le client hf_xet installé à la première
 #     étape ; us.aws.cdn.hf.co par la redirection de huggingface.co sans lui).
 # Ces hôtes sont ceux observés à une construction ; ceux des fichiers peuvent changer.
-# L'image, elle, ne joint jamais le réseau : tout ce qu'elle charge est dans ses couches.
+# L'image, elle, ne télécharge rien : tout ce qu'elle charge est dans ses couches.
 #
 # Image de base épinglée par étiquette ET par empreinte (voir le README pour la faire évoluer).
 # Les deux étapes partent de la même, et lisent le modèle avec les mêmes versions d'ONNX Runtime
@@ -28,6 +28,9 @@ ARG TOKENIZERS_VERSION=0.23.2
 # --- Étape 1 : le modèle des personnes, exporté et quantifié ---------------------------------
 FROM ${BASE_IMAGE} AS model
 USER root
+# Les paquets officiels d'ONNX Runtime envoient des événements d'usage à leur éditeur, en HTTPS,
+# sauf si cette variable est posée avant que la bibliothèque s'initialise.
+ENV ORT_DISABLE_TELEMETRY=1
 
 # PyTorch en version CPU seule (aucune bibliothèque CUDA), transformers et ce dont il a besoin
 # pour convertir le tokenizer (sentencepiece, protobuf), onnx pour l'export et la quantification.
@@ -65,6 +68,13 @@ RUN HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -B /build/export_model.py \
 # --- Étape 2 : l'image -----------------------------------------------------------------------
 FROM ${BASE_IMAGE}
 USER root
+# Les paquets officiels d'ONNX Runtime envoient des événements d'usage à leur éditeur, en HTTPS,
+# sauf si cette variable est posée avant que la bibliothèque s'initialise : sans elle, la
+# bibliothèque écrit aussi un identifiant et une file d'événements dans le dossier de
+# l'utilisateur. Elle est posée ici, avant toute commande qui charge ONNX Runtime, et le module du
+# reconnaisseur la pose lui-même avant de l'importer. server_check.py vérifie qu'aucun de ces
+# fichiers n'existe.
+ENV ORT_DISABLE_TELEMETRY=1
 
 ARG SPACY_FR_MODEL=fr_core_news_md-3.8.0
 RUN poetry run python -m spacy download "${SPACY_FR_MODEL}" --direct

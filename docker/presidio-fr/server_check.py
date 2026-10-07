@@ -1,12 +1,20 @@
 """Check of the server as it starts in the image: the registry builds the recognizer, model loaded.
 
-The image build runs this file after the configuration and the modules are in place, without
-network: the application is created as gunicorn creates it, one French sentence is posted to it,
-and the person must come back from the recognizer of this image. A name of Presidio, of ONNX
-Runtime or of tokenizers that changed fails here, and so fails the build.
+The image build runs this file after the configuration and the modules are in place: the
+application is created as gunicorn creates it, one French sentence is posted to it, and the
+person must come back from the recognizer of this image. A name of Presidio, of ONNX Runtime
+or of tokenizers that changed fails here, and so fails the build.
+
+ONNX Runtime must also have left nothing in the user's directory: with its usage reporting
+on, it writes an identifier and a queue of events there, which the image would then carry.
 """
 
+from pathlib import Path
+
 from analyzer_app import create_app
+
+# Where ONNX Runtime keeps the identifier and the events of its usage reporting.
+USAGE_REPORTING_DIRECTORY = Path.home() / ".cache" / "Microsoft"
 
 DECLARED_ENTITIES = {
     "CREDIT_CARD", "CRYPTO", "DATE_TIME", "EMAIL_ADDRESS", "FR_NIR", "FR_PHONE_NUMBER",
@@ -43,6 +51,7 @@ def check_french_person() -> list:
 
 if __name__ == "__main__":
     found = check_french_person()
+    assert not USAGE_REPORTING_DIRECTORY.exists(), sorted(USAGE_REPORTING_DIRECTORY.rglob("*"))
     print(
         "server check passed: "
         + ", ".join(f"{f['entity_type']} {TEXT[f['start']:f['end']]!r} {f['score']:.2f}" for f in found)

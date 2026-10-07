@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// This measure sends the values of two data sets of business text to the analyzer, one value per
+// This measure sends the values of three data sets of business text to the analyzer, one value per
 // request, and counts what it returns for PERSON, per span of text.
 //
 // The data sets (testdata/free-text-fr.json, free-text-fr-holdout.json and free-text-en.json)
@@ -300,12 +300,7 @@ func Test_Measure_PersonsPerSpan_French(t *testing.T) {
 	result := measurePersons(t, baseURL, langFr, langFr)
 
 	result.log(t)
-	assert.GreaterOrEqual(t, result.precision(), 0.90, "precision per span")
-	assert.GreaterOrEqual(t, result.recall(), 0.90, "recall per name")
-	assert.LessOrEqual(t, result.noPersonColumnsTagged, 1,
-		"columns that name none with %d values tagged or more", taggedColumnMinValues)
-	assert.Equal(t, 6, result.personColumnsTagged,
-		"columns that name persons with %d values tagged or more", taggedColumnMinValues)
+	assert.Equal(t, frenchCounts, countsOf(result))
 }
 
 // The second French data set was written without running a model, and the threshold of the
@@ -317,12 +312,7 @@ func Test_Measure_PersonsPerSpan_French_HeldOut(t *testing.T) {
 	result := measurePersons(t, baseURL, heldOutFrenchDataset, langFr)
 
 	result.log(t)
-	assert.GreaterOrEqual(t, result.precision(), 0.90, "precision per span")
-	assert.GreaterOrEqual(t, result.recall(), 0.90, "recall per name")
-	assert.LessOrEqual(t, result.noPersonColumnsTagged, 1,
-		"columns that name none with %d values tagged or more", taggedColumnMinValues)
-	assert.Equal(t, 6, result.personColumnsTagged,
-		"columns that name persons with %d values tagged or more", taggedColumnMinValues)
+	assert.Equal(t, heldOutFrenchCounts, countsOf(result))
 }
 
 // The English engine is the one of the base image: the counts below were recorded on this image,
@@ -353,6 +343,25 @@ func countsOf(m measure) counts {
 		NoPersonColumnsSensitive: m.noPersonColumnsSensitive,
 		TaggedInPersonColumns:    m.taggedInPersonColumns, TaggedInPersonColumnsNamed: m.taggedNamingAPerson,
 	}
+}
+
+// The counts of the three measures, as recorded on this image: a model, a threshold or an
+// engine that changes what the image returns on these data sets changes them, and the README's
+// table with them.
+var frenchCounts = counts{
+	Spans: 31, CorrectSpans: 31, Names: 32, FoundNames: 31,
+	TaggedInNoPersonColumns: 0,
+	NoPersonColumnsTagged:   0, PersonColumnsTagged: 6,
+	NoPersonColumnsSensitive: 6,
+	TaggedInPersonColumns:    31, TaggedInPersonColumnsNamed: 31,
+}
+
+var heldOutFrenchCounts = counts{
+	Spans: 106, CorrectSpans: 102, Names: 109, FoundNames: 102,
+	TaggedInNoPersonColumns: 3,
+	NoPersonColumnsTagged:   0, PersonColumnsTagged: 6,
+	NoPersonColumnsSensitive: 6,
+	TaggedInPersonColumns:    96, TaggedInPersonColumnsNamed: 95,
 }
 
 var englishCounts = counts{

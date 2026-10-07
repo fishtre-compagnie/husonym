@@ -5,6 +5,7 @@ image, see the README.
 """
 
 import math
+import os
 import random
 from typing import Dict, List, Set, Tuple
 
@@ -13,7 +14,13 @@ from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.chunkers import TextChunk
 from presidio_analyzer.input_validation import yaml_recognizer_models
 
-from onnx_ner_recognizer import BoundedTextChunker, OnnxNerRecognizer, grouped
+from onnx_ner_recognizer import (
+    THREADS_VARIABLE,
+    BoundedTextChunker,
+    OnnxNerRecognizer,
+    grouped,
+    inference_threads,
+)
 
 CHUNK_SIZE = 400
 CHUNK_OVERLAP = 40
@@ -291,6 +298,34 @@ def check_configuration() -> None:
         raise AssertionError("a model directory that does not exist was loaded")
 
 
+def check_threads() -> None:
+    """The variable of the image gives the threads of an inference, or is refused."""
+    saved = os.environ.get(THREADS_VARIABLE)
+    try:
+        for value, threads in (("2", 2), ("0", 0), (" 4 ", 4), ("", 0)):
+            os.environ[THREADS_VARIABLE] = value
+            assert inference_threads() == threads, value
+        del os.environ[THREADS_VARIABLE]
+        assert inference_threads() == 0
+        for value in ("abc", "2.0", "-1"):
+            os.environ[THREADS_VARIABLE] = value
+            try:
+                inference_threads()
+            except ValueError as error:
+                assert THREADS_VARIABLE in str(error), error
+                continue
+            raise AssertionError(f"accepted: {value!r}")
+    finally:
+        os.environ.pop(THREADS_VARIABLE, None)
+        if saved is not None:
+            os.environ[THREADS_VARIABLE] = saved
+
+
+def check_telemetry_is_off() -> None:
+    """Importing the recognizer sets what keeps ONNX Runtime from reporting usage events."""
+    assert os.environ.get("ORT_DISABLE_TELEMETRY") == "1"
+
+
 def check_predictions() -> None:
     recognizer = fake_recognizer()
     name = NAMES[0]
@@ -303,6 +338,9 @@ def check_predictions() -> None:
     assert results[0].analysis_explanation.recognizer == recognizer.name
     recognizer.threshold = 0.4
     assert found(recognizer, text) == [("PERSON", "Faible"), ("PERSON", name)]
+    # A score equal to the threshold is kept.
+    recognizer.threshold = results[0].score
+    assert found(recognizer, text) == [("PERSON", name)]
     recognizer.threshold = 0.8
 
     # The model is not run for an empty text, nor when no entity of the recognizer is asked.
@@ -326,6 +364,21 @@ def check_predictions() -> None:
     text = "½" * 800 + " " + name + "."
     assert found(recognizer, text) == [("PERSON", name)]
     assert MAX_TOKENS // 2 < recognizer.session.largest_input <= MAX_TOKENS
+
+    # The halves of such a chunk overlap too: a name around their cut is returned whole.
+    for offset in range(100, 200):
+        text = "½" * offset + name + "½" * (300 - offset)
+        assert len(text) <= CHUNK_SIZE
+        assert found(recognizer, text) == [("PERSON", name)], offset
+
+    # The window is exact: a chunk of as many tokens as the model reads goes to it whole,
+    # one token more and it is split. The fake session refuses more tokens than the window.
+    wide = fake_recognizer()
+    wide.text_chunker = BoundedTextChunker(chunk_size=2 * MAX_TOKENS, chunk_overlap=CHUNK_OVERLAP)
+    assert found(wide, "x" * (MAX_TOKENS - 2)) == []
+    assert (wide.session.runs, wide.session.largest_input) == (1, MAX_TOKENS)
+    assert found(wide, "x" * (MAX_TOKENS - 1)) == []
+    assert wide.session.runs > 2 and wide.session.largest_input == MAX_TOKENS
 
     # An inference that fails is an error, in the first chunk as in a later one.
     for text in ("En panne.", "x" * 900 + " en panne."):
@@ -539,6 +592,8 @@ if __name__ == "__main__":
     check_merge_of_many_findings()
     check_groups()
     check_configuration()
+    check_threads()
+    check_telemetry_is_off()
     check_predictions()
     print(
         f"recognizer checks passed: {random_texts} random texts, {names} name positions, "

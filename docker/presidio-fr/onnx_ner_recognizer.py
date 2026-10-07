@@ -21,20 +21,38 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-import numpy as np
-import onnxruntime
-from presidio_analyzer import AnalysisExplanation, LocalRecognizer, RecognizerResult
-from presidio_analyzer.chunkers import (
+# The official builds of ONNX Runtime report usage events to their publisher over HTTPS,
+# unless this variable is set before the library initializes. The image sets it too.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
+
+import numpy as np  # noqa: E402
+import onnxruntime  # noqa: E402
+from presidio_analyzer import (  # noqa: E402
+    AnalysisExplanation,
+    LocalRecognizer,
+    RecognizerResult,
+)
+from presidio_analyzer.chunkers import (  # noqa: E402
     BaseTextChunker,
     CharacterBasedTextChunker,
     TextChunk,
 )
-from presidio_analyzer.input_validation import yaml_recognizer_models
-from tokenizers import Tokenizer
+from presidio_analyzer.input_validation import yaml_recognizer_models  # noqa: E402
+from tokenizers import Tokenizer  # noqa: E402
 
 # The number of threads of one inference. ONNX Runtime sizes its pool on the cores of the
 # host, not on the CPU quota of the container: the image sets this variable.
 THREADS_VARIABLE = "OMP_NUM_THREADS"
+
+
+def inference_threads() -> int:
+    """The number of threads the variable asks for; 0, ONNX Runtime's own choice, without it."""
+    value = os.environ.get(THREADS_VARIABLE, "").strip()
+    if not value:
+        return 0
+    if not value.isdecimal():
+        raise ValueError(f"{THREADS_VARIABLE} must be a whole number, 0 or more, not {value!r}")
+    return int(value)
 
 
 class BoundedTextChunker(CharacterBasedTextChunker):
@@ -300,7 +318,7 @@ class OnnxNerRecognizer(LocalRecognizer):
         self.tokenizer.no_padding()
 
         options = onnxruntime.SessionOptions()
-        options.intra_op_num_threads = int(os.environ.get(THREADS_VARIABLE, "0"))
+        options.intra_op_num_threads = inference_threads()
         options.inter_op_num_threads = 1
         self.session = onnxruntime.InferenceSession(
             str(self.model_path / "model.onnx"), options, providers=["CPUExecutionProvider"]

@@ -339,6 +339,29 @@ func Test_Analyzer_Gunicorn_WorkerTimeout(t *testing.T) {
 	require.Equal(t, "120", arguments[option+1])
 }
 
+// ONNX Runtime reports usage events to its publisher unless it is told not to, and then keeps an
+// identifier and a queue of events in the user's directory. The image turns it off: after a
+// French text went through the model, the server runs with the variable that does so, and that
+// directory does not exist.
+func Test_Analyzer_OnnxRuntime_ReportsNoUsage(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	text := "Bonjour, je suis Hélène Marchand."
+	requirePerson(t, text, "Hélène Marchand", analyze(t, baseURL, langFr, text))
+
+	for _, command := range []string{
+		`tr '\0' '\n' < /proc/1/environ | grep -qx 'ORT_DISABLE_TELEMETRY=1'`,
+		`test ! -e "$HOME/.cache/Microsoft"`,
+	} {
+		exitCode, output, err := analyzer.TestContainer.Exec(
+			t.Context(), []string{"sh", "-c", command}, tcexec.Multiplexed(),
+		)
+		require.NoError(t, err)
+		message, err := io.ReadAll(output)
+		require.NoError(t, err)
+		require.Zerof(t, exitCode, "%s: %s", command, message)
+	}
+}
+
 // A text of some fifty chunks returns its findings. A single observation on this image without a
 // CPU quota took 1.3 s for these 20,000 characters of prose: long enough to be far from a short
 // request, short enough to end well before any timeout on a slower machine. The duration is
@@ -388,54 +411,68 @@ func Test_Analyzer_French_TextWithoutWhitespace_PersonAtTheEnd(t *testing.T) {
 // model may return a part of it, or nothing, wherever the name stands, and a chunk boundary
 // that falls inside the name adds to it. The README states it as a limit of the image. What is
 // asserted is what holds at every position: the request succeeds, and a person finding only
-// designates characters of the name or the few around it. How often the name comes back whole
-// is counted, logged per name, and held above a floor well under the count observed.
+// designates characters of the name or the two before it. How often each name comes back whole
+// is counted, logged, and held to a floor a few positions under the count observed on this
+// image: a name the image stops finding fails the test, and so does a filler it reads worse.
 func Test_Analyzer_French_NamesOfSeveralWords_InTextWithFewSpaces(t *testing.T) {
 	baseURL := startAnalyzer(t)
 
+	const (
+		references  = "references"
+		compactJSON = "compact JSON"
+		// A finding may take a character before the name with it (a quote, a hyphen).
+		marginBefore = 2
+		// The floor of a name is the count observed less this many positions.
+		tolerance = 5
+	)
 	fillers := []struct {
 		name          string
 		filler        string
 		before, after string
 	}{
-		{name: "references", filler: "ref-0001;", before: "", after: ";"},
-		{name: "compact JSON", filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`},
+		{name: references, filler: "ref-0001;", before: "", after: ";"},
+		{name: compactJSON, filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`},
 	}
-	persons := []string{"Corentin Le Guével", "Mathilde Rousseau de Kerbrat", "Anne-Sophie Marchand"}
-	// A finding may take a character before the name with it (a quote, a hyphen).
-	const margin = 2
+	// The positions, of 60, where each name was returned whole on this image.
+	persons := []struct {
+		name     string
+		observed map[string]int
+	}{
+		{name: "Corentin Le Guével", observed: map[string]int{references: 52, compactJSON: 38}},
+		{name: "Mathilde Rousseau de Kerbrat", observed: map[string]int{references: 60, compactJSON: 57}},
+		{name: "Anne-Sophie Marchand", observed: map[string]int{references: 37, compactJSON: 56}},
+		// A name the model returns whole at no position of these texts, and in part at some.
+		{name: "Corentin de La Brosse", observed: map[string]int{references: 0, compactJSON: 0}},
+	}
 
-	positions, whole := 0, 0
 	for _, tc := range fillers {
 		filler := strings.Repeat(tc.filler, 120)
 		for _, person := range persons {
-			wholeForName, positionsForName := 0, 0
+			whole, positions := 0, 0
 			// Every third position of a window wider than a chunk's end can move: the first
 			// chunk ends before the name, on each of its spaces, or after it.
 			for offset := 300; offset < 480; offset += 3 {
 				prefix := filler[:offset-len(tc.before)] + tc.before
-				text := prefix + person + tc.after + filler[:600]
-				end := offset + utf8.RuneCountInString(person)
+				text := prefix + person.name + tc.after + filler[:600]
+				end := offset + utf8.RuneCountInString(person.name)
 
 				findings := ofType(analyze(t, baseURL, langFr, text), entityPerson)
 
-				positionsForName++
+				positions++
 				for _, f := range findings {
 					require.Equal(t, personRecognizer, f.Explanation.Recognizer)
-					require.GreaterOrEqualf(t, f.Start, offset-margin, "%s, %s at %d: %+v", tc.name, person, offset, f)
-					require.LessOrEqualf(t, f.End, end+margin, "%s, %s at %d: %+v", tc.name, person, offset, f)
+					require.GreaterOrEqualf(t, f.Start, offset-marginBefore, "%s, %s at %d: %+v", tc.name, person.name, offset, f)
+					require.LessOrEqualf(t, f.End, end, "%s, %s at %d: %+v", tc.name, person.name, offset, f)
 					if f.Start == offset && f.End == end {
-						wholeForName++
+						whole++
 					}
 				}
 			}
-			t.Logf("%s, %s: whole at %d positions of %d", tc.name, person, wholeForName, positionsForName)
-			positions += positionsForName
-			whole += wholeForName
+			t.Logf("%s, %s: whole at %d positions of %d", tc.name, person.name, whole, positions)
+			assert.GreaterOrEqualf(t, whole, person.observed[tc.name]-tolerance,
+				"%s, %s: positions where the name is whole, of %d", tc.name, person.name, positions)
 		}
 	}
-	t.Logf("whole at %d positions of %d", whole, positions)
-	assert.GreaterOrEqual(t, whole*2, positions, "names returned whole, of %d positions", positions)
 }
 
 // Two chunks can each return a part of the passage where two persons follow each other, and
