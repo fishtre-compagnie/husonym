@@ -247,6 +247,11 @@ extraEnvVars: []
 # -- Provide sidecars that will be appended directly to the deployment next to the user-container
 sidecarContainers: []
 
+# The usage report of the instance: a daily document made of numbers and of values from closed lists
+usageReport:
+  # -- Whether the usage report of the instance describes the instance beyond its identification, its version and its number of sources: how it is installed and configured, and counts of what it holds and runs. Set to false to leave that part out (sets HUSONYM_TELEMETRY_DIAGNOSTICS=false).
+  diagnostics: true
+
 # Configure the Husonym license
 ee:
   # -- Husonym License Key

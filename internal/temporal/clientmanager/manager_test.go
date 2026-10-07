@@ -14,6 +14,7 @@ import (
 	"go.temporal.io/api/workflowservice/v1"
 	temporalclient "go.temporal.io/sdk/client"
 	temporalmocks "go.temporal.io/sdk/mocks"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -153,4 +154,87 @@ func Test_CreateSchedule_GivesItsClientBack(t *testing.T) {
 			require.Zero(t, held, "the client asked with is still held")
 		})
 	}
+}
+
+// newDefaultTestManager gives a manager whose default configuration names the queue "sync-job",
+// and which is never asked the configuration of an account.
+func newDefaultTestManager(t *testing.T) (*ClientManager, *temporalmocks.Client) {
+	t.Helper()
+	configs := NewMockConfigProvider(t)
+	configs.EXPECT().DefaultConfig().
+		Return(&TemporalConfig{Namespace: "default", SyncJobQueueName: "sync-job"})
+	client := temporalmocks.NewClient(t)
+	client.On("ScheduleClient").Return(temporalmocks.NewScheduleClient(t)).Maybe()
+	return NewClientManager(configs, &fakeFactory{workflowClient: client, namespaceClient: temporalmocks.NewNamespaceClient(t)}), client
+}
+
+// The workers of the default queue are the distinct identities that asked it for work lately: a
+// worker polls with several pollers, and the server still lists one that stopped.
+func Test_CountDefaultQueueWorkers(t *testing.T) {
+	manager, client := newDefaultTestManager(t)
+	fresh := timestamppb.Now()
+	client.On("DescribeTaskQueue", mock.Anything, "sync-job", enums.TASK_QUEUE_TYPE_WORKFLOW).
+		Return(&workflowservice.DescribeTaskQueueResponse{Pollers: []*taskqueuepb.PollerInfo{
+			{Identity: "worker-a", LastAccessTime: fresh},
+			{Identity: "worker-a", LastAccessTime: fresh},
+			{Identity: "worker-b", LastAccessTime: fresh},
+			{Identity: "stopped", LastAccessTime: timestamppb.New(time.Now().Add(-3 * time.Minute))},
+		}}, nil)
+
+	workers, err := manager.CountDefaultQueueWorkers(context.Background(), slog.Default())
+	require.NoError(t, err)
+	require.Equal(t, 2, workers)
+}
+
+func Test_CountDefaultQueueWorkers_NoWorker(t *testing.T) {
+	manager, client := newDefaultTestManager(t)
+	client.On("DescribeTaskQueue", mock.Anything, "sync-job", enums.TASK_QUEUE_TYPE_WORKFLOW).
+		Return(&workflowservice.DescribeTaskQueueResponse{}, nil)
+
+	workers, err := manager.CountDefaultQueueWorkers(context.Background(), slog.Default())
+	require.NoError(t, err)
+	require.Zero(t, workers)
+}
+
+func Test_CountDefaultQueueWorkers_Failure(t *testing.T) {
+	manager, client := newDefaultTestManager(t)
+	client.On("DescribeTaskQueue", mock.Anything, "sync-job", enums.TASK_QUEUE_TYPE_WORKFLOW).
+		Return(nil, errors.New("unavailable"))
+
+	_, err := manager.CountDefaultQueueWorkers(context.Background(), slog.Default())
+	require.ErrorContains(t, err, "unavailable")
+}
+
+// fakeWorkflowService answers GetSystemInfo and nothing else.
+type fakeWorkflowService struct {
+	workflowservice.WorkflowServiceClient
+	version string
+	err     error
+}
+
+func (f *fakeWorkflowService) GetSystemInfo(
+	context.Context, *workflowservice.GetSystemInfoRequest, ...grpc.CallOption,
+) (*workflowservice.GetSystemInfoResponse, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &workflowservice.GetSystemInfoResponse{ServerVersion: f.version}, nil
+}
+
+// The version is given as the server spells it: what the report keeps of it is not decided here.
+func Test_DefaultServerVersion(t *testing.T) {
+	manager, client := newDefaultTestManager(t)
+	client.On("WorkflowService").Return(&fakeWorkflowService{version: "1.25.2"})
+
+	version, err := manager.DefaultServerVersion(context.Background(), slog.Default())
+	require.NoError(t, err)
+	require.Equal(t, "1.25.2", version)
+}
+
+func Test_DefaultServerVersion_Failure(t *testing.T) {
+	manager, client := newDefaultTestManager(t)
+	client.On("WorkflowService").Return(&fakeWorkflowService{err: errors.New("unavailable")})
+
+	_, err := manager.DefaultServerVersion(context.Background(), slog.Default())
+	require.ErrorContains(t, err, "unavailable")
 }

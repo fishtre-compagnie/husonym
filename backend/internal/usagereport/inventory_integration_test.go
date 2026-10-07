@@ -261,6 +261,22 @@ func Test_InventoryReader_CountsTheInstanceAndCarriesNoName(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, unauthenticated.Users.Active30d)
 
+	// What the instance tells of itself beside its inventory: the sources the license counts,
+	// and the major version of this very database.
+	instance := NewInstanceReader(db, nil)
+	sources, err := instance.SourcesCount(ctx)
+	require.NoError(t, err)
+	usage, err := licensegate.NewUsageReader(db, roles).Of(ctx, husonymdb.UUIDString(first.ID))
+	require.NoError(t, err)
+	require.Positive(t, sources)
+	require.Equal(t, usage.SourcesInInstance, sources)
+	var wantMajor int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT split_part(current_setting('server_version'), '.', 1)::int`).Scan(&wantMajor))
+	major, err := instance.PostgresMajor(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wantMajor, major)
+	require.Greater(t, major, 9)
+
 	asJSON, err := json.Marshal(inventory)
 	require.NoError(t, err)
 	report := &telemetry.Report{

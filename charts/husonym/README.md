@@ -112,6 +112,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.terminationGracePeriodSeconds | string | `nil` | The amount of time in seconds to wait for the pod to shut down when a termination event has occurred. |
 | api.tolerations | list | `[]` | Any tolerations that should be applied to the deployment |
 | api.updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |
+| api.usageReport.diagnostics | bool | `true` | Whether the usage report of the instance describes the instance beyond its identification, its version and its number of sources: how it is installed and configured, and counts of what it holds and runs. Set to false to leave that part out (sets HUSONYM_TELEMETRY_DIAGNOSTICS=false). |
 | api.volumeMounts | list | `[]` | Volumes that will be mounted to the deployment |
 | api.volumes | list | `[]` | Volumes that will be attached to the deployment |
 | app.auth.accountIssuerAllowPrivate | bool | `false` | Let an account's identity provider be reached over plain http or at a private address. By default it must be reached over https, at an address on the internet. Set the same on the api. |

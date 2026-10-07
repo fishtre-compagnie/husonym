@@ -75,6 +75,8 @@ services:
 
       - AUTH_ENABLED=false
 
+      - HUSONYM_INSTALL_KIND=compose
+
     # Carries EE_LICENSE. Creating a job refuses without it, so this stack is unusable
     # unless the license reaches the container. Optional so the stack still starts and the
     # refusal comes from the product with a clear message, rather than from compose.

@@ -202,6 +202,15 @@ func Test_Buckets_OfFreeValues(t *testing.T) {
 	require.Equal(t, "", TemporalVersion(""))
 }
 
+func Test_SourceMajor(t *testing.T) {
+	require.Equal(t, "16", SourceMajor("16"))
+	require.Equal(t, "8.0", SourceMajor("8.0"))
+	require.Equal(t, "", SourceMajor("8.0.36"))
+	require.Equal(t, "", SourceMajor("prod-1"))
+	require.Equal(t, "", SourceMajor("16\n"))
+	require.Equal(t, "", SourceMajor(""))
+}
+
 // sortedCopy is the list sorted, to compare lists as sets.
 func sortedCopy(list []string) []string {
 	c := slices.Clone(list)

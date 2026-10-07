@@ -16,6 +16,18 @@ func TemporalVersion(raw string) string {
 	return ""
 }
 
+// sourceMajor is the shape of the major version of a source engine: one or two numbers.
+var sourceMajor = regexp.MustCompile(`^\d{1,3}(\.\d{1,3})?$`)
+
+// SourceMajor is the major version of a source engine as given when it is one or two numbers,
+// such as 16 or 8.0, empty otherwise: the caller then leaves the row out.
+func SourceMajor(raw string) string {
+	if sourceMajor.MatchString(raw) {
+		return raw
+	}
+	return ""
+}
+
 // versionShape is the version of the software: a release, or a build stamped with a short suffix
 // such as the default v0.0.0-main.
 var versionShape = regexp.MustCompile(

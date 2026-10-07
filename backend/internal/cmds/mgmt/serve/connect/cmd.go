@@ -52,10 +52,12 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagereport"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagesettle"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/useractivity"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
@@ -563,13 +565,14 @@ func serve(ctx context.Context) error {
 
 	// One gate for the two ways a run starts: asked of the API, and fired by its schedule.
 	jobGate := licensegate.NewJobGate(db, eelicense)
+	licenseUsage := licensegate.NewUsageReader(db, rbacclient)
 
 	useraccountService := v1alpha1_useraccountservice.New(&v1alpha1_useraccountservice.Config{
 		IsAuthEnabled:            isAuthEnabled,
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
 		WorkerOnly:               workerOnly,
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient), usageStore)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licenseUsage, usageStore)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -741,6 +744,19 @@ func serve(ctx context.Context) error {
 	if notice, ok := unusedPresidioSettings(); ok {
 		slogger.Info(notice)
 	}
+
+	// The usage report of the instance is assembled from what the usage store counted, what
+	// the instance holds and what this start resolved. Nothing prepares one yet.
+	usageReports := usagereport.NewBuilder(
+		usageStore,
+		usagereport.NewInventoryReader(db, licenseUsage, rbacclient, usageStore, isAuthEnabled),
+		usagereport.NewInstanceReader(db, tfwfmgr),
+		eelicense,
+		licenseStore,
+		licenseRing,
+		getUsageFacts(isAuthEnabled, presidioClients, runLogConfig),
+	)
+	_ = usageReports
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,
@@ -1342,6 +1358,28 @@ func getRunLogConfig() (*v1alpha1_jobservice.RunLogConfig, error) {
 			"unsupported or no run log type configured, but run logs are enabled",
 		)
 	}
+}
+
+// getUsageFacts is what this process tells of itself in the usage report of the instance, from
+// what the start resolved: the provider the administration client was chosen by, whether the
+// analyzer is there, and where the logs of a run are read from once the fallbacks are applied.
+func getUsageFacts(
+	isAuthEnabled bool,
+	presidio *presidioClients,
+	runLogs *v1alpha1_jobservice.RunLogConfig,
+) usagereport.Facts {
+	runLogsType := ""
+	if runLogs.RunLogType != nil {
+		runLogsType = string(*runLogs.RunLogType)
+	}
+	return usagereport.FactsFromEnvironment(
+		version.Get().GitVersion,
+		isAuthEnabled,
+		getAuthApiProvider(),
+		presidio.transformsText(),
+		runLogs.IsEnabled,
+		runLogsType,
+	)
 }
 
 func getRunLogType() *v1alpha1_jobservice.RunLogType {

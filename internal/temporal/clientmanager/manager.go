@@ -146,6 +146,12 @@ type Interface interface {
 		valuePtr any,
 		logger *slog.Logger,
 	) error
+	// CountDefaultQueueWorkers counts the workers that serve the sync job task queue of the
+	// default configuration: the distinct identities that asked it for work lately.
+	CountDefaultQueueWorkers(ctx context.Context, logger *slog.Logger) (int, error)
+	// DefaultServerVersion is the version of the server of the default configuration, as the
+	// server spells it.
+	DefaultServerVersion(ctx context.Context, logger *slog.Logger) (string, error)
 }
 
 // ErrNoWorker says that no worker serves the task queue of an account.
@@ -734,6 +740,46 @@ func (m *ClientManager) RunWorkflow(
 	return nil
 }
 
+// defaultClients gives the clients of the default configuration, whatever an account sets of
+// its own.
+func (m *ClientManager) defaultClients(ctx context.Context, logger *slog.Logger) (*clientHandle, error) {
+	config := m.configProvider.DefaultConfig()
+	if config == nil || config.Namespace == "" {
+		return nil, fmt.Errorf("temporal namespace not configured")
+	}
+	return m.clientCache.getOrCreateClient(ctx, config, m.clientFactory, logger)
+}
+
+func (m *ClientManager) CountDefaultQueueWorkers(ctx context.Context, logger *slog.Logger) (int, error) {
+	clients, err := m.defaultClients(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+	defer clients.Release()
+
+	queue := clients.config.SyncJobQueueName
+	described, err := clients.WorkflowClient().DescribeTaskQueue(ctx, queue, enums.TASK_QUEUE_TYPE_WORKFLOW)
+	if err != nil {
+		return 0, fmt.Errorf("unable to describe the task queue %q: %w", queue, err)
+	}
+	return len(servingSince(described.GetPollers(), time.Now().Add(-pollerFreshness))), nil
+}
+
+func (m *ClientManager) DefaultServerVersion(ctx context.Context, logger *slog.Logger) (string, error) {
+	clients, err := m.defaultClients(ctx, logger)
+	if err != nil {
+		return "", err
+	}
+	defer clients.Release()
+
+	info, err := clients.WorkflowClient().WorkflowService().
+		GetSystemInfo(ctx, &workflowservice.GetSystemInfoRequest{})
+	if err != nil {
+		return "", fmt.Errorf("unable to ask the server its version: %w", err)
+	}
+	return info.GetServerVersion(), nil
+}
+
 // pollerFreshness is how recently a worker must have asked the queue for work to count as
 // serving it. A worker asks again as soon as a long poll ends, a minute at most; the server
 // keeps a stopped one in its list for minutes.
@@ -741,10 +787,17 @@ const pollerFreshness = 90 * time.Second
 
 // servedSince reports whether a poller asked the queue for work since a time.
 func servedSince(pollers []*taskqueuepb.PollerInfo, since time.Time) bool {
+	return len(servingSince(pollers, since)) > 0
+}
+
+// servingSince gives the identities of the pollers that asked the queue for work since a time,
+// each once: a worker asks with several pollers under one identity.
+func servingSince(pollers []*taskqueuepb.PollerInfo, since time.Time) map[string]struct{} {
+	identities := make(map[string]struct{})
 	for _, poller := range pollers {
 		if poller.GetLastAccessTime().AsTime().After(since) {
-			return true
+			identities[poller.GetIdentity()] = struct{}{}
 		}
 	}
-	return false
+	return identities
 }
