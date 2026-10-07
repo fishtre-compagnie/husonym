@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/select';
 import ConsistencyScopeSelect from '@/components/jobs/Form/ConsistencyScopeSelect';
 import { JobEngine, JobService } from '@husonym/sdk';
-import { DEFAULT_CRON_STRING } from '../../../jobs/[id]/components/ScheduleCard';
+import { DEFAULT_CRON_STRING } from '../../../jobs/schedule';
 import { getNewJobSessionKeys } from '../../../jobs/util';
 import SyncActivityOptionsForm from './components/WorkflowSettings';
 
