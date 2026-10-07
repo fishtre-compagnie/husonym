@@ -54,6 +54,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagesettle"
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/useractivity"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -453,6 +454,8 @@ func serve(ctx context.Context) error {
 			workerApiKeys,
 			apikey.WorkerProcedures,
 		)
+		// Notes the day a signed-in user was seen, off the request path (JWT callers only).
+		noteUserSeen := authlogging_interceptor.WithOnUser(useractivity.NewRecorder(usageStore).Seen)
 		stdAuthInterceptors = append(
 			stdAuthInterceptors,
 			auth_interceptor.NewInterceptor(
@@ -461,14 +464,14 @@ func serve(ctx context.Context) error {
 					apikeyClient,
 				).InjectTokenCtx,
 			),
-			authlogging_interceptor.NewInterceptor(db),
+			authlogging_interceptor.NewInterceptor(db, noteUserSeen),
 		)
 		jwtOnlyAuthInterceptors = append(
 			jwtOnlyAuthInterceptors,
 			auth_interceptor.NewInterceptor(
 				jwtclient.InjectTokenCtx,
 			),
-			authlogging_interceptor.NewInterceptor(db),
+			authlogging_interceptor.NewInterceptor(db, noteUserSeen),
 		)
 		authSvcInterceptors = append(
 			authSvcInterceptors,
@@ -485,7 +488,7 @@ func serve(ctx context.Context) error {
 					mgmtv1alpha1connect.AuthServiceGetAccountLoginMethodProcedure,
 				},
 			),
-			authlogging_interceptor.NewInterceptor(db),
+			authlogging_interceptor.NewInterceptor(db, noteUserSeen),
 		)
 	}
 
