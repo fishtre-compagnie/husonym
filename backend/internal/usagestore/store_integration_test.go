@@ -209,9 +209,9 @@ func Test_CloseRun_ClosesOnlyARunningRowThatExists(t *testing.T) {
 	}))
 
 	ended := now.Add(time.Minute)
-	require.NoError(t, store.CloseRun(ctx, "open", StatusFailed, ended, 120, 3, 2))
-	require.NoError(t, store.CloseRun(ctx, "done", StatusFailed, ended, 999, 9, 9))
-	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 1, 1, 1))
+	require.NoError(t, store.CloseRun(ctx, "open", StatusFailed, ended, 120, 3, 2, 0, ""))
+	require.NoError(t, store.CloseRun(ctx, "done", StatusFailed, ended, 999, 9, 9, 0, ""))
+	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 1, 1, 1, 0, ""))
 
 	open := readRun(ctx, t, container, "open")
 	require.Equal(t, "failed", open.status)

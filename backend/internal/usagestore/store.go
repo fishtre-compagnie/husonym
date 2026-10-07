@@ -59,6 +59,11 @@ type RunEnd struct {
 	RowsRead      int64
 	RowsDiscarded int64
 	Retries       int64
+
+	// TablesUncounted is how many tables reported no row count. SourceVersionMajor is the
+	// major version of the source engine, empty when it is not known.
+	TablesUncounted    int64
+	SourceVersionMajor string
 }
 
 // OpenRun is a run that was started and has not been told to end.
@@ -124,6 +129,9 @@ func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocri
 		RowsRead:      run.RowsRead,
 		RowsDiscarded: run.RowsDiscarded,
 		Retries:       run.Retries,
+
+		TablesUncounted:    run.TablesUncounted,
+		SourceVersionMajor: run.SourceVersionMajor,
 	})
 }
 
@@ -135,7 +143,8 @@ func (s *Store) CloseRun(
 	runId string,
 	status Status,
 	endedAt time.Time,
-	rowsRead, rowsDiscarded, retries int64,
+	rowsRead, rowsDiscarded, retries, tablesUncounted int64,
+	sourceVersionMajor string,
 ) error {
 	switch status {
 	case StatusCompleted, StatusFailed, StatusCanceled:
@@ -149,6 +158,9 @@ func (s *Store) CloseRun(
 		RowsRead:      rowsRead,
 		RowsDiscarded: rowsDiscarded,
 		Retries:       retries,
+
+		TablesUncounted:    tablesUncounted,
+		SourceVersionMajor: sourceVersionMajor,
 	})
 }
 
@@ -194,8 +206,7 @@ func (s *Store) CountRefusal(ctx context.Context, accountId string, gates []lice
 	if err != nil {
 		return fmt.Errorf("account id: %w", err)
 	}
-	utc := at.UTC()
-	day := pgtype.Date{Time: time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
+	day := utcDate(at)
 	for _, gate := range known {
 		if err := s.db.Q.IncrementGateRefusal(ctx, s.db.Db, db_queries.IncrementGateRefusalParams{
 			Day:       day,
@@ -228,6 +239,12 @@ func toUuids(accountId, jobId string) (account, job pgtype.UUID, err error) {
 		return account, job, fmt.Errorf("job id: %w", err)
 	}
 	return account, job, nil
+}
+
+// utcDate is the UTC day of the given time.
+func utcDate(at time.Time) pgtype.Date {
+	utc := at.UTC()
+	return pgtype.Date{Time: time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
 }
 
 func toTimestamptz(value time.Time) pgtype.Timestamptz {

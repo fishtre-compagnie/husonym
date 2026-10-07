@@ -41,7 +41,7 @@ type fakeStore struct {
 
 func (f *fakeStore) CloseRun(
 	_ context.Context, runId string, status usagestore.Status, endedAt time.Time,
-	rowsRead, rowsDiscarded, retries int64,
+	rowsRead, rowsDiscarded, retries, _ int64, _ string,
 ) error {
 	if !f.running[runId] {
 		return nil

@@ -399,6 +399,154 @@ func (_c *MockQuerier_CountOtherAccountsDeclaringIssuer_Call) RunAndReturn(run f
 	return _c
 }
 
+// CountRunUsageBySourceVersionOfDay provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error) {
+	ret := _mock.Called(ctx, db, dollar_1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountRunUsageBySourceVersionOfDay")
+	}
+
+	var r0 []CountRunUsageBySourceVersionOfDayRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)); ok {
+		return returnFunc(ctx, db, dollar_1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []CountRunUsageBySourceVersionOfDayRow); ok {
+		r0 = returnFunc(ctx, db, dollar_1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]CountRunUsageBySourceVersionOfDayRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, dollar_1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountRunUsageBySourceVersionOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRunUsageBySourceVersionOfDay'
+type MockQuerier_CountRunUsageBySourceVersionOfDay_Call struct {
+	*mock.Call
+}
+
+// CountRunUsageBySourceVersionOfDay is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - dollar_1 pgtype.Date
+func (_e *MockQuerier_Expecter) CountRunUsageBySourceVersionOfDay(ctx any, db any, dollar_1 any) *MockQuerier_CountRunUsageBySourceVersionOfDay_Call {
+	return &MockQuerier_CountRunUsageBySourceVersionOfDay_Call{Call: _e.mock.On("CountRunUsageBySourceVersionOfDay", ctx, db, dollar_1)}
+}
+
+func (_c *MockQuerier_CountRunUsageBySourceVersionOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_CountRunUsageBySourceVersionOfDay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageBySourceVersionOfDay_Call) Return(countRunUsageBySourceVersionOfDayRows []CountRunUsageBySourceVersionOfDayRow, err error) *MockQuerier_CountRunUsageBySourceVersionOfDay_Call {
+	_c.Call.Return(countRunUsageBySourceVersionOfDayRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageBySourceVersionOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)) *MockQuerier_CountRunUsageBySourceVersionOfDay_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountRunUsageByStatusOfDay provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error) {
+	ret := _mock.Called(ctx, db, dollar_1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountRunUsageByStatusOfDay")
+	}
+
+	var r0 []CountRunUsageByStatusOfDayRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)); ok {
+		return returnFunc(ctx, db, dollar_1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []CountRunUsageByStatusOfDayRow); ok {
+		r0 = returnFunc(ctx, db, dollar_1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]CountRunUsageByStatusOfDayRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, dollar_1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountRunUsageByStatusOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRunUsageByStatusOfDay'
+type MockQuerier_CountRunUsageByStatusOfDay_Call struct {
+	*mock.Call
+}
+
+// CountRunUsageByStatusOfDay is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - dollar_1 pgtype.Date
+func (_e *MockQuerier_Expecter) CountRunUsageByStatusOfDay(ctx any, db any, dollar_1 any) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+	return &MockQuerier_CountRunUsageByStatusOfDay_Call{Call: _e.mock.On("CountRunUsageByStatusOfDay", ctx, db, dollar_1)}
+}
+
+func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) Return(countRunUsageByStatusOfDayRows []CountRunUsageByStatusOfDayRow, err error) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+	_c.Call.Return(countRunUsageByStatusOfDayRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageByStatusOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)) *MockQuerier_CountRunUsageByStatusOfDay_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountUserDefinedTransformersOutsideAccount provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -467,6 +615,78 @@ func (_c *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call) Return(n 
 }
 
 func (_c *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error)) *MockQuerier_CountUserDefinedTransformersOutsideAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountUsersSeenSince provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountUsersSeenSince(ctx context.Context, db DBTX, lastSeenOn pgtype.Date) (int64, error) {
+	ret := _mock.Called(ctx, db, lastSeenOn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountUsersSeenSince")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (int64, error)); ok {
+		return returnFunc(ctx, db, lastSeenOn)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) int64); ok {
+		r0 = returnFunc(ctx, db, lastSeenOn)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, lastSeenOn)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountUsersSeenSince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountUsersSeenSince'
+type MockQuerier_CountUsersSeenSince_Call struct {
+	*mock.Call
+}
+
+// CountUsersSeenSince is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - lastSeenOn pgtype.Date
+func (_e *MockQuerier_Expecter) CountUsersSeenSince(ctx any, db any, lastSeenOn any) *MockQuerier_CountUsersSeenSince_Call {
+	return &MockQuerier_CountUsersSeenSince_Call{Call: _e.mock.On("CountUsersSeenSince", ctx, db, lastSeenOn)}
+}
+
+func (_c *MockQuerier_CountUsersSeenSince_Call) Run(run func(ctx context.Context, db DBTX, lastSeenOn pgtype.Date)) *MockQuerier_CountUsersSeenSince_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountUsersSeenSince_Call) Return(n int64, err error) *MockQuerier_CountUsersSeenSince_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountUsersSeenSince_Call) RunAndReturn(run func(ctx context.Context, db DBTX, lastSeenOn pgtype.Date) (int64, error)) *MockQuerier_CountUsersSeenSince_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1859,6 +2079,69 @@ func (_c *MockQuerier_DeleteSlackOAuthConnection_Call) Return(err error) *MockQu
 }
 
 func (_c *MockQuerier_DeleteSlackOAuthConnection_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountID pgtype.UUID) error) *MockQuerier_DeleteSlackOAuthConnection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteUsageReportsBefore provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) DeleteUsageReportsBefore(ctx context.Context, db DBTX, day pgtype.Date) error {
+	ret := _mock.Called(ctx, db, day)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUsageReportsBefore")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r0 = returnFunc(ctx, db, day)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_DeleteUsageReportsBefore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUsageReportsBefore'
+type MockQuerier_DeleteUsageReportsBefore_Call struct {
+	*mock.Call
+}
+
+// DeleteUsageReportsBefore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - day pgtype.Date
+func (_e *MockQuerier_Expecter) DeleteUsageReportsBefore(ctx any, db any, day any) *MockQuerier_DeleteUsageReportsBefore_Call {
+	return &MockQuerier_DeleteUsageReportsBefore_Call{Call: _e.mock.On("DeleteUsageReportsBefore", ctx, db, day)}
+}
+
+func (_c *MockQuerier_DeleteUsageReportsBefore_Call) Run(run func(ctx context.Context, db DBTX, day pgtype.Date)) *MockQuerier_DeleteUsageReportsBefore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUsageReportsBefore_Call) Return(err error) *MockQuerier_DeleteUsageReportsBefore_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUsageReportsBefore_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) error) *MockQuerier_DeleteUsageReportsBefore_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5768,6 +6051,78 @@ func (_c *MockQuerier_GetTemporalConfigByUserAccount_Call) RunAndReturn(run func
 	return _c
 }
 
+// GetUsageReport provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetUsageReport(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error) {
+	ret := _mock.Called(ctx, db, day)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUsageReport")
+	}
+
+	var r0 HusonymApiUsageReport
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (HusonymApiUsageReport, error)); ok {
+		return returnFunc(ctx, db, day)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) HusonymApiUsageReport); ok {
+		r0 = returnFunc(ctx, db, day)
+	} else {
+		r0 = ret.Get(0).(HusonymApiUsageReport)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, day)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetUsageReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUsageReport'
+type MockQuerier_GetUsageReport_Call struct {
+	*mock.Call
+}
+
+// GetUsageReport is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - day pgtype.Date
+func (_e *MockQuerier_Expecter) GetUsageReport(ctx any, db any, day any) *MockQuerier_GetUsageReport_Call {
+	return &MockQuerier_GetUsageReport_Call{Call: _e.mock.On("GetUsageReport", ctx, db, day)}
+}
+
+func (_c *MockQuerier_GetUsageReport_Call) Run(run func(ctx context.Context, db DBTX, day pgtype.Date)) *MockQuerier_GetUsageReport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetUsageReport_Call) Return(husonymApiUsageReport HusonymApiUsageReport, err error) *MockQuerier_GetUsageReport_Call {
+	_c.Call.Return(husonymApiUsageReport, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetUsageReport_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) (HusonymApiUsageReport, error)) *MockQuerier_GetUsageReport_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUser provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -6742,6 +7097,78 @@ func (_c *MockQuerier_InsertRunUsageStarted_Call) Return(err error) *MockQuerier
 }
 
 func (_c *MockQuerier_InsertRunUsageStarted_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams) error) *MockQuerier_InsertRunUsageStarted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertUsageReport provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) InsertUsageReport(ctx context.Context, db DBTX, arg InsertUsageReportParams) (int64, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertUsageReport")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertUsageReportParams) (int64, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertUsageReportParams) int64); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, InsertUsageReportParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_InsertUsageReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertUsageReport'
+type MockQuerier_InsertUsageReport_Call struct {
+	*mock.Call
+}
+
+// InsertUsageReport is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg InsertUsageReportParams
+func (_e *MockQuerier_Expecter) InsertUsageReport(ctx any, db any, arg any) *MockQuerier_InsertUsageReport_Call {
+	return &MockQuerier_InsertUsageReport_Call{Call: _e.mock.On("InsertUsageReport", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_InsertUsageReport_Call) Run(run func(ctx context.Context, db DBTX, arg InsertUsageReportParams)) *MockQuerier_InsertUsageReport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 InsertUsageReportParams
+		if args[2] != nil {
+			arg2 = args[2].(InsertUsageReportParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_InsertUsageReport_Call) Return(n int64, err error) *MockQuerier_InsertUsageReport_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_InsertUsageReport_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertUsageReportParams) (int64, error)) *MockQuerier_InsertUsageReport_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -9437,6 +9864,152 @@ func (_c *MockQuerier_SettleRunUsage_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// SumGateRefusalsOfDay provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error) {
+	ret := _mock.Called(ctx, db, day)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SumGateRefusalsOfDay")
+	}
+
+	var r0 []SumGateRefusalsOfDayRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]SumGateRefusalsOfDayRow, error)); ok {
+		return returnFunc(ctx, db, day)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []SumGateRefusalsOfDayRow); ok {
+		r0 = returnFunc(ctx, db, day)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]SumGateRefusalsOfDayRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, day)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SumGateRefusalsOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumGateRefusalsOfDay'
+type MockQuerier_SumGateRefusalsOfDay_Call struct {
+	*mock.Call
+}
+
+// SumGateRefusalsOfDay is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - day pgtype.Date
+func (_e *MockQuerier_Expecter) SumGateRefusalsOfDay(ctx any, db any, day any) *MockQuerier_SumGateRefusalsOfDay_Call {
+	return &MockQuerier_SumGateRefusalsOfDay_Call{Call: _e.mock.On("SumGateRefusalsOfDay", ctx, db, day)}
+}
+
+func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Run(run func(ctx context.Context, db DBTX, day pgtype.Date)) *MockQuerier_SumGateRefusalsOfDay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SumGateRefusalsOfDay_Call) Return(sumGateRefusalsOfDayRows []SumGateRefusalsOfDayRow, err error) *MockQuerier_SumGateRefusalsOfDay_Call {
+	_c.Call.Return(sumGateRefusalsOfDayRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_SumGateRefusalsOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)) *MockQuerier_SumGateRefusalsOfDay_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SumRunUsageOfDay provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error) {
+	ret := _mock.Called(ctx, db, dollar_1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SumRunUsageOfDay")
+	}
+
+	var r0 SumRunUsageOfDayRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) (SumRunUsageOfDayRow, error)); ok {
+		return returnFunc(ctx, db, dollar_1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) SumRunUsageOfDayRow); ok {
+		r0 = returnFunc(ctx, db, dollar_1)
+	} else {
+		r0 = ret.Get(0).(SumRunUsageOfDayRow)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, dollar_1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SumRunUsageOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SumRunUsageOfDay'
+type MockQuerier_SumRunUsageOfDay_Call struct {
+	*mock.Call
+}
+
+// SumRunUsageOfDay is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - dollar_1 pgtype.Date
+func (_e *MockQuerier_Expecter) SumRunUsageOfDay(ctx any, db any, dollar_1 any) *MockQuerier_SumRunUsageOfDay_Call {
+	return &MockQuerier_SumRunUsageOfDay_Call{Call: _e.mock.On("SumRunUsageOfDay", ctx, db, dollar_1)}
+}
+
+func (_c *MockQuerier_SumRunUsageOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_SumRunUsageOfDay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SumRunUsageOfDay_Call) Return(sumRunUsageOfDayRow SumRunUsageOfDayRow, err error) *MockQuerier_SumRunUsageOfDay_Call {
+	_c.Call.Return(sumRunUsageOfDayRow, err)
+	return _c
+}
+
+func (_c *MockQuerier_SumRunUsageOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)) *MockQuerier_SumRunUsageOfDay_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateAccountApiKeyValue provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -10648,6 +11221,69 @@ func (_c *MockQuerier_UpsertRunUsageEnded_Call) Return(err error) *MockQuerier_U
 }
 
 func (_c *MockQuerier_UpsertRunUsageEnded_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error) *MockQuerier_UpsertRunUsageEnded_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertUserActivity provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) UpsertUserActivity(ctx context.Context, db DBTX, arg UpsertUserActivityParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertUserActivity")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertUserActivityParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_UpsertUserActivity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertUserActivity'
+type MockQuerier_UpsertUserActivity_Call struct {
+	*mock.Call
+}
+
+// UpsertUserActivity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg UpsertUserActivityParams
+func (_e *MockQuerier_Expecter) UpsertUserActivity(ctx any, db any, arg any) *MockQuerier_UpsertUserActivity_Call {
+	return &MockQuerier_UpsertUserActivity_Call{Call: _e.mock.On("UpsertUserActivity", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_UpsertUserActivity_Call) Run(run func(ctx context.Context, db DBTX, arg UpsertUserActivityParams)) *MockQuerier_UpsertUserActivity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 UpsertUserActivityParams
+		if args[2] != nil {
+			arg2 = args[2].(UpsertUserActivityParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertUserActivity_Call) Return(err error) *MockQuerier_UpsertUserActivity_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertUserActivity_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertUserActivityParams) error) *MockQuerier_UpsertUserActivity_Call {
 	_c.Call.Return(run)
 	return _c
 }
