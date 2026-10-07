@@ -143,10 +143,10 @@ type GateCount struct {
 	Count int    `json:"count"`
 }
 
-// Runs counts the runs of the day.
+// Runs counts the runs of the day: those whose end the instance recorded on that day.
 type Runs struct {
 	ByStatus []RunCount `json:"by_status"`
-	// DurationSeconds is nil when no run that ended that day has an end time.
+	// DurationSeconds is nil when no run of the day has an end time.
 	DurationSeconds   *Durations `json:"duration_seconds,omitempty"`
 	RowsRead          string     `json:"rows_read"`
 	RowsDiscarded     string     `json:"rows_discarded"`

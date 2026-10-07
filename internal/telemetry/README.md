@@ -24,6 +24,10 @@ it is placed in a `Report`. The schema has `additionalProperties: false` at each
 
 ## What the counts mean
 
+- `runs` and `source_engines` hold the runs whose end the instance recorded on the day (UTC),
+  whichever way it learned of it. A run that ended just before midnight and whose end was recorded
+  just after is in the report of the next day, and in no other. `duration_seconds` is still the
+  time from the start of a run to its end.
 - `transformers.system[].columns` is the number of columns a transformer runs on. A column whose
   transformer is a PII text counts under that transformer and under each transformer it hands its
   findings to, so these counts can sum to more than `jobs.columns`.

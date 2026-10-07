@@ -16,7 +16,8 @@ UPDATE husonym_api.run_usage
 SET status = $1, ended_at = $2, rows_read = $3,
   rows_discarded = $4, retries = $5,
   tables_uncounted = $6,
-  source_version_major = NULLIF($7::text, '')
+  source_version_major = NULLIF($7::text, ''),
+  recorded_at = CURRENT_TIMESTAMP
 WHERE run_id = $8 AND status = 'running'
 `
 
@@ -50,8 +51,8 @@ const countRunUsageBySourceVersionOfDay = `-- name: CountRunUsageBySourceVersion
 SELECT job_id, source_version_major, count(*)::bigint AS runs
 FROM husonym_api.run_usage
 WHERE source_version_major IS NOT NULL
-  AND COALESCE(ended_at, settled_at) >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND COALESCE(ended_at, settled_at) < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_id, source_version_major
 ORDER BY job_id, source_version_major
 `
@@ -85,8 +86,8 @@ func (q *Queries) CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX
 const countRunUsageByStatusOfDay = `-- name: CountRunUsageByStatusOfDay :many
 SELECT job_kind, status, count(*)::bigint AS runs
 FROM husonym_api.run_usage
-WHERE COALESCE(ended_at, settled_at) >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND COALESCE(ended_at, settled_at) < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
 GROUP BY job_kind, status
 ORDER BY job_kind, status
 `
@@ -97,8 +98,9 @@ type CountRunUsageByStatusOfDayRow struct {
 	Runs    int64
 }
 
-// A run counts for the UTC day of its end, or of its settling when it has no end. A run still
-// running counts for no day.
+// A run counts for the UTC day on which the API recorded its end, whichever way it learned of
+// it: nothing recorded after midnight belongs to the day before. A run still running counts for
+// no day.
 func (q *Queries) CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error) {
 	rows, err := db.Query(ctx, countRunUsageByStatusOfDay, dollar_1)
 	if err != nil {
@@ -288,7 +290,7 @@ func (q *Queries) ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, st
 
 const settleRunUsage = `-- name: SettleRunUsage :exec
 UPDATE husonym_api.run_usage
-SET status = $2, ended_at = $3, settled_at = CURRENT_TIMESTAMP
+SET status = $2, ended_at = $3, recorded_at = CURRENT_TIMESTAMP
 WHERE run_id = $1 AND status = 'running'
 `
 
@@ -341,18 +343,18 @@ const sumRunUsageOfDay = `-- name: SumRunUsageOfDay :one
 SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
-    ORDER BY extract(epoch FROM ended_at - started_at)
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
   COALESCE(round(percentile_cont(0.95) WITHIN GROUP (
-    ORDER BY extract(epoch FROM ended_at - started_at)
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_p95,
   COALESCE(sum(rows_read), 0)::bigint AS rows_read,
   COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
   COALESCE(sum(retries), 0)::bigint AS retries,
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows
 FROM husonym_api.run_usage
-WHERE COALESCE(ended_at, settled_at) >= ($1::date)::timestamp AT TIME ZONE 'UTC'
-  AND COALESCE(ended_at, settled_at) < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
 `
 
 type SumRunUsageOfDayRow struct {
@@ -365,7 +367,8 @@ type SumRunUsageOfDayRow struct {
 	WithUncountedRows int64
 }
 
-// Durations come from the runs that have an end only.
+// Durations come from the runs that have an end only, and are never negative: an end told
+// before its start counts for nothing.
 func (q *Queries) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error) {
 	row := db.QueryRow(ctx, sumRunUsageOfDay, dollar_1)
 	var i SumRunUsageOfDayRow
@@ -384,11 +387,12 @@ func (q *Queries) SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype
 const upsertRunUsageEnded = `-- name: UpsertRunUsageEnded :exec
 INSERT INTO husonym_api.run_usage (
   run_id, account_id, job_id, job_kind, status, started_at, ended_at,
-  rows_read, rows_discarded, retries, tables_uncounted, source_version_major
+  rows_read, rows_discarded, retries, tables_uncounted, source_version_major, recorded_at
 ) VALUES (
   $1, $2, $3, $4, $5,
   $6, $7, $8, $9,
-  $10, $11, NULLIF($12::text, '')
+  $10, $11, NULLIF($12::text, ''),
+  CURRENT_TIMESTAMP
 )
 ON CONFLICT (run_id) DO UPDATE SET
   status = EXCLUDED.status,
@@ -397,7 +401,8 @@ ON CONFLICT (run_id) DO UPDATE SET
   rows_discarded = EXCLUDED.rows_discarded,
   retries = EXCLUDED.retries,
   tables_uncounted = EXCLUDED.tables_uncounted,
-  source_version_major = EXCLUDED.source_version_major
+  source_version_major = EXCLUDED.source_version_major,
+  recorded_at = EXCLUDED.recorded_at
 WHERE husonym_api.run_usage.status = 'running'
 `
 
@@ -417,7 +422,8 @@ type UpsertRunUsageEndedParams struct {
 }
 
 // Creates the row when the start was never recorded; a row already finished keeps what it
-// holds, so that the first end told wins.
+// holds, so that the first end told wins. The moment the end is recorded is the clock of the
+// database, and a second end does not move it.
 func (q *Queries) UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error {
 	_, err := db.Exec(ctx, upsertRunUsageEnded,
 		arg.RunID,

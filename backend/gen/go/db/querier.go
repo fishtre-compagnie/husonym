@@ -28,8 +28,9 @@ type Querier interface {
 	// be able to name the members of the first.
 	CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error)
 	CountRunUsageBySourceVersionOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageBySourceVersionOfDayRow, error)
-	// A run counts for the UTC day of its end, or of its settling when it has no end. A run still
-	// running counts for no day.
+	// A run counts for the UTC day on which the API recorded its end, whichever way it learned of
+	// it: nothing recorded after midnight belongs to the day before. A run still running counts for
+	// no day.
 	CountRunUsageByStatusOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageByStatusOfDayRow, error)
 	// The types of the columns the runs saw, counted by type. The schema, the table and the column
 	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
@@ -273,7 +274,8 @@ type Querier interface {
 	// Only a run still open is settled.
 	SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error
 	SumGateRefusalsOfDay(ctx context.Context, db DBTX, day pgtype.Date) ([]SumGateRefusalsOfDayRow, error)
-	// Durations come from the runs that have an end only.
+	// Durations come from the runs that have an end only, and are never negative: an end told
+	// before its start counts for nothing.
 	SumRunUsageOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) (SumRunUsageOfDayRow, error)
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
@@ -294,7 +296,8 @@ type Querier interface {
 	// rather than by the columns it covers.
 	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
 	// Creates the row when the start was never recorded; a row already finished keeps what it
-	// holds, so that the first end told wins.
+	// holds, so that the first end told wins. The moment the end is recorded is the clock of the
+	// database, and a second end does not move it.
 	UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error
 	// Only a later day moves the date.
 	UpsertUserActivity(ctx context.Context, db DBTX, arg UpsertUserActivityParams) error

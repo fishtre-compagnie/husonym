@@ -19,11 +19,14 @@ type RunCount struct {
 	Count  int64
 }
 
-// DayRuns is what the runs counted on a UTC day add up to. A run counts for the day of its end,
-// or of its settling when it has no end; a run still running counts for no day.
+// DayRuns is what the runs counted on a UTC day add up to. A run counts for the day on which
+// the API recorded its end, whichever way it learned of it (the end the worker told, or the
+// settling of a run that told none): the runs of a day are closed at midnight, and nothing
+// recorded later belongs to it. A run still running counts for no day.
 type DayRuns struct {
 	ByStatus []RunCount
-	// Durations are in seconds, and nil when no run of the day has an end.
+	// Durations are in seconds, from the start of a run to its end, and never negative. They
+	// are nil when no run of the day has an end.
 	DurationMedian, DurationP95      *int64
 	RowsRead, RowsDiscarded, Retries int64
 	// WithUncountedRows is how many runs had a table that reported no row count.

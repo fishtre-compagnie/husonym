@@ -218,7 +218,7 @@ type HusonymApiRunUsage struct {
 	RowsRead           int64
 	RowsDiscarded      int64
 	Retries            int64
-	SettledAt          pgtype.Timestamptz
+	RecordedAt         pgtype.Timestamptz
 	TablesUncounted    int64
 	SourceVersionMajor pgtype.Text
 }

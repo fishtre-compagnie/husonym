@@ -107,7 +107,8 @@ func (s *Store) RunStarted(ctx context.Context, run RunStart) error { //nolint:g
 }
 
 // RunEnded records the end of a run, creating the row when its start was never recorded. A run
-// that already finished is left as it is: the first end told wins.
+// that already finished is left as it is: the first end told wins. The run counts for the UTC
+// day of this call, on the clock of the database, not for the day of EndedAt.
 func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocritic // hugeParam: callers hand a value they do not share
 	switch run.Status {
 	case StatusCompleted, StatusFailed, StatusCanceled:
@@ -182,7 +183,8 @@ func (s *Store) OpenRunsStartedBefore(ctx context.Context, before time.Time) ([]
 }
 
 // Settle closes a run that is still open with the status the orchestrator reports. The end is
-// nil when it is not known. A run that already finished is left as it is.
+// nil when it is not known. A run that already finished is left as it is. As with any end, the
+// run counts for the UTC day of this call.
 func (s *Store) Settle(ctx context.Context, runId string, status Status, endedAt *time.Time) error {
 	ended := pgtype.Timestamptz{}
 	if endedAt != nil {

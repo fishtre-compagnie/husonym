@@ -1,10 +1,15 @@
 -- What the daily usage report needs beyond the counters of the first usage migration. Counts,
 -- days and identifiers only: never a name, a query or a message a customer entered.
 
--- When a run was settled by the instance rather than ended by the worker: such a run counts for
--- the day it was settled.
+-- When the API recorded the end of the run, whichever way it learned of it. A run counts for
+-- the UTC day of this moment; a run still running has none.
 ALTER TABLE husonym_api.run_usage
-  ADD COLUMN IF NOT EXISTS settled_at timestamptz NULL;
+  ADD COLUMN IF NOT EXISTS recorded_at timestamptz NULL;
+
+-- The runs that ended before this migration: their end is the closest thing known.
+UPDATE husonym_api.run_usage
+SET recorded_at = COALESCE(ended_at, CURRENT_TIMESTAMP)
+WHERE status <> 'running' AND recorded_at IS NULL;
 
 -- How many tables of the run reported no row count.
 ALTER TABLE husonym_api.run_usage
@@ -14,9 +19,9 @@ ALTER TABLE husonym_api.run_usage
 ALTER TABLE husonym_api.run_usage
   ADD COLUMN IF NOT EXISTS source_version_major text NULL;
 
--- A run counts for the UTC day of this moment.
-CREATE INDEX IF NOT EXISTS run_usage_counted_at_idx
-  ON husonym_api.run_usage ((COALESCE(ended_at, settled_at)));
+-- The runs of a day are looked up by the moment their end was recorded.
+CREATE INDEX IF NOT EXISTS run_usage_recorded_at_idx
+  ON husonym_api.run_usage (recorded_at);
 
 -- The last day (UTC) each user was seen. There is no foreign key to users: the count of active
 -- users must not depend on the row of a user that is gone.
