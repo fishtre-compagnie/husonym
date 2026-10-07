@@ -185,6 +185,20 @@ Le modèle est chargé au démarrage : `/health` ne répond qu'une fois l'image 
 à analyser. L'image tourne sous l'utilisateur non privilégié de l'image de base
 (`presidio`, uid 1001).
 
+**La commande de démarrage porte `--no-control-socket`.** gunicorn 25.1.0, celui
+de l'image de base, ouvre un socket de contrôle dans un thread juste avant de
+créer son worker par `fork`. Si le `fork` tombe pendant que ce thread écrit sa
+ligne de journal (« Control socket listening at … »), le worker hérite d'un
+verrou que personne ne relâchera : il reste bloqué sur sa première ligne de
+journal, n'importe jamais l'application, et `/health` ne répond pas. gunicorn
+ne le remplace pas de lui-même ; un `SIGHUP` au processus maître en crée un
+nouveau. C'est le défaut gunicorn n° 3509, corrigé par
+[la PR n° 3520](https://github.com/benoitc/gunicorn/pull/3520), livrée en
+25.2.0. Mesuré sur cette image, un démarrage à la fois sur un CPU : 5 démarrages
+bloqués sur 53 sans l'option, 0 sur 60 avec. Ce socket ne sert pas ici (il
+pilote gunicorn par la commande `gunicornc`). L'option est à retirer quand
+l'image de base embarquera gunicorn 25.2.0 ou plus.
+
 ## Versions épinglées
 
 Ce que le `Dockerfile` installe nommément y est fixé :

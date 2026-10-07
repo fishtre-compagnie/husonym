@@ -61,7 +61,8 @@ ENV NLP_CONF_FILE=/app/conf/fr/nlp.yaml \
     ANALYZER_CONF_FILE=/app/conf/fr/analyzer.yaml
 
 # Le reconnaisseur propre à cette image, et le serveur de Presidio lancé par un module qui
-# l'importe. Même commande que l'entrypoint.sh de l'image de base, au nom du module près.
+# l'importe. Même commande que l'entrypoint.sh de l'image de base, au nom du module près et à
+# l'option --no-control-socket près (voir la commande, en bas).
 COPY --chown=presidio:presidio mapped_ner_recognizer.py analyzer_app.py recognizer_check.py /app/
 # Les contrôles du reconnaisseur (découpage, réunion des trouvailles de deux morceaux, filtre des
 # étiquettes, erreur d'inférence), sans le modèle : un contrôle qui échoue, ou un nom interne de
@@ -70,4 +71,9 @@ RUN python -B /app/recognizer_check.py
 
 # Utilisateur non privilégié de l'image de base (presidio).
 USER 1001
-CMD ["sh", "-c", "exec poetry run gunicorn -w \"$WORKERS\" -b \"0.0.0.0:$PORT\" \"analyzer_app:create_app()\""]
+# --no-control-socket : gunicorn 25.1.0 (celui de l'image de base) ouvre un socket de contrôle
+# dans un thread juste avant de créer son worker par fork. Si le fork tombe pendant que ce thread
+# écrit dans le journal, le worker hérite d'un verrou que personne ne relâchera : il ne démarre
+# jamais et /health ne répond pas (gunicorn #3509, corrigé en 25.2.0). Ce socket ne sert pas ici.
+# À retirer quand l'image de base embarquera gunicorn 25.2.0 ou plus.
+CMD ["sh", "-c", "exec poetry run gunicorn --no-control-socket -w \"$WORKERS\" -b \"0.0.0.0:$PORT\" \"analyzer_app:create_app()\""]
