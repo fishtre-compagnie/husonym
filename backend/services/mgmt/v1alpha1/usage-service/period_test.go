@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -174,4 +176,113 @@ func Test_GetUsagePeriodReport_ACallerWhoGivesUpIsNotADeadline(t *testing.T) {
 	_, err := f.svc.GetUsagePeriodReport(ctx, periodRequest("2026-08", "2026-10"))
 
 	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
+// gatedPeriods builds a period for as long as it is held, and counts how many builds run at once.
+type gatedPeriods struct {
+	started chan struct{}
+	release chan struct{}
+
+	building, most, calls atomic.Int32
+}
+
+func newGatedPeriods() *gatedPeriods {
+	return &gatedPeriods{started: make(chan struct{}, 16), release: make(chan struct{})}
+}
+
+func (g *gatedPeriods) BuildPeriod(ctx context.Context, _, _, _ time.Time) (*usagereport.Sealed, error) {
+	g.calls.Add(1)
+	if building := g.building.Add(1); building > g.most.Load() {
+		g.most.Store(building)
+	}
+	defer g.building.Add(-1)
+	g.started <- struct{}{}
+	select {
+	case <-g.release:
+		return &usagereport.Sealed{Document: []byte("{}"), Seal: "a-seal", KeyFingerprint: "a-fingerprint"}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// One period is built at a time in a process: a second call waits for the first, then builds.
+func Test_GetUsagePeriodReport_BuildsOnePeriodAtATime(t *testing.T) {
+	f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
+	periods := newGatedPeriods()
+	f.svc.periods = periods
+
+	const callers = 4
+	errs := make([]error, callers)
+	var wg sync.WaitGroup
+	for i := range callers {
+		wg.Go(func() {
+			_, errs[i] = f.svc.GetUsagePeriodReport(t.Context(), periodRequest("2026-08", "2026-10"))
+		})
+	}
+	for range callers {
+		<-periods.started
+		// The others had the time to start building, if anything let them.
+		time.Sleep(20 * time.Millisecond)
+		require.EqualValues(t, 1, periods.building.Load())
+		periods.release <- struct{}{}
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+	require.EqualValues(t, callers, periods.calls.Load())
+	require.EqualValues(t, 1, periods.most.Load(), "two periods were built at the same time")
+}
+
+// A call waits for its turn within its own deadline: past it the caller is told so, and nothing
+// was built for it.
+func Test_GetUsagePeriodReport_GivesUpPastItsDeadlineWhileWaitingForItsTurn(t *testing.T) {
+	f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
+	periods := newGatedPeriods()
+	f.svc.periods = periods
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := f.svc.GetUsagePeriodReport(t.Context(), periodRequest("2026-08", "2026-10"))
+		first <- err
+	}()
+	<-periods.started
+
+	f.svc.periodTimeout = 10 * time.Millisecond
+	_, err := f.svc.GetUsagePeriodReport(t.Context(), periodRequest("2026-08", "2026-10"))
+	require.Equal(t, connect.CodeDeadlineExceeded, connect.CodeOf(err))
+	require.EqualValues(t, 1, periods.calls.Load())
+
+	// The turn is given back: once the first is done, the next call builds.
+	periods.release <- struct{}{}
+	require.NoError(t, <-first)
+	go func() { <-periods.started; periods.release <- struct{}{} }()
+	_, err = f.svc.GetUsagePeriodReport(t.Context(), periodRequest("2026-08", "2026-10"))
+	require.NoError(t, err)
+	require.EqualValues(t, 2, periods.calls.Load())
+}
+
+// A caller who gives up while waiting for its turn is not told the deadline of the instance
+// passed, and nothing is built for it.
+func Test_GetUsagePeriodReport_ACallerWhoGivesUpWhileWaitingForItsTurnIsNotADeadline(t *testing.T) {
+	f := reporting(t, fakeKey{mode: license.TelemetryOnline}, "", true)
+	periods := newGatedPeriods()
+	f.svc.periods = periods
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := f.svc.GetUsagePeriodReport(t.Context(), periodRequest("2026-08", "2026-10"))
+		first <- err
+	}()
+	<-periods.started
+
+	ctx, cancel := context.WithCancel(t.Context())
+	time.AfterFunc(10*time.Millisecond, cancel)
+	_, err := f.svc.GetUsagePeriodReport(ctx, periodRequest("2026-08", "2026-10"))
+	require.Equal(t, connect.CodeCanceled, connect.CodeOf(err))
+	require.EqualValues(t, 1, periods.calls.Load())
+
+	periods.release <- struct{}{}
+	require.NoError(t, <-first)
 }

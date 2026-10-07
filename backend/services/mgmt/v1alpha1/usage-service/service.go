@@ -35,7 +35,9 @@ type Service struct {
 	key            usagereport.KeyModeSource
 	periods        periodBuilder
 	periodTimeout  time.Duration
-	now            func() time.Time
+	// periodTurn holds the one turn there is to build a period: whoever builds has put into it.
+	periodTurn chan struct{}
+	now        func() time.Time
 }
 
 type Config struct {
@@ -72,6 +74,6 @@ func newService(
 ) *Service {
 	return &Service{
 		cfg: cfg, db: db, userdataclient: userdataclient, store: store, reports: reports, key: key,
-		periods: periods, periodTimeout: periodBuildTimeout, now: now,
+		periods: periods, periodTimeout: periodBuildTimeout, periodTurn: make(chan struct{}, 1), now: now,
 	}
 }

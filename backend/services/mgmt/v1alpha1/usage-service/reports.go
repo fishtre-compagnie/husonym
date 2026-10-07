@@ -153,6 +153,11 @@ func (s *Service) GetUsageReport(
 // month, each over an index: some seventy-five queries in all. The whole is given
 // periodBuildTimeout; past it the caller is answered DeadlineExceeded.
 //
+// Any member who may view an account can ask for it, as often as they like: one period is built
+// at a time in a process, so that what the calls cost never adds up to more than one build at
+// once. A call waits for its turn within its own periodBuildTimeout, then builds in what is left
+// of it.
+//
 // A report that cannot be made is answered in fixed words, and why is logged: an error of the
 // database or of the schema may quote what it read.
 func (s *Service) GetUsagePeriodReport(
@@ -169,6 +174,15 @@ func (s *Service) GetUsagePeriodReport(
 	}
 	buildCtx, cancel := context.WithTimeout(ctx, s.periodTimeout)
 	defer cancel()
+	if err := s.takePeriodTurn(buildCtx); err != nil {
+		if ctx.Err() != nil {
+			return nil, connect.NewError(connect.CodeCanceled, errors.New("the report for the period was given up"))
+		}
+		return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf(
+			"the report for the period was not built within %s: another one was being built", s.periodTimeout,
+		))
+	}
+	defer func() { <-s.periodTurn }()
 	sealed, err := s.periods.BuildPeriod(buildCtx, from, to, s.now())
 	switch {
 	case err == nil:
@@ -194,6 +208,22 @@ func (s *Service) GetUsagePeriodReport(
 		Seal:           sealed.Seal,
 		KeyFingerprint: sealed.KeyFingerprint,
 	}), nil
+}
+
+// takePeriodTurn waits for the turn to build a period, until ctx ends. A turn that is free is
+// taken whatever became of ctx: the build then answers for it, as it does without a wait.
+func (s *Service) takePeriodTurn(ctx context.Context) error {
+	select {
+	case s.periodTurn <- struct{}{}:
+		return nil
+	default:
+	}
+	select {
+	case s.periodTurn <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // canView lets through who may see the account, as GetLicenseUsage does.
