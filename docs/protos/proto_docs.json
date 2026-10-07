@@ -22626,6 +22626,260 @@
       ]
     },
     {
+      "name": "mgmt/v1alpha1/usage.proto",
+      "description": "",
+      "package": "mgmt.v1alpha1",
+      "hasEnums": true,
+      "hasExtensions": false,
+      "hasMessages": true,
+      "hasServices": true,
+      "enums": [
+        {
+          "name": "RunOutcome",
+          "longName": "RunOutcome",
+          "fullName": "mgmt.v1alpha1.RunOutcome",
+          "description": "How a run ended.",
+          "values": [
+            {
+              "name": "RUN_OUTCOME_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "RUN_OUTCOME_COMPLETED",
+              "number": "1",
+              "description": "The run finished its work."
+            },
+            {
+              "name": "RUN_OUTCOME_FAILED",
+              "number": "2",
+              "description": "The run stopped on an error."
+            },
+            {
+              "name": "RUN_OUTCOME_CANCELED",
+              "number": "3",
+              "description": "The run was told to stop."
+            }
+          ]
+        }
+      ],
+      "extensions": [],
+      "messages": [
+        {
+          "name": "RecordRunEndedRequest",
+          "longName": "RecordRunEndedRequest",
+          "fullName": "mgmt.v1alpha1.RecordRunEndedRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job the run belongs to. The account and the kind of the run are read from it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "run_id",
+              "description": "The identifier of the run, as the orchestrator gives it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "started_at",
+              "description": "When the run began.",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "ended_at",
+              "description": "When the run ended.",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "outcome",
+              "description": "How the run ended.",
+              "label": "",
+              "type": "RunOutcome",
+              "longType": "RunOutcome",
+              "fullType": "mgmt.v1alpha1.RunOutcome",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_read",
+              "description": "The rows the run read from its source.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_discarded",
+              "description": "The rows the run set aside instead of writing them.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "retries",
+              "description": "The times the run's activities were tried again.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "RecordRunEndedResponse",
+          "longName": "RecordRunEndedResponse",
+          "fullName": "mgmt.v1alpha1.RecordRunEndedResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "RecordRunStartedRequest",
+          "longName": "RecordRunStartedRequest",
+          "fullName": "mgmt.v1alpha1.RecordRunStartedRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job the run belongs to. The account and the kind of the run are read from it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "run_id",
+              "description": "The identifier of the run, as the orchestrator gives it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "started_at",
+              "description": "When the run began.",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "RecordRunStartedResponse",
+          "longName": "RecordRunStartedResponse",
+          "fullName": "mgmt.v1alpha1.RecordRunStartedResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        }
+      ],
+      "services": [
+        {
+          "name": "UsageService",
+          "longName": "UsageService",
+          "fullName": "mgmt.v1alpha1.UsageService",
+          "description": "Holds the counters of what the instance runs.",
+          "methods": [
+            {
+              "name": "RecordRunStarted",
+              "description": "Tells that a run has begun. Only the worker calls this, with its key.",
+              "requestType": "RecordRunStartedRequest",
+              "requestLongType": "RecordRunStartedRequest",
+              "requestFullType": "mgmt.v1alpha1.RecordRunStartedRequest",
+              "requestStreaming": false,
+              "responseType": "RecordRunStartedResponse",
+              "responseLongType": "RecordRunStartedResponse",
+              "responseFullType": "mgmt.v1alpha1.RecordRunStartedResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "RecordRunEnded",
+              "description": "Tells that a run has ended, and what it did. Only the worker calls this, with its key.",
+              "requestType": "RecordRunEndedRequest",
+              "requestLongType": "RecordRunEndedRequest",
+              "requestFullType": "mgmt.v1alpha1.RecordRunEndedRequest",
+              "requestStreaming": false,
+              "responseType": "RecordRunEndedResponse",
+              "responseLongType": "RecordRunEndedResponse",
+              "responseFullType": "mgmt.v1alpha1.RecordRunEndedResponse",
+              "responseStreaming": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "mgmt/v1alpha1/user_account.proto",
       "description": "",
       "package": "mgmt.v1alpha1",

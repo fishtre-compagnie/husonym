@@ -69,6 +69,7 @@ import (
 	v1alpha1_jobservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/job-service"
 	v1alpha1_metricsservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/metrics-service"
 	v1alpha1_transformerservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
+	v1alpha1_usageservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/usage-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
@@ -164,7 +165,7 @@ func serve(ctx context.Context) error {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
+	services = append(services, mgmtv1alpha1connect.AccountHookServiceName, mgmtv1alpha1connect.UsageServiceName)
 
 	// The settings of an account carry secrets, so they are only held where the deployment
 	// can encrypt one. Without a password the handler answers Unimplemented, and health and
@@ -606,6 +607,22 @@ func serve(ctx context.Context) error {
 	api.Handle(
 		mgmtv1alpha1connect.NewAccountHookServiceHandler(
 			accountHookService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
+
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{WorkerOnly: workerOnly},
+		db,
+		userdataclient,
+		usageStore,
+	)
+	api.Handle(
+		mgmtv1alpha1connect.NewUsageServiceHandler(
+			usageService,
 			connect.WithInterceptors(stdInterceptors...),
 			connect.WithInterceptors(stdAuthInterceptors...),
 			connect.WithInterceptors(handlerBookendInterceptor),

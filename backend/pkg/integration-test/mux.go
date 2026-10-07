@@ -31,6 +31,7 @@ import (
 	v1alpha1_connectionservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-service"
 	v1alpha1_jobservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/job-service"
 	v1alpha1_transformersservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
+	v1alpha1_usageservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/usage-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
@@ -407,6 +408,13 @@ func (s *HusonymApiTestClient) setupMux(
 		settingsEncryptor,
 	)
 
+	usageService := v1alpha1_usageservice.New(
+		&v1alpha1_usageservice.Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled}},
+		husonymDb,
+		userclient,
+		usagestore.New(husonymDb),
+	)
+
 	mux := http.NewServeMux()
 
 	interceptors := []connect.Interceptor{}
@@ -441,6 +449,11 @@ func (s *HusonymApiTestClient) setupMux(
 	))
 	mux.Handle(mgmtv1alpha1connect.NewAccountSettingServiceHandler(
 		accountSettingService,
+		connect.WithInterceptors(interceptors...),
+	))
+
+	mux.Handle(mgmtv1alpha1connect.NewUsageServiceHandler(
+		usageService,
 		connect.WithInterceptors(interceptors...),
 	))
 
