@@ -156,3 +156,28 @@ func Test_Parse_RefusesAKeyNotSignedByTheEmbeddedKey(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signature")
 }
+
+func Test_SignatureOf_ReturnsTheSignatureTheKeyCarries(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	content := []byte(`{"version":"1"}`)
+	signature := ed25519.Sign(priv, content)
+
+	got, err := SignatureOf(encode(t, content, priv))
+	require.NoError(t, err)
+	require.Equal(t, signature, got)
+
+	withKid, err := json.Marshal(map[string]string{"license": b64(content), "signature": b64(signature), "kid": "k2"})
+	require.NoError(t, err)
+	got, err = SignatureOf(b64(withKid))
+	require.NoError(t, err)
+	require.Equal(t, signature, got)
+}
+
+func Test_SignatureOf_RefusesWithoutEchoingTheValue(t *testing.T) {
+	for _, value := range []string{"%%%secret", b64([]byte("secret")), encodeEnvelope(t, b64([]byte("x")), "%%%secret")} {
+		_, err := SignatureOf(value)
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "secret")
+	}
+}

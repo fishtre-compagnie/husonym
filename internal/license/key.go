@@ -59,22 +59,9 @@ func Parse(value string) (*Key, error) {
 // kid names, or LegacyKid without one. Errors name the stage that failed and never echo
 // the key material.
 func ParseWith(value string, ring Keyring) (*Key, error) {
-	raw, err := base64.StdEncoding.DecodeString(value)
+	env, content, signature, err := decode(value)
 	if err != nil {
-		return nil, errors.New("license key is not valid base64 (decoding)")
-	}
-
-	var env envelope
-	if err := json.Unmarshal(raw, &env); err != nil {
-		return nil, errors.New("license key envelope is not valid JSON (envelope)")
-	}
-	content, err := base64.StdEncoding.DecodeString(env.License)
-	if err != nil {
-		return nil, errors.New("license key envelope has a license field that is not valid base64 (envelope)")
-	}
-	signature, err := base64.StdEncoding.DecodeString(env.Signature)
-	if err != nil {
-		return nil, errors.New("license key envelope has a signature field that is not valid base64 (envelope)")
+		return nil, err
 	}
 
 	kid := env.Kid
@@ -94,4 +81,31 @@ func ParseWith(value string, ring Keyring) (*Key, error) {
 		return nil, errors.New("license key content is not valid JSON (content)")
 	}
 	return &key, nil
+}
+
+// SignatureOf returns the signature bytes a key value carries. It does not verify them: the
+// caller holds a key that a provider already verified. Errors never echo the key material.
+func SignatureOf(value string) ([]byte, error) {
+	_, _, signature, err := decode(value)
+	return signature, err
+}
+
+// decode unwraps a key value into its envelope, the signed content and the signature.
+func decode(value string) (env envelope, content, signature []byte, err error) {
+	raw, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return env, nil, nil, errors.New("license key is not valid base64 (decoding)")
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return env, nil, nil, errors.New("license key envelope is not valid JSON (envelope)")
+	}
+	content, err = base64.StdEncoding.DecodeString(env.License)
+	if err != nil {
+		return env, nil, nil, errors.New("license key envelope has a license field that is not valid base64 (envelope)")
+	}
+	signature, err = base64.StdEncoding.DecodeString(env.Signature)
+	if err != nil {
+		return env, nil, nil, errors.New("license key envelope has a signature field that is not valid base64 (envelope)")
+	}
+	return env, content, signature, nil
 }

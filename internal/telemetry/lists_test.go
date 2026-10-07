@@ -13,7 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 )
 
-var update = flag.Bool("update", false, "rewrite the schema file from the closed lists")
+var update = flag.Bool("update", false, "rewrite the generated files (the schema from the closed lists, the seal vector)")
 
 const schemaPath = "schema/usage-report.v1.schema.json"
 

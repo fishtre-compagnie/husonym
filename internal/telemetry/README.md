@@ -29,6 +29,23 @@ gives the same bytes. Optional fields (`diagnostics`, `duration_seconds`, `users
 `auth_provider`, `postgres_major`, `temporal_version`, `workers`, and the license values when no
 key was read) are absent, never zero.
 
+## Seal
+
+The report carries proof that its producer holds the license key of the instance, and the key
+itself never appears in it.
+
+- **Fingerprint**: `key_fingerprint` is the lowercase hex SHA-256 of the license key value (the
+  base64 string as the instance holds it), surrounding whitespace trimmed.
+- **Secret**: the key value is base64 of a JSON envelope whose `signature` field is base64 of the
+  Ed25519 signature. The secret is `HKDF-SHA-256(ikm = signature bytes, salt = none, info =
+  "husonym usage report seal v1", length = 32)`.
+- **Seal**: the lowercase hex HMAC-SHA-256, keyed with that secret, of the exact bytes of the
+  document as sent. Re-encoding the JSON changes the bytes and invalidates the seal.
+
+`testdata/seal-vector.json` holds a throwaway key, a document, its fingerprint and its seal. It is
+the reference for any other implementation. Refresh it with
+`go test ./internal/telemetry -run Test_Seal_MatchesThePublishedVector -update`.
+
 ## Evolving the schema
 
 `schema_version` is 1. A version only gains optional fields: nothing is renamed, removed or made
