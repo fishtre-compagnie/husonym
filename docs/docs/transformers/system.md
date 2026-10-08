@@ -734,6 +734,20 @@ Anonymizes free text: a note, a comment, the body of a message. A [Presidio](htt
 
 It needs a license and `PRESIDIO_ANALYZER_URL` (see [Environment Variables](/deploy/environment-variables)). Only the analyzer is used: Husonym does not call a Presidio anonymizer. The license is needed however the transformer is reached: mapped to a column, stored in a user-defined transformer, or called from a script with `husonym.transformPiiText`.
 
+**The analyzer image**
+
+The repository ships an analyzer image for French and English, in `docker/presidio-fr/` (see its `README.md`). English is unchanged from the previous image: persons, locations, dates and groups come from spaCy, and the registry holds the product's `FR_*` pattern recognizers and none of the country recognizers of the official analyzer. In French the image recognizes persons with the model `cmarkea/distilcamembert-base-ner`, quantized and run by ONNX Runtime. spaCy gives locations only in French: a date in digits is found by a pattern recognizer, a date written in words ("née le 3 mars 1984") is not designated, and `NRP` (groups) is declared and never returned. This was already so with the previous image.
+
+The image holds its configuration, needs the network to be built and none to run, and is a little larger and slower per French text than the previous image. It takes 1.2 GiB of memory after start-up for one process. Each analyzer process loads the model, so the memory is counted per process (`WORKERS`, 1 by default); `OMP_NUM_THREADS` (2 by default) should match the CPUs given to the container.
+
+The time a French text takes grows with its length, and depends on the CPUs given to the container and on how much whitespace the text holds. Observed once per case on one host, per 1,000 characters: 0.06 s for prose without a CPU quota, 0.2 s for text with little whitespace (compact JSON) without a quota, 0.15 s for prose on one CPU, 0.3 to 0.5 s for compact JSON on one CPU, 0.3 s for prose on half a CPU. Against the previous image, a short value takes about twice as long, a long prose text about four times, and a text with little whitespace about fifteen times.
+
+Husonym waits 60 seconds for the analyzer. A text whose analysis takes longer fails the value, as described under Failures below: from these rates, about 800,000 characters of prose without a quota and 400,000 on one CPU, about 280,000 characters of compact JSON without a quota and 120,000 on one CPU. These lengths are derived, not measured. The image lets its own worker run for 120 seconds (`WORKER_TIMEOUT`) before it is killed and restarted, which reloads the model; the analyzer keeps working on a text the caller gave up on, and with one worker the next requests wait behind it.
+
+French persons are kept by the image only from a confidence of 0.6: a `ScoreThreshold` below 0.6 does not bring back a person the image dropped, and a `ScoreThreshold` above 0.6 still filters the persons the image returns. A text longer than 400 characters is analyzed in overlapping pieces, two consecutive pieces sharing at least 40 characters, and the findings of two pieces that overlap are merged into one. A finding is therefore a passage, not always one person: two persons named back to back around the cut between two pieces can be rewritten as one passage.
+
+Measured on invented business text (12 columns of 50 values per data set, each value cut at 200 characters), on a French data set the image's settings were not chosen on, the image designated 106 passages, 102 of them on a person, and found 102 of the 109 names; the English figures are 48 passages, 30 on a person, and 30 of 32 names found. These figures are not a guarantee on your data. Known limits in French: a given name written alone, without a family name, is often missed; a title such as `Mme` before a name is sometimes outside the passage, so the rewritten text keeps the title; in a text with almost no spaces, such as compact JSON or a list of references, a name of several words can be designated in part or missed; a word at the start of a text, a product or a place name is occasionally taken for a person. Company and product names are taken for persons more often in English.
+
 **Configurations**
 
 | Name              | Description                                                                                                                                                                                                    | Default                                |
@@ -773,7 +787,7 @@ Each character of the text belongs to one finding at most. Findings of the same 
 
 **Failures**
 
-A value is rewritten exactly or not at all. When the analyzer does not answer or refuses the text, when its answer does not fit the text, or when the transformer of a `Transform` anonymizer fails, the value fails: it is never returned half rewritten, and a run stops on it. An empty value and a null value are returned as they are, without calling the analyzer.
+A value is rewritten exactly or not at all. When the analyzer does not answer or refuses the text, when its answer does not fit the text, or when the transformer of a `Transform` anonymizer fails, the value fails: it is never returned half rewritten, and a run stops on it. The analyzer image answers with an error, not with a shorter list of findings, when its analysis of a text fails: the value then fails like any other. An empty value and a null value are returned as they are, without calling the analyzer.
 
 ### Transform String\{#transform-string}
 
