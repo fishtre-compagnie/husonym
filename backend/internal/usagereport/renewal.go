@@ -19,6 +19,11 @@ const (
 	// RenewalPeriodNearExpiry is how long it waits once the license expires within thirty days,
 	// is in its grace period or is past it.
 	RenewalPeriodNearExpiry = 6 * time.Hour
+
+	// renewalClockOff is the line of an ask refused by a server whose clock is not the one of the
+	// instance. It is made of these words alone. Its five minutes are telemetry.RenewalFreshness.
+	renewalClockOff = "the clock of the instance and the one of the server differ by more than five minutes: " +
+		"the license cannot be renewed until the clock is set"
 )
 
 // InstanceIdSource gives the identity of the instance. *usagestore.Store is one.
@@ -76,7 +81,9 @@ func NewRenewer(
 // A license that is received is offered to the rule every key goes through, which alone decides
 // whether it replaces the one in force: one that is refused is told in a line and changes
 // nothing. An ask that fails is an error, changes nothing either, and is made again once the
-// period has elapsed.
+// period has elapsed. One that is refused by a destination whose clock is more than five minutes
+// from the one of the instance is told in a line that says so, in place of the error: a request
+// made at such an instant is refused whoever makes it, until the clock is set.
 //
 // It may be called at once, in one process as in several replicas: one call of a process asks,
 // and a license offered twice is stored once.
@@ -117,6 +124,12 @@ func (r *Renewer) AskIfDue(parent context.Context) error {
 		Document: document, Seal: seal, KeyFingerprint: telemetry.KeyFingerprint(value),
 	})
 	if err != nil {
+		var refused *refusedAskError
+		if errors.As(err, &refused) && clocksDiffer(now, refused.answeredAt) {
+			// Told in place of the error: the status alone says nothing of what there is to do.
+			r.logger.WarnContext(parent, renewalClockOff)
+			return nil
+		}
 		return err
 	}
 	if received == "" {
@@ -149,6 +162,17 @@ func (r *Renewer) AskIfDue(parent context.Context) error {
 			"outcome", outcome.String())
 	}
 	return nil
+}
+
+// clocksDiffer tells whether the destination, which answered at answeredAt by its own clock, and
+// the instance, which asked at asked by its own, are further apart than a request may be from the
+// clock of its receiver. An answer that does not say when it was made tells nothing.
+func clocksDiffer(asked, answeredAt time.Time) bool {
+	if answeredAt.IsZero() {
+		return false
+	}
+	apart := answeredAt.Sub(asked)
+	return apart > telemetry.RenewalFreshness || apart < -telemetry.RenewalFreshness
 }
 
 // renewalPeriod is how long the instance waits between two asks, by where its key stands.

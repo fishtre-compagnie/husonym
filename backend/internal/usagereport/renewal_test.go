@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -380,6 +382,126 @@ func Test_AskIfDue_AnAskThatFailsIsAnErrorOffersNothingAndIsTriedAgainAfterThePe
 	r.clock = reportNow.Add(24 * time.Hour)
 	require.NoError(t, r.renewer.AskIfDue(t.Context()))
 	require.Equal(t, 2, r.transport.count())
+}
+
+// refusing is a destination that refuses every ask with a 400, and says in its Date header that
+// it answered at the given instant; a zero instant is an answer without that header.
+func refusing(t *testing.T, answeredAt time.Time) *httptest.Server {
+	t.Helper()
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if answeredAt.IsZero() {
+			// A nil value keeps net/http from writing the header by itself.
+			w.Header()["Date"] = nil
+		} else {
+			w.Header().Set("Date", answeredAt.UTC().Format(http.TimeFormat))
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	t.Cleanup(destination.Close)
+	return destination
+}
+
+// An ask is refused with a 400 when its instant is too far from the clock of the server: an
+// instance whose clock is off would otherwise read, every day, a line that says nothing of it.
+func Test_AskIfDue_AnAskRefusedByAServerWhoseClockDiffers_SaysTheClockIsOff(t *testing.T) {
+	for name, apart := range map[string]time.Duration{
+		"the instance is behind": telemetry.RenewalFreshness + time.Second,
+		"the instance is ahead":  -telemetry.RenewalFreshness - time.Second,
+		"a day apart":            24 * time.Hour,
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newRenewal(t, keyExpiring(testExpiry), "")
+			held := r.held.value
+			r.renewer.transport = renewalTransportTo(t, refusing(t, r.clock.Add(apart)).URL)
+
+			require.NoError(t, r.renewer.AskIfDue(t.Context()))
+
+			logged := r.logs.String()
+			require.Equal(t, 1, strings.Count(logged, "\n"), "one line: %s", logged)
+			require.Contains(t, logged, "level=WARN")
+			require.Contains(t, logged, `msg="`+renewalClockOff+`"`+"\n", "the words and nothing after them")
+			require.Empty(t, r.offered.values, "nothing was offered")
+			require.Equal(t, held, r.held.value, "the key in force is untouched")
+		})
+	}
+}
+
+func Test_AskIfDue_AnAskRefusedWithoutATellingDate_IsTheErrorItWas(t *testing.T) {
+	for name, answeredAt := range map[string]func(now time.Time) time.Time{
+		"no Date header":             func(time.Time) time.Time { return time.Time{} },
+		"the same clock":             func(now time.Time) time.Time { return now },
+		"five minutes behind":        func(now time.Time) time.Time { return now.Add(telemetry.RenewalFreshness) },
+		"five minutes ahead":         func(now time.Time) time.Time { return now.Add(-telemetry.RenewalFreshness) },
+		"a few seconds on the way":   func(now time.Time) time.Time { return now.Add(3 * time.Second) },
+		"a little under the minutes": func(now time.Time) time.Time { return now.Add(telemetry.RenewalFreshness - time.Second) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newRenewal(t, keyExpiring(testExpiry), "")
+			held := r.held.value
+			destination := refusing(t, answeredAt(r.clock))
+			r.renewer.transport = renewalTransportTo(t, destination.URL)
+
+			err := r.renewer.AskIfDue(t.Context())
+
+			require.EqualError(t, err, strings.TrimPrefix(destination.URL, "http://")+" answered with the status 400")
+			require.Empty(t, r.logs.String(), "the line is the one of the loop")
+			require.Empty(t, r.offered.values)
+			require.Equal(t, held, r.held.value)
+		})
+	}
+}
+
+// Only a refusal says something of the clock: a server that fails says nothing of the instance.
+func Test_AskIfDue_AnAskThatFailsOtherwise_SaysNothingOfTheClockWhateverItsDate(t *testing.T) {
+	r := newRenewal(t, keyExpiring(testExpiry), "")
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Date", r.clock.Add(24*time.Hour).UTC().Format(http.TimeFormat))
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(destination.Close)
+	r.renewer.transport = renewalTransportTo(t, destination.URL)
+
+	err := r.renewer.AskIfDue(t.Context())
+
+	require.EqualError(t, err, strings.TrimPrefix(destination.URL, "http://")+" answered with the status 503")
+	require.Empty(t, r.logs.String())
+}
+
+// A Date that is not one says nothing, and nothing of it is logged or quoted.
+func Test_AskIfDue_AnAskRefusedWithADateThatIsNotOne_IsTheErrorItWas(t *testing.T) {
+	r := newRenewal(t, keyExpiring(testExpiry), "")
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Date", "what the receiver answered")
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	t.Cleanup(destination.Close)
+	r.renewer.transport = renewalTransportTo(t, destination.URL)
+
+	err := r.renewer.AskIfDue(t.Context())
+
+	require.EqualError(t, err, strings.TrimPrefix(destination.URL, "http://")+" answered with the status 400")
+	require.Empty(t, r.logs.String())
+}
+
+// In the loop, the line about the clock stands in place of the generic one, and the pass goes on.
+func Test_Pass_AnInstanceWhoseClockIsOff_IsToldSoInPlaceOfTheGenericLine(t *testing.T) {
+	d := newDaily(&syncBuilder{})
+	r := newRenewal(t, keyExpiring(testExpiry), "")
+	r.renewer.transport = renewalTransportTo(t, refusing(t, r.clock.Add(time.Hour)).URL)
+	d.loop.renewer = r.renewer
+
+	d.loop.Pass(t.Context())
+	d.loop.Pass(t.Context())
+
+	require.Equal(t, 2, d.builder.count(), "the passes ran whole")
+	require.NotContains(t, d.logs.String(), "could not ask for the license")
+	require.Equal(t, 1, strings.Count(r.logs.String(), renewalClockOff), "an ask is made once a period, and so is its line")
+	require.Empty(t, r.offered.values)
+}
+
+func Test_RenewalClockOff_SaysTheBoundItIsToldBy(t *testing.T) {
+	require.Equal(t, 5*time.Minute, telemetry.RenewalFreshness)
+	require.Contains(t, renewalClockOff, "five minutes")
 }
 
 func Test_AskIfDue_CalledAtOnceAsksOnce(t *testing.T) {

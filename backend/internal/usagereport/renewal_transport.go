@@ -63,6 +63,28 @@ func renewalTarget(reportAddress string) (*url.URL, error) {
 	return &target, nil
 }
 
+// refusedAskError is the error of an ask the destination refused with a 400: what it answers to a
+// request that is malformed, or made at an instant too far from its own clock. Its text is the one
+// of any answer that was not hoped for.
+type refusedAskError struct {
+	status error
+	// answeredAt is when the destination says it answered, by its own clock; zero when it does
+	// not say.
+	answeredAt time.Time
+}
+
+func (e *refusedAskError) Error() string { return e.status.Error() }
+
+// answeredAt reads the instant of an answer from its Date header, and gives the zero instant for
+// an answer that has none or one that cannot be read. Nothing of the header is kept beside it.
+func answeredAt(resp *http.Response) time.Time {
+	at, err := http.ParseTime(resp.Header.Get("Date"))
+	if err != nil {
+		return time.Time{}
+	}
+	return at
+}
+
 // NewHTTPRenewalTransport returns the transport of an instance that sends its report to the
 // given address, which is one a report can be sent to. version is the version of this build.
 func NewHTTPRenewalTransport(reportAddress, version string) (RenewalTransport, error) {
@@ -79,7 +101,8 @@ func newHTTPRenewalTransport(target *url.URL, version string, timeout time.Durat
 
 // Ask sends the request byte for byte, with its seal and the fingerprint of its key in headers.
 // A 200 gives the license of the answer, a 204 nothing; any other status, a redirect among them,
-// an answer larger than what is read of one and an answer that is not one are errors.
+// an answer larger than what is read of one and an answer that is not one are errors. The error
+// of a 400 is a *refusedAskError, which keeps the instant the destination answered at.
 //
 // An error is made of the host, of a status, and of words of this package and of the one that
 // reads the answer: nothing the address, a proxy or the destination wrote is quoted in it.
@@ -95,6 +118,9 @@ func (t *HTTPRenewalTransport) Ask(ctx context.Context, ask *RenewalAsk) (string
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, telemetry.RenewalAnswerCap))
 		if resp.StatusCode == http.StatusNoContent {
 			return "", nil
+		}
+		if resp.StatusCode == http.StatusBadRequest {
+			return "", &refusedAskError{status: t.sealed.answered(resp.StatusCode), answeredAt: answeredAt(resp)}
 		}
 		return "", t.sealed.answered(resp.StatusCode)
 	}
