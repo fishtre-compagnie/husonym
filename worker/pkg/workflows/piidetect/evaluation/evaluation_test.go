@@ -103,7 +103,7 @@ func newDatabase(datasets []Dataset) *database {
 	db := &database{tables: map[string]Table{}}
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
-			db.tables[table.Name+"@"+dataset.Language] = table
+			db.tables[table.Name+"@"+dataset.Schema()] = table
 		}
 	}
 	return db

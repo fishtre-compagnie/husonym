@@ -27,6 +27,17 @@ import (
 type Dataset struct {
 	Language string  `json:"language"`
 	Tables   []Table `json:"tables"`
+	// Name is what the file of the data set is called after its prefix, which tells apart
+	// two data sets of one language. It is empty for a data set that was not read from a file.
+	Name string `json:"-"`
+}
+
+// Schema is the schema the tables of the data set are served under.
+func (d Dataset) Schema() string {
+	if d.Name != "" {
+		return d.Name
+	}
+	return d.Language
 }
 
 type Table struct {
@@ -52,12 +63,11 @@ func Load(dir string) ([]Dataset, error) {
 	return load(dir, "??.json")
 }
 
-// LoadFreeText reads the data sets of free text of a directory, one file per language, in
-// the order of their languages. Each holds one table of columns of sentences: some name
-// persons in a few of their values, the others hold what business text holds and no
-// person.
+// LoadFreeText reads the data sets of free text of a directory, one file each, in the order
+// of their names. Each holds one table of columns of sentences: some name persons in a few
+// of their values, the others hold what business text holds and no person.
 func LoadFreeText(dir string) ([]Dataset, error) {
-	return load(dir, "free-text-??.json")
+	return load(dir, "free-text-*.json")
 }
 
 func load(dir, pattern string) ([]Dataset, error) {
@@ -76,6 +86,7 @@ func load(dir, pattern string) ([]Dataset, error) {
 		if err := json.Unmarshal(content, &dataset); err != nil {
 			return nil, fmt.Errorf("%s: %w", file, err)
 		}
+		dataset.Name = strings.TrimPrefix(strings.TrimSuffix(filepath.Base(file), ".json"), "free-text-")
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
 				if len(column.Values) != len(table.Columns[0].Values) {

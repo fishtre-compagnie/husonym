@@ -18,6 +18,7 @@ import (
 	content "github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	connectiondataservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-data-service"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
@@ -32,9 +33,14 @@ const (
 	contentSampleSize     = 50
 )
 
+// freeTextDir holds the data sets of free text, which the measure of the recognition engine
+// of the analyzer image reads as well: annotated by passage, in French twice (the second
+// was written after the engine was set) and in English.
+const freeTextDir = "../../../../../internal/integration-tests/presidio/testdata"
+
 func loadFreeText(t *testing.T) []Dataset {
 	t.Helper()
-	datasets, err := LoadFreeText("testdata")
+	datasets, err := LoadFreeText(freeTextDir)
 	require.NoError(t, err)
 	return datasets
 }
@@ -49,28 +55,29 @@ func texts(column Column) []string {
 	return values
 }
 
-// The data sets of free text hold, for French and for English, twelve columns of fifty
-// sentences: six that name a person in 4 to 20 % of their values, six that name none. A
-// job sends every one of them to the content analysis: each is text of
+// The data sets of free text hold, in French, in French again and in English, twelve columns
+// of fifty sentences: six that name a person in 2 to 40 % of their values, six that name
+// none. A job sends every one of them to the content analysis: each is text of
 // content.FreeTextMinWords words or more, for the profile of the worker and for the rule
 // of the API, and the rules find nothing in it.
 func Test_FreeTextDataset(t *testing.T) {
 	datasets := loadFreeText(t)
-	languages := make([]string, 0, len(datasets))
+	names := make([]string, 0, len(datasets))
 	scanner := newScanner(t, datasets, nil)
 	for _, dataset := range datasets {
-		languages = append(languages, dataset.Language)
-		require.Len(t, dataset.Tables, 1, dataset.Language)
+		language := dataset.Schema()
+		names = append(names, language)
+		require.Len(t, dataset.Tables, 1, language)
 		table := dataset.Tables[0]
-		require.Len(t, table.Columns, 12, dataset.Language)
+		require.Len(t, table.Columns, 12, language)
 
 		columns := run[piidetect.GetColumnDataResponse](scanner, "GetColumnData", &piidetect.GetColumnDataRequest{
-			ConnectionId: "evaluation", TableSchema: dataset.Language, TableName: table.Name, Sample: true,
+			ConnectionId: "evaluation", TableSchema: language, TableName: table.Name, Sample: true,
 		})
 		byRules := run[piidetect.DetectPiiRegexResponse](scanner, "DetectPiiRegex", &piidetect.DetectPiiRegexRequest{
 			ColumnData: columns.ColumnData,
 		}).PiiColumns
-		require.Empty(t, byRules, "%s: the rules find nothing in free text", dataset.Language)
+		require.Empty(t, byRules, "%s: the rules find nothing in free text", language)
 		profiles := map[string]*profile.Profile{}
 		for _, column := range columns.ColumnData {
 			profiles[column.Column] = column.Profile
@@ -78,7 +85,7 @@ func Test_FreeTextDataset(t *testing.T) {
 
 		withPersons := 0
 		for _, column := range table.Columns {
-			name := dataset.Language + "." + column.Name
+			name := language + "." + column.Name
 			require.Equal(t, "text", column.Type, name)
 			require.Len(t, texts(column), contentSampleSize, name)
 			require.True(t, content.IsFreeText(texts(column)), name)
@@ -92,15 +99,15 @@ func Test_FreeTextDataset(t *testing.T) {
 			withPersons++
 			require.Equal(t, string(report.Personal), column.Expected, name)
 			require.GreaterOrEqual(t, len(column.Persons), 2, name)
-			require.LessOrEqual(t, len(column.Persons), 10, name)
+			require.LessOrEqual(t, len(column.Persons), 20, name)
 			require.True(t, sort.IntsAreSorted(column.Persons), name)
 			require.Len(t, slices.Compact(slices.Clone(column.Persons)), len(column.Persons), name)
 			require.GreaterOrEqual(t, column.Persons[0], 0, name)
 			require.Less(t, column.Persons[len(column.Persons)-1], contentSampleSize, name)
 		}
-		require.Equal(t, 6, withPersons, dataset.Language)
+		require.Equal(t, 6, withPersons, language)
 	}
-	require.Equal(t, []string{"en", "fr"}, languages)
+	require.ElementsMatch(t, []string{"en", "fr", "fr-holdout"}, names)
 }
 
 // content.FreeTextMinWords, over the tables of the eight languages: every column of
@@ -237,7 +244,8 @@ func newContentScan(t *testing.T, analyzer presidio.Analyzer, language string, d
 	// A job names no language: the texts are analyzed in the language the API is set to.
 	service := connectiondataservice.New(
 		&connectiondataservice.Config{IsPresidioEnabled: true, PresidioDefaultLanguage: &language},
-		connections, db.builder(t), recorder, connectiondataservice.Transformers{},
+		connections, db.builder(t), recorder,
+		connectiondataservice.Transformers{License: testutil.NewFakeEELicense(testutil.WithIsValid())},
 	)
 	return &contentScan{t: t, service: service, recorder: recorder}
 }
@@ -367,6 +375,7 @@ func Test_FreeText_AgainstAnAnalyzer(t *testing.T) {
 	var measures []measure
 
 	for _, dataset := range loadFreeText(t) {
+		name := dataset.Schema()
 		language := dataset.Language
 		if forced := os.Getenv("PII_DETECT_EVAL_ANALYZER_LANGUAGE"); forced != "" {
 			language = forced
@@ -377,16 +386,16 @@ func Test_FreeText_AgainstAnAnalyzer(t *testing.T) {
 
 		table := dataset.Tables[0]
 		scan := newContentScan(t, analyzer, language, []Dataset{dataset})
-		detections := scan.detections(dataset.Language, table)
+		detections := scan.detections(name, table)
 
-		m := measure{Language: dataset.Language, Analyzed: language}
+		m := measure{Language: name, Analyzed: language}
 		var before, after []Outcome
 		for _, column := range table.Columns {
-			outcome := scan.outcome(dataset.Language, column, detections[column.Name])
+			outcome := scan.outcome(name, column, detections[column.Name])
 			m.Columns = append(m.Columns, outcome)
 
 			scored := Outcome{
-				Language: dataset.Language, Table: table.Name, Column: column.Name,
+				Language: name, Table: table.Name, Column: column.Name,
 				Expected: column.Expected, Predicted: None, Answered: true,
 			}
 			if outcome.ByThird {
@@ -403,19 +412,21 @@ func Test_FreeText_AgainstAnAnalyzer(t *testing.T) {
 				verdict = fmt.Sprintf("%s, %s in %d values", outcome.Category, outcome.Entity, outcome.Matches)
 			}
 			t.Logf("%s %-20s persons %2d (found %2d) | %-40s | sensitive values %2d: %s | other: %s",
-				dataset.Language, column.Name, outcome.Persons, outcome.PersonsFound, verdict,
+				name, column.Name, outcome.Persons, outcome.PersonsFound, verdict,
 				outcome.SensitiveValues, counted(outcome.Sensitive), counted(outcome.Other))
-			if column.Expected == None && outcome.Reported {
+			if column.Expected == None && (outcome.Reported || outcome.Sensitive[content.PersonEntity] > 0) {
 				for _, found := range outcome.Found {
-					t.Logf("    value %2d: %s %q (%.2f)", found.Value, found.Entity, found.Text, found.Score)
+					if found.Entity == content.PersonEntity {
+						t.Logf("    value %2d: %s %q (%.2f)", found.Value, found.Entity, found.Text, found.Score)
+					}
 				}
 			}
 		}
 		m.Before, m.After = Detection(before), Detection(after)
 		t.Logf("%s analyzed as %s, rule of the third alone: precision %.4f, recall %.4f (%+v)",
-			dataset.Language, language, m.Before.Precision(), m.Before.Recall(), m.Before)
+			name, language, m.Before.Precision(), m.Before.Recall(), m.Before)
 		t.Logf("%s analyzed as %s, with the rule of free text: precision %.4f, recall %.4f (%+v)",
-			dataset.Language, language, m.After.Precision(), m.After.Recall(), m.After)
+			name, language, m.After.Precision(), m.After.Recall(), m.After)
 
 		// One call of a job at its largest: the columns of the table, and the first ones
 		// again under another name.
@@ -429,7 +440,7 @@ func Test_FreeText_AgainstAnAnalyzer(t *testing.T) {
 		timed.detections(dataset.Language, wide)
 		m.CallColumns, m.CallSeconds = len(wide.Columns), time.Since(started).Seconds()
 		t.Logf("%s analyzed as %s: one call for %d columns of %d values took %.1f s",
-			dataset.Language, language, m.CallColumns, contentSampleSize, m.CallSeconds)
+			name, language, m.CallColumns, contentSampleSize, m.CallSeconds)
 
 		measures = append(measures, m)
 	}
