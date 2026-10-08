@@ -103,6 +103,73 @@ func (s *IntegrationTestSuite) Test_InstanceOrganization_OfTwoAdministratorsOneI
 	s.requireViewerOf(first, organization)
 }
 
+// testAddress is the address every test client is vouched for.
+const testAddress = "bar"
+
+// invite gives the token of an invitation of the test address into the account.
+func (s *IntegrationTestSuite) invite(
+	by mgmtv1alpha1connect.UserAccountServiceClient,
+	accountId string,
+	role mgmtv1alpha1.AccountRole,
+) string {
+	s.T().Helper()
+	resp, err := by.InviteUserToTeamAccount(s.ctx, connect.NewRequest(&mgmtv1alpha1.InviteUserToTeamAccountRequest{
+		AccountId: accountId, Email: testAddress, Role: &role,
+	}))
+	requireNoErrResp(s.T(), resp, err)
+	return resp.Msg.GetInvite().GetToken()
+}
+
+func (s *IntegrationTestSuite) acceptInvite(by mgmtv1alpha1connect.UserAccountServiceClient, token string) error {
+	_, err := by.AcceptTeamAccountInvite(s.ctx, connect.NewRequest(&mgmtv1alpha1.AcceptTeamAccountInviteRequest{Token: token}))
+	return err
+}
+
+// An invitation gives its role to who accepts it, and one that names none gives viewer. Accepted
+// by the only administrator of the organization, for their own address, it is refused as any
+// change that would leave the organization with no administrator; the invitation is spent.
+func (s *IntegrationTestSuite) Test_InstanceOrganization_AnInvitationDoesNotDemoteItsOnlyAdministrator() {
+	t := s.T()
+	first := s.person("invited-administrator")
+	organization := s.enterInstance(first)
+	token := s.invite(first, organization, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED)
+
+	s.requireAnAdministratorIsKept(s.acceptInvite(first, token))
+
+	s.requireAdminOf(first, organization)
+	require.Equal(t, 1, s.membersOf(organization))
+	err := s.acceptInvite(first, token)
+	requireConnectError(t, err, connect.CodeInvalidArgument)
+	require.Contains(t, err.Error(), "account invitation already accepted")
+	s.requireAdminOf(first, organization)
+
+	// In a team account the instance does not retain, the same gesture is as it was.
+	team := s.createTeamAccount(s.ctx, first, "invited-administrator-team")
+	require.NoError(t, s.acceptInvite(first, s.invite(first, team, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED)))
+	s.requireViewerOf(first, team)
+}
+
+// Everybody is in the organization before they follow the link of an invitation: one that has
+// expired is refused to them as to a newcomer, and gives them nothing.
+func (s *IntegrationTestSuite) Test_InstanceOrganization_AnExpiredInvitationIsRefusedToAMember() {
+	t := s.T()
+	first := s.person("expired-invitation-first")
+	organization := s.enterInstance(first)
+	token := s.invite(first, organization, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN)
+	_, err := s.Pgcontainer.DB.Exec(s.ctx,
+		"UPDATE husonym_api.account_invites SET expires_at = CURRENT_TIMESTAMP - interval '1 day' WHERE token = $1", token)
+	require.NoError(t, err)
+	second := s.person("expired-invitation-second")
+	require.Equal(t, organization, s.enterInstance(second))
+
+	err = s.acceptInvite(second, token)
+
+	require.Error(t, err)
+	requireConnectError(t, err, connect.CodePermissionDenied)
+	require.Contains(t, err.Error(), "account invitation expired")
+	s.requireViewerOf(second, organization)
+}
+
 // A team account the instance does not retain is as it was: its only administrator is demoted,
 // or removed, when asked.
 func (s *IntegrationTestSuite) Test_InstanceOrganization_AnotherTeamAccountKeepsNothing() {

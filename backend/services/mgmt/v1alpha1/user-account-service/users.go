@@ -765,7 +765,22 @@ func (s *Service) AcceptTeamAccountInvite(
 		return nil, err
 	}
 
-	if err := s.setRole(
+	// In the organization of the instance an invitation is a change of role like another: the
+	// only administrator who accepts one that names a lower role is refused, and stays one.
+	organization, err := s.isInstanceOrganization(ctx, validateResp.AccountId)
+	if err != nil {
+		return nil, err
+	}
+	if organization {
+		if err := s.setRoleKeepingAnAdmin(
+			ctx,
+			rbac.NewUser(user.Msg.GetUserId()),
+			rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
+			validateResp.Role,
+		); err != nil {
+			return nil, err
+		}
+	} else if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
