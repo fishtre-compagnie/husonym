@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
+	"github.com/fishtre-compagnie/husonym/controlplane/issuing"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/google/uuid"
 )
@@ -20,6 +21,9 @@ import (
 const (
 	// instantLayout is how an instant is shown, in UTC.
 	instantLayout = "2006-01-02 15:04"
+	// secondLayout is how the instant of an act of the journal is shown: two acts of one minute are
+	// told apart.
+	secondLayout = "2006-01-02 15:04:05"
 	// absent is shown in place of a value there is none of.
 	absent = "—"
 	// shortFingerprint is how many characters of a fingerprint a list shows.
@@ -50,6 +54,8 @@ type link struct {
 type messageView struct {
 	Heading string
 	Text    string
+	// Back leads to where the operator goes on from; without an Href there is no such link.
+	Back link
 }
 
 type attentionView struct {
@@ -150,6 +156,13 @@ type customerView struct {
 	UpdatedAt  string
 	Licenses   []licenseRow
 	Instances  []instanceRow
+	EditHref   string
+	// CanIssue tells this server issues licenses. NewLicenseHref leads to the form, and
+	// NewShortLicenseHref to the form prefilled as a license of ShortLicenseDays days.
+	CanIssue            bool
+	NewLicenseHref      string
+	NewShortLicenseHref string
+	ShortLicenseDays    int
 }
 
 type licenseView struct {
@@ -174,11 +187,22 @@ type licenseView struct {
 	Origin                string
 	Note                  string
 	CreatedAt             string
-	Predecessor           *link
-	Successors            []link
-	Instances             []instanceRow
-	Rejections            []rejectionRow
-	RejectionDays         int
+	// IssuedBy is the operator who issued the license from the console, at JournaledAt; empty for
+	// a license that came otherwise.
+	IssuedBy    string
+	JournaledAt string
+	// CanIssue tells this server issues licenses; RenewHref leads to the form of the renewal, and is
+	// empty when the license cannot be renewed here: no license is issued, or it has its successor.
+	CanIssue  bool
+	RenewHref string
+	// KeyAction is where the form that asks for the key again is sent, empty when no path leads to
+	// the license.
+	KeyAction     string
+	Predecessor   *link
+	Successors    []link
+	Instances     []instanceRow
+	Rejections    []rejectionRow
+	RejectionDays int
 }
 
 // fact is a named value.
@@ -237,6 +261,13 @@ func instant(t time.Time) string {
 		return absent
 	}
 	return t.UTC().Format(instantLayout)
+}
+
+func instantToTheSecond(t time.Time) string {
+	if t.IsZero() {
+		return absent
+	}
+	return t.UTC().Format(secondLayout)
 }
 
 func day(t time.Time) string {
@@ -437,21 +468,30 @@ func newCustomersView(customers []cpstore.CustomerSummary) *customersView {
 	return view
 }
 
-func newCustomerView(c *cpstore.CustomerDetail) *customerView {
+func newCustomerView(c *cpstore.CustomerDetail, canIssue bool) *customerView {
+	href := customerLink(c.ID, c.Name).Href
 	return &customerView{
-		Name:       c.Name,
-		ID:         c.ID.String(),
-		ExternalID: c.ExternalID,
-		Note:       orAbsent(c.Note),
-		CreatedAt:  instant(c.CreatedAt),
-		UpdatedAt:  instant(c.UpdatedAt),
-		Licenses:   newLicenseRows(c.Licenses),
-		Instances:  newInstanceRows(c.Instances),
+		Name:                c.Name,
+		ID:                  c.ID.String(),
+		ExternalID:          c.ExternalID,
+		Note:                orAbsent(c.Note),
+		CreatedAt:           instant(c.CreatedAt),
+		UpdatedAt:           instant(c.UpdatedAt),
+		Licenses:            newLicenseRows(c.Licenses),
+		Instances:           newInstanceRows(c.Instances),
+		EditHref:            href + "/edit",
+		CanIssue:            canIssue,
+		NewLicenseHref:      href + "/licenses/new",
+		NewShortLicenseHref: href + "/licenses/new?" + queryDays + "=" + strconv.Itoa(issuing.ShortLicenseDays),
+		ShortLicenseDays:    issuing.ShortLicenseDays,
 	}
 }
 
-func newLicenseView(l *cpstore.LicenseDetail) *licenseView {
+func newLicenseView(l *cpstore.LicenseDetail, canIssue bool) *licenseView {
 	view := &licenseView{
+		IssuedBy:              l.IssuedBy,
+		JournaledAt:           instant(l.JournaledAt),
+		CanIssue:              canIssue,
 		ID:                    l.ID,
 		Customer:              customerLink(l.CustomerID, l.CustomerName),
 		Plan:                  orAbsent(l.Plan),
@@ -480,6 +520,13 @@ func newLicenseView(l *cpstore.LicenseDetail) *licenseView {
 	}
 	if l.GraceDays != nil {
 		view.GraceDays = strconv.Itoa(*l.GraceDays)
+	}
+	if href := licenseHref(l.ID); href != "" {
+		view.KeyAction = href + "/key"
+		// A license is renewed once: one that has its successor is not offered to be renewed.
+		if canIssue && len(l.SuccessorIDs) == 0 {
+			view.RenewHref = href + "/renew"
+		}
 	}
 	if l.PredecessorID != "" {
 		predecessor := licenseLink(l.PredecessorID)

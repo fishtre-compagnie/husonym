@@ -7,7 +7,9 @@
 <dt>Recorded</dt><dd>{{.CreatedAt}}</dd>
 <dt>Updated</dt><dd>{{.UpdatedAt}}</dd>
 </dl>
-
+<p class="actions"><a class="button" href="{{.EditHref}}">Edit</a>{{if .CanIssue}} <a class="button" href="{{.NewLicenseHref}}">New license</a> <a class="button" href="{{.NewShortLicenseHref}}">New {{.ShortLicenseDays}}-day license</a>{{end}}</p>
+{{if not .CanIssue}}<p class="definition">Issuing licenses is not configured on this server.</p>
+{{end}}
 <section id="licenses">
 <h2>Licenses <span class="count">{{len .Licenses}}</span></h2>
 {{if .Licenses}}{{template "table" "Licenses of the customer"}}

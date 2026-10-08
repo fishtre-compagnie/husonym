@@ -1,0 +1,8 @@
+{{define "content"}}{{with .Body}}<h1>Journal</h1>
+<p class="definition">What the operators did from this console, the newest first.{{if .Truncated}} The {{.Cap}} latest lines.{{end}}</p>
+{{if .Lines}}{{template "table" "Journal of the operators"}}
+<thead><tr><th scope="col">When</th><th scope="col">Operator</th><th scope="col">What</th><th scope="col">Customer</th><th scope="col">License</th><th scope="col">Detail</th></tr></thead>
+<tbody>
+{{range .Lines}}<tr><td>{{.At}}</td><td>{{.Operator}}</td><td>{{.Action}}</td><td>{{if .Customer.Text}}{{template "named" .Customer}}{{else}}—{{end}}</td><td>{{if .License.Text}}{{template "id" .License}}{{else}}—{{end}}</td><td class="detail">{{.Detail}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}{{end}}{{end}}

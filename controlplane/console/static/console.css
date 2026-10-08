@@ -431,6 +431,178 @@ tr.over td:first-child {
   tab-size: 2;
 }
 
+/* What the operator can do from a page: links that lead to a form, and the buttons of a form.
+   A button looks the same whether it is a link or sends a form. */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+}
+
+.actions form {
+  margin: 0;
+}
+
+button,
+.button {
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+button[type="submit"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.actions form button[type="submit"] {
+  background: var(--surface);
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+button:hover,
+.button:hover {
+  border-color: var(--text);
+}
+
+button:focus-visible,
+.button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Forms: one field under the other, each with its label above and what it means below. */
+
+.form {
+  display: grid;
+  gap: 1.1rem;
+  max-width: 44rem;
+  margin-top: 1.25rem;
+}
+
+.field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field > label,
+.field > legend {
+  display: block;
+  margin-bottom: 0.3rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+}
+
+.field > input:not([type="number"]):not([type="date"]),
+.field > textarea {
+  width: 100%;
+}
+
+input[readonly] {
+  background: var(--bg);
+  border-style: dashed;
+  color: var(--muted);
+}
+
+input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.4rem 0 0;
+  padding: 0;
+  accent-color: var(--accent);
+  vertical-align: -0.15em;
+}
+
+.check {
+  display: block;
+  padding: 0.15rem 0;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0 1rem;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--line);
+}
+
+.hint {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* What keeps a form from being taken, and what cannot be undone. */
+
+.problems,
+.warning {
+  max-width: 44rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  background: var(--alert-soft);
+  border: 1px solid var(--alert);
+  border-radius: 6px;
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.problems {
+  padding-left: 2.2rem;
+}
+
+.note {
+  white-space: pre-wrap;
+}
+
+/* The key of a license, whole, to be copied. */
+
+.key {
+  display: block;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+.detail {
+  min-width: 14rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 40rem) {
   main {
     padding: 1rem 0.75rem 3rem;

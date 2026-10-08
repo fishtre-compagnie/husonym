@@ -26,7 +26,8 @@ func main() {
 	}
 }
 
-// newRootCmd builds the command; keyring gives the public keys the registry is verified against.
+// newRootCmd builds the command; keyring gives the public keys the registry is verified against,
+// and which the signing key of the backoffice must be one of.
 func newRootCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	root := &cobra.Command{
 		Use:          "husonym-controlplane",
@@ -47,7 +48,7 @@ func newRootCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 			return migrations.Up(cmd.Context(), databaseURL, logger)
 		},
 	})
-	root.AddCommand(migrate, newImportRegistryCmd(keyring), newServeCmd())
+	root.AddCommand(migrate, newImportRegistryCmd(keyring), newServeCmd(keyring))
 	return root
 }
 

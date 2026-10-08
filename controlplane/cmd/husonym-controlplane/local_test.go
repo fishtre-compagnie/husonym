@@ -59,7 +59,7 @@ func (s *countingStore) Attention(context.Context, time.Time) (*cpstore.Attentio
 // console then has to tell that it was not asked for under a name of this machine.
 func Test_Backoffice_WithoutGates_AnswersOnlyLocalNames(t *testing.T) {
 	store := &countingStore{}
-	handler, err := newBackofficeHandler(store, nil, time.Now, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	handler, err := newBackofficeHandler(readOnly(store, slog.New(slog.NewTextHandler(io.Discard, nil))), nil)
 	require.NoError(t, err)
 
 	for _, host := range []string{

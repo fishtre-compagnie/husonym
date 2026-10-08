@@ -1,0 +1,53 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}}</nav>
+<h1>{{.Heading}}</h1>
+{{template "problems" .Problems}}
+<form class="form" method="post" action="/licenses/confirm">
+<input type="hidden" name="customer" value="{{.CustomerID}}">
+<input type="hidden" name="customer_external_id" value="{{.CustomerExternalID}}">
+<input type="hidden" name="customer_name" value="{{.CustomerName}}">
+{{if .LicenseID}}<input type="hidden" name="license_id" value="{{.LicenseID}}">
+{{end}}<input type="hidden" name="succeeds" value="{{.Succeeds}}">
+<dl class="facts">
+<dt>Issued to</dt><dd>{{.CustomerName}}</dd>
+<dt>Customer id</dt><dd class="id">{{.CustomerExternalID}}</dd>
+{{with .Renews}}<dt>Succeeds</dt><dd>{{template "id" .}}</dd>
+{{end}}</dl>
+<div class="field">
+<label for="plan">Plan</label>
+{{if .Plans}}<select id="plan" name="plan">{{range .Plans}}<option value="{{.Value}}"{{if .Chosen}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{else}}<input id="plan" name="plan" value="{{.Plan}}" maxlength="{{.Options.MaxPlanLength}}" autocomplete="off">
+<p class="hint">A label the key carries. It may be left empty.</p>{{end}}
+</div>
+<fieldset class="field">
+<legend>Features</legend>
+<label class="check"><input type="checkbox" name="all_features" value="1"{{if .AllFeatures}} checked{{end}}> Every feature <span class="aside">the key lists none</span></label>
+<div class="checks">
+{{range .Features}}<label class="check"><input type="checkbox" name="features" value="{{.Value}}"{{if .Chosen}} checked{{end}}> <code>{{.Label}}</code></label>
+{{end}}</div>
+<p class="hint">Either every feature or a list. An empty list allows no optional feature.</p>
+</fieldset>
+<div class="field">
+<label for="max_sources">Maximum sources</label>
+<input id="max_sources" name="max_sources" type="number" min="0" max="{{.Options.MaxSourcesCap}}" step="1" value="{{.MaxSources}}">
+<p class="hint">Empty for no cap.</p>
+</div>
+<div class="field">
+<label for="expires_at">Expires</label>
+<input id="expires_at" name="expires_at" type="date" value="{{.ExpiresAt}}" required>
+<p class="hint">A UTC day: the license holds until the end of it. At most {{.Options.MaxExpiryYears}} years from now.</p>
+</div>
+<div class="field">
+<label for="grace_days">Grace days</label>
+<input id="grace_days" name="grace_days" type="number" min="0" max="{{.Options.MaxGraceDays}}" step="1" value="{{.GraceDays}}">
+<p class="hint">Empty for the default of the product, {{.Options.DefaultGraceDays}} days.</p>
+</div>
+<div class="field">
+<label for="telemetry">Telemetry</label>
+<select id="telemetry" name="telemetry">{{range .Telemetry}}<option value="{{.Value}}"{{if .Chosen}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+<div class="field">
+<label for="note">Note</label>
+<textarea id="note" name="note" rows="3" maxlength="{{.Options.MaxNoteLength}}">{{.Note}}</textarea>
+<p class="hint">Kept beside the license. It is not in the key.</p>
+</div>
+<div class="actions"><button type="submit">Review before issuing</button></div>
+</form>{{end}}{{end}}

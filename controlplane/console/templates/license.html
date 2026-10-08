@@ -19,8 +19,11 @@
 <dt>Origin</dt><dd>{{.Origin}}</dd>
 <dt>Note</dt><dd>{{.Note}}</dd>
 <dt>Recorded</dt><dd>{{.CreatedAt}}</dd>
-</dl>
-
+{{if .IssuedBy}}<dt>Issued from the console by</dt><dd>{{.IssuedBy}} <span class="aside">{{.JournaledAt}}</span></dd>
+{{end}}</dl>
+<div class="actions">{{if .RenewHref}}<a class="button" href="{{.RenewHref}}">Renew</a>{{end}}{{if .KeyAction}}<form method="post" action="{{.KeyAction}}"><button type="submit">Show the key again</button></form>{{end}}</div>
+{{if not .CanIssue}}<p class="definition">Issuing licenses is not configured on this server.</p>
+{{end}}
 <section id="instances">
 <h2>Instances <span class="count">{{len .Instances}}</span></h2>
 {{if .Instances}}{{template "table" "Instances of the license"}}

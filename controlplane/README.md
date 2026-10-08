@@ -33,6 +33,7 @@ within the hour.
 | `CONTROLPLANE_BACKOFFICE_HOST` | Host name the console answers under, a bare name (`serve backoffice`, required). |
 | `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required). |
 | `CONTROLPLANE_ACCESS_AUD` | Audience tag of the Access application of the console (`serve backoffice`, required). |
+| `CONTROLPLANE_SIGNING_KEY_FILE` | Path of the PEM Ed25519 private key the console issues licenses with (`serve backoffice` only, optional). |
 
 The tables live in the `controlplane` schema. The table in which golang-migrate keeps the version
 of the schema, `schema_migrations`, sits in `public`.
@@ -75,8 +76,8 @@ instance and a day stays; a different one for the same three is counted as a con
 
 ## Operator console
 
-`serve backoffice` serves pages, rendered on the server, that show what the database holds. It
-only reads: every route is a `GET`, and there is no form.
+`serve backoffice` serves pages, rendered on the server, that show what the database holds, and
+the few acts of the operator. A page is a `GET` and changes nothing; an act is a `POST`.
 
 | Path                                                     | What it shows                                                   |
 | -------------------------------------------------------- | --------------------------------------------------------------- |
@@ -87,9 +88,79 @@ only reads: every route is a `GET`, and there is no form.
 | `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap. |
 | `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                   |
 | `/pending`                                               | The pending reports, by key fingerprint.                        |
+| `/journal`                                               | The 200 latest acts of the operators, the newest first.         |
 | `/static/console.css`                                    | The stylesheet. The pages load nothing else.                    |
 
-The key of a license is on no page. Instants are shown in UTC.
+Instants are shown in UTC.
+
+### The acts of the operator
+
+| Request                                | What it does                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /customers/new`, `POST /customers` | Records a customer: an external id, a name, a note.                        |
+| `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it. |
+| `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
+| `GET /licenses/{id}/renew`             | The same form, prefilled from the license it succeeds.                      |
+| `POST /licenses/confirm`               | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm. |
+| `POST /licenses`                       | Signs the license, records it, and shows its key.                           |
+| `POST /licenses/{id}/key`              | Shows the key of a license again.                                           |
+
+A license cannot be deleted or changed once issued: no route does it. A license has one successor
+at most: the page of a license that has one does not offer to renew it, and a renewal is refused
+with 409 when its form is sent, before any confirmation, if the license to renew is not recorded,
+belongs to another customer or already has a successor. The store refuses it again when the
+license is recorded, also of two renewals sent at once. A license of any id is renewed, whether
+the console issued it or not; the one that succeeds it bears an id the console draws. A license
+whose key carries a limit the form has no field for is not renewed here: `husonym-license` issues
+its successor.
+
+A key carries the external id of its customer as it is recorded. A customer recorded from the
+console has its external id without the space around it. To a customer whose recorded external id
+begins or ends with a space, the console issues no license: the page says why in place of the
+form, and nothing is trimmed when a license is issued.
+
+The key of a license is shown on two pages only, both the answer to a `POST`: right after the
+issue, and when it is asked for again. It is in no other page, in no URL and in no log.
+
+The id of a license is drawn when its form is sent, and the confirmation carries it. A
+confirmation sent twice issues one license: the second answer signs nothing, shows no key, and
+leads to the page of that license, which has its button to show the key again. A confirmation
+under the id of a license that says anything else than the draft is refused with 409, and nothing
+is signed.
+
+Every act is journaled in the transaction of its write, under the email of the operator (`local`
+without the gates): `customer_created`, `customer_updated`, `license_issued`, `license_renewed`,
+`license_key_shown`. A line holds the instant, the operator, the customer, the license, and a
+short detail: the external id and the name of a customer recorded, its name before and after a
+change and whether its note changed, the plan, the expiry, the telemetry mode and the license
+succeeded of a license issued. It never holds a key, nor a note. A customer saved with the name
+and the note it already has is not written and not journaled. The page of the journal shows its
+instants to the second.
+
+A `POST` that the browser was made to send by another origin is refused with 403 and does
+nothing (`http.CrossOriginProtection`): one whose `Sec-Fetch-Site` is neither `same-origin` nor
+`none`, or, without that header, one whose `Origin` names another host than the one the request
+was sent to. That fallback compares the host, not the scheme, and `Origin: null` is refused. A
+request that carries neither `Sec-Fetch-Site` nor `Origin` is let through: it comes from a caller
+that is not a browser, which behind Access still holds a valid token. The body
+of a `POST` is a form of at most 64 KiB; a larger one is answered 413, one that cannot be read 400.
+
+After an issue, the reports that were pending under the fingerprint of the new key are checked
+at once. Should that fail, the issue stands and the public server takes it up within the hour.
+
+### The signing key
+
+`CONTROLPLANE_SIGNING_KEY_FILE` names a file holding the private key, as written by
+`openssl genpkey -algorithm ed25519`. It is read once, when the command starts. Its public key
+must be one of the keyring the product verifies licenses against. The command refuses to start
+when the variable is set and the file is missing, unreadable, larger than 16 KiB, not such a key,
+or a key outside the keyring; the error names the variable and the reason, never the path nor
+anything of the file. The key is never logged, shown or returned.
+
+Without the variable the console issues nothing: the customers are still recorded and changed and
+a key can still be shown again, the pages say issuing is not configured, and the two forms of a
+license and the two `POST`s that follow them answer the not found page. `serve public` does not
+read the variable.
 
 The five lists of `/` are the silent instances, the expiring licenses, the old pending reports,
 the seal rejections and the shared licenses, each as the gauge of the same name counts it (see
@@ -119,9 +190,9 @@ domain is not a bare host name, when the keys of the team cannot be fetched, or 
 cannot be reached. Request headers are capped at 64 KiB.
 
 Every answer of the server carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
-`Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet and
-nothing else: the pages, the 404 of the host gate, the 401 of the Access gate and the health
-check alike.
+`Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet, forms
+sent to the console itself (`form-action 'self'`) and nothing else: the pages, the 404 of the host
+gate, the 401 of the Access gate and the health check alike.
 
 ### On one's own machine
 
@@ -147,6 +218,10 @@ machine. `GET /healthz` stays outside that check too.
 - For each license and day: how many reports were refused for their seal, and when the last was.
 - The pending reports, as received: fingerprint, instance, day, document, seal and time of
   reception.
+- For each customer recorded from the console: its external id, its name and a note.
+- For each license issued from the console: what is stored of any license, the note typed with
+  it, and the license it succeeds.
+- The journal of the operators: see "The acts of the operator".
 
 Nothing else about the caller is stored or logged: no address, no header other than the seal and
 the fingerprint, and those two are stored, never logged.
@@ -160,7 +235,8 @@ purged), or the text of its error. What `net/http` would log by itself is droppe
 
 The backoffice writes one line per request to the console: the email of the operator, the method,
 the pattern of the route (`GET /licenses/{id}`, never the path as written; `-` when no route
-matched) and the status. A read that fails adds a line with the text of our own error. A request
+matched) and the status. No value of a form is logged. A read or a write that fails adds a line
+with the text of our own error; a refusal of the signer adds a line in fixed words. A request
 refused by the Access gate is one line in fixed words, and so is a panic outside the pages, which
 is answered 500; a request refused for its host, and the health check, are not logged.
 

@@ -33,10 +33,10 @@ func (q *Queries) GetLicenseByFingerprint(ctx context.Context, keyFingerprint st
 const insertLicense = `-- name: InsertLicense :execrows
 INSERT INTO controlplane.licenses (
     id, customer_id, encoded, key_fingerprint, kid, plan, features, limits, telemetry,
-    issued_at, expires_at, grace_days, signing_key_fingerprint, note, origin
+    issued_at, expires_at, grace_days, signing_key_fingerprint, note, origin, succeeds_license_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15
+    $10, $11, $12, $13, $14, $15, $16
 )
 ON CONFLICT (id) DO NOTHING
 `
@@ -57,6 +57,7 @@ type InsertLicenseParams struct {
 	SigningKeyFingerprint string
 	Note                  string
 	Origin                string
+	SucceedsLicenseID     pgtype.Text
 }
 
 func (q *Queries) InsertLicense(ctx context.Context, arg InsertLicenseParams) (int64, error) {
@@ -76,6 +77,7 @@ func (q *Queries) InsertLicense(ctx context.Context, arg InsertLicenseParams) (i
 		arg.SigningKeyFingerprint,
 		arg.Note,
 		arg.Origin,
+		arg.SucceedsLicenseID,
 	)
 	if err != nil {
 		return 0, err

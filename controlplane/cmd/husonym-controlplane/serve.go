@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/intake"
 	"github.com/fishtre-compagnie/husonym/controlplane/migrations"
 	"github.com/fishtre-compagnie/husonym/controlplane/publicapi"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,9 @@ const (
 	shutdownTimeout   = 10 * time.Second
 )
 
-func newServeCmd() *cobra.Command {
+// newServeCmd builds `serve`; keyring is for the backoffice only: the public server signs nothing
+// and reads no signing key.
+func newServeCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	serve := &cobra.Command{Use: "serve", Short: "Run a server of the control plane"}
 	serve.AddCommand(&cobra.Command{
 		Use:   "public",
@@ -82,7 +85,7 @@ func newServeCmd() *cobra.Command {
 			return servePublic(ctx, pool, listener, metricsListener, logger, maintenanceTick)
 		},
 	})
-	serve.AddCommand(newServeBackofficeCmd())
+	serve.AddCommand(newServeBackofficeCmd(keyring))
 	return serve
 }
 

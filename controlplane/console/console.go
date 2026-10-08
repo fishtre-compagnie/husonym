@@ -1,5 +1,7 @@
 // Package console is the operator console of the control plane: pages that show the customers,
-// the licenses, the instances and the reports it holds. It only reads.
+// the licenses, the instances and the reports it holds, and the few acts of the operator, each of
+// them a POST that is journaled: recording a customer, issuing or renewing a license, showing the
+// key of one again.
 package console
 
 import (
@@ -20,6 +22,8 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/controlplane/accessgate"
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
+	"github.com/fishtre-compagnie/husonym/controlplane/issuing"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/google/uuid"
 )
 
@@ -42,15 +46,22 @@ const (
 	pagePending   = "pending.html"
 	pageMessage   = "message.html"
 
+	pageCustomerForm   = "customer-form.html"
+	pageLicenseForm    = "license-form.html"
+	pageLicenseConfirm = "license-confirm.html"
+	pageLicenseKey     = "license-key.html"
+	pageJournal        = "journal.html"
+
 	navAttention = "attention"
 	navCustomers = "customers"
 	navPending   = "pending"
+	navJournal   = "journal"
 
 	contentTypeHTML = "text/html; charset=utf-8"
 	contentTypeCSS  = "text/css; charset=utf-8"
 	contentTypeText = "text/plain; charset=utf-8"
 
-	contentSecurityPolicy = "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+	contentSecurityPolicy = "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 	// localOperator is who the operator is said to be when no gate tells.
 	localOperator = "local"
@@ -63,6 +74,7 @@ const (
 
 var pageFiles = []string{
 	pageAttention, pageCustomers, pageCustomer, pageLicense, pageInstance, pageReport, pagePending, pageMessage,
+	pageCustomerForm, pageLicenseForm, pageLicenseConfirm, pageLicenseKey, pageJournal,
 }
 
 // Reader is what the console reads of the store.
@@ -74,45 +86,95 @@ type Reader interface {
 	Report(ctx context.Context, licenseID, instanceID string, day time.Time) (*cpstore.StoredReport, error)
 	PendingByFingerprint(ctx context.Context, now time.Time) ([]cpstore.PendingGroup, error)
 	Attention(ctx context.Context, now time.Time) (*cpstore.Attention, error)
+	Journal(ctx context.Context, limit int) ([]cpstore.OperatorAction, error)
 }
 
-// New returns the console over store. It is to be served behind the Access gate: the operator of
-// a request is the one the gate let through, and a request that did not pass it gets no page.
+// Writer is what the console writes to the store. Each write is journaled by the store, in the
+// transaction of the write.
+type Writer interface {
+	CreateCustomer(ctx context.Context, operator string, c cpstore.NewCustomer, now time.Time) (uuid.UUID, error)
+	UpdateCustomer(ctx context.Context, operator string, id uuid.UUID, name, note string, now time.Time) error
+	RecordIssuedLicense(
+		ctx context.Context, operator string, key *license.Key, issued *license.IssuedLicense,
+		signingKeyFingerprint, succeeds, note string, now time.Time,
+	) (added bool, err error)
+	// ShowLicenseKey is the only read of a key the console has, and it is journaled.
+	ShowLicenseKey(ctx context.Context, operator, licenseID string, now time.Time) (string, error)
+}
+
+// Signer signs the licenses the console issues. The console holds it behind this interface only,
+// and never prints it.
+type Signer interface {
+	Issue(d *issuing.Draft, now time.Time) (*license.IssuedLicense, *license.Key, error)
+	// PublicKeyFingerprint is the fingerprint of the public key that verifies what Issue signs.
+	PublicKeyFingerprint() string
+}
+
+// Promoter goes through the reports that were pending under the fingerprint of a key just issued.
+type Promoter interface {
+	PromotePending(ctx context.Context, fingerprint string) (stored, discarded int, err error)
+}
+
+// Config is what the console is made of.
+type Config struct {
+	Reader Reader
+	Writer Writer
+	// Signer is nil on a server that issues no license: the customers are still managed, the
+	// pages say issuing is not configured, and the routes of issuing answer the not found page.
+	Signer Signer
+	// Promoter is asked after each issue; it is not asked without a Signer.
+	Promoter Promoter
+	Now      func() time.Time
+	Logger   *slog.Logger
+}
+
+// New returns the console. It is to be served behind the Access gate: the operator of a request
+// is the one the gate let through, and a request that did not pass it gets no page.
 //
-// Every route is a GET; anything else is answered the not found page. Every answer forbids
-// caching and carries a content security policy that allows the stylesheet of the console and
-// nothing else. One line is logged per request: the operator, the method, the pattern of the
-// route and the status, never the path as it was written.
+// A page is a GET and an act of the operator a POST, refused when it comes from another origin;
+// anything else is answered the not found page. Every answer forbids caching and carries a
+// content security policy that allows the stylesheet of the console, forms sent to the console
+// itself, and nothing else. One line is logged per request: the operator, the method, the pattern
+// of the route and the status, never the path as it was written nor a value of a form.
 //
 // The templates are read here, and an error is returned when one of them is not sound.
-func New(store Reader, now func() time.Time, logger *slog.Logger) (http.Handler, error) {
-	return newConsole(embedded, store, now, logger, false)
+func New(cfg *Config) (http.Handler, error) {
+	return newConsole(embedded, cfg, false)
 }
 
 // NewUnguarded returns the console as New does, to be served without any gate, on one's own
 // machine: the operator is shown as "local" and every page says the gates are off.
-func NewUnguarded(store Reader, now func() time.Time, logger *slog.Logger) (http.Handler, error) {
-	return newConsole(embedded, store, now, logger, true)
+func NewUnguarded(cfg *Config) (http.Handler, error) {
+	return newConsole(embedded, cfg, true)
 }
 
 type console struct {
-	store      Reader
-	now        func() time.Time
-	logger     *slog.Logger
+	store    Reader
+	writer   Writer
+	signer   Signer
+	promoter Promoter
+	now      func() time.Time
+	logger   *slog.Logger
+	// sameOrigin refuses the POST another origin makes the browser of the operator send.
+	sameOrigin *http.CrossOriginProtection
 	unguarded  bool
 	pages      map[string]*template.Template
 	stylesheet []byte
 	mux        *http.ServeMux
 }
 
-func newConsole(files fs.FS, store Reader, now func() time.Time, logger *slog.Logger, unguarded bool) (http.Handler, error) {
+func newConsole(files fs.FS, cfg *Config, unguarded bool) (http.Handler, error) {
 	c := &console{
-		store:     store,
-		now:       now,
-		logger:    logger,
-		unguarded: unguarded,
-		pages:     make(map[string]*template.Template, len(pageFiles)),
-		mux:       http.NewServeMux(),
+		store:      cfg.Reader,
+		writer:     cfg.Writer,
+		signer:     cfg.Signer,
+		promoter:   cfg.Promoter,
+		now:        cfg.Now,
+		logger:     cfg.Logger,
+		sameOrigin: http.NewCrossOriginProtection(),
+		unguarded:  unguarded,
+		pages:      make(map[string]*template.Template, len(pageFiles)),
+		mux:        http.NewServeMux(),
 	}
 	for _, file := range pageFiles {
 		page, err := parsePage(files, file)
@@ -134,6 +196,8 @@ func newConsole(files fs.FS, store Reader, now func() time.Time, logger *slog.Lo
 	c.route("GET /licenses/{license}/instances/{instance}", c.instance)
 	c.route("GET /licenses/{license}/instances/{instance}/reports/{day}", c.report)
 	c.route("GET /pending", c.pending)
+	c.route("GET /journal", c.journal)
+	c.routeWrites()
 	c.mux.HandleFunc("GET "+stylesheetPath, func(w http.ResponseWriter, _ *http.Request) {
 		answer := replyOf(w)
 		answer.route = "GET " + stylesheetPath
@@ -192,8 +256,9 @@ func (a *reply) send(status int, contentType string, body []byte) {
 	a.Header().Set("Content-Type", contentType)
 	a.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	a.WriteHeader(status)
-	// The caller may be gone: there is nobody to tell.
-	_, _ = a.Write(body)
+	// The caller may be gone: there is nobody to tell. A body is a page html/template made, every
+	// value in it escaped, or the stylesheet.
+	_, _ = a.Write(body) //nolint:gosec // see above: nothing of a request is written unescaped
 }
 
 // SetSecurityHeaders sets on an answer the headers every answer of the console carries: no
@@ -281,11 +346,12 @@ func (c *console) execute(answer *reply, page *content) ([]byte, error) {
 }
 
 func (c *console) notFound(answer *reply) {
-	c.render(answer, http.StatusNotFound, &content{
-		file:  pageMessage,
-		title: "Not found",
-		body:  messageView{Heading: "Not found", Text: "Nothing is here."},
-	})
+	c.say(answer, http.StatusNotFound, messageView{Heading: "Not found", Text: "Nothing is here."})
+}
+
+// say answers, under the status, a page that only says something.
+func (c *console) say(answer *reply, status int, message messageView) {
+	c.render(answer, status, &content{file: pageMessage, title: message.Heading, body: message})
 }
 
 // failed answers the failure page, in fixed words. Should that page itself not render, the same
@@ -329,7 +395,7 @@ func (c *console) customer(r *http.Request) (*content, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &content{file: pageCustomer, title: customer.Name, nav: navCustomers, body: newCustomerView(customer)}, nil
+	return &content{file: pageCustomer, title: customer.Name, nav: navCustomers, body: newCustomerView(customer, c.signer != nil)}, nil
 }
 
 // storable says whether the store can hold every one of values. A text of PostgreSQL is valid
@@ -349,11 +415,13 @@ func (c *console) license(r *http.Request) (*content, error) {
 	if !storable(id) {
 		return nil, cpstore.ErrNotFound
 	}
-	license, err := c.store.LicenseDetail(r.Context(), id, c.now())
+	detail, err := c.store.LicenseDetail(r.Context(), id, c.now())
 	if err != nil {
 		return nil, err
 	}
-	return &content{file: pageLicense, title: "License " + license.ID, nav: navCustomers, body: newLicenseView(license)}, nil
+	return &content{
+		file: pageLicense, title: "License " + detail.ID, nav: navCustomers, body: newLicenseView(detail, c.signer != nil),
+	}, nil
 }
 
 func (c *console) instance(r *http.Request) (*content, error) {
@@ -390,4 +458,13 @@ func (c *console) pending(r *http.Request) (*content, error) {
 		return nil, err
 	}
 	return &content{file: pagePending, title: "Pending", nav: navPending, body: newPendingView(groups)}, nil
+}
+
+func (c *console) journal(r *http.Request) (*content, error) {
+	// One line more than the page shows tells whether the journal holds older ones.
+	actions, err := c.store.Journal(r.Context(), journalLines+1)
+	if err != nil {
+		return nil, err
+	}
+	return &content{file: pageJournal, title: "Journal", nav: navJournal, body: newJournalView(actions)}, nil
 }

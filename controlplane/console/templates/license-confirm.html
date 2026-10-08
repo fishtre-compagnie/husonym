@@ -1,0 +1,18 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}}</nav>
+<h1>Issue this license?</h1>
+<p class="warning">A license cannot be deleted or changed once it is issued.</p>
+<dl class="facts">
+{{range .Lines}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>
+{{end}}</dl>
+<p class="definition">The key will also carry the instant of its issue and the name of the key that signs it.</p>
+<section id="beside-the-key">
+<h2>Kept beside the key</h2>
+<dl class="facts">
+<dt>Succeeds</dt><dd>{{with .Renews}}{{template "id" .}}{{else}}—{{end}}</dd>
+<dt>Note</dt><dd class="note">{{.Note}}</dd>
+</dl>
+</section>
+<form class="form" method="post" action="/licenses">
+{{range .Hidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+{{end}}<div class="actions"><button type="submit">Issue the license</button></div>
+</form>{{end}}{{end}}

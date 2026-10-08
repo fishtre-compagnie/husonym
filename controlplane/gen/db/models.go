@@ -47,6 +47,16 @@ type ControlplaneLicense struct {
 	CreatedAt             pgtype.Timestamptz
 }
 
+type ControlplaneOperatorAction struct {
+	ID         int64
+	At         pgtype.Timestamptz
+	Operator   string
+	Action     string
+	CustomerID pgtype.UUID
+	LicenseID  pgtype.Text
+	Detail     []byte
+}
+
 type ControlplanePendingReport struct {
 	KeyFingerprint string
 	InstanceID     string
