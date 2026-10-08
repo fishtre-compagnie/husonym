@@ -119,7 +119,7 @@ func Test_Up_AddsTheOperatorJournal_WhenTheRoleIsNamedLikeTheSchema(t *testing.T
 	var dirty bool
 	require.NoError(t, container.DB.QueryRow(ctx,
 		`SELECT version, dirty FROM public.schema_migrations`).Scan(&version, &dirty))
-	require.Equal(t, 3, version)
+	require.GreaterOrEqual(t, version, 3, "the journal comes with the third migration; later ones may follow")
 	require.False(t, dirty)
 
 	// A license with two successors is what the index refuses.

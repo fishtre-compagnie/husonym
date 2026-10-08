@@ -25,8 +25,9 @@ VALUES (sqlc.arg(external_id), sqlc.arg(name), sqlc.arg(note), sqlc.arg(now), sq
 ON CONFLICT (external_id) DO NOTHING
 RETURNING id;
 
--- name: GetCustomerNameForUpdate :one
-SELECT name
+-- name: GetCustomerNameAndNoteForUpdate :one
+-- What an edit may change, read under the lock of the edit.
+SELECT name, note
 FROM controlplane.customers
 WHERE id = $1
 FOR UPDATE;

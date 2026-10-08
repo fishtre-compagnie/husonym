@@ -21,6 +21,9 @@ import (
 const (
 	// instantLayout is how an instant is shown, in UTC.
 	instantLayout = "2006-01-02 15:04"
+	// secondLayout is how the instant of an act of the journal is shown: two acts of one minute are
+	// told apart.
+	secondLayout = "2006-01-02 15:04:05"
 	// absent is shown in place of a value there is none of.
 	absent = "—"
 	// shortFingerprint is how many characters of a fingerprint a list shows.
@@ -258,6 +261,13 @@ func instant(t time.Time) string {
 		return absent
 	}
 	return t.UTC().Format(instantLayout)
+}
+
+func instantToTheSecond(t time.Time) string {
+	if t.IsZero() {
+		return absent
+	}
+	return t.UTC().Format(secondLayout)
 }
 
 func day(t time.Time) string {

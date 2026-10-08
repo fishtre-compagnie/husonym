@@ -146,8 +146,56 @@ func Test_UpdateCustomer_ChangesNameAndNote_NeverTheExternalId(t *testing.T) {
 	require.Equal(t, cpstore.ActionCustomerUpdated, lines[0].Action, "the newest line comes first")
 	require.Equal(t, "local", lines[0].Operator)
 	require.Equal(t, id, lines[0].CustomerID)
-	require.Equal(t, map[string]string{"old_name": "Acme", "new_name": "Acme Corp"}, lines[0].Detail)
+	require.Equal(t, map[string]string{"old_name": "Acme", "new_name": "Acme Corp", "note": "changed"}, lines[0].Detail)
 	require.Equal(t, "Acme Corp", lines[1].CustomerName, "a line bears the name the customer has now")
+}
+
+// A form saved as it was shown is not an act: nothing is written, and the journal says nothing.
+func Test_UpdateCustomer_WithNothingChanged_WritesNothingAndJournalsNothing(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	id := s.customer("cust-1", "Acme")
+	require.NoError(t, s.store.UpdateCustomer(t.Context(), operator, id, "Acme", "first note", today.Add(time.Hour)))
+	require.Len(t, s.journal(), 2)
+
+	for _, name := range []string{"Acme", "  Acme\n"} {
+		require.NoError(t, s.store.UpdateCustomer(t.Context(), "another@example.com", id, name, "first note", today.Add(2*time.Hour)))
+	}
+
+	require.Len(t, s.journal(), 2, "no line for a change of nothing")
+	customer, err := s.store.Customer(t.Context(), id, today)
+	require.NoError(t, err)
+	require.True(t, today.Add(time.Hour).Equal(customer.UpdatedAt), "the customer was not written again")
+}
+
+// The journal tells that a note changed, never what it says: a note is free text.
+func Test_UpdateCustomer_ANoteChanged_IsJournaledWithoutTheNote(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	id := s.customer("cust-1", "Acme")
+
+	require.NoError(t, s.store.UpdateCustomer(t.Context(), operator, id, "Acme", "NOTE-ONE", today.Add(time.Hour)))
+	require.NoError(t, s.store.UpdateCustomer(t.Context(), operator, id, "Acme Corp", "NOTE-ONE", today.Add(2*time.Hour)))
+	require.NoError(t, s.store.UpdateCustomer(t.Context(), operator, id, "Acme Corp 2", "NOTE-TWO", today.Add(3*time.Hour)))
+
+	lines := s.journal()
+	require.Len(t, lines, 4)
+	require.Equal(t, map[string]string{"old_name": "Acme Corp", "new_name": "Acme Corp 2", "note": "changed"}, lines[0].Detail)
+	require.Equal(t, map[string]string{"old_name": "Acme", "new_name": "Acme Corp"}, lines[1].Detail, "the note did not change")
+	require.Equal(t, map[string]string{"old_name": "Acme", "new_name": "Acme", "note": "changed"}, lines[2].Detail)
+	for _, line := range lines {
+		for _, value := range line.Detail {
+			require.NotContains(t, value, "NOTE-")
+		}
+	}
+	customer, err := s.store.Customer(t.Context(), id, today)
+	require.NoError(t, err)
+	require.Equal(t, "NOTE-TWO", customer.Note)
+	require.Equal(t, "Acme Corp 2", customer.Name)
 }
 
 func Test_UpdateCustomer_UnknownOrNameless(t *testing.T) {
@@ -248,6 +296,36 @@ func Test_RecordIssuedLicense_StoresWhatTheRegistryImportWould(t *testing.T) {
 		return columns
 	}
 	require.JSONEq(t, row(fromRegistry), row(fromConsole))
+}
+
+// A key without a list of features allows them all, and one with an empty list allows none: what is
+// recorded of the one is not what is recorded of the other.
+func Test_RecordIssuedLicense_NoListOfFeaturesAndAnEmptyOne_ComeBackDistinct(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	s.customer("cust-1", "Acme")
+	for id, features := range map[string][]string{"lic-all": nil, "lic-none": {}} {
+		issued := s.issuer.Issue(&license.IssueRequest{
+			Id: id, IssuedTo: "Acme", CustomerId: "cust-1", ExpiresAt: time.Now().UTC().Add(time.Hour), Features: features,
+		})
+		key, err := license.ParseWith(issued.Encoded, s.issuer.Keyring())
+		require.NoError(t, err)
+		require.Equal(t, features == nil, key.Features == nil, "the key itself tells the two apart")
+		added, err := s.record(key, issued, "")
+		require.NoError(t, err)
+		require.True(t, added)
+	}
+
+	all, err := s.store.LicenseDetail(t.Context(), "lic-all", today)
+	require.NoError(t, err)
+	none, err := s.store.LicenseDetail(t.Context(), "lic-none", today)
+	require.NoError(t, err)
+
+	require.Nil(t, all.Features, "no list")
+	require.NotNil(t, none.Features, "a list")
+	require.Empty(t, none.Features, "that is empty")
 }
 
 func Test_RecordIssuedLicense_Twice_AddsOnce_AndJournalsOnce(t *testing.T) {

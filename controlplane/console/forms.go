@@ -106,7 +106,7 @@ type licenseKeyView struct {
 
 type journalView struct {
 	Lines []journalRow
-	// Truncated tells the page holds as many lines as it may, so that older ones may exist.
+	// Truncated tells the journal holds older lines than the ones shown.
 	Truncated bool
 	Cap       int
 }
@@ -287,16 +287,18 @@ var actionPhrases = map[cpstore.OperatorActionKind]string{
 	cpstore.ActionLicenseKeyShown: "was shown the key of the license again",
 }
 
+// newJournalView shows the journalLines newest of actions, which come the newest first. The page
+// asks the store for one line more than it shows: with that one, the journal holds older lines.
 func newJournalView(actions []cpstore.OperatorAction) *journalView {
-	view := &journalView{
-		Lines:     make([]journalRow, 0, len(actions)),
-		Truncated: len(actions) >= journalLines,
-		Cap:       journalLines,
+	view := &journalView{Truncated: len(actions) > journalLines, Cap: journalLines}
+	if view.Truncated {
+		actions = actions[:journalLines]
 	}
+	view.Lines = make([]journalRow, 0, len(actions))
 	for i := range actions {
 		action := &actions[i]
 		row := journalRow{
-			At:       instant(action.At),
+			At:       instantToTheSecond(action.At),
 			Operator: action.Operator,
 			Action:   actionPhrases[action.Action],
 			Detail:   detailText(action.Detail),

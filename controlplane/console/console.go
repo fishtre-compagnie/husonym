@@ -461,7 +461,8 @@ func (c *console) pending(r *http.Request) (*content, error) {
 }
 
 func (c *console) journal(r *http.Request) (*content, error) {
-	actions, err := c.store.Journal(r.Context(), journalLines)
+	// One line more than the page shows tells whether the journal holds older ones.
+	actions, err := c.store.Journal(r.Context(), journalLines+1)
 	if err != nil {
 		return nil, err
 	}

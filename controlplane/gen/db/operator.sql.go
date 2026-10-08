@@ -24,18 +24,24 @@ func (q *Queries) GetCustomerIDByExternalID(ctx context.Context, externalID stri
 	return id, err
 }
 
-const getCustomerNameForUpdate = `-- name: GetCustomerNameForUpdate :one
-SELECT name
+const getCustomerNameAndNoteForUpdate = `-- name: GetCustomerNameAndNoteForUpdate :one
+SELECT name, note
 FROM controlplane.customers
 WHERE id = $1
 FOR UPDATE
 `
 
-func (q *Queries) GetCustomerNameForUpdate(ctx context.Context, id pgtype.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getCustomerNameForUpdate, id)
-	var name string
-	err := row.Scan(&name)
-	return name, err
+type GetCustomerNameAndNoteForUpdateRow struct {
+	Name string
+	Note string
+}
+
+// What an edit may change, read under the lock of the edit.
+func (q *Queries) GetCustomerNameAndNoteForUpdate(ctx context.Context, id pgtype.UUID) (GetCustomerNameAndNoteForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerNameAndNoteForUpdate, id)
+	var i GetCustomerNameAndNoteForUpdateRow
+	err := row.Scan(&i.Name, &i.Note)
+	return i, err
 }
 
 const getLicenseCustomer = `-- name: GetLicenseCustomer :one

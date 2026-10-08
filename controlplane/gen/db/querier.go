@@ -25,7 +25,8 @@ type Querier interface {
 	DeletePendingReport(ctx context.Context, arg DeletePendingReportParams) (int64, error)
 	GetCustomer(ctx context.Context, id pgtype.UUID) (ControlplaneCustomer, error)
 	GetCustomerIDByExternalID(ctx context.Context, externalID string) (pgtype.UUID, error)
-	GetCustomerNameForUpdate(ctx context.Context, id pgtype.UUID) (string, error)
+	// What an edit may change, read under the lock of the edit.
+	GetCustomerNameAndNoteForUpdate(ctx context.Context, id pgtype.UUID) (GetCustomerNameAndNoteForUpdateRow, error)
 	GetInstance(ctx context.Context, arg GetInstanceParams) (GetInstanceRow, error)
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
 	GetLicenseCustomer(ctx context.Context, id string) (pgtype.UUID, error)

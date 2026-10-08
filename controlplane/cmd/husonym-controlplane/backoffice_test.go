@@ -284,6 +284,50 @@ func Test_Backoffice_HealthCheckPassesWithoutHostOrTokenAndNothingElseDoes(t *te
 	require.NotContains(t, page.Body.String(), "gates are off")
 }
 
+// Review focus: the handler `serve backoffice` serves refuses, behind both gates, the POST another
+// origin makes the browser of the operator send, though it carries a token that passes: nothing is
+// written. The same POST from a page of the console is the one that writes.
+func Test_Backoffice_ACrossOriginPostWithAValidToken_IsRefusedAndWritesNothing(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	store := cpstore.New(cptest.NewDatabase(t))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	access := cptest.NewAccess(t)
+	handler, err := newBackofficeHandler(
+		&console.Config{Reader: store, Writer: store, Now: time.Now, Logger: logger},
+		&backofficeGates{host: backofficeHost, access: access.Gate(t, time.Now, logger)})
+	require.NoError(t, err)
+	post := func(fetchSite, origin string) *httptest.ResponseRecorder {
+		form := url.Values{"external_id": {"cust-1"}, "name": {"Acme"}}
+		req := httptest.NewRequest(http.MethodPost, "/customers", strings.NewReader(form.Encode()))
+		req.Host = backofficeHost
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set(cptest.AccessHeader, access.Token(t, operatorEmail, time.Now()))
+		req.Header.Set("Sec-Fetch-Site", fetchSite)
+		req.Header.Set("Origin", origin)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	refused := post("cross-site", "https://attacker.example")
+
+	require.Equal(t, http.StatusForbidden, refused.Code)
+	require.Contains(t, refused.Body.String(), "<h1>Refused</h1>")
+	customers, err := store.Customers(t.Context(), time.Now())
+	require.NoError(t, err)
+	require.Empty(t, customers, "no customer was recorded")
+	journal, err := store.Journal(t.Context(), cpstore.JournalCap)
+	require.NoError(t, err)
+	require.Empty(t, journal, "nothing was journaled")
+
+	require.Equal(t, http.StatusSeeOther, post("same-origin", "https://"+backofficeHost).Code)
+	customers, err = store.Customers(t.Context(), time.Now())
+	require.NoError(t, err)
+	require.Len(t, customers, 1, "the same POST from a page of the console is the one that writes")
+}
+
 // Review focus: under another name the console does not exist, whatever the request carries.
 func Test_Backoffice_UnderAnotherHost_Answers404EvenWithAValidToken(t *testing.T) {
 	handler, token := gatedBackoffice(t)

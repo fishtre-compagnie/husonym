@@ -47,6 +47,9 @@ const JournalCap = 1000
 // originConsole marks a license issued from the console.
 const originConsole = "console"
 
+// noteChanged is what the journal says of the note of a customer that was changed.
+const noteChanged = "changed"
+
 // The index that gives a license one successor at most, and the code PostgreSQL refuses with.
 const (
 	oneSuccessorIndex   = "licenses_succeeds_license_id_idx"
@@ -112,8 +115,10 @@ func (s *Store) CreateCustomer(
 }
 
 // UpdateCustomer changes the name and the note of a customer and journals it, with the name
-// before and after. The external id is not changed: the keys issued carry it. ErrNotFound when
-// no customer has the id, ErrCustomerIncomplete without a name.
+// before and after and, when the note changed, that it did: the note itself is never in the
+// journal. When neither differs from what is stored, nothing is written and nothing is journaled.
+// The external id is not changed: the keys issued carry it. ErrNotFound when no customer has the
+// id, ErrCustomerIncomplete without a name.
 func (s *Store) UpdateCustomer(
 	ctx context.Context, operator string, id uuid.UUID, name, note string, now time.Time,
 ) error {
@@ -123,12 +128,19 @@ func (s *Store) UpdateCustomer(
 	}
 	customerID := pgtype.UUID{Bytes: id, Valid: true}
 	return s.write(ctx, func(queries *cpdb.Queries) error {
-		oldName, err := queries.GetCustomerNameForUpdate(ctx, customerID)
+		stored, err := queries.GetCustomerNameAndNoteForUpdate(ctx, customerID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return fmt.Errorf("unable to read a customer: %w", err)
+		}
+		if stored.Name == name && stored.Note == note {
+			return nil
+		}
+		detail := map[string]string{"old_name": stored.Name, "new_name": name}
+		if stored.Note != note {
+			detail["note"] = noteChanged
 		}
 		err = queries.UpdateCustomer(ctx, cpdb.UpdateCustomerParams{
 			ID:   customerID,
@@ -139,8 +151,7 @@ func (s *Store) UpdateCustomer(
 		if err != nil {
 			return fmt.Errorf("unable to update a customer: %w", err)
 		}
-		return journal(ctx, queries, now, operator, ActionCustomerUpdated, customerID, "",
-			map[string]string{"old_name": oldName, "new_name": name})
+		return journal(ctx, queries, now, operator, ActionCustomerUpdated, customerID, "", detail)
 	})
 }
 

@@ -132,12 +132,17 @@ Every act is journaled in the transaction of its write, under the email of the o
 without the gates): `customer_created`, `customer_updated`, `license_issued`, `license_renewed`,
 `license_key_shown`. A line holds the instant, the operator, the customer, the license, and a
 short detail: the external id and the name of a customer recorded, its name before and after a
-change, the plan, the expiry, the telemetry mode and the license succeeded of a license issued.
-It never holds a key.
+change and whether its note changed, the plan, the expiry, the telemetry mode and the license
+succeeded of a license issued. It never holds a key, nor a note. A customer saved with the name
+and the note it already has is not written and not journaled. The page of the journal shows its
+instants to the second.
 
 A `POST` that the browser was made to send by another origin is refused with 403 and does
-nothing: one whose `Sec-Fetch-Site` is neither `same-origin` nor `none`, or, without that header,
-whose `Origin` is not the host the request was sent to (`http.CrossOriginProtection`). The body
+nothing (`http.CrossOriginProtection`): one whose `Sec-Fetch-Site` is neither `same-origin` nor
+`none`, or, without that header, one whose `Origin` names another host than the one the request
+was sent to. That fallback compares the host, not the scheme, and `Origin: null` is refused. A
+request that carries neither `Sec-Fetch-Site` nor `Origin` is let through: it comes from a caller
+that is not a browser, which behind Access still holds a valid token. The body
 of a `POST` is a form of at most 64 KiB; a larger one is answered 413, one that cannot be read 400.
 
 After an issue, the reports that were pending under the fingerprint of the new key are checked

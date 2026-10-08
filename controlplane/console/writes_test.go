@@ -399,6 +399,7 @@ func Test_ConfirmLicense_ShowsEveryLineOfTheKeyAndCarriesTheDraft(t *testing.T) 
 
 	require.Equal(t, http.StatusOK, got.status)
 	require.Contains(t, got.body, "A license cannot be deleted or changed once it is issued.")
+	require.Contains(t, got.body, "The key will also carry the instant of its issue and the name of the key that signs it.")
 	facts := between(t, got.body, "<dl", "</dl>")
 	for _, shown := range []string{
 		draftLicenseID, "Acme", "cust-1", "standard", "job_hooks, sso", ">5<", "2027-10-08 23:59:59 UTC", "7 days", "offline_report",
@@ -1090,6 +1091,45 @@ func Test_ACrossOriginPost_IsRefusedOnEveryRouteAndNothingIsRecorded(t *testing.
 	}
 }
 
+// What net/http judges a request from another origin by is pinned here, shape by shape: a version
+// of Go that judged one of them otherwise would be seen. The request is sent to example.com.
+func Test_TheCrossOriginShapes_ThatPassAndThatAreRefused_ArePinned(t *testing.T) {
+	cases := map[string]struct {
+		headers map[string]string
+		passes  bool
+	}{
+		"Origin: null":                                      {map[string]string{"Origin": "null"}, false},
+		"Sec-Fetch-Site: same-site":                         {map[string]string{"Sec-Fetch-Site": "same-site"}, false},
+		"Sec-Fetch-Site: cross-site":                        {map[string]string{"Sec-Fetch-Site": "cross-site"}, false},
+		"an Origin of another host, no Sec-Fetch-Site":      {map[string]string{"Origin": "https://attacker.example"}, false},
+		"Sec-Fetch-Site: cross-site, an Origin of the host": {map[string]string{"Sec-Fetch-Site": "cross-site", "Origin": "http://example.com"}, false},
+		"Sec-Fetch-Site: none":                              {map[string]string{"Sec-Fetch-Site": "none"}, true},
+		"Sec-Fetch-Site: same-origin":                       {map[string]string{"Sec-Fetch-Site": "same-origin"}, true},
+		"an Origin of the host, no Sec-Fetch-Site":          {map[string]string{"Origin": "http://example.com"}, true},
+		// The host is compared, not the scheme.
+		"an Origin of the host under another scheme, no Sec-Fetch-Site": {map[string]string{"Origin": "https://example.com"}, true},
+		// A caller that is not a browser: behind the Access gate it still holds a valid token.
+		"neither header": {map[string]string{}, true},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			b := newBench(t)
+			b.writer.newID = customerID
+
+			got := b.post("/customers", url.Values{"external_id": {"cust-1"}, "name": {"Acme"}}, tc.headers)
+
+			if tc.passes {
+				require.Equal(t, http.StatusSeeOther, got.status)
+				require.Equal(t, 1, b.writer.writes)
+				return
+			}
+			require.Equal(t, http.StatusForbidden, got.status)
+			require.Contains(t, got.body, "<h1>Refused</h1>")
+			require.Zero(t, b.writer.writes, "nothing is written")
+		})
+	}
+}
+
 // What is not a browser sends neither header and is let through, as the gates let it through.
 func Test_APostWithoutTheHeadersOfABrowser_IsLetThrough(t *testing.T) {
 	b := newBench(t)
@@ -1140,7 +1180,7 @@ func Test_Journal_ListsTheActsInOrderWithTheirLinks(t *testing.T) {
 	b := newBench(t)
 	at := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 	b.store.journal = []cpstore.OperatorAction{
-		{ID: 5, At: at.Add(4 * time.Minute), Operator: "b@example.com", Action: cpstore.ActionLicenseKeyShown, CustomerID: customerID, CustomerName: "Acme", LicenseID: draftLicenseID},
+		{ID: 5, At: at.Add(4*time.Minute + 7*time.Second + 900*time.Millisecond), Operator: "b@example.com", Action: cpstore.ActionLicenseKeyShown, CustomerID: customerID, CustomerName: "Acme", LicenseID: draftLicenseID},
 		{
 			ID: 4, At: at.Add(3 * time.Minute), Operator: "a@example.com", Action: cpstore.ActionLicenseRenewed, CustomerID: customerID,
 			CustomerName: "Acme", LicenseID: draftLicenseID,
@@ -1149,7 +1189,7 @@ func Test_Journal_ListsTheActsInOrderWithTheirLinks(t *testing.T) {
 		{ID: 3, At: at.Add(2 * time.Minute), Operator: "a@example.com", Action: cpstore.ActionLicenseIssued, CustomerID: customerID, CustomerName: "Acme", LicenseID: previousLicenseID},
 		{
 			ID: 2, At: at.Add(time.Minute), Operator: "a@example.com", Action: cpstore.ActionCustomerUpdated, CustomerID: customerID,
-			CustomerName: "Acme", Detail: map[string]string{"old_name": "<b>Acme</b>", "new_name": "Acme"},
+			CustomerName: "Acme", Detail: map[string]string{"old_name": "<b>Acme</b>", "new_name": "Acme", "note": "changed"},
 		},
 		{ID: 1, At: at, Operator: "a@example.com", Action: cpstore.ActionCustomerCreated, CustomerID: customerID, CustomerName: "Acme"},
 		{ID: 0, At: at.Add(-time.Minute), Operator: "a@example.com", Action: "something_else"},
@@ -1158,7 +1198,8 @@ func Test_Journal_ListsTheActsInOrderWithTheirLinks(t *testing.T) {
 	got := b.get("/journal")
 
 	require.Equal(t, http.StatusOK, got.status)
-	require.Equal(t, 200, b.store.askedLimit, "the 200 most recent lines")
+	require.Equal(t, 201, b.store.askedLimit, "the 200 most recent lines, and one more to know whether there are older ones")
+	require.NotContains(t, got.body, "latest lines", "the journal holds no more than the page shows")
 	require.Contains(t, got.body, "<h1>Journal</h1>")
 	require.Contains(t, between(t, got.body, "<header", "</header>"), `<a href="/journal" aria-current="page">Journal</a>`)
 	require.Equal(t, []string{"Journal of the operators"}, tablesOf(t, got.body))
@@ -1172,15 +1213,55 @@ func Test_Journal_ListsTheActsInOrderWithTheirLinks(t *testing.T) {
 		last = at
 	}
 	shown := row(t, got.body, "was shown the key")
-	require.Contains(t, shown, "2026-10-08 09:04")
+	require.Contains(t, shown, "<td>2026-10-08 09:04:07</td>", "to the second")
 	require.Contains(t, shown, "b@example.com")
 	require.Contains(t, shown, `<a href="/customers/`+customerID.String()+`">Acme</a>`)
 	require.Contains(t, shown, `<a class="id" href="/licenses/`+draftLicenseID+`">`)
 	require.Contains(t, row(t, got.body, "as a renewal"),
 		"expires at: 2027-10-08T23:59:59Z; plan: standard; succeeds: "+previousLicenseID+"; telemetry: online")
-	require.Contains(t, row(t, got.body, "changed the customer"), "old name: &lt;b&gt;Acme&lt;/b&gt;")
+	require.Contains(t, row(t, got.body, "changed the customer"), "new name: Acme; note: changed; old name: &lt;b&gt;Acme&lt;/b&gt;")
 	require.Contains(t, row(t, got.body, "something_else"), "<td>—</td><td>—</td>")
 	require.NotContains(t, got.body, "<b>")
+}
+
+// The page shows 200 lines. It says they are the latest ones only when the journal holds more.
+func Test_Journal_SaysItShowsTheLatestLines_OnlyWhenThereAreOlderOnes(t *testing.T) {
+	lines := func(n int) []cpstore.OperatorAction {
+		journal := make([]cpstore.OperatorAction, 0, n)
+		for i := range n {
+			journal = append(journal, cpstore.OperatorAction{
+				ID: int64(n - i), At: today.Add(-time.Duration(i) * time.Minute), Operator: operatorEmail, Action: cpstore.ActionCustomerCreated,
+			})
+		}
+		return journal
+	}
+	cases := map[string]struct {
+		held, shown int
+		says        bool
+	}{
+		"fewer than the page shows": {held: 199, shown: 199},
+		"as many as the page shows": {held: 200, shown: 200},
+		"one more":                  {held: 201, shown: 200, says: true},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			b := newBench(t)
+			b.store.journal = lines(tc.held)
+
+			got := b.get("/journal")
+
+			require.Equal(t, http.StatusOK, got.status)
+			require.Len(t, journalRows(t, got.body), tc.shown)
+			if tc.says {
+				require.Contains(t, got.body, "The 200 latest lines.")
+				// The line left out is the oldest.
+				require.NotContains(t, got.body, today.Add(-200*time.Minute).Format("2006-01-02 15:04:05"))
+				require.Contains(t, got.body, today.Add(-199*time.Minute).Format("2006-01-02 15:04:05"))
+				return
+			}
+			require.NotContains(t, got.body, "latest lines")
+		})
+	}
 }
 
 func Test_Journal_Empty_SaysSo(t *testing.T) {
