@@ -30,11 +30,22 @@ func signedKey(t *testing.T, priv ed25519.PrivateKey, issuedAt, expiresAt time.T
 // signedKeyWithKid is signedKey with the kid written in the envelope; none when empty.
 func signedKeyWithKid(t *testing.T, priv ed25519.PrivateKey, kid string, issuedAt, expiresAt time.Time) string {
 	t.Helper()
+	return signedKeyOf(t, priv, kid, "cust-001", issuedAt, expiresAt)
+}
+
+// signedKeyFor is signedKey for the customer of the given id, which may be empty.
+func signedKeyFor(t *testing.T, priv ed25519.PrivateKey, customerId string, issuedAt, expiresAt time.Time) string {
+	t.Helper()
+	return signedKeyOf(t, priv, "", customerId, issuedAt, expiresAt)
+}
+
+func signedKeyOf(t *testing.T, priv ed25519.PrivateKey, kid, customerId string, issuedAt, expiresAt time.Time) string {
+	t.Helper()
 	content, err := json.Marshal(license.Key{
 		Version:    "v1",
 		Id:         "lic-" + issuedAt.Format(time.RFC3339),
 		IssuedTo:   "Acme Co.",
-		CustomerId: "cust-001",
+		CustomerId: customerId,
 		IssuedAt:   issuedAt,
 		ExpiresAt:  expiresAt,
 	})
@@ -252,6 +263,138 @@ func Test_Offer(t *testing.T) {
 	})
 }
 
+// A renewal succeeds the license in force: it is for the same customer, and the rule says so
+// for a key received as a renewal alone.
+func Test_Offer_ARenewalIsForTheCustomerOfTheKeyInForce(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	issued := now.Add(-48 * time.Hour)
+	expiry := now.Add(time.Hour)
+	ctx := context.Background()
+
+	for name, tc := range map[string]struct {
+		inForce, offered string
+		want             Outcome
+	}{
+		"the same customer":                 {inForce: "cust-001", offered: "cust-001", want: Accepted},
+		"no customer on either":             {inForce: "", offered: "", want: Accepted},
+		"another customer":                  {inForce: "cust-001", offered: "cust-002", want: RefusedOtherCustomer},
+		"a customer the key in force lacks": {inForce: "", offered: "cust-001", want: RefusedOtherCustomer},
+		"no customer where one is in force": {inForce: "cust-001", offered: "", want: RefusedOtherCustomer},
+		"a customer id spelled another way": {inForce: "cust-001", offered: "CUST-001", want: RefusedOtherCustomer},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t, true)
+			table := newMemoryTable(f)
+			current := signedKeyFor(t, f.priv, tc.inForce, issued, expiry)
+			_, err := f.store.Offer(ctx, current, OriginInterface, nil)
+			require.NoError(t, err)
+
+			offered := signedKeyFor(t, f.priv, tc.offered, now, expiry)
+			res, err := f.store.Offer(ctx, offered, OriginRenewal, nil)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, res.Outcome)
+			require.NotNil(t, res.Key)
+
+			if tc.want == Accepted {
+				require.Len(t, table.stored(), 2)
+				require.Equal(t, "renewal", table.stored()[1].Origin)
+				return
+			}
+			require.Len(t, table.stored(), 1, "the key in force was replaced")
+			require.NotEmpty(t, res.Reason)
+			require.NotContains(t, res.Reason, offered)
+			require.NotContains(t, res.Reason, current)
+			require.NotContains(t, res.Reason, "cust-00")
+		})
+	}
+
+	t.Run("a key of another customer installed by hand is taken as it always was", func(t *testing.T) {
+		for _, origin := range []Origin{OriginInterface, OriginEnvironment, OriginFile} {
+			f := newFixture(t, true)
+			table := newMemoryTable(f)
+			_, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-001", issued, expiry), OriginInterface, nil)
+			require.NoError(t, err)
+
+			res, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-002", now, expiry), origin, nil)
+			require.NoError(t, err)
+			require.Equal(t, Accepted, res.Outcome, "origin %s", origin)
+			require.Len(t, table.stored(), 2)
+			require.Equal(t, string(origin), table.stored()[1].Origin)
+		}
+	})
+
+	t.Run("a first key installed by hand is taken as it always was", func(t *testing.T) {
+		for _, origin := range []Origin{OriginInterface, OriginEnvironment, OriginFile} {
+			f := newFixture(t, true)
+			table := newMemoryTable(f)
+
+			res, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-001", now, expiry), origin, nil)
+			require.NoError(t, err)
+			require.Equal(t, Accepted, res.Outcome, "origin %s", origin)
+			require.Len(t, table.stored(), 1)
+		}
+	})
+
+	t.Run("a renewal with no key in force renews nothing and is refused", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+
+		res, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-001", now, expiry), OriginRenewal, nil)
+		require.NoError(t, err)
+		require.Equal(t, RefusedOtherCustomer, res.Outcome)
+		require.NotEmpty(t, res.Reason)
+		require.Empty(t, table.stored())
+	})
+
+	t.Run("the key in force received again as a renewal changes nothing", func(t *testing.T) {
+		f := newFixture(t, true)
+		table := newMemoryTable(f)
+		current := signedKeyFor(t, f.priv, "cust-001", issued, expiry)
+		_, err := f.store.Offer(ctx, current, OriginInterface, nil)
+		require.NoError(t, err)
+
+		res, err := f.store.Offer(ctx, current, OriginRenewal, nil)
+		require.NoError(t, err)
+		require.Equal(t, Unchanged, res.Outcome)
+		require.Len(t, table.stored(), 1)
+	})
+
+	t.Run("an older key of another customer is refused for its customer", func(t *testing.T) {
+		f := newFixture(t, true)
+		newMemoryTable(f)
+		_, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-001", now, expiry), OriginInterface, nil)
+		require.NoError(t, err)
+
+		res, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-002", issued, expiry), OriginRenewal, nil)
+		require.NoError(t, err)
+		require.Equal(t, RefusedOtherCustomer, res.Outcome)
+	})
+
+	t.Run("a key in force the ring no longer reads names no customer to renew for", func(t *testing.T) {
+		f := newFixture(t, true)
+		_, otherPriv := newPair(t)
+		// Stored under a ring the instance had before: its signature is of a key this one lacks.
+		inForce := signedKeyFor(t, otherPriv, "cust-001", issued, expiry)
+		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).Return(stored(inForce, issued), nil)
+
+		res, err := f.store.Offer(ctx, signedKeyFor(t, f.priv, "cust-001", now, expiry), OriginRenewal, nil)
+		require.NoError(t, err)
+		require.Equal(t, RefusedOtherCustomer, res.Outcome)
+		// No InsertLicenseKey expectation: the double fails the test if it is called.
+	})
+}
+
+func Test_Outcome_IsToldInOneWord(t *testing.T) {
+	words := map[Outcome]string{
+		Accepted: "accepted", Unchanged: "unchanged", RefusedOlder: "older",
+		RefusedInvalid: "invalid", RefusedOtherCustomer: "other_customer",
+	}
+	for outcome, word := range words {
+		require.Equal(t, word, outcome.String())
+	}
+	require.Equal(t, "none", Outcome(0).String())
+}
+
 func Test_Current(t *testing.T) {
 	t.Run("is the stored value of the key in force", func(t *testing.T) {
 		f := newFixture(t, false)
@@ -285,7 +428,7 @@ func Test_Current(t *testing.T) {
 // A Result nobody filled in must not read as a key that was accepted.
 func Test_Outcome_TheZeroValueIsNoOutcome(t *testing.T) {
 	var empty Result
-	for _, outcome := range []Outcome{Accepted, Unchanged, RefusedOlder, RefusedInvalid} {
+	for _, outcome := range []Outcome{Accepted, Unchanged, RefusedOlder, RefusedInvalid, RefusedOtherCustomer} {
 		require.NotEqual(t, outcome, empty.Outcome)
 	}
 }

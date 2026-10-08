@@ -155,6 +155,9 @@ func offer(
 		logger.Info("the license key is older than the one in force and is ignored", "reason", result.Reason)
 	case RefusedInvalid:
 		logger.Error("the license key is not valid", "reason", result.Reason)
+	case RefusedOtherCustomer:
+		// Only a key received as a renewal is refused so, and none is offered through a door.
+		logger.Error("the license key is not a renewal of the one in force", "reason", result.Reason)
 	}
 	return result, nil
 }

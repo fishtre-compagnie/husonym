@@ -74,7 +74,7 @@ func (s *Service) licenseAfterOffer(
 	switch result.Outcome {
 	case licensestore.RefusedInvalid:
 		return nil, husonymerrors.NewBadRequest(result.Reason)
-	case licensestore.RefusedOlder:
+	case licensestore.RefusedOlder, licensestore.RefusedOtherCustomer:
 		return nil, husonymerrors.NewFailedPrecondition(result.Reason)
 	case licensestore.Accepted, licensestore.Unchanged:
 		// The key is in force in this process when the call answers, without waiting for the

@@ -1,6 +1,7 @@
 // Package licensestore holds the rule by which an instance accepts a license key into its
 // database: a key is stored only when it is signed by a key of the ring and was issued after
-// the one in force.
+// the one in force. A key received as a renewal has, besides, to be for the customer of the one
+// in force.
 package licensestore
 
 import (
@@ -43,7 +44,27 @@ const (
 	RefusedOlder
 	// RefusedInvalid: the key is empty, unreadable or not signed by a key of the ring.
 	RefusedInvalid
+	// RefusedOtherCustomer: the key was offered as a renewal and is not for the customer of the
+	// key in force, or no key is in force for it to renew.
+	RefusedOtherCustomer
 )
+
+// String is the outcome in one word, for a log line.
+func (o Outcome) String() string {
+	switch o {
+	case Accepted:
+		return "accepted"
+	case Unchanged:
+		return "unchanged"
+	case RefusedOlder:
+		return "older"
+	case RefusedInvalid:
+		return "invalid"
+	case RefusedOtherCustomer:
+		return "other_customer"
+	}
+	return "none"
+}
 
 // Result is the verdict on an offered key. Reason is set for a refusal and never contains a
 // key value. Key is the key that was read; it is nil when none could be.
@@ -164,10 +185,25 @@ func (s *Store) decide(ctx context.Context, value string, origin Origin, userId 
 		if err != nil && !husonymdb.IsNoRows(err) {
 			return err
 		}
+		if err != nil && origin == OriginRenewal {
+			// A renewal succeeds the license in force: without one there is nothing it renews.
+			result = &Result{
+				Outcome: RefusedOtherCustomer,
+				Reason:  "this license key was received as a renewal, and the instance holds no license key to renew",
+				Key:     key,
+			}
+			return nil
+		}
 		if err == nil {
 			if current.Key == value {
 				result = &Result{Outcome: Unchanged, Key: key}
 				return nil
+			}
+			if origin == OriginRenewal {
+				if reason := s.notOfTheCustomerOf(current.Key, key); reason != "" {
+					result = &Result{Outcome: RefusedOtherCustomer, Reason: reason, Key: key}
+					return nil
+				}
 			}
 			if !key.IssuedAt.After(current.IssuedAt.Time) {
 				result = &Result{
@@ -201,6 +237,22 @@ func (s *Store) decide(ctx context.Context, value string, origin Origin, userId 
 		return nil, err
 	}
 	return result, nil
+}
+
+// notOfTheCustomerOf tells why a key received as a renewal is not for the customer of the key in
+// force, or nothing when it is. The two customer ids are compared as they are written: two that
+// are empty are the same customer, one that is empty and one that is not are two. A key in force
+// that this ring no longer reads names no customer a renewal could be told to be for. The reason
+// quotes neither key and neither customer id.
+func (s *Store) notOfTheCustomerOf(inForce string, offered *license.Key) string {
+	current, err := license.ParseWith(inForce, s.ring)
+	if err != nil {
+		return "this license key was received as a renewal, and the license key in force cannot be read to tell its customer"
+	}
+	if current.CustomerId != offered.CustomerId {
+		return "this license key was received as a renewal, and is not for the customer of the license key in force"
+	}
+	return ""
 }
 
 // Current gives the value of the key in force, or an empty string when the instance has none.

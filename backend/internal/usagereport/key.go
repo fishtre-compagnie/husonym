@@ -21,9 +21,9 @@ func NewInstanceKey(keys KeySource, ring license.Keyring) *InstanceKey {
 	return &InstanceKey{keys: keys, ring: ring}
 }
 
-// inForce gives the key the instance holds, as it was installed and as it reads, or
-// ErrNoLicenseInForce when there is none or when it is frozen at the given moment.
-func (k *InstanceKey) inForce(ctx context.Context, now time.Time) (string, *license.Key, error) {
+// held gives the key the instance holds, as it was installed and as it reads, whatever its
+// state, or ErrNoLicenseInForce when it holds none.
+func (k *InstanceKey) held(ctx context.Context) (string, *license.Key, error) {
 	value, err := k.keys.Current(ctx)
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to read the license key: %w", err)
@@ -35,6 +35,16 @@ func (k *InstanceKey) inForce(ctx context.Context, now time.Time) (string, *lice
 	key, err := license.ParseWith(value, k.ring)
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to verify the license key: %w", err)
+	}
+	return value, key, nil
+}
+
+// inForce gives the key the instance holds, as it was installed and as it reads, or
+// ErrNoLicenseInForce when there is none or when it is frozen at the given moment.
+func (k *InstanceKey) inForce(ctx context.Context, now time.Time) (string, *license.Key, error) {
+	value, key, err := k.held(ctx)
+	if err != nil {
+		return "", nil, err
 	}
 	if key.StateAt(now) == license.StateFrozen {
 		return "", nil, ErrNoLicenseInForce

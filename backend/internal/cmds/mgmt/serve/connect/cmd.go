@@ -753,9 +753,8 @@ func serve(ctx context.Context) error {
 	// operator did not set otherwise. It runs apart from every request and every run, and the
 	// API starts whatever becomes of it: without a transport the report is prepared and not sent.
 	var usageSender *usagereport.Sender
-	usageReportTransport, err := usagereport.NewHTTPTransport(
-		usagereport.ReportURLFromEnvironment(slogger), version.Get().GitVersion,
-	)
+	usageReportURL := usagereport.ReportURLFromEnvironment(slogger)
+	usageReportTransport, err := usagereport.NewHTTPTransport(usageReportURL, version.Get().GitVersion)
 	if err != nil {
 		slogger.Error("the usage report of the instance is prepared and not sent", "error", err)
 	} else {
@@ -763,8 +762,28 @@ func serve(ctx context.Context) error {
 			usageStore, eelicense, usageKey, usageModeSetting, usageFacts.Diagnostics, usageReportTransport, slogger,
 		)
 	}
+	// An instance that sends its report also asks, at the same origin, for the license that
+	// succeeds its own. What it receives goes through the rule every key goes through, and a
+	// key that is accepted is in force in this process at once, like one installed by hand.
+	var licenseRenewer *usagereport.Renewer
+	licenseRenewalTransport, err := usagereport.NewHTTPRenewalTransport(usageReportURL, version.Get().GitVersion)
+	if err != nil {
+		slogger.Error("the license of the instance is not asked for and is installed by hand", "error", err)
+	} else {
+		licenseRenewer = usagereport.NewRenewer(
+			usageKey, usageStore, licenseRenewalTransport,
+			func(ctx context.Context, value string) (*licensestore.Result, error) {
+				result, err := licenseStore.Offer(ctx, value, licensestore.OriginRenewal, nil)
+				if err == nil && result.Outcome == licensestore.Accepted {
+					_ = eelicense.Refresh(licenseCtx)
+				}
+				return result, err
+			},
+			usageModeSetting, time.Now, slogger,
+		)
+	}
 	go usagereport.NewDaily(
-		usagereport.NewPreparer(usageReports, usageStore, slogger), usageSender, slogger,
+		usagereport.NewPreparer(usageReports, usageStore, slogger), usageSender, licenseRenewer, slogger,
 	).Every(licenseCtx, usageReportInterval)
 
 	// The interface and the CLI read the mode the report is sent under from the same key, setting
