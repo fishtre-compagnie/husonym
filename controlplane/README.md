@@ -1,20 +1,21 @@
 # Control plane
 
 A small service that receives the sealed daily reports posted by Husonym instances, checks each
-one against the registry of issued licenses, and stores it in its own PostgreSQL database.
+one against the registry of issued licenses, and stores it in its own PostgreSQL database. It also
+answers an instance that asks for the license that succeeds its own.
 
 It is one binary, `husonym-controlplane`, and it imports nothing from the backend, the worker or
 the CLI. It reuses `internal/license` (the keyring and the registry) and `internal/telemetry` (the
-schema of a report and its seal).
+schema of a report, its seal, and the request and the answer of a renewal).
 
 ## Commands
 
-| Command                                                  | What it does                                                        |
-| -------------------------------------------------------- | ------------------------------------------------------------------- |
-| `husonym-controlplane migrate up`                        | Applies the pending migrations of the database (they are embedded). |
-| `husonym-controlplane import-registry --registry <file>` | Loads the registry of issued licenses and prints three counts.      |
-| `husonym-controlplane serve public`                      | Applies the migrations, then serves the public API.                 |
-| `husonym-controlplane serve backoffice`                  | Serves the operator console. It applies no migration.               |
+| Command                                                  | What it does                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `husonym-controlplane migrate up`                        | Applies the pending migrations of the database (they are embedded).       |
+| `husonym-controlplane import-registry --registry <file>` | Loads the registry of issued licenses and prints three counts.            |
+| `husonym-controlplane serve public`                      | Applies the migrations, then serves the public API: reports and renewals. |
+| `husonym-controlplane serve backoffice`                  | Serves the operator console. It applies no migration.                     |
 
 `import-registry` verifies every entry against the embedded keyring. An entry whose key does not
 verify, whose id is not the one inside its key, or whose key names no customer is skipped and
@@ -23,17 +24,24 @@ license that has just been imported are checked in the same run. Should that las
 counts are printed all the same, the command exits non-zero, and the server takes it up again
 within the hour.
 
+Both servers wait for a database that cannot be reached yet when they start: they try again every
+2 seconds, for 20 seconds at most, then fail with the error they would have had at once. One line
+of the log, in fixed words, says that a server is waiting. Only a database that cannot be reached
+is waited for, one that is starting up included: an address that cannot be read, a database that
+answers and refuses the connection, and a migration that fails are told at once. A server told to
+stop while it waits stops.
+
 ## Environment
 
-| Variable                    | Meaning                                           |
-| --------------------------- | ------------------------------------------------- |
-| `CONTROLPLANE_DATABASE_URL` | PostgreSQL connection string (required).          |
-| `CONTROLPLANE_LISTEN_ADDR`  | Listen address of the server, `:8080` by default. |
-| `CONTROLPLANE_METRICS_ADDR` | Listen address of the metrics of `serve public`, `:9090` by default. |
-| `CONTROLPLANE_BACKOFFICE_HOST` | Host name the console answers under, a bare name (`serve backoffice`, required). |
-| `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required). |
-| `CONTROLPLANE_ACCESS_AUD` | Audience tag of the Access application of the console (`serve backoffice`, required). |
-| `CONTROLPLANE_SIGNING_KEY_FILE` | Path of the PEM Ed25519 private key the console issues licenses with (`serve backoffice` only, optional). |
+| Variable                          | Meaning                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `CONTROLPLANE_DATABASE_URL`       | PostgreSQL connection string (required).                                                                  |
+| `CONTROLPLANE_LISTEN_ADDR`        | Listen address of the server, `:8080` by default.                                                         |
+| `CONTROLPLANE_METRICS_ADDR`       | Listen address of the metrics of `serve public`, `:9090` by default.                                      |
+| `CONTROLPLANE_BACKOFFICE_HOST`    | Host name the console answers under, a bare name (`serve backoffice`, required).                          |
+| `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required).                         |
+| `CONTROLPLANE_ACCESS_AUD`         | Audience tag of the Access application of the console (`serve backoffice`, required).                     |
+| `CONTROLPLANE_SIGNING_KEY_FILE`   | Path of the PEM Ed25519 private key the console issues licenses with (`serve backoffice` only, optional). |
 
 The tables live in the `controlplane` schema. The table in which golang-migrate keeps the version
 of the schema, `schema_migrations`, sits in `public`.
@@ -43,9 +51,11 @@ of the schema, `schema_migrations`, sits in `public`.
 - `POST /v1/usage-reports`: the body is the JSON document of a report, at most 128 KiB, sent with
   `Content-Type: application/json`. Two headers carry the seal and the fingerprint of the license
   key, `Husonym-Seal` and `Husonym-Key-Fingerprint`, each 64 lowercase hexadecimal characters.
+- `POST /v1/license-renewals`: asks for the license that succeeds the one of the instance. See
+  "License renewals" below.
 - `GET /healthz`: answers 200.
 
-Replies have no body.
+Replies have no body, but the one that carries a license. For a report:
 
 | Status | When                                                                                           |
 | ------ | ---------------------------------------------------------------------------------------------- |
@@ -74,36 +84,91 @@ fingerprint and 10000 in all). It is checked once the license is imported, as it
 on the day it was received, then stored or discarded. The first report stored for a license, an
 instance and a day stays; a different one for the same three is counted as a conflict and dropped.
 
+### License renewals
+
+`POST /v1/license-renewals` is sent as a report is: `Content-Type: application/json`, and the two
+headers `Husonym-Seal` and `Husonym-Key-Fingerprint`, here the seal of the body under the license
+key the instance holds and the fingerprint of that key. The body is at most 4 KiB:
+
+```json
+{"schema_version":1,"license_id":"…","instance_id":"…","requested_at":"2026-10-08T12:00:00Z"}
+```
+
+It is closed: an unknown field is refused. `requested_at` is in UTC, to the second, and must be
+within 5 minutes of the clock of the server, either side.
+
+| Status | When                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------- |
+| 200    | A license succeeds the one of the instance. The body is `{"schema_version":1,"license":"…"}`. |
+| 204    | There is nothing to give.                                                                     |
+| 400    | The content type, a header or the body is missing or malformed, or the request is not fresh.  |
+| 405    | Another method than `POST`.                                                                   |
+| 413    | The body is larger than the cap; a declared length over it is answered before it is read.     |
+| 503    | The service failed. The instance asks again later.                                            |
+
+The license answered is the last of the chain of successors, not the next: an instance several
+renewals behind receives the latest. It is the license as it was issued and stored: this server
+signs nothing and reads no signing key. The chain is followed 64 successors away at most; a
+longer one is answered with the license it stops at, and one line of the log says so.
+
+204 is the answer when nothing succeeds the license, and also when no license has the fingerprint,
+when the seal is not the one of the body under the license that has it, and when the body names
+another license than the one it is sealed under. The four are the same answer, status, headers and
+no body: nothing tells a caller that a fingerprint is the one of a license. What is malformed or
+not fresh is refused before any license is looked up.
+
+A seal that does not verify under a license that is known is counted with the refused seals of
+the reports. An ask whose seal verifies is recorded, served or not: one row per license and
+instance, with the instant of the last ask and the last license served with its instant, for 50
+instances per license at most: the ones that asked last. A new instance beyond them takes the
+place of the one that asked the longest ago. An ask under an unknown fingerprint or a wrong seal
+leaves no row.
+
+Neither of those two writes decides an answer. When the ask cannot be recorded, the instance is
+answered all the same, with its license or with 204 as the chain says; when a refused seal cannot
+be counted, the answer is the 204 of an unknown fingerprint. Each is one line of the log in fixed
+words and one more in `husonym_controlplane_renewal_bookkeeping_failures_total`. A write that
+hangs is given up after 2 seconds and told like one that failed.
+
+A request proves that whoever sealed it held the key of the license at the instant it states, and
+nothing more. It is not used up by its answer: within the 5 minutes its instant stays fresh,
+whoever captured it whole, the body and its two headers, can send it again and is given the same
+answer. And a key does not stop asking once it is renewed: any past key of a chain fetches the
+last license of that chain, for as long as the chain goes on.
+
+Every answer carries `Cache-Control: no-store`. The 200 is the only answer of this server that
+carries a license key; it is never logged.
+
 ## Operator console
 
 `serve backoffice` serves pages, rendered on the server, that show what the database holds, and
 the few acts of the operator. A page is a `GET` and changes nothing; an act is a `POST`.
 
-| Path                                                     | What it shows                                                   |
-| -------------------------------------------------------- | --------------------------------------------------------------- |
-| `/`                                                      | What needs attention, in five lists: see below.                 |
-| `/customers`                                             | The customers.                                                  |
-| `/customers/{id}`                                        | A customer, its licenses and its instances.                     |
-| `/licenses/{id}`                                         | A license: what its key carries, its instances, refused seals.  |
-| `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap. |
-| `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                   |
-| `/pending`                                               | The pending reports, by key fingerprint.                        |
-| `/journal`                                               | The 200 latest acts of the operators, the newest first.         |
-| `/static/console.css`                                    | The stylesheet. The pages load nothing else.                    |
+| Path                                                     | What it shows                                                                            |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `/`                                                      | What needs attention, in five lists: see below.                                          |
+| `/customers`                                             | The customers.                                                                           |
+| `/customers/{id}`                                        | A customer, its licenses and its instances.                                              |
+| `/licenses/{id}`                                         | A license: what its key carries, its instances, the asks for its renewal, refused seals. |
+| `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap.                         |
+| `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                                            |
+| `/pending`                                               | The pending reports, by key fingerprint.                                                 |
+| `/journal`                                               | The 200 latest acts of the operators, the newest first.                                  |
+| `/static/console.css`                                    | The stylesheet. The pages load nothing else.                                             |
 
 Instants are shown in UTC.
 
 ### The acts of the operator
 
-| Request                                | What it does                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /customers/new`, `POST /customers` | Records a customer: an external id, a name, a note.                        |
-| `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it. |
-| `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
-| `GET /licenses/{id}/renew`             | The same form, prefilled from the license it succeeds.                      |
-| `POST /licenses/confirm`               | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm. |
-| `POST /licenses`                       | Signs the license, records it, and shows its key.                           |
-| `POST /licenses/{id}/key`              | Shows the key of a license again.                                           |
+| Request                                            | What it does                                                                                                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /customers/new`, `POST /customers`            | Records a customer: a name and a note. The console draws its external id.                                                                         |
+| `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it.                                             |
+| `GET /customers/{id}/licenses/new`                 | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
+| `GET /licenses/{id}/renew`                         | The same form, prefilled from the license it succeeds.                                                                                            |
+| `POST /licenses/confirm`                           | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm.                                |
+| `POST /licenses`                                   | Signs the license, records it, and shows its key.                                                                                                 |
+| `POST /licenses/{id}/key`                          | Shows the key of a license again.                                                                                                                 |
 
 A license cannot be deleted or changed once issued: no route does it. A license has one successor
 at most: the page of a license that has one does not offer to renew it, and a renewal is refused
@@ -114,10 +179,16 @@ the console issued it or not; the one that succeeds it bears an id the console d
 whose key carries a limit the form has no field for is not renewed here: `husonym-license` issues
 its successor.
 
-A key carries the external id of its customer as it is recorded. A customer recorded from the
-console has its external id without the space around it. To a customer whose recorded external id
-begins or ends with a space, the console issues no license: the page says why in place of the
-form, and nothing is trimmed when a license is issued.
+The external id of a customer recorded from the console is a UUID the console draws when the
+customer is recorded. The form does not ask for it, and one that is posted is ignored: two
+customers of the same name are two customers, each under its own. It is shown, read-only, on the
+page of the customer and on the form that edits it. A customer that came from the registry keeps
+the external id its keys carry.
+
+A key carries the external id of its customer as it is recorded. To a customer whose recorded
+external id begins or ends with a space, which only one that came otherwise can have, the console
+issues no license: the page says why in place of the form, and nothing is trimmed when a license
+is issued.
 
 The key of a license is shown on two pages only, both the answer to a `POST`: right after the
 issue, and when it is asked for again. It is in no other page, in no URL and in no log.
@@ -183,11 +254,13 @@ Every request passes two gates, in this order, before a page is rendered:
    for another application of the same team does not pass.
 
 `GET /healthz` answers 200 outside both gates, without reading the database, and is the only such
-path. The server serves no report intake, and the public server serves no page of the console.
+path. The server serves no report intake and no renewal, and the public server serves no page of
+the console.
 
 The command refuses to start when one of its variables is missing, when the host or the team
 domain is not a bare host name, when the keys of the team cannot be fetched, or when the database
-cannot be reached. Request headers are capped at 64 KiB.
+still cannot be reached once it has waited for it (see Commands). Request headers are capped at
+64 KiB.
 
 Every answer of the server carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet, forms
@@ -215,10 +288,14 @@ machine. `GET /healthz` stays outside that check too.
 - For each report: its document exactly as received, its seal, when it was received, and how many
   different documents were sent again for the same license, instance and day, with the time of the
   last one. The same document sent again is not counted.
-- For each license and day: how many reports were refused for their seal, and when the last was.
+- For each license and day: how many reports and requests for a renewal were refused for their
+  seal, and when the last was.
+- For each license and each instance that asked for its renewal under a seal that verified: when
+  it last asked, and the last license it was served, with the instant. The instance is the id the
+  request gives. A license keeps the 50 instances that asked last.
 - The pending reports, as received: fingerprint, instance, day, document, seal and time of
   reception.
-- For each customer recorded from the console: its external id, its name and a note.
+- For each customer recorded from the console: the external id drawn for it, its name and a note.
 - For each license issued from the console: what is stored of any license, the note typed with
   it, and the license it succeeds.
 - The journal of the operators: see "The acts of the operator".
@@ -241,7 +318,10 @@ refused by the Access gate is one line in fixed words, and so is a panic outside
 is answered 500; a request refused for its host, and the health check, are not logged.
 
 A read of the gauges that fails is one line with the text of our own error. A panic of the public
-server is one line in fixed words.
+server is one line in fixed words. So is a chain of successors that goes on past the 64 the
+renewal follows: the line names no license. So is, beside the line of its request, an ask for a
+renewal that could not be recorded or a refused seal that could not be counted: the line names
+no license and no instance, and does not carry the error.
 
 ## Metrics
 
@@ -253,13 +333,21 @@ succeed; a read that fails is counted and logged, and the next scrape tries agai
 - `husonym_controlplane_usage_reports_total{outcome}`: report requests received, by the fixed
   word of the log line. Every word has its series from the start, at 0; a request that ended in a
   panic is counted as `panicked`.
+- `husonym_controlplane_license_renewals_total{outcome}`: requests for a renewal received, by the
+  word of their log line: `served` (200), `nothing` (204), `refused` (400, 405, 413),
+  `interrupted` (the caller went away before it was answered) and `failed` (503, a panic
+  included). The five have their series from the start, at 0. A renewal is never counted among
+  the reports.
+- `husonym_controlplane_renewal_bookkeeping_failures_total`: requests for a renewal that were
+  answered though their ask could not be recorded, or the refusal of their seal counted. It is no
+  outcome: such a request is counted as `served` or `nothing` as well. It starts at 0.
 - `husonym_controlplane_silent_instances`: instances whose license is in force and whose telemetry
   is online, with a last report more than 3 days and no more than 30 days ago.
 - `husonym_controlplane_expiring_licenses`: licenses expiring within 30 days, or in grace, that no
   other license succeeds.
 - `husonym_controlplane_old_pending_reports`: pending reports received more than 24 hours ago.
-- `husonym_controlplane_seal_rejections_today`: reports refused for their seal on the current UTC
-  day (the page lists the last 7 days).
+- `husonym_controlplane_seal_rejections_today`: reports and requests for a renewal refused for
+  their seal on the current UTC day (the page lists the last 7 days).
 - `husonym_controlplane_shared_licenses`: licenses seen within 30 days on more than one instance.
 - `husonym_controlplane_attention_read_failures_total`: reads of the five gauges that failed; the
   gauges are left out of a scrape whose read failed.

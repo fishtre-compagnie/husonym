@@ -383,8 +383,10 @@ func Test_LicenseAfterOffer(t *testing.T) {
 
 	t.Run("a refusal is an error carrying its reason, and nothing is read again", func(t *testing.T) {
 		for outcome, code := range map[licensestore.Outcome]connect.Code{
-			licensestore.RefusedInvalid: connect.CodeInvalidArgument,
-			licensestore.RefusedOlder:   connect.CodeFailedPrecondition,
+			licensestore.RefusedInvalid:        connect.CodeInvalidArgument,
+			licensestore.RefusedOlder:          connect.CodeFailedPrecondition,
+			licensestore.RefusedOtherCustomer:  connect.CodeFailedPrecondition,
+			licensestore.RefusedNothingToRenew: connect.CodeFailedPrecondition,
 		} {
 			f := newDescriptionFixture()
 

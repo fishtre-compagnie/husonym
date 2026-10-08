@@ -80,6 +80,61 @@ func Test_ReportReceived_OnNilMetrics_CountsNothing(t *testing.T) {
 	require.NotPanics(t, func() { m.ReportReceived("stored") })
 }
 
+func Test_RenewalAsked_CountsPerOutcome_ApartFromTheReports(t *testing.T) {
+	m := cpmetrics.New("stored", "refused", "failed")
+	m.StartRenewals("served", "nothing", "refused", "interrupted", "failed")
+	m.RenewalAsked("served")
+	m.RenewalAsked("refused")
+	m.RenewalAsked("refused")
+	m.ReportReceived("failed")
+
+	_, body := scrape(t, m)
+
+	for series, value := range map[string]string{
+		`husonym_controlplane_license_renewals_total{outcome="served"}`:      "1",
+		`husonym_controlplane_license_renewals_total{outcome="nothing"}`:     "0",
+		`husonym_controlplane_license_renewals_total{outcome="refused"}`:     "2",
+		`husonym_controlplane_license_renewals_total{outcome="interrupted"}`: "0",
+		`husonym_controlplane_license_renewals_total{outcome="failed"}`:      "0",
+		`husonym_controlplane_usage_reports_total{outcome="refused"}`:        "0",
+		`husonym_controlplane_usage_reports_total{outcome="failed"}`:         "1",
+	} {
+		require.Contains(t, body, series+" "+value+"\n")
+	}
+	require.Equal(t, 5, strings.Count(body, "husonym_controlplane_license_renewals_total{"), "the five outcomes and no other")
+	require.NotContains(t, body, `husonym_controlplane_usage_reports_total{outcome="served"}`)
+	require.NotContains(t, body, `husonym_controlplane_usage_reports_total{outcome="nothing"}`)
+}
+
+func Test_RenewalAsked_OnNilMetrics_CountsNothing(t *testing.T) {
+	var m *cpmetrics.Metrics
+
+	require.NotPanics(t, func() { m.RenewalAsked("served") })
+}
+
+// What could not be written down of a renewal is counted apart: it is no outcome of a request.
+func Test_RenewalBookkeepingFailed_HasItsSeriesFromTheStart_AndIsNoOutcome(t *testing.T) {
+	m := cpmetrics.New()
+	m.StartRenewals("served", "nothing")
+
+	_, body := scrape(t, m)
+	require.Contains(t, body, "husonym_controlplane_renewal_bookkeeping_failures_total 0\n")
+
+	m.RenewalBookkeepingFailed()
+	m.RenewalBookkeepingFailed()
+
+	_, body = scrape(t, m)
+	require.Contains(t, body, "husonym_controlplane_renewal_bookkeeping_failures_total 2\n")
+	require.Contains(t, body, `husonym_controlplane_license_renewals_total{outcome="served"} 0`)
+	require.Equal(t, 2, strings.Count(body, "husonym_controlplane_license_renewals_total{"))
+}
+
+func Test_RenewalBookkeepingFailed_OnNilMetrics_CountsNothing(t *testing.T) {
+	var m *cpmetrics.Metrics
+
+	require.NotPanics(t, m.RenewalBookkeepingFailed)
+}
+
 func Test_WatchAttention_HelpOfThePendingGaugeFollowsTheThreshold(t *testing.T) {
 	m := cpmetrics.New()
 	m.WatchAttention(func(context.Context) (cpstore.AttentionCounts, error) {

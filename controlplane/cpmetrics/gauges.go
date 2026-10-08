@@ -32,7 +32,8 @@ var (
 	expiringDesc = prometheus.NewDesc(prefix+"expiring_licenses", "Licenses expiring soon that no other license succeeds.", nil, nil)
 	pendingDesc  = prometheus.NewDesc(prefix+"old_pending_reports",
 		fmt.Sprintf("Pending reports received more than %d hours ago.", int(cpstore.OldPendingAfter.Hours())), nil, nil)
-	rejectedDesc = prometheus.NewDesc(prefix+"seal_rejections_today", "Reports refused for their seal today (UTC).", nil, nil)
+	rejectedDesc = prometheus.NewDesc(prefix+"seal_rejections_today",
+		"Reports and renewal requests refused for their seal today (UTC).", nil, nil)
 	sharedDesc   = prometheus.NewDesc(prefix+"shared_licenses", "Licenses seen lately on more than one instance.", nil, nil)
 	failuresDesc = prometheus.NewDesc(prefix+"attention_read_failures_total", "Reads of the gauges that failed.", nil, nil)
 )

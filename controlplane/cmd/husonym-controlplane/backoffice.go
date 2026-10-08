@@ -151,6 +151,7 @@ func loadSigner(path string, keyring func() (license.Keyring, error)) (*issuing.
 
 // runBackoffice builds what the backoffice needs and serves it until ctx ends. It does not apply
 // the migrations: the public server owns them. signer is nil for a console that issues nothing.
+// A database that cannot be reached yet is waited for, as the public server waits for it.
 func runBackoffice(ctx context.Context, cfg *backofficeConfig, signer *issuing.Signer, logger *slog.Logger) error {
 	var gates *backofficeGates
 	if !cfg.insecure {
@@ -166,6 +167,9 @@ func runBackoffice(ctx context.Context, cfg *backofficeConfig, signer *issuing.S
 		gates = &backofficeGates{host: cfg.host, access: access}
 	}
 
+	if err := awaitDatabase(ctx, cfg.databaseURL, logger); err != nil {
+		return err
+	}
 	pool, err := pgxpool.New(ctx, cfg.databaseURL)
 	if err != nil {
 		return errors.New("unable to open the database")

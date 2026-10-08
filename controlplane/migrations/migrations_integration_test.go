@@ -85,14 +85,23 @@ func operatorJournal(t *testing.T, container *tcpostgres.PostgresTestContainer) 
 	return table, index
 }
 
-// undoOperatorJournal applies the down migration of the journal of the operator. The bookkeeping
-// is left to the caller.
+// undo applies the down migration of each of the migrations named, in the order given: the last
+// one applied first. The bookkeeping is left to the caller.
+func undo(t *testing.T, container *tcpostgres.PostgresTestContainer, migrations ...string) {
+	t.Helper()
+	for _, name := range migrations {
+		down, err := os.ReadFile("sql/" + name + ".down.sql")
+		require.NoError(t, err)
+		_, err = container.DB.Exec(t.Context(), string(down))
+		require.NoError(t, err)
+	}
+}
+
+// undoOperatorJournal applies the down migration of the journal of the operator, after the ones of
+// the migrations that came after it. The bookkeeping is left to the caller.
 func undoOperatorJournal(t *testing.T, container *tcpostgres.PostgresTestContainer) {
 	t.Helper()
-	down, err := os.ReadFile("sql/000003_adds-operator-actions.down.sql")
-	require.NoError(t, err)
-	_, err = container.DB.Exec(t.Context(), string(down))
-	require.NoError(t, err)
+	undo(t, container, renewalAsksMigration, "000003_adds-operator-actions")
 }
 
 // The journal of the operator comes with the third migration, under the role the service runs as
@@ -153,6 +162,85 @@ func Test_Up_AddsTheOperatorJournal_WhenTheRoleIsNamedLikeTheSchema(t *testing.T
 	require.True(t, index)
 }
 
+const renewalAsksMigration = "000004_adds-renewal-asks"
+
+// renewalAsks tells whether the table of the asks for a renewal is there.
+func renewalAsks(t *testing.T, container *tcpostgres.PostgresTestContainer) bool {
+	t.Helper()
+	var table bool
+	require.NoError(t, container.DB.QueryRow(t.Context(),
+		`SELECT to_regclass('controlplane.renewal_asks') IS NOT NULL`).Scan(&table))
+	return table
+}
+
+// The asks for a renewal come with the fourth migration, under the role the service runs as and
+// over two starts in a row; its down migration takes away what it brought and nothing else, and
+// the next start brings it back.
+func Test_Up_AddsTheRenewalAsks_WhenTheRoleIsNamedLikeTheSchema(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, err := tcpostgres.NewPostgresTestContainer(ctx,
+		tcpostgres.WithUsername("controlplane"), tcpostgres.WithDatabase("controlplane"))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.TearDown(ctx) })
+	logger := testutil.GetTestLogger(t)
+
+	require.NoError(t, migrations.Up(ctx, container.URL, logger))
+	require.NoError(t, migrations.Up(ctx, container.URL, logger))
+
+	require.True(t, renewalAsks(t, container))
+	var version int
+	var dirty bool
+	require.NoError(t, container.DB.QueryRow(ctx,
+		`SELECT version, dirty FROM public.schema_migrations`).Scan(&version, &dirty))
+	require.GreaterOrEqual(t, version, 4, "the asks come with the fourth migration; later ones may follow")
+	require.False(t, dirty)
+
+	// One row per license and instance, of a license that is recorded, served a license that is.
+	_, err = container.DB.Exec(ctx, `
+		INSERT INTO controlplane.customers (id, external_id, name)
+		VALUES ('00000000-0000-0000-0000-000000000001', 'cust-1', 'Acme');
+		INSERT INTO controlplane.licenses (
+		    id, customer_id, encoded, key_fingerprint, kid, plan, telemetry, issued_at, expires_at,
+		    signing_key_fingerprint, origin, succeeds_license_id)
+		SELECT id, '00000000-0000-0000-0000-000000000001', id, id, 'v1', '', '', now(), now(), '', 'console', succeeds
+		FROM (VALUES ('lic-1', NULL), ('lic-2', 'lic-1')) AS l (id, succeeds);
+		INSERT INTO controlplane.renewal_asks (license_id, instance_id, last_asked_at)
+		VALUES ('lic-1', 'inst-1', now());
+		INSERT INTO controlplane.renewal_asks (
+		    license_id, instance_id, last_asked_at, last_served_license_id, last_served_at)
+		VALUES ('lic-1', 'inst-2', now(), 'lic-2', now());`)
+	require.NoError(t, err)
+	for refused, statement := range map[string]string{
+		"renewal_asks_pkey": `INSERT INTO controlplane.renewal_asks (license_id, instance_id, last_asked_at)
+			VALUES ('lic-1', 'inst-1', now())`,
+		"renewal_asks_license_id_fkey": `INSERT INTO controlplane.renewal_asks (license_id, instance_id, last_asked_at)
+			VALUES ('lic-9', 'inst-1', now())`,
+		"renewal_asks_last_served_license_id_fkey": `UPDATE controlplane.renewal_asks
+			SET last_served_license_id = 'lic-9' WHERE instance_id = 'inst-1'`,
+	} {
+		_, err = container.DB.Exec(ctx, statement)
+		require.ErrorContains(t, err, refused)
+	}
+
+	undo(t, container, renewalAsksMigration)
+	_, err = container.DB.Exec(ctx, `UPDATE public.schema_migrations SET version = 3`)
+	require.NoError(t, err)
+
+	require.False(t, renewalAsks(t, container))
+	table, index := operatorJournal(t, container)
+	require.True(t, table, "the down migration leaves what the third one brought")
+	require.True(t, index)
+	var licenses int
+	require.NoError(t, container.DB.QueryRow(ctx, `SELECT count(*) FROM controlplane.licenses`).Scan(&licenses))
+	require.Equal(t, 2, licenses, "the down migration leaves the licenses")
+
+	require.NoError(t, migrations.Up(ctx, container.URL, logger))
+	require.True(t, renewalAsks(t, container))
+}
+
 func Test_Up_CreatesTheTables_AndIsRepeatable(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
@@ -168,7 +256,7 @@ func Test_Up_CreatesTheTables_AndIsRepeatable(t *testing.T) {
 
 	for _, table := range []string{
 		"customers", "licenses", "instances", "usage_reports", "pending_reports", "seal_rejections",
-		"operator_actions",
+		"operator_actions", "renewal_asks",
 	} {
 		var exists bool
 		require.NoError(t, container.DB.QueryRow(ctx,

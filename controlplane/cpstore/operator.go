@@ -227,8 +227,8 @@ func (s *Store) RecordIssuedLicense(
 }
 
 // ShowLicenseKey gives the encoded key of a license and journals that it was shown. It is the
-// only read that returns a key besides LicenseByFingerprint. ErrNotFound when no license has the
-// id, and nothing is journaled then.
+// only read that returns a key besides LicenseByFingerprint and LatestSuccessor. ErrNotFound when
+// no license has the id, and nothing is journaled then.
 func (s *Store) ShowLicenseKey(
 	ctx context.Context, operator, licenseID string, now time.Time,
 ) (encoded string, err error) {

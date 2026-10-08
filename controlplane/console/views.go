@@ -203,6 +203,18 @@ type licenseView struct {
 	Instances     []instanceRow
 	Rejections    []rejectionRow
 	RejectionDays int
+	RenewalAsks   []renewalAskRow
+}
+
+// renewalAskRow is what an instance last asked of the renewal of a license.
+type renewalAskRow struct {
+	// Instance is the id the request gave, with no link: an instance that asks may never have
+	// reported, and then has no page.
+	Instance link
+	LastAsk  string
+	// Served is the license last served to the instance, at ServedAt; nil when none ever was.
+	Served   *link
+	ServedAt string
 }
 
 // fact is a named value.
@@ -536,7 +548,26 @@ func newLicenseView(l *cpstore.LicenseDetail, canIssue bool) *licenseView {
 		view.Successors = append(view.Successors, licenseLink(id))
 	}
 	view.Rejections, _ = newRejectionRows(l.SealRejections)
+	view.RenewalAsks = newRenewalAskRows(l.RenewalAsks)
 	return view
+}
+
+func newRenewalAskRows(asks []cpstore.RenewalAsk) []renewalAskRow {
+	rows := make([]renewalAskRow, 0, len(asks))
+	for i := range asks {
+		ask := &asks[i]
+		row := renewalAskRow{
+			Instance: link{Text: ask.InstanceID},
+			LastAsk:  instant(ask.LastAskedAt),
+			ServedAt: instant(ask.ServedAt),
+		}
+		if ask.ServedLicenseID != "" {
+			served := licenseLink(ask.ServedLicenseID)
+			row.Served = &served
+		}
+		rows = append(rows, row)
+	}
+	return rows
 }
 
 // limitFacts names each limit as the key does. A limit the key does not set is uncapped.

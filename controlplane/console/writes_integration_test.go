@@ -22,6 +22,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/issuing"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,56 @@ var (
 	nameAttr    = regexp.MustCompile(`\bname="([^"]*)"`)
 	valueAttr   = regexp.MustCompile(`\bvalue="([^"]*)"`)
 	shownKey    = regexp.MustCompile(`(?s)<textarea id="license-key"[^>]*>(.*?)</textarea>`)
+	// externalIDFact is the identifier of a customer as its page shows it.
+	externalIDFact = regexp.MustCompile(`<dt>External id</dt><dd class="id">([^<]+)</dd>`)
 )
+
+// shownExternalID reads the identifier the page of a customer shows, and checks it is one the
+// console drew: a UUID.
+func shownExternalID(t *testing.T, body string) string {
+	t.Helper()
+	shown := externalIDFact.FindStringSubmatch(body)
+	require.Len(t, shown, 2, "the page of the customer shows its identifier")
+	drawn, err := uuid.Parse(shown[1])
+	require.NoError(t, err, "the identifier is a UUID")
+	require.Equal(t, uuid.Version(4), drawn.Version())
+	return shown[1]
+}
+
+// Over the real store, which gives an external id to one customer at most: two customers of the
+// same name are both recorded, each under the identifier the console drew for it, and both are
+// journaled with it.
+func Test_CreateCustomer_OverTheRealStore_TwoCustomersOfTheSameNameAreTwoCustomers(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	store := cpstore.New(cptest.NewDatabase(t))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	pages, err := console.New(&console.Config{Reader: store, Writer: store, Now: time.Now, Logger: logger})
+	require.NoError(t, err)
+	w := &walk{t: t, handler: access(t).Gate(t, time.Now, logger).Wrap(pages)}
+
+	var paths, ids []string
+	for range 2 {
+		created := w.post("/customers", url.Values{"external_id": {"cust-typed"}, "name": {"Acme"}}, http.StatusSeeOther, false)
+		path := created.header.Get("Location")
+		paths = append(paths, path)
+		ids = append(ids, shownExternalID(t, w.get(path).body))
+	}
+
+	require.NotEqual(t, paths[0], paths[1])
+	require.NotEqual(t, ids[0], ids[1])
+	customers, err := store.Customers(t.Context(), time.Now())
+	require.NoError(t, err)
+	require.Len(t, customers, 2)
+	recorded := []string{customers[0].ExternalID, customers[1].ExternalID}
+	require.ElementsMatch(t, ids, recorded)
+	require.NotContains(t, recorded, "cust-typed")
+	journal, err := store.Journal(t.Context(), cpstore.JournalCap)
+	require.NoError(t, err)
+	require.Len(t, journal, 2)
+	require.ElementsMatch(t, ids, []string{journal[0].Detail["external_id"], journal[1].Detail["external_id"]})
+}
 
 // formOf reads, from a page, what a browser would send for its form to action, untouched: the
 // inputs that have a name, the checked boxes, the chosen options and the texts.
@@ -184,19 +234,23 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	w := &walk{t: t, handler: access(t).Gate(t, time.Now, logger).Wrap(pages), ring: ring}
 
 	// A customer.
+	// The identifier typed is not the one recorded: the console draws it, and shows it.
 	created := w.post("/customers", url.Values{"external_id": {"cust-walk"}, "name": {"Acme & Sons"}, "note": {"met in spring"}},
 		http.StatusSeeOther, false)
 	customerPath := created.header.Get("Location")
 	customer := w.get(customerPath)
 	require.Contains(t, customer.body, "<h1>Acme &amp; Sons</h1>")
 	require.Contains(t, customer.body, "No license.")
+	require.NotContains(t, customer.body, "cust-walk")
+	externalID := shownExternalID(t, customer.body)
+	require.Contains(t, w.get(customerPath+"/edit").body, `<input id="external_id" class="id" value="`+externalID+`" readonly>`)
 
 	// A license of 30 days, from the link of the page of the customer.
 	require.Contains(t, customer.body, ">New 30-day license</a>")
 	shortForm := formOf(t, w.get(html.UnescapeString(hrefTo(t, customer.body, `/customers/[^"/]+/licenses/new\?days=30`))).body, "/licenses/confirm")
 	shortForm.Set(issuing.FieldNote, "thirty days")
 	shortConfirmation, shortID, shortKey, short := w.issue(shortForm)
-	require.Equal(t, "cust-walk", short.CustomerId)
+	require.Equal(t, externalID, short.CustomerId, "the key carries the identifier the console drew")
 	require.Equal(t, "Acme & Sons", short.IssuedTo)
 	require.Nil(t, short.Features, "the preset lists no feature")
 	require.True(t, short.AllowsEveryFeature())
@@ -363,7 +417,7 @@ func Test_Console_OneConfirmationSentManyTimesAtOnce_IssuesOneLicenseAndShowsIts
 	})
 	require.NoError(t, err)
 	w := &walk{t: t, handler: access(t).Gate(t, time.Now, logger).Wrap(pages), ring: ring}
-	created := w.post("/customers", url.Values{"external_id": {"cust-many"}, "name": {"Acme"}}, http.StatusSeeOther, false)
+	created := w.post("/customers", url.Values{"name": {"Acme"}}, http.StatusSeeOther, false)
 	customerPath := created.header.Get("Location")
 	form := formOf(t, w.get(customerPath+"/licenses/new").body, "/licenses/confirm")
 	confirmation := formOf(t, w.post("/licenses/confirm", form, http.StatusOK, false).body, "/licenses")
@@ -485,7 +539,7 @@ func Test_Console_ACrossOriginPost_LeavesTheDatabaseAsItWas(t *testing.T) {
 		issuing.FieldExpiresAt: {time.Now().UTC().AddDate(0, 1, 0).Format(time.DateOnly)},
 	}
 	posts := map[string]url.Values{
-		"/customers":                             {"external_id": {"cust-2"}, "name": {"Other"}},
+		"/customers":                             {"name": {"Other"}},
 		"/customers/" + customers[0].ID.String(): {"name": {"Renamed"}},
 		"/licenses/confirm":                      draft,
 		"/licenses":                              draft,

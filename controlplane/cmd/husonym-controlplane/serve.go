@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/intake"
 	"github.com/fishtre-compagnie/husonym/controlplane/migrations"
 	"github.com/fishtre-compagnie/husonym/controlplane/publicapi"
+	"github.com/fishtre-compagnie/husonym/controlplane/renewal"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
@@ -45,7 +46,7 @@ func newServeCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	serve := &cobra.Command{Use: "serve", Short: "Run a server of the control plane"}
 	serve.AddCommand(&cobra.Command{
 		Use:   "public",
-		Short: "Receive the usage reports of the instances",
+		Short: "Receive the usage reports of the instances and answer their license renewals",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			databaseURL := os.Getenv(databaseURLEnv)
@@ -65,6 +66,11 @@ func newServeCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, syscall.SIGINT)
 			defer stop()
 
+			// A database that cannot be reached yet is waited for; one that is reached and whose
+			// migrations fail is not tried again.
+			if err := awaitDatabase(ctx, databaseURL, logger); err != nil {
+				return err
+			}
 			if err := migrations.Up(ctx, databaseURL, logger); err != nil {
 				return err
 			}
@@ -116,9 +122,10 @@ func metricsHandler(metrics http.Handler) http.Handler {
 	})
 }
 
-// servePublic serves the public API on listener and the metrics on metricsListener, and runs the
-// maintenance of the pending reports, until ctx ends; it then stops both servers gracefully,
-// within shutdownTimeout. Should either server stop by itself, the other is stopped too.
+// servePublic serves the public API, the reports and the renewals, on listener and the metrics on
+// metricsListener, and runs the maintenance of the pending reports, until ctx ends; it then stops
+// both servers gracefully, within shutdownTimeout. Should either server stop by itself, the other
+// is stopped too.
 func servePublic(
 	ctx context.Context, pool *pgxpool.Pool, listener, metricsListener net.Listener, logger *slog.Logger,
 	tick time.Duration,
@@ -127,10 +134,13 @@ func servePublic(
 	now := time.Now
 	receiver := intake.New(store, now)
 	metrics := cpmetrics.New(publicapi.Outcomes()...)
+	metrics.StartRenewals(publicapi.RenewalOutcomes()...)
 	metrics.WatchAttention(func(ctx context.Context) (cpstore.AttentionCounts, error) {
 		return store.AttentionCounts(ctx, now())
 	}, now, logger)
-	server := newServer(publicapi.NewHandler(receiver, metrics, logger))
+	// The renewal reads the licenses as they were issued and stored: this server signs nothing.
+	renewer := renewal.New(store, now, logger, metrics)
+	server := newServer(publicapi.NewHandler(receiver, renewer, metrics, logger))
 	metricsServer := newServer(metricsHandler(metrics.Handler()))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)

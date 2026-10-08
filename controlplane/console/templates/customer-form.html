@@ -2,13 +2,12 @@
 <h1>{{.Heading}}</h1>
 {{template "problems" .Problems}}
 <form class="form" method="post" action="{{.Action}}">
-<div class="field">
+{{if not .New}}<div class="field">
 <label for="external_id">External id</label>
-{{if .New}}<input id="external_id" name="external_id" value="{{.ExternalID}}" required maxlength="{{.MaxExternalIDLength}}" autocomplete="off" spellcheck="false">
-<p class="hint">The identifier the keys of the customer carry. It never changes afterwards.</p>{{else}}<input id="external_id" class="id" value="{{.ExternalID}}" readonly>
-<p class="hint">The keys issued carry it: it does not change.</p>{{end}}
+<input id="external_id" class="id" value="{{.ExternalID}}" readonly>
+<p class="hint">The keys issued carry it: it does not change.</p>
 </div>
-<div class="field">
+{{end}}<div class="field">
 <label for="name">Name</label>
 <input id="name" name="name" value="{{.Name}}" required maxlength="{{.MaxNameLength}}" autocomplete="off">
 <p class="hint">What a key says it was issued to.</p>
@@ -17,5 +16,6 @@
 <label for="note">Note</label>
 <textarea id="note" name="note" rows="4" maxlength="{{.MaxNoteLength}}">{{.Note}}</textarea>
 </div>
-<div class="actions"><button type="submit">{{if .New}}Record the customer{{else}}Save{{end}}</button></div>
+{{if .New}}<p class="hint">The identifier the keys of the customer carry is drawn when the customer is recorded. It never changes afterwards.</p>
+{{end}}<div class="actions"><button type="submit">{{if .New}}Record the customer{{else}}Save{{end}}</button></div>
 </form>{{end}}{{end}}

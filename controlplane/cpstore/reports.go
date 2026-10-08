@@ -149,7 +149,8 @@ func storeReport(
 	return ReportRepeat, nil
 }
 
-// CountSealRejection counts one report refused for its seal under a license, on the UTC day of at.
+// CountSealRejection counts one report, or one request for a renewal, refused for its seal under a
+// license, on the UTC day of at.
 func (s *Store) CountSealRejection(ctx context.Context, licenseID string, at time.Time) error {
 	if err := countSealRejection(ctx, cpdb.New(s.pool), licenseID, at); err != nil {
 		return fmt.Errorf("unable to count a refused seal: %w", err)

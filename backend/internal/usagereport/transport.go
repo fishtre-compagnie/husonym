@@ -39,11 +39,7 @@ type Transport interface {
 
 // HTTPTransport posts a report to one address, over HTTP.
 type HTTPTransport struct {
-	target *url.URL
-	// host is how the address is named in an error: without its path nor its credentials.
-	host      string
-	userAgent string
-	client    *http.Client
+	sealed *sealedClient
 }
 
 // NewHTTPTransport returns the transport to the given address, which is one a report can be
@@ -82,19 +78,7 @@ func reportPolicy(target *url.URL) safehttp.Policy {
 }
 
 func newHTTPTransport(target *url.URL, version string, timeout time.Duration) *HTTPTransport {
-	return &HTTPTransport{
-		target:    target,
-		host:      target.Host,
-		userAgent: "husonym/" + telemetry.HusonymVersion(version),
-		client: &http.Client{
-			// A report leaves once a day: each request has its own connection.
-			Transport: reportPolicy(target).Transport(timeout, false),
-			Timeout:   timeout,
-			// A redirect is the answer, not a new destination: the document and its seal are
-			// for the address the report is sent to.
-			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-		},
-	}
+	return &HTTPTransport{sealed: newSealedClient(target, version, timeout)}
 }
 
 // Post sends the document of the report as it is stored, byte for byte, with its seal and the
@@ -103,32 +87,76 @@ func newHTTPTransport(target *url.URL, version string, timeout time.Duration) *H
 // An error is made of the host, of a status, and of words of this file: nothing the address,
 // a proxy or the destination wrote is quoted in it, whatever went wrong.
 func (t *HTTPTransport) Post(ctx context.Context, report *usagestore.StoredReport) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.target.String(), bytes.NewReader(report.Document))
+	resp, err := t.sealed.post(ctx, report.Document, report.Seal, report.KeyFingerprint)
 	if err != nil {
-		return fmt.Errorf("unable to build the request to %s", t.host)
-	}
-	// Asked here first: the error of the client would quote the proxy setting, which may hold
-	// credentials.
-	if _, err := http.ProxyFromEnvironment(req); err != nil {
-		return errors.New("the proxy setting of the environment is not valid")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", t.userAgent)
-	req.Header.Set("Husonym-Seal", report.Seal)
-	req.Header.Set("Husonym-Key-Fingerprint", report.KeyFingerprint)
-
-	resp, err := t.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("unable to send to %s: %s", t.host, failureOf(err))
+		return err
 	}
 	defer resp.Body.Close()
 	// Read and dropped: an answer has nothing the instance acts on.
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxAnswerBytes))
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("%s answered with the status %d", t.host, resp.StatusCode)
+		return t.sealed.answered(resp.StatusCode)
 	}
 	return nil
+}
+
+// sealedClient posts a sealed document to one address, over HTTP: the report of a day, and the
+// request for the license that succeeds the one of the instance. It never follows a redirect.
+type sealedClient struct {
+	target *url.URL
+	// host is how the address is named in an error: without its path nor its credentials.
+	host      string
+	userAgent string
+	client    *http.Client
+}
+
+func newSealedClient(target *url.URL, version string, timeout time.Duration) *sealedClient {
+	return &sealedClient{
+		target:    target,
+		host:      target.Host,
+		userAgent: "husonym/" + telemetry.HusonymVersion(version),
+		client: &http.Client{
+			// A document leaves a few times a day at most: each request has its own connection.
+			Transport: reportPolicy(target).Transport(timeout, false),
+			Timeout:   timeout,
+			// A redirect is the answer, not a new destination: the document and its seal are
+			// for the address they are sent to.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		},
+	}
+}
+
+// post sends the document byte for byte, with its seal and the fingerprint of its key in
+// headers, and gives the answer, whose body the caller reads within its bound and closes.
+//
+// An error is made of the host and of words of this file: nothing the address, a proxy or the
+// destination wrote is quoted in it, whatever went wrong.
+func (c *sealedClient) post(ctx context.Context, document []byte, seal, fingerprint string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.target.String(), bytes.NewReader(document))
+	if err != nil {
+		return nil, fmt.Errorf("unable to build the request to %s", c.host)
+	}
+	// Asked here first: the error of the client would quote the proxy setting, which may hold
+	// credentials.
+	if _, err := http.ProxyFromEnvironment(req); err != nil {
+		return nil, errors.New("the proxy setting of the environment is not valid")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Husonym-Seal", seal)
+	req.Header.Set("Husonym-Key-Fingerprint", fingerprint)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("unable to send to %s: %s", c.host, failureOf(err))
+	}
+	return resp, nil
+}
+
+// answered is the error of an answer whose status is not one that was hoped for.
+func (c *sealedClient) answered(status int) error {
+	return fmt.Errorf("%s answered with the status %d", c.host, status)
 }
 
 // What a request that got no answer is told as. The error of the client is never copied: it

@@ -28,6 +28,13 @@ type Querier interface {
 	// What an edit may change, read under the lock of the edit.
 	GetCustomerNameAndNoteForUpdate(ctx context.Context, id pgtype.UUID) (GetCustomerNameAndNoteForUpdateRow, error)
 	GetInstance(ctx context.Context, arg GetInstanceParams) (GetInstanceRow, error)
+	// The last license of the chain of successors of a license, no further than max_depth successors
+	// away. The index that gives a license one successor at most makes the chain a line, and nothing
+	// keeps that line from closing on itself: two licenses may each name the other. max_depth bounds
+	// how far a long chain is followed, and it is also what stops a loop, which the walk would
+	// otherwise follow without end. cut_short tells the license returned has a successor of its own,
+	// which only happens at the bound.
+	GetLatestSuccessor(ctx context.Context, arg GetLatestSuccessorParams) (GetLatestSuccessorRow, error)
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
 	GetLicenseCustomer(ctx context.Context, id string) (pgtype.UUID, error)
 	// Every column of a license but the encoded key.
@@ -65,6 +72,8 @@ type Querier interface {
 	// The pending reports of each fingerprint, and how many of them were received before old_before.
 	ListPendingGroups(ctx context.Context, oldBefore pgtype.Timestamptz) ([]ListPendingGroupsRow, error)
 	ListPendingReports(ctx context.Context, keyFingerprint string) ([]ControlplanePendingReport, error)
+	// The instances that asked for the renewal of a license, the one that asked last first.
+	ListRenewalAsksOfLicense(ctx context.Context, licenseID string) ([]ListRenewalAsksOfLicenseRow, error)
 	// The newest days first, no further than the cap of the list.
 	ListReportsOfInstance(ctx context.Context, arg ListReportsOfInstanceParams) ([]ListReportsOfInstanceRow, error)
 	// The refused seals counted since a day, of one license or of all of them.
@@ -87,6 +96,12 @@ type Querier interface {
 	// a repeat or a conflict change nothing of it; the last news never moves backwards. A report
 	// without the diagnostics does not erase the kind of installation already known.
 	UpsertInstance(ctx context.Context, arg UpsertInstanceParams) error
+	// The last ask of an instance for the renewal of a license, and what was served to it: an ask
+	// that is served nothing leaves what was served before. A license keeps max_instances rows at
+	// most, those of the instances that asked last: an instance that is not yet there takes the place
+	// of the one that asked the longest ago, and of any row left over the cap. Nothing is locked: asks
+	// made at once may leave a few rows over the cap, which the next new instance removes.
+	UpsertRenewalAsk(ctx context.Context, arg UpsertRenewalAskParams) error
 }
 
 var _ Querier = (*Queries)(nil)

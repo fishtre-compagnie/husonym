@@ -46,6 +46,12 @@ func mintKey(t testing.TB, key license.Key) (string, license.Keyring) { //nolint
 	priv := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
 	pub, ok := priv.Public().(ed25519.PublicKey)
 	require.True(t, ok)
+	return mintKeyWith(t, priv, key), license.Keyring{testKid: pub}
+}
+
+// mintKeyWith is mintKey with the private key of the pair that signs.
+func mintKeyWith(t testing.TB, priv ed25519.PrivateKey, key license.Key) string { //nolint:gocritic // hugeParam: a value a test writes in place
+	t.Helper()
 	content, err := json.Marshal(key)
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]string{
@@ -54,7 +60,7 @@ func mintKey(t testing.TB, key license.Key) (string, license.Keyring) { //nolint
 		"kid":       testKid,
 	})
 	require.NoError(t, err)
-	return base64.StdEncoding.EncodeToString(raw), license.Keyring{testKid: pub}
+	return base64.StdEncoding.EncodeToString(raw)
 }
 
 // keyExpiring gives a key of the license of the tests that expires at the given time. What a

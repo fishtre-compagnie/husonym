@@ -25,7 +25,7 @@ const (
 	customerChanged = "The form does not say of the customer what is recorded: it may have been changed since. " +
 		"Nothing was done; open the form again."
 	// untrimmedExternalID is said of a customer the console issues no license to. One recorded from
-	// here has its external id trimmed; one that came otherwise may not.
+	// here has an external id the console drew, which has no space; one that came otherwise may.
 	untrimmedExternalID = "The external id recorded for this customer begins or ends with a space. " +
 		"A key carries the external id as it is recorded, and the console issues none that would carry such an id: " +
 		"nothing is trimmed when a license is issued."
@@ -113,23 +113,27 @@ func customerFormPage(customer *cpstore.CustomerDetail, form url.Values, problem
 	return &content{file: pageCustomerForm, title: view.Heading, nav: navCustomers, body: view}
 }
 
+// createCustomer records the customer of the form under an external id it draws: a UUID, which
+// the keys of the customer then carry and which never changes. Nobody types it: an external id
+// the form sends is not read. The store still takes the one it is given, here and from the
+// import of the registry alike.
 func (c *console) createCustomer(answer *reply, r *http.Request, form url.Values) {
-	problems := customerProblems(form, true)
+	problems := customerProblems(form)
 	if len(problems) > 0 {
 		c.render(answer, http.StatusBadRequest, customerFormPage(nil, form, problems))
 		return
 	}
 	id, err := c.writer.CreateCustomer(r.Context(), answer.operator, cpstore.NewCustomer{
-		ExternalID: typed(form, fieldExternalID),
+		ExternalID: uuid.NewString(),
 		Name:       typed(form, fieldName),
 		Note:       typed(form, fieldNote),
 	}, c.now())
 	switch {
-	case errors.Is(err, cpstore.ErrCustomerExists):
-		c.render(answer, http.StatusConflict, customerFormPage(nil, form, []string{"A customer already has this external id."}))
 	case errors.Is(err, cpstore.ErrCustomerIncomplete):
-		c.render(answer, http.StatusBadRequest, customerFormPage(nil, form, []string{"A customer needs an external id and a name."}))
+		c.render(answer, http.StatusBadRequest, customerFormPage(nil, form, []string{"A customer needs a name."}))
 	case err != nil:
+		// An external id that is taken is among these: it was drawn here, and typing the form
+		// again is not what mends it.
 		c.broke(answer, "unable to record a customer", err)
 	default:
 		c.redirect(answer, r, customerLink(id, "").Href)
@@ -159,7 +163,7 @@ func (c *console) updateCustomer(answer *reply, r *http.Request, form url.Values
 		c.notFound(answer)
 		return
 	}
-	problems := customerProblems(form, false)
+	problems := customerProblems(form)
 	if len(problems) == 0 {
 		err = c.writer.UpdateCustomer(r.Context(), answer.operator, id, typed(form, fieldName), typed(form, fieldNote), c.now())
 		switch {

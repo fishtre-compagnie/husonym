@@ -1,5 +1,6 @@
 // Package publicapi is the public HTTP face of the control plane: it receives the sealed usage
-// reports of the product instances, and keeps the pending ones tidy.
+// reports of the product instances, keeps the pending ones tidy, and answers an instance that asks
+// for the license that succeeds its own.
 package publicapi
 
 import (
@@ -11,10 +12,13 @@ import (
 	"net/http"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/intake"
+	"github.com/fishtre-compagnie/husonym/controlplane/renewal"
+	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 )
 
 const (
 	reportPath        = "/v1/usage-reports"
+	renewalPath       = telemetry.RenewalPath
 	healthPath        = "/healthz"
 	sealHeader        = "Husonym-Seal"
 	fingerprintHeader = "Husonym-Key-Fingerprint"
@@ -27,9 +31,17 @@ type Receiver interface {
 	Receive(ctx context.Context, document []byte, seal, fingerprint string) (intake.Outcome, error)
 }
 
-// Observer counts the report requests by outcome. It is given the fixed words of the log line.
+// Renewer checks one request for a renewal and gives the license to answer with. It is what the
+// handler needs of the renewal.
+type Renewer interface {
+	Answer(ctx context.Context, body []byte, seal, fingerprint string) (renewal.Outcome, *telemetry.RenewalAnswer, error)
+}
+
+// Observer counts the report requests and the requests for a renewal by outcome, each apart from
+// the other. It is given the fixed words of the log line.
 type Observer interface {
 	ReportReceived(outcome string)
+	RenewalAsked(outcome string)
 }
 
 // The fixed words that say how a request ended. They are the ones logged, and the only ones
@@ -56,6 +68,8 @@ const (
 	wordTooManyInstances word = "too_many_instances"
 	wordFull             word = "full"
 	wordUnknown          word = "unknown"
+	wordServed           word = "served"
+	wordNothing          word = "nothing"
 )
 
 // reportWords are the words a report request can end by. wordNotFound is not one of them: it is
@@ -76,17 +90,36 @@ func Outcomes() []string {
 	return outcomes
 }
 
-// NewHandler returns the handler of the public server: POST /v1/usage-reports and GET /healthz.
-// Replies have no body. At most one line is logged per request, made of the path, the status
-// and a fixed word for the outcome, never of what the caller sent; a failure of ours adds the
-// text of our own error. Each report request is also counted by that word in observer, unless it
-// is nil; one that ends in a panic is answered 503 and counted as "panicked".
-func NewHandler(receiver Receiver, observer Observer, logger *slog.Logger) http.Handler {
-	return &handler{receiver: receiver, observer: observer, logger: logger}
+// renewalWords are the words a request for a renewal can end by: fewer than a report's, as what
+// the caller got wrong is one word whatever it is, and what kept us from answering another. A
+// caller that went away has its own, as for a report: it is no failure of ours.
+var renewalWords = []word{wordServed, wordNothing, wordRefused, wordInterrupted, wordFailed}
+
+// RenewalOutcomes lists the fixed words a request for a renewal is counted by, as Outcomes does
+// for a report.
+func RenewalOutcomes() []string {
+	outcomes := make([]string, 0, len(renewalWords))
+	for _, name := range renewalWords {
+		outcomes = append(outcomes, string(name))
+	}
+	return outcomes
+}
+
+// NewHandler returns the handler of the public server: POST /v1/usage-reports,
+// POST /v1/license-renewals and GET /healthz. Replies have no body, but the one that carries a
+// license. The handler logs at most one line per request, made of the path, the status and a fixed
+// word for the outcome, never of what the caller sent nor of a license answered; a failure of ours
+// adds the text of our own error. Each report request and each request for a renewal is also
+// counted by that word in observer, unless it is nil; one that ends in a panic is answered 503,
+// and counted as "panicked" for a report and as "failed" for a renewal. A request whose caller
+// went away is counted as "interrupted" for both.
+func NewHandler(receiver Receiver, renewer Renewer, observer Observer, logger *slog.Logger) http.Handler {
+	return &handler{receiver: receiver, renewer: renewer, observer: observer, logger: logger}
 }
 
 type handler struct {
 	receiver Receiver
+	renewer  Renewer
 	observer Observer
 	logger   *slog.Logger
 }
@@ -99,7 +132,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// request. Left to net/http, the line would name the address of the caller as well.
 			h.logger.Error("the handler of the public server panicked", "status", http.StatusServiceUnavailable)
 			w.WriteHeader(http.StatusServiceUnavailable)
-			// Only a report request can panic: the other paths call nothing. count leaves them out.
+			// Only a report and a renewal can panic: the other paths call nothing, and count
+			// leaves them out.
+			if r.URL.Path == renewalPath {
+				h.count(renewalPath, wordFailed)
+				return
+			}
 			h.count(r.URL.Path, wordPanicked)
 		}
 	}()
@@ -112,49 +150,62 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case reportPath:
 		h.report(w, r)
+	case renewalPath:
+		h.renewal(w, r)
 	default:
 		h.reply(w, "-", http.StatusNotFound, wordNotFound)
 	}
 }
 
-func (h *handler) report(w http.ResponseWriter, r *http.Request) {
+// sealedRequest is what a request that carries a sealed JSON body brought.
+type sealedRequest struct {
+	body        []byte
+	seal        string
+	fingerprint string
+}
+
+// readSealed checks a request that carries a sealed JSON body and reads that body, limit bytes of
+// it at most. What is wrong with the request is told by a status other than zero and by its word;
+// what can be refused without the body is refused before it is read.
+func readSealed(w http.ResponseWriter, r *http.Request, limit int64) (sealed *sealedRequest, status int, name word) {
 	if r.Method != http.MethodPost {
-		h.reply(w, reportPath, http.StatusMethodNotAllowed, wordMethodNotAllowed)
-		return
+		return nil, http.StatusMethodNotAllowed, wordMethodNotAllowed
 	}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
-		h.reply(w, reportPath, http.StatusBadRequest, wordBadContentType)
-		return
+		return nil, http.StatusBadRequest, wordBadContentType
 	}
 	seal, fingerprint := r.Header.Get(sealHeader), r.Header.Get(fingerprintHeader)
 	if seal == "" || fingerprint == "" {
-		h.reply(w, reportPath, http.StatusBadRequest, wordMissingHeader)
-		return
+		return nil, http.StatusBadRequest, wordMissingHeader
 	}
-	// What can be refused without the body is refused before it is read.
 	if !intake.HexShaped(seal) || !intake.HexShaped(fingerprint) {
-		h.reply(w, reportPath, http.StatusBadRequest, wordMalformedHeader)
-		return
+		return nil, http.StatusBadRequest, wordMalformedHeader
 	}
-	if r.ContentLength > MaxBodyBytes {
-		h.reply(w, reportPath, http.StatusRequestEntityTooLarge, wordTooLarge)
-		return
+	if r.ContentLength > limit {
+		return nil, http.StatusRequestEntityTooLarge, wordTooLarge
 	}
 
 	// A body that does not tell its length is cut at the cap.
-	document, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxBodyBytes))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			h.reply(w, reportPath, http.StatusRequestEntityTooLarge, wordTooLarge)
-			return
+			return nil, http.StatusRequestEntityTooLarge, wordTooLarge
 		}
-		h.reply(w, reportPath, http.StatusBadRequest, wordUnreadableBody)
+		return nil, http.StatusBadRequest, wordUnreadableBody
+	}
+	return &sealedRequest{body: body, seal: seal, fingerprint: fingerprint}, 0, ""
+}
+
+func (h *handler) report(w http.ResponseWriter, r *http.Request) {
+	sealed, status, name := readSealed(w, r, MaxBodyBytes)
+	if sealed == nil {
+		h.reply(w, reportPath, status, name)
 		return
 	}
 
-	outcome, err := h.receiver.Receive(r.Context(), document, seal, fingerprint)
+	outcome, err := h.receiver.Receive(r.Context(), sealed.body, sealed.seal, sealed.fingerprint)
 	if err != nil {
 		if r.Context().Err() != nil {
 			// The caller went away, or the server is stopping: not a failure of ours.
@@ -168,8 +219,69 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	status, name := describe(outcome)
+	status, name = describe(outcome)
 	h.reply(w, reportPath, status, name)
+}
+
+// renewal answers a request for the license that succeeds the one of an instance. The checks made
+// before the body is read are the ones of a report; what they refuse is one word here. A request
+// that is given nothing is answered the same whatever the reason: the status, the headers, and no
+// body.
+func (h *handler) renewal(w http.ResponseWriter, r *http.Request) {
+	sealed, status, _ := readSealed(w, r, telemetry.RenewalBodyCap)
+	if sealed == nil {
+		h.reply(w, renewalPath, status, wordRefused)
+		return
+	}
+
+	outcome, answer, err := h.renewer.Answer(r.Context(), sealed.body, sealed.seal, sealed.fingerprint)
+	if err != nil {
+		if r.Context().Err() != nil {
+			// The caller went away, or the server is stopping: not a failure of ours.
+			h.reply(w, renewalPath, http.StatusServiceUnavailable, wordInterrupted)
+			return
+		}
+		h.failRenewal(w, err)
+		return
+	}
+	switch outcome {
+	case renewal.Served:
+		h.serveRenewal(w, answer)
+	case renewal.Refused:
+		h.reply(w, renewalPath, http.StatusBadRequest, wordRefused)
+	default:
+		h.reply(w, renewalPath, http.StatusNoContent, wordNothing)
+	}
+}
+
+// serveRenewal answers a request for a renewal with its license. It is the only answer of the
+// public server that carries a key: the line of the request says the path, the status and the
+// word, and nothing of the answer.
+func (h *handler) serveRenewal(w http.ResponseWriter, answer *telemetry.RenewalAnswer) {
+	if answer == nil {
+		h.failRenewal(w, errors.New("a license was served without an answer"))
+		return
+	}
+	document, err := answer.Marshal()
+	if err != nil {
+		h.failRenewal(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	// A caller that went away does not read its answer: there is nobody to tell.
+	_, _ = w.Write(document)
+	h.logger.Info("request", "path", renewalPath, "status", http.StatusOK, "outcome", string(wordServed))
+	h.count(renewalPath, wordServed)
+}
+
+// failRenewal answers 503 to a request for a renewal that a failure of ours ended, and logs it:
+// fixed words and the error, nothing of the request.
+func (h *handler) failRenewal(w http.ResponseWriter, err error) {
+	h.count(renewalPath, wordFailed)
+	h.logger.Error("unable to answer a request for a license renewal", "path", renewalPath,
+		"status", http.StatusServiceUnavailable, "error", err.Error())
+	w.WriteHeader(http.StatusServiceUnavailable)
 }
 
 // describe gives the status and the fixed word of an outcome. A stored report and a pending one
@@ -204,9 +316,16 @@ func (h *handler) reply(w http.ResponseWriter, path string, status int, outcome 
 	h.count(path, outcome)
 }
 
-// count tells the observer how a report request ended; the other paths are not counted.
+// count tells the observer how a report request or a request for a renewal ended; the other paths
+// are not counted.
 func (h *handler) count(path string, outcome word) {
-	if path == reportPath && h.observer != nil {
+	if h.observer == nil {
+		return
+	}
+	switch path {
+	case reportPath:
 		h.observer.ReportReceived(string(outcome))
+	case renewalPath:
+		h.observer.RenewalAsked(string(outcome))
 	}
 }

@@ -188,7 +188,8 @@ func requireLayout(t *testing.T, got page) {
 	require.Contains(t, between(t, got.body, "<header", "</header>"), operatorEmail, "the page has the layout")
 }
 
-func Test_CustomerForm_New_AsksForTheThreeFields(t *testing.T) {
+// The identifier of a customer is not typed: the form asks for the name and the note alone.
+func Test_CustomerForm_New_AsksForTheNameAndTheNote_AndForNoIdentifier(t *testing.T) {
 	b := newBench(t)
 
 	got := b.get("/customers/new")
@@ -196,28 +197,82 @@ func Test_CustomerForm_New_AsksForTheThreeFields(t *testing.T) {
 	require.Equal(t, http.StatusOK, got.status)
 	require.Contains(t, got.body, "<h1>New customer</h1>")
 	require.Contains(t, got.body, `<form class="form" method="post" action="/customers">`)
-	for _, field := range []string{`name="external_id"`, `name="name"`, `name="note"`} {
+	for _, field := range []string{`name="name"`, `name="note"`} {
 		require.Contains(t, got.body, field)
 	}
+	form := between(t, got.body, "<form", "</form>")
+	require.NotContains(t, form, "external_id")
+	require.Equal(t, 1, strings.Count(form, "<input"), "the name")
+	require.Equal(t, 1, strings.Count(form, "<textarea"), "the note")
 	require.Contains(t, b.get("/customers").body, `href="/customers/new"`)
 }
 
-func Test_CreateCustomer_RecordsItAsTheOperatorAndRedirectsToItsPage(t *testing.T) {
+// drawn checks that an external id is one the console drew, and gives it.
+func drawn(t *testing.T, externalID string) uuid.UUID {
+	t.Helper()
+	id, err := uuid.Parse(externalID)
+	require.NoError(t, err, "the external id is not a UUID: %q", externalID)
+	require.Equal(t, id.String(), externalID, "written as a UUID is, in lower case with its dashes")
+	require.Equal(t, uuid.Version(4), id.Version())
+	require.NotEqual(t, uuid.Nil, id)
+	return id
+}
+
+func Test_CreateCustomer_RecordsItAsTheOperatorUnderAnIdentifierItDraws_AndRedirectsToItsPage(t *testing.T) {
 	b := newBench(t)
 	b.writer.newID = customerID
 
-	got := b.post("/customers", url.Values{"external_id": {" cust-1 "}, "name": {" Acme "}, "note": {"first\nsecond"}})
+	got := b.post("/customers", url.Values{"name": {" Acme "}, "note": {"first\nsecond"}})
 
 	require.Equal(t, http.StatusSeeOther, got.status)
 	require.Equal(t, "/customers/"+customerID.String(), got.header.Get("Location"))
-	require.Equal(t, []cpstore.NewCustomer{{ExternalID: "cust-1", Name: "Acme", Note: "first\nsecond"}}, b.writer.created)
+	require.Len(t, b.writer.created, 1)
+	created := b.writer.created[0]
+	externalID := drawn(t, created.ExternalID)
+	require.NotEqual(t, customerID, externalID, "it is not the id of the row")
+	require.Equal(t, cpstore.NewCustomer{ExternalID: created.ExternalID, Name: "Acme", Note: "first\nsecond"}, created)
 	require.Equal(t, []string{operatorEmail}, b.writer.operators)
 	line := strings.TrimSpace(b.logs.String())
 	require.Equal(t, 1, strings.Count(line, "\n")+1, "one line: %s", line)
 	require.Contains(t, line, `route="POST /customers"`)
 	require.Contains(t, line, "status=303")
 	require.NotContains(t, line, "Acme", "no value of the form is logged")
-	require.NotContains(t, line, "cust-1")
+	require.NotContains(t, line, created.ExternalID)
+}
+
+func Test_CreateCustomer_TwoCustomersOfTheSameName_HaveDifferentIdentifiers(t *testing.T) {
+	b := newBench(t)
+
+	for range 2 {
+		require.Equal(t, http.StatusSeeOther, b.post("/customers", url.Values{"name": {"Acme"}}).status)
+	}
+
+	require.Len(t, b.writer.created, 2)
+	require.Equal(t, b.writer.created[0].Name, b.writer.created[1].Name)
+	require.NotEqual(t, drawn(t, b.writer.created[0].ExternalID), drawn(t, b.writer.created[1].ExternalID))
+}
+
+// An identifier that is posted is not the one recorded, whatever it holds: nothing of it is
+// judged either, so what an old form or a script still sends is no reason to refuse.
+func Test_CreateCustomer_AnIdentifierThatIsPosted_IsIgnored(t *testing.T) {
+	for name, posted := range map[string]string{
+		"an id someone chose":      "cust-chosen",
+		"a UUID someone chose":     "9f8b1c1e-5d0a-4a3b-8d53-0c6f1a2b3c4d",
+		"a control character":      "cust\x00-1",
+		"far longer than any id":   strings.Repeat("a", 4000),
+		"nothing but its own name": "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			b := newBench(t)
+
+			got := b.post("/customers", url.Values{"external_id": {posted}, "name": {"Acme"}})
+
+			require.Equal(t, http.StatusSeeOther, got.status)
+			require.Len(t, b.writer.created, 1)
+			require.NotEqual(t, posted, b.writer.created[0].ExternalID)
+			drawn(t, b.writer.created[0].ExternalID)
+		})
+	}
 }
 
 func Test_CreateCustomer_Refused_ShowsTheFormAgainWithItsValues(t *testing.T) {
@@ -228,24 +283,20 @@ func Test_CreateCustomer_Refused_ShowsTheFormAgainWithItsValues(t *testing.T) {
 		message string
 		written int
 	}{
-		"an external id already taken": {
-			form: url.Values{"external_id": {"cust-1"}, "name": {"Acme <b>"}}, err: cpstore.ErrCustomerExists,
-			status: http.StatusConflict, message: "A customer already has this external id.", written: 1,
-		},
 		"the store finds it incomplete": {
-			form: url.Values{"external_id": {"cust-1"}, "name": {"Acme <b>"}}, err: cpstore.ErrCustomerIncomplete,
-			status: http.StatusBadRequest, message: "A customer needs an external id and a name.", written: 1,
+			form: url.Values{"name": {"Acme <b>"}}, err: cpstore.ErrCustomerIncomplete,
+			status: http.StatusBadRequest, message: "A customer needs a name.", written: 1,
 		},
 		"no name": {
-			form:   url.Values{"external_id": {"cust-1"}, "name": {"  "}, "note": {"Acme <b>"}},
+			form:   url.Values{"name": {"  "}, "note": {"Acme <b>"}},
 			status: http.StatusBadRequest, message: "The name is required.",
 		},
-		"a control character in the external id": {
-			form:   url.Values{"external_id": {"cust\x00-1"}, "name": {"Acme <b>"}},
-			status: http.StatusBadRequest, message: "The external id holds a control or formatting character",
+		"a control character in the name": {
+			form:   url.Values{"name": {"Ac\x00me"}, "note": {"Acme <b>"}},
+			status: http.StatusBadRequest, message: "The name holds a control or formatting character",
 		},
 		"a name that is too long": {
-			form:   url.Values{"external_id": {"cust-1"}, "name": {strings.Repeat("a", 201)}, "note": {"Acme <b>"}},
+			form:   url.Values{"name": {strings.Repeat("a", 201)}, "note": {"Acme <b>"}},
 			status: http.StatusBadRequest, message: "The name is too long.",
 		},
 	}
@@ -262,9 +313,25 @@ func Test_CreateCustomer_Refused_ShowsTheFormAgainWithItsValues(t *testing.T) {
 			require.Contains(t, got.body, "Acme &lt;b&gt;", "what was typed is kept, as text")
 			require.NotContains(t, got.body, "<b>")
 			require.Equal(t, tc.written, b.writer.writes)
+			require.NotContains(t, between(t, got.body, "<form", "</form>"), "external_id", "the form again asks for no identifier")
 			requireLayout(t, got)
 		})
 	}
+}
+
+// The console draws the identifier: one that is taken all the same is nothing the operator can
+// mend by typing, and is a failure of ours.
+func Test_CreateCustomer_AnIdentifierDrawnThatIsTaken_IsAFailureOfOurs(t *testing.T) {
+	b := newBench(t)
+	b.writer.createErr = cpstore.ErrCustomerExists
+
+	got := b.post("/customers", url.Values{"name": {"Acme"}})
+
+	require.Equal(t, http.StatusInternalServerError, got.status)
+	require.Contains(t, got.body, "<h1>Something went wrong</h1>")
+	require.NotContains(t, got.body, "external id")
+	require.Contains(t, b.logs.String(), "level=ERROR")
+	require.NotContains(t, b.logs.String(), b.writer.created[0].ExternalID)
 }
 
 func Test_EditCustomer_ShowsTheExternalIDReadOnlyAndSavesNameAndNote(t *testing.T) {
@@ -1060,7 +1127,7 @@ func Test_LicensePage_NamesItsIssuerAndOffersToRenewAndToShowTheKey(t *testing.T
 // Review focus: a POST another origin makes the browser send issues nothing and writes nothing.
 func Test_ACrossOriginPost_IsRefusedOnEveryRouteAndNothingIsRecorded(t *testing.T) {
 	routes := map[string]url.Values{
-		"/customers":                           {"external_id": {"cust-1"}, "name": {"Acme"}},
+		"/customers":                           {"name": {"Acme"}},
 		"/customers/" + customerID.String():    {"name": {"Acme"}},
 		"/licenses/confirm":                    draftForm(),
 		"/licenses":                            draftForm(),
@@ -1116,7 +1183,7 @@ func Test_TheCrossOriginShapes_ThatPassAndThatAreRefused_ArePinned(t *testing.T)
 			b := newBench(t)
 			b.writer.newID = customerID
 
-			got := b.post("/customers", url.Values{"external_id": {"cust-1"}, "name": {"Acme"}}, tc.headers)
+			got := b.post("/customers", url.Values{"name": {"Acme"}}, tc.headers)
 
 			if tc.passes {
 				require.Equal(t, http.StatusSeeOther, got.status)
@@ -1135,7 +1202,7 @@ func Test_APostWithoutTheHeadersOfABrowser_IsLetThrough(t *testing.T) {
 	b := newBench(t)
 	b.writer.newID = customerID
 
-	got := b.post("/customers", url.Values{"external_id": {"cust-1"}, "name": {"Acme"}}, map[string]string{})
+	got := b.post("/customers", url.Values{"name": {"Acme"}}, map[string]string{})
 
 	require.Equal(t, http.StatusSeeOther, got.status)
 }
@@ -1168,7 +1235,7 @@ func Test_WithoutASigner_TheCustomersAreManagedAndNothingIsIssued(t *testing.T) 
 	}
 	require.Zero(t, b.writer.writes)
 
-	require.Equal(t, http.StatusSeeOther, b.post("/customers", url.Values{"external_id": {"cust-2"}, "name": {"Other"}}).status)
+	require.Equal(t, http.StatusSeeOther, b.post("/customers", url.Values{"name": {"Other"}}).status)
 	require.Equal(t, http.StatusSeeOther, b.post(customerPath, url.Values{"name": {"Acme Corp"}}).status)
 	// Showing a key again signs nothing.
 	shown := b.post("/licenses/"+previousLicenseID+"/key", nil)
@@ -1274,14 +1341,14 @@ func Test_Journal_Empty_SaysSo(t *testing.T) {
 }
 
 func Test_APostWhoseBodyIsOverTheCapOrUnreadable_IsRefusedAndNothingIsWritten(t *testing.T) {
-	atTheCap := "external_id=cust-1&name=Acme&note=" + strings.Repeat("a", 64<<10-len("external_id=cust-1&name=Acme&note="))
+	atTheCap := "name=Acme&note=" + strings.Repeat("a", 64<<10-len("name=Acme&note="))
 	cases := map[string]struct {
 		body   string
 		status int
 	}{
 		"over 64 KiB":  {atTheCap + "a", http.StatusRequestEntityTooLarge},
 		"not a form":   {"name=%zz", http.StatusBadRequest},
-		"a bad escape": {"external_id=cust-1&name=Acme%", http.StatusBadRequest},
+		"a bad escape": {"name=Acme%", http.StatusBadRequest},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
