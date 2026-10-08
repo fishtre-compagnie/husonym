@@ -270,10 +270,10 @@ func requireSameButTheID(t *testing.T, draft *Draft) {
 	require.Equal(t, draft, again)
 }
 
-func Test_TrialDraft(t *testing.T) {
+func Test_ShortDraft(t *testing.T) {
 	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "Acme Co."}
 
-	draft := TrialDraft(customer, draftNow)
+	draft := ShortDraft(customer, draftNow)
 
 	requireSameButTheID(t, draft)
 	require.Equal(t, "acme", draft.CustomerExternalID)

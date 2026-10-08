@@ -40,8 +40,8 @@ const (
 )
 
 const (
-	// TrialDays is how long after now a trial expires.
-	TrialDays = 30
+	// ShortLicenseDays is how many days after now the license of ShortDraft expires.
+	ShortLicenseDays = 30
 
 	// MaxGraceDays is the longest grace period a form can ask for. Far beyond it, the end of the
 	// grace is an instant no timestamp holds.
@@ -400,14 +400,15 @@ func quoted(typed string) string {
 	return strconv.Quote(typed)
 }
 
-// TrialDraft drafts a trial for customer: every feature, no cap, and an expiry at the end of the
-// day TrialDays after now. The name of the customer is trimmed as ParseDraft trims it, so that the
+// ShortDraft drafts a license of ShortLicenseDays days for customer, the preset a form offers
+// beside the plain one: every feature, no cap, and an expiry at the end of the day
+// ShortLicenseDays after now. The name of the customer is trimmed as ParseDraft trims it, so that the
 // page that shows this draft and the key signed after it say the same. Its external id is taken as
 // it is recorded, never trimmed: the key is to carry the id the store finds the customer by, and a
 // draft whose id begins or ends with a space is refused by the rules of a draft. It bears no
 // license id: that one is drawn when the form is sent. Without a customer there is no draft: it
 // returns nil.
-func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
+func ShortDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 	if customer == nil {
 		return nil
 	}
@@ -415,7 +416,7 @@ func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 		CustomerExternalID: customer.ExternalID,
 		CustomerName:       strings.TrimSpace(customer.Name),
 		AllFeatures:        true,
-		ExpiresAt:          endOfDay(now.UTC().AddDate(0, 0, TrialDays)),
+		ExpiresAt:          endOfDay(now.UTC().AddDate(0, 0, ShortLicenseDays)),
 	}
 }
 

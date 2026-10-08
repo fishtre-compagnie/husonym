@@ -162,7 +162,7 @@ func journalRows(t *testing.T, body string) []string {
 }
 
 // The acts of the operator over a real database and a real signer, following the pages: a customer,
-// a trial, its renewal, the key again, and the journal that tells them.
+// a license of 30 days, its renewal, the key again, and the journal that tells them.
 func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
@@ -191,20 +191,21 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	require.Contains(t, customer.body, "<h1>Acme &amp; Sons</h1>")
 	require.Contains(t, customer.body, "No license.")
 
-	// A trial, from the link of the page of the customer.
-	trialForm := formOf(t, w.get(html.UnescapeString(hrefTo(t, customer.body, `/customers/[^"/]+/licenses/new\?trial=1`))).body, "/licenses/confirm")
-	trialForm.Set(issuing.FieldNote, "a trial")
-	trialConfirmation, trialID, trialKey, trial := w.issue(trialForm)
-	require.Equal(t, "cust-walk", trial.CustomerId)
-	require.Equal(t, "Acme & Sons", trial.IssuedTo)
-	require.Nil(t, trial.Features, "a trial lists no feature")
-	require.True(t, trial.AllowsEveryFeature())
-	require.WithinDuration(t, time.Now().AddDate(0, 0, issuing.TrialDays), trial.ExpiresAt, 25*time.Hour)
+	// A license of 30 days, from the link of the page of the customer.
+	require.Contains(t, customer.body, ">New 30-day license</a>")
+	shortForm := formOf(t, w.get(html.UnescapeString(hrefTo(t, customer.body, `/customers/[^"/]+/licenses/new\?days=30`))).body, "/licenses/confirm")
+	shortForm.Set(issuing.FieldNote, "thirty days")
+	shortConfirmation, shortID, shortKey, short := w.issue(shortForm)
+	require.Equal(t, "cust-walk", short.CustomerId)
+	require.Equal(t, "Acme & Sons", short.IssuedTo)
+	require.Nil(t, short.Features, "the preset lists no feature")
+	require.True(t, short.AllowsEveryFeature())
+	require.WithinDuration(t, time.Now().AddDate(0, 0, issuing.ShortLicenseDays), short.ExpiresAt, 25*time.Hour)
 
 	// Review focus: the confirmation sent again issues nothing more, leads to that same license and
 	// shows no key. Under the same id, a draft that says anything else is refused.
-	again := w.post("/licenses", trialConfirmation, http.StatusSeeOther, false)
-	require.Equal(t, "/licenses/"+trialID, again.header.Get("Location"))
+	again := w.post("/licenses", shortConfirmation, http.StatusSeeOther, false)
+	require.Equal(t, "/licenses/"+shortID, again.header.Get("Location"))
 	for name, change := range map[string]func(form url.Values){
 		"another plan": func(form url.Values) { form.Set(issuing.FieldPlan, "another") },
 		"a list of features": func(form url.Values) {
@@ -216,27 +217,27 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 		},
 	} {
 		other := url.Values{}
-		for field, values := range trialConfirmation {
+		for field, values := range shortConfirmation {
 			other[field] = append([]string{}, values...)
 		}
 		change(other)
 		refused := w.post("/licenses", other, http.StatusConflict, false)
 		require.Contains(t, refused.body, "A license with this id already exists, with other content.", name)
 	}
-	unchanged, err := store.LicenseDetail(t.Context(), trialID, time.Now())
+	unchanged, err := store.LicenseDetail(t.Context(), shortID, time.Now())
 	require.NoError(t, err)
 	require.Empty(t, unchanged.Plan)
 	require.Nil(t, unchanged.Features)
-	require.True(t, trial.ExpiresAt.Equal(unchanged.ExpiresAt), "the license is as it was issued")
+	require.True(t, short.ExpiresAt.Equal(unchanged.ExpiresAt), "the license is as it was issued")
 
 	// The page of the license names who issued it; the report that was pending under its key is stored.
-	trialPage := w.get("/licenses/" + trialID)
-	require.Contains(t, between(t, trialPage.body, "<dt>Issued from the console by</dt>", "</dd>"), operatorEmail)
-	require.Contains(t, between(t, trialPage.body, "<dt>Origin</dt>", "</dd>"), "console")
-	require.Contains(t, between(t, trialPage.body, "<dt>Kid</dt>", "</dd>"), "walk-kid")
-	require.Contains(t, between(t, trialPage.body, "<dt>Signing key fingerprint</dt>", "</dd>"), license.PublicKeyFingerprint(pub))
-	require.Contains(t, between(t, trialPage.body, "<dt>Note</dt>", "</dd>"), "a trial")
-	require.Contains(t, section(t, trialPage.body, "instances"), instanceOne, "the pending report was promoted")
+	shortPage := w.get("/licenses/" + shortID)
+	require.Contains(t, between(t, shortPage.body, "<dt>Issued from the console by</dt>", "</dd>"), operatorEmail)
+	require.Contains(t, between(t, shortPage.body, "<dt>Origin</dt>", "</dd>"), "console")
+	require.Contains(t, between(t, shortPage.body, "<dt>Kid</dt>", "</dd>"), "walk-kid")
+	require.Contains(t, between(t, shortPage.body, "<dt>Signing key fingerprint</dt>", "</dd>"), license.PublicKeyFingerprint(pub))
+	require.Contains(t, between(t, shortPage.body, "<dt>Note</dt>", "</dd>"), "thirty days")
+	require.Contains(t, section(t, shortPage.body, "instances"), instanceOne, "the pending report was promoted")
 	require.Len(t, signer.reported, 1)
 	stillPending, err := store.PendingReports(t.Context(), signer.reported[0])
 	require.NoError(t, err)
@@ -245,25 +246,25 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	// The customer is renamed in its note only: the keys issued carry its name.
 	editForm := formOf(t, w.get(hrefTo(t, w.get(customerPath).body, `/customers/[^"/]+/edit`)).body, customerPath)
 	require.Equal(t, url.Values{"name": {"Acme & Sons"}, "note": {"met in spring"}}, editForm)
-	editForm.Set("note", "met in spring, trial in autumn")
+	editForm.Set("note", "met in spring, seen again in autumn")
 	w.post(customerPath, editForm, http.StatusSeeOther, false)
 
 	// Its renewal, from the link of the page of the license.
-	renewForm := formOf(t, w.get(hrefTo(t, trialPage.body, `/licenses/[^"/]+/renew`)).body, "/licenses/confirm")
-	require.Equal(t, trialID, renewForm.Get(issuing.FieldSucceeds))
+	renewForm := formOf(t, w.get(hrefTo(t, shortPage.body, `/licenses/[^"/]+/renew`)).body, "/licenses/confirm")
+	require.Equal(t, shortID, renewForm.Get(issuing.FieldSucceeds))
 	renewConfirmation, renewedID, renewedKey, renewed := w.issue(renewForm)
-	require.NotEqual(t, trialID, renewedID)
+	require.NotEqual(t, shortID, renewedID)
 	require.Nil(t, renewed.Features, "the renewal of a key without a list has no list either")
-	require.True(t, renewed.ExpiresAt.After(trial.ExpiresAt.AddDate(0, 11, 0)))
+	require.True(t, renewed.ExpiresAt.After(short.ExpiresAt.AddDate(0, 11, 0)))
 	renewedPage := w.get("/licenses/" + renewedID)
-	require.Contains(t, between(t, renewedPage.body, "<dt>Succeeds</dt>", "</dd>"), `href="/licenses/`+trialID+`"`)
-	require.Contains(t, between(t, w.get("/licenses/"+trialID).body, "<dt>Succeeded by</dt>", "</dd>"), `href="/licenses/`+renewedID+`"`)
+	require.Contains(t, between(t, renewedPage.body, "<dt>Succeeds</dt>", "</dd>"), `href="/licenses/`+shortID+`"`)
+	require.Contains(t, between(t, w.get("/licenses/"+shortID).body, "<dt>Succeeded by</dt>", "</dd>"), `href="/licenses/`+renewedID+`"`)
 
 	// Review focus: a license has one successor. Its page does not offer to renew it any more, the
 	// form is not shown again, a form kept from before is refused when it is sent, and so is a
 	// confirmation kept from before, by the store.
-	require.NotContains(t, w.get("/licenses/"+trialID).body, "/renew")
-	refusedForm := w.get("/licenses/" + trialID + "/renew")
+	require.NotContains(t, w.get("/licenses/"+shortID).body, "/renew")
+	refusedForm := w.get("/licenses/" + shortID + "/renew")
 	require.Contains(t, refusedForm.body, "cannot be renewed here")
 	require.NotContains(t, refusedForm.body, "<form")
 	keptForm := w.post("/licenses/confirm", renewForm, http.StatusConflict, false)
@@ -277,8 +278,8 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	require.ErrorIs(t, err, cpstore.ErrNotFound, "nothing was issued")
 
 	// The key again.
-	shown, _ := w.keyOn(w.post("/licenses/"+trialID+"/key", nil, http.StatusOK, true))
-	require.Equal(t, trialKey, shown)
+	shown, _ := w.keyOn(w.post("/licenses/"+shortID+"/key", nil, http.StatusOK, true))
+	require.Equal(t, shortKey, shown)
 
 	// The journal: five acts, the newest first. The confirmation sent again, the drafts refused
 	// under its id and the renewal refused left no line.
@@ -293,9 +294,9 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 		require.Contains(t, rows[i], operatorEmail)
 		require.Contains(t, rows[i], `href="`+customerPath+`"`)
 	}
-	require.Contains(t, rows[0], `href="/licenses/`+trialID+`"`)
+	require.Contains(t, rows[0], `href="/licenses/`+shortID+`"`)
 	require.Contains(t, rows[1], `href="/licenses/`+renewedID+`"`)
-	require.Contains(t, rows[1], "succeeds: "+trialID)
+	require.Contains(t, rows[1], "succeeds: "+shortID)
 
 	// A license that allows no optional feature, and its renewal: none again, and not all of them.
 	noneForm := formOf(t, w.get(hrefTo(t, w.get(customerPath).body, `/customers/[^"/?]+/licenses/new`)).body, "/licenses/confirm")
@@ -327,7 +328,7 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	for _, path := range []string{"/", "/customers", customerPath, "/pending", "/journal", "/licenses/" + renewedID} {
 		w.get(path)
 	}
-	keys := []string{trialKey, renewedKey, noneKey, noneRenewedKey, someKey, someRenewedKey}
+	keys := []string{shortKey, renewedKey, noneKey, noneRenewedKey, someKey, someRenewedKey}
 	keyPages := 0
 	for _, answer := range w.answers {
 		if answer.keyPage {

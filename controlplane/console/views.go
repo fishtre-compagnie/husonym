@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
+	"github.com/fishtre-compagnie/husonym/controlplane/issuing"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/google/uuid"
 )
@@ -153,10 +154,12 @@ type customerView struct {
 	Licenses   []licenseRow
 	Instances  []instanceRow
 	EditHref   string
-	// CanIssue tells this server issues licenses; NewLicenseHref and NewTrialHref lead to the form.
-	CanIssue       bool
-	NewLicenseHref string
-	NewTrialHref   string
+	// CanIssue tells this server issues licenses. NewLicenseHref leads to the form, and
+	// NewShortLicenseHref to the form prefilled as a license of ShortLicenseDays days.
+	CanIssue            bool
+	NewLicenseHref      string
+	NewShortLicenseHref string
+	ShortLicenseDays    int
 }
 
 type licenseView struct {
@@ -458,18 +461,19 @@ func newCustomersView(customers []cpstore.CustomerSummary) *customersView {
 func newCustomerView(c *cpstore.CustomerDetail, canIssue bool) *customerView {
 	href := customerLink(c.ID, c.Name).Href
 	return &customerView{
-		Name:           c.Name,
-		ID:             c.ID.String(),
-		ExternalID:     c.ExternalID,
-		Note:           orAbsent(c.Note),
-		CreatedAt:      instant(c.CreatedAt),
-		UpdatedAt:      instant(c.UpdatedAt),
-		Licenses:       newLicenseRows(c.Licenses),
-		Instances:      newInstanceRows(c.Instances),
-		EditHref:       href + "/edit",
-		CanIssue:       canIssue,
-		NewLicenseHref: href + "/licenses/new",
-		NewTrialHref:   href + "/licenses/new?trial=1",
+		Name:                c.Name,
+		ID:                  c.ID.String(),
+		ExternalID:          c.ExternalID,
+		Note:                orAbsent(c.Note),
+		CreatedAt:           instant(c.CreatedAt),
+		UpdatedAt:           instant(c.UpdatedAt),
+		Licenses:            newLicenseRows(c.Licenses),
+		Instances:           newInstanceRows(c.Instances),
+		EditHref:            href + "/edit",
+		CanIssue:            canIssue,
+		NewLicenseHref:      href + "/licenses/new",
+		NewShortLicenseHref: href + "/licenses/new?" + queryDays + "=" + strconv.Itoa(issuing.ShortLicenseDays),
+		ShortLicenseDays:    issuing.ShortLicenseDays,
 	}
 }
 

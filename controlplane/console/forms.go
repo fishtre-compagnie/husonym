@@ -27,8 +27,9 @@ const (
 	// fieldCustomer carries, beside the fields of a draft, the id of the customer the draft is for:
 	// what the draft says of the customer is checked against the store through it.
 	fieldCustomer = "customer"
-	// queryTrial asks, with the value "1", for the form of a license prefilled as a trial.
-	queryTrial = "trial"
+	// queryDays asks for the form of a license prefilled as issuing.ShortDraft drafts it. Its only
+	// value is issuing.ShortLicenseDays, in digits; with any other one the form is the plain one.
+	queryDays = "days"
 
 	// maxExternalIDLength is counted in characters, as the lengths of a draft are.
 	maxExternalIDLength = 200

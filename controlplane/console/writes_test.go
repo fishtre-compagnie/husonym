@@ -332,7 +332,7 @@ func Test_CustomerPage_LeadsToTheFormsOfIssuing(t *testing.T) {
 
 	require.Contains(t, got.body, `href="`+path+`/edit"`)
 	require.Contains(t, got.body, `href="`+path+`/licenses/new"`)
-	require.Contains(t, got.body, `href="`+path+`/licenses/new?trial=1"`)
+	require.Contains(t, got.body, `<a class="button" href="`+path+`/licenses/new?days=30">New 30-day license</a>`)
 	require.NotContains(t, got.body, "not configured")
 }
 
@@ -364,15 +364,31 @@ func Test_LicenseForm_OffersWhatTheProductDeclaresAndAYearAhead(t *testing.T) {
 	require.Zero(t, b.signer.calls)
 }
 
-func Test_LicenseForm_Trial_IsPrefilledWithEveryFeatureAndThirtyDays(t *testing.T) {
+func Test_LicenseForm_OfThirtyDays_IsPrefilledWithEveryFeatureAndThirtyDays(t *testing.T) {
 	b := newBench(t)
 	b.store.customer = acme()
 
-	got := b.get("/customers/" + customerID.String() + "/licenses/new?trial=1")
+	got := b.get("/customers/" + customerID.String() + "/licenses/new?days=30")
 
 	require.Equal(t, http.StatusOK, got.status)
 	require.Contains(t, got.body, `<input type="checkbox" name="all_features" value="1" checked>`)
 	require.Contains(t, got.body, `name="expires_at" type="date" value="2026-11-07"`)
+}
+
+// The preset is of 30 days and of nothing else: any other number of days is the plain form.
+func Test_LicenseForm_WithAnotherNumberOfDays_IsThePlainForm(t *testing.T) {
+	for _, query := range []string{"?days=31", "?days=29", "?days=1", "?days=", "?days=030", "?days=30.0", "?days=thirty", "?days=365", "?other=30"} {
+		t.Run(query, func(t *testing.T) {
+			b := newBench(t)
+			b.store.customer = acme()
+
+			got := b.get("/customers/" + customerID.String() + "/licenses/new" + query)
+
+			require.Equal(t, http.StatusOK, got.status)
+			require.Contains(t, got.body, `<input type="checkbox" name="all_features" value="1">`)
+			require.Contains(t, got.body, `name="expires_at" type="date" value="2027-10-08"`, "a year ahead")
+		})
+	}
 }
 
 func Test_ConfirmLicense_ShowsEveryLineOfTheKeyAndCarriesTheDraft(t *testing.T) {
@@ -488,7 +504,7 @@ func Test_ACustomerWhoseExternalIDIsNotItsTrimmedForm_IsIssuedNoLicense(t *testi
 			return customer
 		}
 		for _, path := range []string{
-			customerPath + "/licenses/new", customerPath + "/licenses/new?trial=1", "/licenses/" + previousLicenseID + "/renew",
+			customerPath + "/licenses/new", customerPath + "/licenses/new?days=30", "/licenses/" + previousLicenseID + "/renew",
 		} {
 			t.Run(name+": the form "+path, func(t *testing.T) {
 				b := newBench(t)
@@ -705,7 +721,7 @@ func Test_IssueLicense_UnderTheIDOfALicenseWithOtherContent_IsRefused(t *testing
 func Test_TheFormsOfALicense_CarryNoLicenseID(t *testing.T) {
 	customerPath := "/customers/" + customerID.String()
 	for _, path := range []string{
-		customerPath + "/licenses/new", customerPath + "/licenses/new?trial=1", "/licenses/" + previousLicenseID + "/renew",
+		customerPath + "/licenses/new", customerPath + "/licenses/new?days=30", "/licenses/" + previousLicenseID + "/renew",
 	} {
 		t.Run(path, func(t *testing.T) {
 			b := newBench(t)
@@ -1099,7 +1115,7 @@ func Test_WithoutASigner_TheCustomersAreManagedAndNothingIsIssued(t *testing.T) 
 	require.Contains(t, licensePage.body, "Issuing licenses is not configured on this server.")
 	require.NotContains(t, licensePage.body, "/renew")
 
-	for _, path := range []string{customerPath + "/licenses/new", customerPath + "/licenses/new?trial=1", "/licenses/" + previousLicenseID + "/renew"} {
+	for _, path := range []string{customerPath + "/licenses/new", customerPath + "/licenses/new?days=30", "/licenses/" + previousLicenseID + "/renew"} {
 		got := b.get(path)
 		require.Equal(t, http.StatusNotFound, got.status, path)
 		require.Contains(t, got.body, "<h1>Not found</h1>", path)

@@ -99,7 +99,7 @@ Instants are shown in UTC.
 | -------------------------------------- | --------------------------------------------------------------------------- |
 | `GET /customers/new`, `POST /customers` | Records a customer: an external id, a name, a note.                        |
 | `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it. |
-| `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?trial=1`, prefilled as a trial of 30 days with every feature. |
+| `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
 | `GET /licenses/{id}/renew`             | The same form, prefilled from the license it succeeds.                      |
 | `POST /licenses/confirm`               | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm. |
 | `POST /licenses`                       | Signs the license, records it, and shows its key.                           |

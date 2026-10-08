@@ -211,10 +211,10 @@ func Test_ParseDraft_TheLicenseIDKeepsItsRule(t *testing.T) {
 	require.Nil(t, draft)
 }
 
-func Test_TrialDraft_TrimsTheNameOfTheCustomer(t *testing.T) {
+func Test_ShortDraft_TrimsTheNameOfTheCustomer(t *testing.T) {
 	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "  Acme Co. \n"}
 
-	draft := TrialDraft(customer, draftNow)
+	draft := ShortDraft(customer, draftNow)
 
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Co.", draft.CustomerName)
@@ -230,7 +230,7 @@ func Test_ADraftForACustomer_NeverTrimsItsExternalID(t *testing.T) {
 	require.NoError(t, err)
 	signer, _ := newTestSigner(t)
 
-	for name, draft := range map[string]*Draft{"of 30 days": TrialDraft(customer, draftNow), "a renewal": renewal} {
+	for name, draft := range map[string]*Draft{"of 30 days": ShortDraft(customer, draftNow), "a renewal": renewal} {
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, " acme ", draft.CustomerExternalID)
 			draft.LicenseID = "0123456789abcdef"
@@ -244,8 +244,8 @@ func Test_ADraftForACustomer_NeverTrimsItsExternalID(t *testing.T) {
 	}
 }
 
-func Test_TrialDraft_WithoutACustomer(t *testing.T) {
-	require.Nil(t, TrialDraft(nil, draftNow))
+func Test_ShortDraft_WithoutACustomer(t *testing.T) {
+	require.Nil(t, ShortDraft(nil, draftNow))
 }
 
 func Test_RenewalDraft_TrimsTheNameOfTheCustomerAndThePlan(t *testing.T) {

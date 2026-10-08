@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
@@ -229,9 +230,9 @@ func (c *console) newLicenseForm(r *http.Request) (*content, error) {
 		Features:           []string{},
 		ExpiresAt:          now.UTC().AddDate(1, 0, 0),
 	}
-	if r.URL.Query().Get(queryTrial) == "1" {
-		if draft = issuing.TrialDraft(customer, now); draft == nil {
-			return nil, errors.New("no trial could be drafted for a customer that is there")
+	if r.URL.Query().Get(queryDays) == strconv.Itoa(issuing.ShortLicenseDays) {
+		if draft = issuing.ShortDraft(customer, now); draft == nil {
+			return nil, errors.New("no license of the preset could be drafted for a customer that is there")
 		}
 	}
 	return licenseFormPage(customer, draft.Form(), nil), nil

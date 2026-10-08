@@ -481,7 +481,7 @@ func Test_ServeBackoffice_WithASigningKey_IssuesALicenseTheRingVerifies(t *testi
 
 	status, customerPath, _ := postForm(t, addr, "/customers", url.Values{"external_id": {"cust-cmd"}, "name": {"Acme"}})
 	require.Equal(t, http.StatusSeeOther, status)
-	require.Contains(t, get(t, "http://"+addr+customerPath).body, "New trial license")
+	require.Contains(t, get(t, "http://"+addr+customerPath).body, "New 30-day license")
 	draft := url.Values{
 		"customer": {strings.TrimPrefix(customerPath, "/customers/")}, "customer_external_id": {"cust-cmd"}, "customer_name": {"Acme"},
 		"all_features": {"1"}, "expires_at": {time.Now().UTC().AddDate(0, 0, 30).Format(time.DateOnly)},
@@ -515,7 +515,7 @@ func Test_ServeBackoffice_WithASigningKey_IssuesALicenseTheRingVerifies(t *testi
 	addr, stop = runLocalBackoffice(t, pool)
 	customer := get(t, "http://"+addr+customerPath)
 	require.Contains(t, customer.body, "Issuing licenses is not configured on this server.")
-	require.NotContains(t, customer.body, "New trial license")
+	require.NotContains(t, customer.body, "New 30-day license")
 	require.Equal(t, http.StatusNotFound, get(t, "http://"+addr+customerPath+"/licenses/new").status)
 	draft.Del("license_id")
 	status, _, _ = postForm(t, addr, "/licenses/confirm", draft)
