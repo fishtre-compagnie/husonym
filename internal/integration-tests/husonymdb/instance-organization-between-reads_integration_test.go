@@ -9,23 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// beforeFirstCount is the queries of the database, with something done once, just before the
-// accounts people have are first counted: what another entry does between the two reads an entry
-// starts with.
-type beforeFirstCount struct {
+// beforeFirstLook is the queries of the database, with something done once, just before it is
+// first asked whether people have accounts: what another entry does between the two reads an
+// entry starts with.
+type beforeFirstLook struct {
 	db_queries.Querier
 	once sync.Once
 	do   func()
 }
 
-func (q *beforeFirstCount) CountAccountsWithPersonMember(ctx context.Context, db db_queries.DBTX) (int64, error) {
+func (q *beforeFirstLook) HasAccountWithPersonMember(ctx context.Context, db db_queries.DBTX) (bool, error) {
 	q.once.Do(q.do)
-	return q.Querier.CountAccountsWithPersonMember(ctx, db)
+	return q.Querier.HasAccountWithPersonMember(ctx, db)
 }
 
-// An entry reads the organization, then counts the accounts. The first entry of all commits
-// between the two here: the second one found no organization, and then counts the account of the
-// organization. It joins it, and is not sent to a personal account.
+// An entry reads the organization, then asks whether people have accounts. The first entry of all
+// commits between the two here: the second one found no organization, and then finds the account
+// of the organization. It joins it, and is not sent to a personal account.
 func (s *IntegrationTestSuite) Test_EnterInstance_OrganizationCreatedBetweenTheTwoReadsIsJoined() {
 	t := s.T()
 	roles := &fakeRoles{}
@@ -34,7 +34,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_OrganizationCreatedBetweenTheT
 
 	var created *husonymdb.InstanceEntry
 	var createdErr error
-	queries := &beforeFirstCount{Querier: db_queries.New(), do: func() {
+	queries := &beforeFirstLook{Querier: db_queries.New(), do: func() {
 		created, createdErr = s.db.EnterInstance(s.ctx, first.ID, roles)
 	}}
 	interleaved := husonymdb.New(s.pgcontainer.DB, queries)

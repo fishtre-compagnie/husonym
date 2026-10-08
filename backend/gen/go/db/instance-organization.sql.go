@@ -11,26 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countAccountsWithPersonMember = `-- name: CountAccountsWithPersonMember :one
-SELECT count(DISTINCT aua.account_id)::bigint
-FROM husonym_api.account_user_associations aua
-WHERE EXISTS (
-  SELECT 1
-  FROM husonym_api.user_identity_provider_associations uipa
-  WHERE uipa.user_id = aua.user_id
-)
-`
-
-// The accounts that have a person among their members. A person is a user an identity provider
-// vouches for: neither the anonymous user nor the user of an API key is one, so the account of
-// either alone is not counted. A person who is in no account yet counts for nothing.
-func (q *Queries) CountAccountsWithPersonMember(ctx context.Context, db DBTX) (int64, error) {
-	row := db.QueryRow(ctx, countAccountsWithPersonMember)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const createTeamAccountWithId = `-- name: CreateTeamAccountWithId :one
 INSERT INTO husonym_api.accounts (
   id, account_type, account_slug
@@ -75,6 +55,24 @@ func (q *Queries) GetInstanceOrganization(ctx context.Context, db DBTX) (pgtype.
 	var organization_account_id pgtype.UUID
 	err := row.Scan(&organization_account_id)
 	return organization_account_id, err
+}
+
+const hasAccountWithPersonMember = `-- name: HasAccountWithPersonMember :one
+SELECT EXISTS (
+  SELECT 1
+  FROM husonym_api.account_user_associations aua
+  INNER JOIN husonym_api.user_identity_provider_associations uipa ON uipa.user_id = aua.user_id
+)
+`
+
+// Tells whether an account has a person among its members. A person is a user an identity
+// provider vouches for: neither the anonymous user nor the user of an API key is one, so the
+// account of either alone does not tell. Nor does a person who is in no account yet.
+func (q *Queries) HasAccountWithPersonMember(ctx context.Context, db DBTX) (bool, error) {
+	row := db.QueryRow(ctx, hasAccountWithPersonMember)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const lockInstance = `-- name: LockInstance :one

@@ -101,13 +101,13 @@ func (d *HusonymDb) EnterInstance(
 	if organization.Valid {
 		return d.enterOrganization(ctx, userId, organization, roles)
 	}
-	accounts, err := d.Q.CountAccountsWithPersonMember(ctx, d.Db)
+	peopleHaveAccounts, err := d.Q.HasAccountWithPersonMember(ctx, d.Db)
 	if err != nil {
 		return nil, err
 	}
-	if accounts > 0 {
+	if peopleHaveAccounts {
 		// The two reads above are not one: the first entry of all may have created the
-		// organization between them, and its account is then what was counted. An organization
+		// organization between them, and its account is then what was found. An organization
 		// is retained in the transaction that creates its account, so it shows now if so.
 		organization, err = d.Q.GetInstanceOrganization(ctx, d.Db)
 		if err != nil {
@@ -144,11 +144,11 @@ func (d *HusonymDb) EnterInstance(
 		if organization.Valid {
 			return nil
 		}
-		accounts, err := d.Q.CountAccountsWithPersonMember(ctx, dbtx)
+		peopleHaveAccounts, err := d.Q.HasAccountWithPersonMember(ctx, dbtx)
 		if err != nil {
 			return err
 		}
-		if accounts > 0 {
+		if peopleHaveAccounts {
 			entry = &InstanceEntry{Outcome: EntryPersonal}
 			return nil
 		}

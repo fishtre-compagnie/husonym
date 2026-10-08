@@ -34,10 +34,6 @@ type Querier interface {
 	// The accounts that declared an identity provider of their own. The provider is not read.
 	CountAccountOidcProviders(ctx context.Context, db DBTX) (int64, error)
 	CountAccounts(ctx context.Context, db DBTX) (int64, error)
-	// The accounts that have a person among their members. A person is a user an identity provider
-	// vouches for: neither the anonymous user nor the user of an API key is one, so the account of
-	// either alone is not counted. A person who is in no account yet counts for nothing.
-	CountAccountsWithPersonMember(ctx context.Context, db DBTX) (int64, error)
 	// Whether an issuer is declared by an account other than the one given. Two accounts
 	// sharing an issuer share the subject space it mints, so the second one to claim it would
 	// be able to name the members of the first.
@@ -181,6 +177,10 @@ type Querier interface {
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
 	// Tells whether the member holds a role in the account, whichever.
 	HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error)
+	// Tells whether an account has a person among its members. A person is a user an identity
+	// provider vouches for: neither the anonymous user nor the user of an API key is one, so the
+	// account of either alone does not tell. Nor does a person who is in no account yet.
+	HasAccountWithPersonMember(ctx context.Context, db DBTX) (bool, error)
 	IncrementGateRefusal(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
