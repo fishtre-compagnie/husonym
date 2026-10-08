@@ -36,9 +36,13 @@ type Querier interface {
 	InsertUsageReport(ctx context.Context, arg InsertUsageReportParams) (int64, error)
 	// The nearest expiry is the next one to come; when every license has expired, the last one.
 	ListCustomerSummaries(ctx context.Context, arg ListCustomerSummariesParams) ([]ListCustomerSummariesRow, error)
-	// The licenses no other one succeeds that expire before expires_before. However long ago: the
-	// grace period of each decides whether it still counts, and that is judged by the caller.
-	ListExpiringCandidates(ctx context.Context, expiresBefore pgtype.Timestamptz) ([]ListExpiringCandidatesRow, error)
+	// The licenses no other one succeeds that expire before expires_before and whose grace period has
+	// not run out at now. The caller stays the judge of the state of each: this only leaves out the
+	// ones it would drop. The end of the grace period is counted as internal/license counts it
+	// (Key.GraceEndsAt): the days of the key, default_grace_days when it does not say, none when they
+	// are negative, of 24 hours each. Hours, not days: a day of an interval is as long as the day of
+	// the session's time zone, which is 23 hours once a year.
+	ListExpiringCandidates(ctx context.Context, arg ListExpiringCandidatesParams) ([]ListExpiringCandidatesRow, error)
 	ListInstancesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListInstancesOfCustomerRow, error)
 	ListInstancesOfLicense(ctx context.Context, licenseID string) ([]ListInstancesOfLicenseRow, error)
 	ListLicensesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListLicensesOfCustomerRow, error)

@@ -111,12 +111,18 @@ WHERE i.last_report_day >= sqlc.arg(from_day) AND i.last_report_day < sqlc.arg(b
 ORDER BY i.last_report_day, i.license_id, i.instance_id;
 
 -- name: ListExpiringCandidates :many
--- The licenses no other one succeeds that expire before expires_before. However long ago: the
--- grace period of each decides whether it still counts, and that is judged by the caller.
+-- The licenses no other one succeeds that expire before expires_before and whose grace period has
+-- not run out at now. The caller stays the judge of the state of each: this only leaves out the
+-- ones it would drop. The end of the grace period is counted as internal/license counts it
+-- (Key.GraceEndsAt): the days of the key, default_grace_days when it does not say, none when they
+-- are negative, of 24 hours each. Hours, not days: a day of an interval is as long as the day of
+-- the session's time zone, which is 23 hours once a year.
 SELECT l.id, l.customer_id, c.name AS customer_name, l.plan, l.telemetry, l.expires_at, l.grace_days
 FROM controlplane.licenses l
 JOIN controlplane.customers c ON c.id = l.customer_id
 WHERE l.expires_at < sqlc.arg(expires_before)
+    AND l.expires_at + GREATEST(COALESCE(l.grace_days, sqlc.arg(default_grace_days)::int), 0) * interval '24 hours'
+        > sqlc.arg(now)::timestamptz
     AND NOT EXISTS (SELECT 1 FROM controlplane.licenses s WHERE s.succeeds_license_id = l.id)
 ORDER BY l.expires_at, l.id;
 

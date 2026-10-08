@@ -6,8 +6,10 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
 	"github.com/fishtre-compagnie/husonym/controlplane/cptest"
+	cpdb "github.com/fishtre-compagnie/husonym/controlplane/gen/db"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,6 +160,72 @@ func Test_Attention_ExpiringLicenses(t *testing.T) {
 	require.Equal(t, license.StateExpiring, expiring[2].State)
 }
 
+// The query is asserted itself: the list would be the same if the frozen licenses were all
+// loaded and dropped afterwards.
+func Test_ListExpiringCandidates_LoadsNoLicenseWhoseGraceHasRunOut(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	graceEnd := today.AddDate(0, 0, -license.DefaultGraceDays)
+
+	s.license("lic-frozen-long-ago", "cust-1", "Acme", today.AddDate(0, 0, -400))
+	s.license("lic-frozen-yesterday", "cust-1", "Acme", graceEnd.AddDate(0, 0, -1))
+	s.license("lic-frozen-now", "cust-1", "Acme", graceEnd)
+	s.license("lic-last-second", "cust-1", "Acme", graceEnd.Add(time.Second))
+	s.license("lic-long-grace", "cust-1", "Acme", today.AddDate(0, 0, -40), withGrace(60))
+	s.license("lic-long-grace-over", "cust-1", "Acme", today.AddDate(0, 0, -61), withGrace(60))
+	s.license("lic-no-grace", "cust-1", "Acme", today.Add(-time.Hour), withGrace(0))
+	// A negative grace is no grace, as the key reads it.
+	s.license("lic-negative-grace", "cust-1", "Acme", today.Add(-time.Hour))
+	s.license("lic-negative-grace-soon", "cust-1", "Acme", today.AddDate(0, 0, 9))
+	s.exec(`UPDATE controlplane.licenses SET grace_days = -5 WHERE id LIKE 'lic-negative-grace%'`)
+	s.license("lic-soon", "cust-1", "Acme", today.AddDate(0, 0, 10))
+	s.license("lic-far", "cust-1", "Acme", today.AddDate(1, 0, 0))
+	// In the last second of its grace period on the first of April, see below.
+	s.license("lic-spring", "cust-1", "Acme", time.Date(2027, 3, 18, 12, 0, 1, 0, time.UTC))
+
+	// One connection, in a time zone whose days are not all 24 hours long: see below.
+	conn, err := s.pool.Acquire(t.Context())
+	require.NoError(t, err)
+	defer conn.Release()
+	_, err = conn.Exec(t.Context(), `SET TIME ZONE 'Europe/Paris'`)
+	require.NoError(t, err)
+	loadedAt := func(now time.Time) []string {
+		t.Helper()
+		rows, err := cpdb.New(conn).ListExpiringCandidates(t.Context(), cpdb.ListExpiringCandidatesParams{
+			ExpiresBefore:    pgtype.Timestamptz{Time: now.Add(cpstore.ExpiringWithin), Valid: true},
+			DefaultGraceDays: license.DefaultGraceDays,
+			Now:              pgtype.Timestamptz{Time: now, Valid: true},
+		})
+		require.NoError(t, err)
+		loaded := make([]string, 0, len(rows))
+		for i := range rows {
+			loaded = append(loaded, rows[i].ID)
+		}
+		return loaded
+	}
+
+	want := []string{"lic-long-grace", "lic-last-second", "lic-negative-grace-soon", "lic-soon"}
+	require.Equal(t, want, loadedAt(today), "what froze is not loaded; what expires first comes first")
+
+	expiring := s.attention().ExpiringLicenses
+	listed := make([]string, 0, len(expiring))
+	for i := range expiring {
+		listed = append(listed, expiring[i].ID)
+	}
+	require.Equal(t, want, listed, "the bound of the query is the one the key is judged by")
+
+	// The 14 days before spring are an hour short in the time zone of the session: counted in days
+	// of that zone, the grace period would end an hour early and the license be left out.
+	spring := time.Date(2027, 4, 1, 12, 0, 0, 0, time.UTC)
+	require.Equal(t, []string{"lic-spring"}, loadedAt(spring))
+	attention, err := s.store.Attention(t.Context(), spring)
+	require.NoError(t, err)
+	require.Len(t, attention.ExpiringLicenses, 1)
+	require.Equal(t, license.StateGrace, attention.ExpiringLicenses[0].State)
+}
+
 func Test_Attention_OldPending(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
@@ -214,6 +282,37 @@ func Test_Attention_SealRejections(t *testing.T) {
 	counts, err := s.store.AttentionCounts(t.Context(), today)
 	require.NoError(t, err)
 	require.Equal(t, 5, counts.SealRejections, "what was refused on the current UTC day, whatever the license")
+}
+
+// Half past one in the morning of the 9th, two hours east of UTC, is half past eleven in the
+// evening of the 8th in UTC: the day that counts is the 8th.
+func Test_Attention_SealRejections_TheDayIsTheUTCOneWhateverTheZoneOfNow(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	s.license("lic-1", "cust-1", "Acme", today.AddDate(1, 0, 0))
+	now := time.Date(2026, 10, 9, 1, 30, 0, 0, time.FixedZone("two hours east", 2*60*60))
+	utcDay := func(day int) time.Time { return time.Date(2026, 10, day, 0, 0, 0, 0, time.UTC) }
+	s.rejectSeal("lic-1", utcDay(1).Add(12*time.Hour), 1)
+	s.rejectSeal("lic-1", utcDay(2).Add(time.Minute), 3)
+	s.rejectSeal("lic-1", utcDay(8).Add(22*time.Hour), 2)
+
+	counts, err := s.store.AttentionCounts(t.Context(), now)
+	require.NoError(t, err)
+	require.Equal(t, 2, counts.SealRejections, "what was refused on the UTC day of now, not on the day its own zone says")
+
+	attention, err := s.store.Attention(t.Context(), now)
+	require.NoError(t, err)
+	days := make([]time.Time, 0, len(attention.SealRejections))
+	for i := range attention.SealRejections {
+		days = append(days, attention.SealRejections[i].Day)
+	}
+	require.Equal(t, []time.Time{utcDay(8), utcDay(2)}, days, "seven UTC days, the one of now included")
+
+	detail, err := s.store.LicenseDetail(t.Context(), "lic-1", now)
+	require.NoError(t, err)
+	require.Len(t, detail.SealRejections, 2, "the page of the license counts the same days")
 }
 
 func Test_Attention_SharedLicenses(t *testing.T) {

@@ -159,11 +159,18 @@ func silentInstances(ctx context.Context, queries *cpdb.Queries, now time.Time) 
 // expiringLicenses lists the licenses in force that expire within ExpiringWithin of now, or have
 // expired, and that no other license succeeds.
 //
-// When the grace period of a license runs out is what its key says, which Go reads: the query
-// takes every license without a successor that expires before the end of the window, however long
-// ago, which cannot leave one in grace out, and the frozen ones are dropped here.
+// When the grace period of a license runs out is what its key says, which Go reads, and the
+// frozen ones are dropped here. The query takes the licenses without a successor that expire
+// before the end of the window, and leaves out the ones whose grace period has run out, so that
+// the licenses that froze long ago are not loaded each time. It counts the end of the grace period
+// as license.Key.GraceEndsAt does, from license.DefaultGraceDays: should that rule change in
+// internal/license, the query has to follow, or it may leave out a license still in grace.
 func expiringLicenses(ctx context.Context, queries *cpdb.Queries, now time.Time) ([]LicenseSummary, error) {
-	rows, err := queries.ListExpiringCandidates(ctx, toTimestamptz(now.Add(ExpiringWithin)))
+	rows, err := queries.ListExpiringCandidates(ctx, cpdb.ListExpiringCandidatesParams{
+		ExpiresBefore:    toTimestamptz(now.Add(ExpiringWithin)),
+		DefaultGraceDays: license.DefaultGraceDays,
+		Now:              toTimestamptz(now),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list the expiring licenses: %w", err)
 	}

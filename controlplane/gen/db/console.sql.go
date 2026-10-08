@@ -241,9 +241,17 @@ SELECT l.id, l.customer_id, c.name AS customer_name, l.plan, l.telemetry, l.expi
 FROM controlplane.licenses l
 JOIN controlplane.customers c ON c.id = l.customer_id
 WHERE l.expires_at < $1
+    AND l.expires_at + GREATEST(COALESCE(l.grace_days, $2::int), 0) * interval '24 hours'
+        > $3::timestamptz
     AND NOT EXISTS (SELECT 1 FROM controlplane.licenses s WHERE s.succeeds_license_id = l.id)
 ORDER BY l.expires_at, l.id
 `
+
+type ListExpiringCandidatesParams struct {
+	ExpiresBefore    pgtype.Timestamptz
+	DefaultGraceDays int32
+	Now              pgtype.Timestamptz
+}
 
 type ListExpiringCandidatesRow struct {
 	ID           string
@@ -255,10 +263,14 @@ type ListExpiringCandidatesRow struct {
 	GraceDays    pgtype.Int4
 }
 
-// The licenses no other one succeeds that expire before expires_before. However long ago: the
-// grace period of each decides whether it still counts, and that is judged by the caller.
-func (q *Queries) ListExpiringCandidates(ctx context.Context, expiresBefore pgtype.Timestamptz) ([]ListExpiringCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, listExpiringCandidates, expiresBefore)
+// The licenses no other one succeeds that expire before expires_before and whose grace period has
+// not run out at now. The caller stays the judge of the state of each: this only leaves out the
+// ones it would drop. The end of the grace period is counted as internal/license counts it
+// (Key.GraceEndsAt): the days of the key, default_grace_days when it does not say, none when they
+// are negative, of 24 hours each. Hours, not days: a day of an interval is as long as the day of
+// the session's time zone, which is 23 hours once a year.
+func (q *Queries) ListExpiringCandidates(ctx context.Context, arg ListExpiringCandidatesParams) ([]ListExpiringCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listExpiringCandidates, arg.ExpiresBefore, arg.DefaultGraceDays, arg.Now)
 	if err != nil {
 		return nil, err
 	}
