@@ -1,0 +1,15 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}} <span aria-hidden="true">/</span> {{template "id" .License}} <span aria-hidden="true">/</span> {{template "id" .Instance}}</nav>
+<h1>Report of {{.Day}}</h1>
+<dl class="facts">
+<dt>Instance</dt><dd>{{template "id" .Instance}}</dd>
+<dt>License</dt><dd>{{template "id" .License}}</dd>
+<dt>Day</dt><dd>{{.Day}}</dd>
+<dt>Received</dt><dd>{{.ReceivedAt}}</dd>
+<dt>Conflicting re-sends</dt><dd>{{.Conflicts}}{{if .Conflicts}}, the last one received {{.LastConflictAt}}{{end}}</dd>
+</dl>
+
+<section id="document">
+<h2>Document</h2>
+{{if .AsReceived}}<p class="definition">Not JSON: shown as received.</p>
+{{end}}<pre class="document">{{.Document}}</pre>
+</section>{{end}}{{end}}

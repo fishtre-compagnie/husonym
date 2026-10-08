@@ -1,0 +1,39 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>{{.Title}} · Husonym control plane</title>
+<link rel="stylesheet" href="/static/console.css">
+</head>
+<body>
+{{if .Unguarded}}<p class="banner">The host and Access gates are off: this console is open to whoever reaches its address.</p>
+{{end}}<header class="top">
+<a class="brand" href="/">Husonym control plane</a>
+<nav aria-label="Pages">
+<a href="/"{{if eq .Nav "attention"}} aria-current="page"{{end}}>Needs attention</a>
+<a href="/customers"{{if eq .Nav "customers"}} aria-current="page"{{end}}>Customers</a>
+<a href="/pending"{{if eq .Nav "pending"}} aria-current="page"{{end}}>Pending</a>
+</nav>
+<span class="operator">{{.Operator}}</span>
+</header>
+<main>
+{{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "id"}}{{if .Href}}<a class="id" href="{{.Href}}">{{.Text}}</a>{{else}}<span class="id">{{.Text}}</span>{{end}}{{end}}
+
+{{define "named"}}{{if .Href}}<a href="{{.Href}}">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}
+
+{{define "state"}}<span class="state state-{{.}}">{{.}}</span>{{end}}
+
+{{/* The opening of a table named by what it is given: its frame scrolls sideways when the table is
+     wide, so it can be reached with the keyboard and says what it holds; the caption says it to
+     who does not see the heading above. The page closes it with </table></div>. */}}
+{{define "table"}}<div class="table-wrap" tabindex="0" role="region" aria-label="{{.}}"><table>
+<caption class="visually-hidden">{{.}}</caption>{{end}}

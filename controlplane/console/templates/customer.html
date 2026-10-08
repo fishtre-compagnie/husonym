@@ -1,0 +1,29 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a></nav>
+<h1>{{.Name}}</h1>
+<dl class="facts">
+<dt>External id</dt><dd class="id">{{.ExternalID}}</dd>
+<dt>Id</dt><dd class="id">{{.ID}}</dd>
+<dt>Note</dt><dd>{{.Note}}</dd>
+<dt>Recorded</dt><dd>{{.CreatedAt}}</dd>
+<dt>Updated</dt><dd>{{.UpdatedAt}}</dd>
+</dl>
+
+<section id="licenses">
+<h2>Licenses <span class="count">{{len .Licenses}}</span></h2>
+{{if .Licenses}}{{template "table" "Licenses of the customer"}}
+<thead><tr><th scope="col">License</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Plan</th><th scope="col">Telemetry</th><th scope="col">Succeeded</th></tr></thead>
+<tbody>
+{{range .Licenses}}<tr><td>{{template "id" .License}}</td><td>{{template "state" .State}}</td><td>{{.ExpiresAt}}</td><td>{{.Plan}}</td><td>{{.Telemetry}}</td><td>{{.Succeeded}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No license.</p>{{end}}
+</section>
+
+<section id="instances">
+<h2>Instances <span class="count">{{len .Instances}}</span></h2>
+{{if .Instances}}{{template "table" "Instances of the customer"}}
+<thead><tr><th scope="col">Instance</th><th scope="col">License</th><th scope="col">Version</th><th scope="col">Install kind</th><th scope="col">First seen</th><th scope="col">Last seen</th><th scope="col">Last report day</th></tr></thead>
+<tbody>
+{{range .Instances}}<tr><td>{{template "id" .Instance}}</td><td>{{template "id" .License}}</td><td>{{.Version}}</td><td>{{.InstallKind}}</td><td>{{.FirstSeen}}</td><td>{{.LastSeen}}</td><td>{{.LastReportDay}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No instance.</p>{{end}}
+</section>{{end}}{{end}}

@@ -1,0 +1,459 @@
+/* The one stylesheet of the console. It names no other resource: the content security policy of
+   the pages allows this file and nothing else. */
+
+:root {
+  --bg: #f6f6f3;
+  --surface: #ffffff;
+  --text: #1d1f23;
+  --muted: #5c6370;
+  --line: #dddcd5;
+  --accent: #1f5fbf;
+  --alert: #a3320b;
+  --alert-soft: #fdeee6;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a;
+    --surface: #1c1f24;
+    --text: #e6e7ea;
+    --muted: #9aa1ad;
+    --line: #31363e;
+    --accent: #8ab4ff;
+    --alert: #ffb38a;
+    --alert-soft: #3a2318;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+code,
+pre,
+.id,
+.fingerprint {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+.id {
+  overflow-wrap: anywhere;
+}
+
+/* What is said for who does not see the page: there to be read out, not to be looked at. */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
+/* The banner of a console served without its gates. */
+
+.banner {
+  margin: 0;
+  padding: 0.6rem 1.25rem;
+  background: var(--alert);
+  color: var(--bg);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* The top of every page. */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.75rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.top nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+
+.top nav a {
+  padding-bottom: 0.15rem;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.top nav a:hover {
+  color: var(--text);
+}
+
+.top nav a[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.operator {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+/* The page. */
+
+main {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+h1 {
+  margin: 0 0 1.25rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+h1.id {
+  font-size: 1.25rem;
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+section {
+  margin-top: 2.25rem;
+  scroll-margin-top: 1rem;
+}
+
+.crumbs {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.kind {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.definition,
+.aside {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.definition {
+  max-width: 60rem;
+  margin: 0 0 0.75rem;
+}
+
+.empty {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+}
+
+/* How many there are of what a heading names. */
+
+.count {
+  min-width: 1.6rem;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: center;
+}
+
+.some > h2 .count {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+/* The five numbers at the top of what needs attention. */
+
+.tallies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tallies a {
+  display: block;
+  height: 100%;
+  padding: 0.8rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.tallies a:hover {
+  border-color: var(--muted);
+}
+
+.tally-count {
+  display: block;
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tally-label {
+  font-size: 0.875rem;
+}
+
+.tallies .some a {
+  border-left-color: var(--alert);
+  color: var(--text);
+}
+
+.tallies .some .tally-count {
+  color: var(--alert);
+}
+
+/* Tables. A wide one scrolls inside its frame, the page does not; the frame takes the focus so
+   that the keyboard scrolls it too. */
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.table-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: var(--bg);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.id,
+td .id,
+td code {
+  white-space: nowrap;
+}
+
+/* A fingerprint is shown whole: it breaks where it must, in a cell wide enough to hold it on a
+   few lines, and does not widen the table. */
+
+.fingerprint {
+  min-width: 17rem;
+  overflow-wrap: anywhere;
+}
+
+/* A row, or a value, that is over what it is measured against. The word says it; the colour
+   only makes it found faster. */
+
+tr.over td:first-child {
+  box-shadow: inset 4px 0 0 var(--alert);
+}
+
+.mark {
+  padding: 0.05rem 0.45rem;
+  background: var(--alert-soft);
+  border-radius: 4px;
+  color: var(--alert);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* The state of a license, always a word. */
+
+.state {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.state-expiring,
+.state-grace {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.state-frozen {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* The named values of one thing. */
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) 1fr;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.facts dt,
+.facts dd {
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.facts dt:last-of-type,
+.facts dd:last-of-type {
+  border-bottom: 0;
+}
+
+.plain {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.document {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  line-height: 1.45;
+  tab-size: 2;
+}
+
+@media (max-width: 40rem) {
+  main {
+    padding: 1rem 0.75rem 3rem;
+  }
+
+  .top {
+    padding: 0.75rem;
+  }
+
+  .operator {
+    margin-left: 0;
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .facts dt {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .facts dt:last-of-type {
+    border-bottom: 0;
+  }
+}

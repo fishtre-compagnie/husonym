@@ -61,7 +61,7 @@ func Test_Post_AReportBuiltByTheProductIsAcceptedByTheControlPlane(t *testing.T)
 	require.True(t, added)
 	// The control plane receives at the moment the fixture prepares its report.
 	receiver := intake.New(store, func() time.Time { return reportNow })
-	server := httptest.NewServer(publicapi.NewHandler(receiver, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	server := httptest.NewServer(publicapi.NewHandler(receiver, nil, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(server.Close)
 	transport := transportTo(t, server.URL+"/v1/usage-reports")
 

@@ -1,0 +1,59 @@
+{{define "content"}}{{with .Body}}<h1>Needs attention</h1>
+<ul class="tallies">
+{{range .Tallies}}<li{{if .Count}} class="some"{{end}}><a href="{{.Href}}"><span class="tally-count">{{.Count}}</span> <span class="tally-label">{{.Label}}</span></a></li>
+{{end}}</ul>
+
+<section id="silent-instances"{{if .Silent}} class="some"{{end}}>
+<h2>Silent instances <span class="count">{{len .Silent}}</span></h2>
+<p class="definition">License in force, telemetry online, last report more than {{.SilentAfterDays}} days and no more than {{.RecentDays}} days ago.</p>
+{{if .Silent}}{{template "table" "Silent instances"}}
+<thead><tr><th scope="col">Instance</th><th scope="col">License</th><th scope="col">Customer</th><th scope="col">Last report day</th><th scope="col">Last seen</th><th scope="col">Version</th></tr></thead>
+<tbody>
+{{range .Silent}}<tr><td>{{template "id" .Instance}}</td><td>{{template "id" .License}}</td><td>{{template "named" .Customer}}</td><td>{{.LastReportDay}}</td><td>{{.LastSeen}}</td><td>{{.Version}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>
+
+<section id="expiring-licenses"{{if .Expiring}} class="some"{{end}}>
+<h2>Expiring licenses <span class="count">{{len .Expiring}}</span></h2>
+<p class="definition">Expires within {{.ExpiringDays}} days or is in grace, and no license succeeds it.</p>
+{{if .Expiring}}{{template "table" "Expiring licenses"}}
+<thead><tr><th scope="col">License</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Plan</th><th scope="col">Telemetry</th></tr></thead>
+<tbody>
+{{range .Expiring}}<tr><td>{{template "id" .License}}</td><td>{{template "named" .Customer}}</td><td>{{template "state" .State}}</td><td>{{.ExpiresAt}}</td><td>{{.Plan}}</td><td>{{.Telemetry}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>
+
+<section id="old-pending"{{if .OldPending}} class="some"{{end}}>
+<h2>Old pending reports <span class="count">{{.OldPendingReports}}</span></h2>
+<p class="definition">Pending reports received more than {{.OldPendingHours}} hours ago, by key fingerprint.</p>
+{{if .OldPending}}{{template "table" "Old pending reports by key fingerprint"}}
+<thead><tr><th scope="col">Key fingerprint</th><th scope="col" class="number">Old</th><th scope="col" class="number">Pending</th><th scope="col">Oldest received</th><th scope="col">Newest received</th></tr></thead>
+<tbody>
+{{range .OldPending}}<tr><td><a class="id" href="{{.Href}}" title="{{.Fingerprint}}">{{.Short}}</a></td><td class="number">{{.OldReports}}</td><td class="number">{{.Reports}}</td><td>{{.Oldest}}</td><td>{{.Newest}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>
+
+<section id="seal-rejections"{{if .Rejections}} class="some"{{end}}>
+<h2>Seal rejections <span class="count">{{.RejectedReports}}</span></h2>
+<p class="definition">Reports refused for their seal in the last {{.RejectionDays}} days, by license and day.</p>
+{{if .Rejections}}{{template "table" "Seal rejections by license and day"}}
+<thead><tr><th scope="col">Day</th><th scope="col">License</th><th scope="col">Customer</th><th scope="col" class="number">Refused</th><th scope="col">Last refused</th></tr></thead>
+<tbody>
+{{range .Rejections}}<tr><td>{{.Day}}</td><td>{{template "id" .License}}</td><td>{{template "named" .Customer}}</td><td class="number">{{.Count}}</td><td>{{.LastAt}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>
+
+<section id="shared-licenses"{{if .Shared}} class="some"{{end}}>
+<h2>Shared licenses <span class="count">{{len .Shared}}</span></h2>
+<p class="definition">Licenses with more than one instance whose last report is no more than {{.RecentDays}} days old.</p>
+{{if .Shared}}{{template "table" "Shared licenses"}}
+<thead><tr><th scope="col">License</th><th scope="col">Customer</th><th scope="col" class="number">Instances</th><th scope="col">State</th><th scope="col">Expires</th></tr></thead>
+<tbody>
+{{range .Shared}}<tr><td>{{template "id" .License}}</td><td>{{template "named" .Customer}}</td><td class="number">{{.RecentInstances}}</td><td>{{template "state" .State}}</td><td>{{.ExpiresAt}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>{{end}}{{end}}

@@ -40,11 +40,16 @@ type rig struct {
 	receiver *fakeReceiver
 	logs     *bytes.Buffer
 	handler  http.Handler
+	observer *recordingObserver
 }
 
+type recordingObserver struct{ outcomes []string }
+
+func (o *recordingObserver) ReportReceived(outcome string) { o.outcomes = append(o.outcomes, outcome) }
+
 func newRig(outcome intake.Outcome, err error) *rig {
-	r := &rig{receiver: &fakeReceiver{outcome: outcome, err: err}, logs: &bytes.Buffer{}}
-	r.handler = publicapi.NewHandler(r.receiver, slog.New(slog.NewTextHandler(r.logs, nil)))
+	r := &rig{receiver: &fakeReceiver{outcome: outcome, err: err}, logs: &bytes.Buffer{}, observer: &recordingObserver{}}
+	r.handler = publicapi.NewHandler(r.receiver, r.observer, slog.New(slog.NewTextHandler(r.logs, nil)))
 	return r
 }
 
@@ -248,9 +253,10 @@ func (panickingReceiver) Receive(context.Context, []byte, string, string) (intak
 	panic("SECRET")
 }
 
-func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
+func Test_Handler_APanic_Answers503IsCountedAndSaysNothingOfIt(t *testing.T) {
 	logs := &bytes.Buffer{}
-	handler := publicapi.NewHandler(panickingReceiver{}, slog.New(slog.NewTextHandler(logs, nil)))
+	observer := &recordingObserver{}
+	handler := publicapi.NewHandler(panickingReceiver{}, observer, slog.New(slog.NewTextHandler(logs, nil)))
 	req := post(strings.NewReader("{}"))
 	require.Equal(t, "192.0.2.1:1234", req.RemoteAddr)
 	rec := httptest.NewRecorder()
@@ -259,6 +265,7 @@ func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
 
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	require.Empty(t, rec.Body.String())
+	require.Equal(t, []string{"panicked"}, observer.outcomes)
 	logged := logs.String()
 	require.Equal(t, 1, strings.Count(logged, "\n"), "one line")
 	require.Contains(t, logged, "level=ERROR")
@@ -357,4 +364,63 @@ func (*endlessReader) Read(p []byte) (int, error) {
 		p[i] = 'x'
 	}
 	return len(p), nil
+}
+
+func Test_Handler_CountsEachReportRequestByTheWordItLogs(t *testing.T) {
+	cases := map[string]struct {
+		outcome intake.Outcome
+		err     error
+		req     func() *http.Request
+	}{
+		"stored":             {outcome: intake.Stored, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"pending":            {outcome: intake.Pending, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"refused":            {outcome: intake.Refused, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"full":               {outcome: intake.Full, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"failed":             {err: errors.New("down"), req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"method_not_allowed": {req: func() *http.Request { return httptest.NewRequest(http.MethodGet, "/v1/usage-reports", nil) }},
+		"missing_header": {req: func() *http.Request {
+			req := post(strings.NewReader("{}"))
+			req.Header.Del("Husonym-Seal")
+			return req
+		}},
+	}
+	for want, tc := range cases {
+		t.Run(want, func(t *testing.T) {
+			r := newRig(tc.outcome, tc.err)
+			r.do(tc.req())
+			require.Equal(t, []string{want}, r.observer.outcomes)
+		})
+	}
+}
+
+// The series of the counter are started from this list: a word counted that is not in it would
+// have no series until it is first seen.
+func Test_Outcomes_NamesEveryWordAReportRequestIsCountedBy(t *testing.T) {
+	outcomes := publicapi.Outcomes()
+
+	require.ElementsMatch(t, []string{
+		"method_not_allowed", "bad_content_type", "missing_header", "malformed_header", "too_large", "unreadable_body",
+		"interrupted", "failed", "panicked", "stored", "pending", "repeat", "conflict", "refused", "too_many_instances",
+		"full", "unknown",
+	}, outcomes)
+	require.NotContains(t, outcomes, "not_found", "the word of the other paths, which are not counted")
+
+	for name, outcome := range map[string]intake.Outcome{
+		"stored": intake.Stored, "pending": intake.Pending, "repeat": intake.Repeat, "conflict": intake.Conflict,
+		"refused": intake.Refused, "too_many_instances": intake.TooManyInstances, "full": intake.Full,
+		"an outcome this handler does not know": intake.Outcome(-1),
+	} {
+		r := newRig(outcome, nil)
+		r.do(post(strings.NewReader("{}")))
+		require.Len(t, r.observer.outcomes, 1, name)
+		require.Contains(t, outcomes, r.observer.outcomes[0], name)
+	}
+}
+
+func Test_Handler_DoesNotCountTheOtherPaths(t *testing.T) {
+	r := newRig(intake.Stored, nil)
+	r.do(httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	r.do(httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	r.do(httptest.NewRequest(http.MethodGet, "/whatever-a-caller-wrote", nil))
+	require.Empty(t, r.observer.outcomes)
 }
