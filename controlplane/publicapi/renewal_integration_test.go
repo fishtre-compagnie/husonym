@@ -110,6 +110,46 @@ func Test_Renewal_OverTheRealStore_TheThreeWaysToBeGivenNothingAnswerTheSame(t *
 	}
 }
 
+// A report and a request for a renewal are sealed the same way, with nothing in the seal that says
+// which of the two it is of: a report an instance did send, posted to the renewal route with its
+// own seal, verifies there. What stops it is that the body of a renewal is closed, and a report
+// is not one. It is refused before any license is looked up, and leaves no trace.
+func Test_Renewal_OverTheRealStore_ASealedUsageReportIsNotARequestForARenewal(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	issuer := cptest.NewIssuer(t)
+	renewed := issuer.Entry("lic-renewed", "cust-1", "Acme")
+	successor := issuer.Entry("lic-successor", "cust-1", "Acme")
+	cptest.AddLicense(t, store, issuer, &renewed)
+	cptest.AddLicense(t, store, issuer, &successor)
+	cptest.Succeed(t, pool, "lic-successor", "lic-renewed")
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+	observer := &recordingObserver{}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := httptest.NewServer(publicapi.NewHandler(
+		intake.New(store, clock), renewal.New(store, clock, logger, observer), observer, logger))
+	t.Cleanup(server.Close)
+	report := cptest.ReportFor(t, &renewed, instanceA, now)
+	require.NoError(t, telemetry.Verify(renewed.Encoded, report.Document, report.Seal), "the seal is a good one")
+	require.Less(t, len(report.Document), telemetry.RenewalBodyCap, "it is not its size that refuses it")
+
+	asRenewal := postRenewal(t, server.URL, cptest.SealedRenewal{
+		Document: report.Document, Seal: report.Seal, Fingerprint: report.Fingerprint,
+	})
+
+	require.Equal(t, http.StatusBadRequest, asRenewal.status)
+	require.Empty(t, asRenewal.body)
+	require.Equal(t, []string{"refused"}, observer.renewals)
+	require.Empty(t, observer.outcomes, "nothing was received as a report")
+	for _, table := range []string{"renewal_asks", "seal_rejections", "usage_reports", "pending_reports"} {
+		require.Zero(t, count(t, pool, table), table)
+	}
+}
+
 // Review focus: a trace that cannot be written changes no answer. With neither table writable, the
 // holder of a key is given its successor, and the three ways to be given nothing still answer the
 // same: never a 503, which would tell a license that is known from one that is not.

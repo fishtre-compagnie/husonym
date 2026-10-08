@@ -236,6 +236,39 @@ func Test_Answer_AWrongSealForAKnownLicense_IsNothing_AndIsCounted(t *testing.T)
 	require.Empty(t, b.logs.String())
 }
 
+// The holder of a license cannot ask under another: its request and its seal, sent under the
+// fingerprint of a license it does not hold, are a wrong seal for that license, counted there.
+func Test_Answer_TheSealOfALicenseUnderTheFingerprintOfAnother_IsNothing_AndIsCountedUnderTheOther(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	// Both are known, and both have a successor to give.
+	a := b.license(firstID, "")
+	b.license(secondID, firstID)
+	other := b.license(thirdID, "")
+	b.license(fourthID, thirdID)
+
+	crossed := cptest.RenewalFor(t, &a, instanceA, b.now)
+	crossed.Fingerprint = telemetry.KeyFingerprint(other.Encoded)
+	outcome, _ := b.answerTo(crossed)
+
+	require.Equal(t, renewal.Nothing, outcome)
+	require.Zero(t, b.count("renewal_asks"))
+	var license string
+	var rejections int
+	require.NoError(t, b.pool.QueryRow(t.Context(),
+		`SELECT license_id, count FROM controlplane.seal_rejections`).Scan(&license, &rejections))
+	require.Equal(t, thirdID, license, "counted under the license of the fingerprint, not the one of the seal")
+	require.Equal(t, 1, rejections)
+	require.Zero(t, b.unrecorded)
+	require.Empty(t, b.logs.String())
+
+	// The same request under its own fingerprint is the one of its license.
+	outcome, _ = b.answer(&a, instanceA)
+	require.Equal(t, renewal.Served, outcome)
+}
+
 // A request sealed with the key of a license and naming another is not the one of that license.
 func Test_Answer_ARequestThatNamesAnotherLicense_IsNothing(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {

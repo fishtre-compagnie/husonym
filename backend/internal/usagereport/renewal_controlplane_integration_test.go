@@ -20,6 +20,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
+	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -173,13 +174,46 @@ func Test_AskIfDue_TheControlPlaneAnswersTheLastLicenseOfTheChain(t *testing.T) 
 	require.Equal(t, fourthID, served)
 	require.NotContains(t, logs.String(), "level=WARN")
 
+	// Licenses whose ids are not the sixteen hexadecimal characters the license tool draws: the
+	// instance does not write such an id in its request, and names it by one word, which is also
+	// how the control plane reads the id of the license the request is sealed under. The first of
+	// them is received as any successor is.
+	const fifthID, sixthID = "acme-2027", "acme-2028"
+	require.Equal(t, telemetry.LicenseId(fifthID), telemetry.LicenseId(sixthID), "one word for both")
+	require.NotEqual(t, fifthID, telemetry.LicenseId(fifthID))
+	fifth := issue(fifthID, reportNow.Add(3*time.Hour), fourthID)
+	ask(t)
+	require.Equal(t, fifth, inForce(t))
+	_, served = asked(t, fourthID)
+	require.Equal(t, fifthID, served)
+
+	// Under it, the instance asks by that word: it is known as the holder of its license, and
+	// recorded under the id the control plane has for it.
+	ask(t)
+	require.Equal(t, fifth, inForce(t))
+	at, served = asked(t, fifthID)
+	require.True(t, clock.Equal(at))
+	require.Empty(t, served)
+
+	// And it is given the license that succeeds it.
+	sixth := issue(sixthID, reportNow.Add(4*time.Hour), fifthID)
+	ask(t)
+	require.Equal(t, sixth, inForce(t))
+	installation, err = licenses.Installation(ctx, sixthID)
+	require.NoError(t, err)
+	require.NotNil(t, installation)
+	require.Equal(t, licensestore.OriginRenewal, installation.Origin)
+	_, served = asked(t, fifthID)
+	require.Equal(t, sixthID, served)
+	require.NotContains(t, logs.String(), "level=WARN")
+
 	// The control plane logged a line per request, and no key, seal or instance in any of them.
 	said := controlPlaneLogs.String()
 	require.NotEmpty(t, said)
 	require.NotContains(t, said, "level=ERROR")
-	for _, secret := range []string{first, second, fourth, instance} {
+	for _, secret := range []string{first, second, fourth, fifth, sixth, instance, fifthID, sixthID} {
 		require.NotContains(t, said, secret)
 	}
-	require.Equal(t, 2, countRows(t, controlPlanePool, "renewal_asks"), "one row per license the instance asked under")
+	require.Equal(t, 4, countRows(t, controlPlanePool, "renewal_asks"), "one row per license the instance asked under")
 	require.Zero(t, countRows(t, controlPlanePool, "seal_rejections"))
 }
