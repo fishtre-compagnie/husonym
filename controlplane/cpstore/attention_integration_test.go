@@ -162,6 +162,25 @@ func Test_Attention_ExpiringLicenses(t *testing.T) {
 
 // The query is asserted itself: the list would be the same if the frozen licenses were all
 // loaded and dropped afterwards.
+// A grace no timestamp can hold must not make the query fail: its days are capped.
+func Test_ListExpiringCandidates_AGraceBeyondATimestampDoesNotFail(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	s.license("lic-huge-grace", "cust-1", "Acme", today.AddDate(0, 0, -40))
+	s.exec(`UPDATE controlplane.licenses SET grace_days = 2147483647 WHERE id = 'lic-huge-grace'`)
+
+	rows, err := cpdb.New(s.pool).ListExpiringCandidates(t.Context(), cpdb.ListExpiringCandidatesParams{
+		ExpiresBefore:    pgtype.Timestamptz{Time: today.Add(cpstore.ExpiringWithin), Valid: true},
+		DefaultGraceDays: license.DefaultGraceDays,
+		Now:              pgtype.Timestamptz{Time: today, Valid: true},
+	})
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.Equal(t, "lic-huge-grace", rows[0].ID)
+}
+
 func Test_ListExpiringCandidates_LoadsNoLicenseWhoseGraceHasRunOut(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return

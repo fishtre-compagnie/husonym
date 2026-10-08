@@ -163,8 +163,9 @@ func silentInstances(ctx context.Context, queries *cpdb.Queries, now time.Time) 
 // frozen ones are dropped here. The query takes the licenses without a successor that expire
 // before the end of the window, and leaves out the ones whose grace period has run out, so that
 // the licenses that froze long ago are not loaded each time. It counts the end of the grace period
-// as license.Key.GraceEndsAt does, from license.DefaultGraceDays: should that rule change in
-// internal/license, the query has to follow, or it may leave out a license still in grace.
+// as license.Key.GraceEndsAt does, from license.DefaultGraceDays, with the days capped at a century
+// so that no key can overflow a timestamp: should that rule change in internal/license, the query
+// has to follow, or it may leave out a license still in grace.
 func expiringLicenses(ctx context.Context, queries *cpdb.Queries, now time.Time) ([]LicenseSummary, error) {
 	rows, err := queries.ListExpiringCandidates(ctx, cpdb.ListExpiringCandidatesParams{
 		ExpiresBefore:    toTimestamptz(now.Add(ExpiringWithin)),
