@@ -100,6 +100,16 @@ func (d *HusonymDb) EnterInstance(
 		return nil, err
 	}
 	if accounts > 0 {
+		// The two reads above are not one: the first entry of all may have created the
+		// organization between them, and its account is then what was counted. An organization
+		// is retained in the transaction that creates its account, so it shows now if so.
+		organization, err = d.Q.GetInstanceOrganization(ctx, d.Db)
+		if err != nil {
+			return nil, err
+		}
+		if organization.Valid {
+			return d.enterOrganization(ctx, userId, organization, roles)
+		}
 		return &InstanceEntry{Outcome: EntryPersonal}, nil
 	}
 
