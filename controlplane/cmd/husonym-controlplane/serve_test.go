@@ -118,6 +118,10 @@ func Test_ServePublic_ReceivesAReportAndStopsWhenItsContextEnds(t *testing.T) {
 	metrics := get(t, "http://"+metricsListener.Addr().String()+"/metrics")
 	require.Equal(t, http.StatusOK, metrics.status)
 	require.Contains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="stored"} 1`)
+	for _, never := range []string{"refused", "failed", "panicked"} {
+		require.Contains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="`+never+`"} 0`,
+			"a word never counted has its series")
+	}
 	require.Contains(t, metrics.body, "husonym_controlplane_silent_instances 0")
 	require.Equal(t, http.StatusNotFound, get(t, "http://"+listener.Addr().String()+"/metrics").status)
 	require.Equal(t, http.StatusNotFound, get(t, "http://"+metricsListener.Addr().String()+"/healthz").status)

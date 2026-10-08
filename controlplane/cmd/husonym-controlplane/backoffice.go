@@ -182,7 +182,25 @@ func newBackofficeHandler(
 		}
 		guarded = accessgate.Host(gates.host, gates.access.Wrap(pages))
 	}
+	return outermost(guarded, logger), nil
+}
+
+// outermost is the first handler a request to the backoffice meets: it answers the health check
+// and hands anything else to guarded.
+//
+// The console recovers from its own panics, the gates in front of it do not, and what net/http
+// would say of a panic is dropped by the server: one that comes this far is answered 500 and
+// logged here.
+func outermost(guarded http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recover() != nil {
+				// Fixed words only: what a panic carries may hold something of the request. A
+				// gate writes nothing before it refuses or hands over, so nothing was sent yet.
+				logger.Error("the backoffice panicked outside the console", "status", http.StatusInternalServerError)
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}()
 		if r.URL.Path != healthPath {
 			guarded.ServeHTTP(w, r)
 			return
@@ -195,7 +213,7 @@ func newBackofficeHandler(
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-	}), nil
+	})
 }
 
 // newBackofficeServer is the server of the backoffice around handler: the one of the public

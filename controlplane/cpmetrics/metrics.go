@@ -17,8 +17,10 @@ type Metrics struct {
 	reports  *prometheus.CounterVec
 }
 
-// New returns the metrics, with the counter of the reports received.
-func New() *Metrics {
+// New returns the metrics, with the counter of the reports received. The series of each of
+// outcomes starts at zero: a rate over a word that was never counted is then 0, where it would
+// be absent, and an alert on it can tell "none" from "not measured".
+func New(outcomes ...string) *Metrics {
 	m := &Metrics{
 		registry: prometheus.NewRegistry(),
 		reports: prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -27,12 +29,19 @@ func New() *Metrics {
 		}, []string{"outcome"}),
 	}
 	m.registry.MustRegister(m.reports)
+	for _, outcome := range outcomes {
+		m.reports.WithLabelValues(outcome)
+	}
 	return m
 }
 
 // ReportReceived counts one report request. The outcome is one of the fixed words of the
-// handler of the public API, never something a caller sent.
+// handler of the public API, never something a caller sent. On a nil *Metrics it counts nothing:
+// handed to the handler as its observer, a nil pointer is not a nil interface, and is called.
 func (m *Metrics) ReportReceived(outcome string) {
+	if m == nil {
+		return
+	}
 	m.reports.WithLabelValues(outcome).Inc()
 }
 

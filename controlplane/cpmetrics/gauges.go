@@ -2,6 +2,8 @@ package cpmetrics
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -17,18 +19,19 @@ const (
 // WatchAttention registers the gauges of what needs the operator's attention. They are read
 // from source at most once every 60 seconds, whatever the rate of the scrapes; scrapes that come
 // during a read wait for it. When source fails, the gauges are left out of that scrape, the
-// failure is counted in husonym_controlplane_attention_read_failures_total, and the next scrape
-// tries again.
+// failure is counted in husonym_controlplane_attention_read_failures_total and logged with the
+// text of the error of source, and the next scrape tries again.
 func (m *Metrics) WatchAttention(
-	source func(ctx context.Context) (cpstore.AttentionCounts, error), now func() time.Time,
+	source func(ctx context.Context) (cpstore.AttentionCounts, error), now func() time.Time, logger *slog.Logger,
 ) {
-	m.registry.MustRegister(&attentionCollector{source: source, now: now})
+	m.registry.MustRegister(&attentionCollector{source: source, now: now, logger: logger})
 }
 
 var (
 	silentDesc   = prometheus.NewDesc(prefix+"silent_instances", "Instances in force that stopped reporting.", nil, nil)
 	expiringDesc = prometheus.NewDesc(prefix+"expiring_licenses", "Licenses expiring soon that no other license succeeds.", nil, nil)
-	pendingDesc  = prometheus.NewDesc(prefix+"old_pending_reports", "Pending reports received more than 24 hours ago.", nil, nil)
+	pendingDesc  = prometheus.NewDesc(prefix+"old_pending_reports",
+		fmt.Sprintf("Pending reports received more than %d hours ago.", int(cpstore.OldPendingAfter.Hours())), nil, nil)
 	rejectedDesc = prometheus.NewDesc(prefix+"seal_rejections_today", "Reports refused for their seal today (UTC).", nil, nil)
 	sharedDesc   = prometheus.NewDesc(prefix+"shared_licenses", "Licenses seen lately on more than one instance.", nil, nil)
 	failuresDesc = prometheus.NewDesc(prefix+"attention_read_failures_total", "Reads of the gauges that failed.", nil, nil)
@@ -37,6 +40,7 @@ var (
 type attentionCollector struct {
 	source func(ctx context.Context) (cpstore.AttentionCounts, error)
 	now    func() time.Time
+	logger *slog.Logger
 
 	mu       sync.Mutex // held during a read, so that the scrapes that come meanwhile wait for it
 	counts   cpstore.AttentionCounts
@@ -84,6 +88,8 @@ func (c *attentionCollector) read() (counts cpstore.AttentionCounts, ok bool, fa
 	defer cancel()
 	fresh, err := c.source(ctx)
 	if err != nil {
+		// Our own error: the source reads the database and is given nothing of a caller.
+		c.logger.Error("unable to read what needs attention for the gauges", "error", err.Error())
 		c.failures++
 		c.cached = false
 		return cpstore.AttentionCounts{}, false, c.failures

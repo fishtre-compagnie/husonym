@@ -123,10 +123,10 @@ func servePublic(
 	store := cpstore.New(pool)
 	now := time.Now
 	receiver := intake.New(store, now)
-	metrics := cpmetrics.New()
+	metrics := cpmetrics.New(publicapi.Outcomes()...)
 	metrics.WatchAttention(func(ctx context.Context) (cpstore.AttentionCounts, error) {
 		return store.AttentionCounts(ctx, now())
-	}, now)
+	}, now, logger)
 	server := newServer(publicapi.NewHandler(receiver, metrics, logger))
 	metricsServer := newServer(metricsHandler(metrics.Handler()))
 

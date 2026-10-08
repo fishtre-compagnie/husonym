@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -201,6 +202,28 @@ func Test_Backoffice_WithoutGates_SaysSoOnThePage(t *testing.T) {
 	require.Equal(t, http.StatusOK, page.Code)
 	require.Contains(t, page.Body.String(), "The host and Access gates are off")
 	require.Contains(t, page.Body.String(), `<span class="operator">local</span>`)
+}
+
+// The console recovers from its own panics; a gate is in front of it, and what net/http would say
+// of a panic is dropped by the server.
+func Test_Backoffice_APanicOutsideTheConsole_Answers500AndLogsFixedWords(t *testing.T) {
+	var logs bytes.Buffer
+	gate := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("SECRET") })
+	handler := outermost(gate, slog.New(slog.NewTextHandler(&logs, nil)))
+	req := httptest.NewRequest(http.MethodGet, "/customers/SECRET-PATH", nil)
+	rec := httptest.NewRecorder()
+
+	require.NotPanics(t, func() { handler.ServeHTTP(rec, req) })
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	require.Empty(t, rec.Body.String())
+	logged := logs.String()
+	require.Equal(t, 1, strings.Count(logged, "\n"), "one line: %s", logged)
+	require.Contains(t, logged, "level=ERROR")
+	require.Contains(t, logged, "status=500")
+	for _, secret := range []string{"SECRET", "192.0.2.1", "goroutine"} {
+		require.NotContains(t, logged, secret)
+	}
 }
 
 // startBackoffice serves handler as the command does and returns its address and what stops it.

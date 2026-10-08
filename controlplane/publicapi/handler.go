@@ -47,6 +47,7 @@ const (
 	wordUnreadableBody   word = "unreadable_body"
 	wordInterrupted      word = "interrupted"
 	wordFailed           word = "failed"
+	wordPanicked         word = "panicked"
 	wordStored           word = "stored"
 	wordPending          word = "pending"
 	wordRepeat           word = "repeat"
@@ -57,11 +58,29 @@ const (
 	wordUnknown          word = "unknown"
 )
 
+// reportWords are the words a report request can end by. wordNotFound is not one of them: it is
+// the word of the other paths, which are not counted.
+var reportWords = []word{
+	wordMethodNotAllowed, wordBadContentType, wordMissingHeader, wordMalformedHeader, wordTooLarge,
+	wordUnreadableBody, wordInterrupted, wordFailed, wordPanicked, wordStored, wordPending, wordRepeat,
+	wordConflict, wordRefused, wordTooManyInstances, wordFull, wordUnknown,
+}
+
+// Outcomes lists the fixed words a report request is counted by, for an observer that wants to
+// know them before the first request.
+func Outcomes() []string {
+	outcomes := make([]string, 0, len(reportWords))
+	for _, name := range reportWords {
+		outcomes = append(outcomes, string(name))
+	}
+	return outcomes
+}
+
 // NewHandler returns the handler of the public server: POST /v1/usage-reports and GET /healthz.
 // Replies have no body. At most one line is logged per request, made of the path, the status
 // and a fixed word for the outcome, never of what the caller sent; a failure of ours adds the
 // text of our own error. Each report request is also counted by that word in observer, unless it
-// is nil.
+// is nil; one that ends in a panic is answered 503 and counted as "panicked".
 func NewHandler(receiver Receiver, observer Observer, logger *slog.Logger) http.Handler {
 	return &handler{receiver: receiver, observer: observer, logger: logger}
 }
@@ -80,6 +99,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// request. Left to net/http, the line would name the address of the caller as well.
 			h.logger.Error("the handler of the public server panicked", "status", http.StatusServiceUnavailable)
 			w.WriteHeader(http.StatusServiceUnavailable)
+			// Only a report request can panic: the other paths call nothing. count leaves them out.
+			h.count(r.URL.Path, wordPanicked)
 		}
 	}()
 	switch r.URL.Path {

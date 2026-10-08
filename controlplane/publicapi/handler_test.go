@@ -253,9 +253,10 @@ func (panickingReceiver) Receive(context.Context, []byte, string, string) (intak
 	panic("SECRET")
 }
 
-func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
+func Test_Handler_APanic_Answers503IsCountedAndSaysNothingOfIt(t *testing.T) {
 	logs := &bytes.Buffer{}
-	handler := publicapi.NewHandler(panickingReceiver{}, nil, slog.New(slog.NewTextHandler(logs, nil)))
+	observer := &recordingObserver{}
+	handler := publicapi.NewHandler(panickingReceiver{}, observer, slog.New(slog.NewTextHandler(logs, nil)))
 	req := post(strings.NewReader("{}"))
 	require.Equal(t, "192.0.2.1:1234", req.RemoteAddr)
 	rec := httptest.NewRecorder()
@@ -264,6 +265,7 @@ func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
 
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	require.Empty(t, rec.Body.String())
+	require.Equal(t, []string{"panicked"}, observer.outcomes)
 	logged := logs.String()
 	require.Equal(t, 1, strings.Count(logged, "\n"), "one line")
 	require.Contains(t, logged, "level=ERROR")
@@ -388,6 +390,30 @@ func Test_Handler_CountsEachReportRequestByTheWordItLogs(t *testing.T) {
 			r.do(tc.req())
 			require.Equal(t, []string{want}, r.observer.outcomes)
 		})
+	}
+}
+
+// The series of the counter are started from this list: a word counted that is not in it would
+// have no series until it is first seen.
+func Test_Outcomes_NamesEveryWordAReportRequestIsCountedBy(t *testing.T) {
+	outcomes := publicapi.Outcomes()
+
+	require.ElementsMatch(t, []string{
+		"method_not_allowed", "bad_content_type", "missing_header", "malformed_header", "too_large", "unreadable_body",
+		"interrupted", "failed", "panicked", "stored", "pending", "repeat", "conflict", "refused", "too_many_instances",
+		"full", "unknown",
+	}, outcomes)
+	require.NotContains(t, outcomes, "not_found", "the word of the other paths, which are not counted")
+
+	for name, outcome := range map[string]intake.Outcome{
+		"stored": intake.Stored, "pending": intake.Pending, "repeat": intake.Repeat, "conflict": intake.Conflict,
+		"refused": intake.Refused, "too_many_instances": intake.TooManyInstances, "full": intake.Full,
+		"an outcome this handler does not know": intake.Outcome(-1),
+	} {
+		r := newRig(outcome, nil)
+		r.do(post(strings.NewReader("{}")))
+		require.Len(t, r.observer.outcomes, 1, name)
+		require.Contains(t, outcomes, r.observer.outcomes[0], name)
 	}
 }
 
