@@ -58,7 +58,7 @@ func Test_ParseDraft_BoundsItsNumbers(t *testing.T) {
 }
 
 func Test_ParseDraft_RefusesTextAKeyCannotCarry(t *testing.T) {
-	const notText = " holds a control character or text that is not valid UTF-8."
+	const notText = " holds a control or formatting character, or text that is not valid UTF-8."
 	cases := map[string]struct {
 		field, typed string
 		want         string

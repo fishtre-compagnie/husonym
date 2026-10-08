@@ -76,8 +76,12 @@ func validDraft(now time.Time) *Draft {
 		GraceDays:          &grace,
 		Telemetry:          string(license.TelemetryOfflineReport),
 		Note:               "a note",
-		Succeeds:           "previous-license",
+		Succeeds:           "fedcba9876543210",
 	}
+}
+
+func testNow() time.Time {
+	return time.Now().UTC()
 }
 
 func Test_LoadSigner_ReadsAKeyOfTheRing(t *testing.T) {

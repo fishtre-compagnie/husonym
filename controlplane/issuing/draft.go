@@ -68,6 +68,12 @@ var (
 	// ErrLimitsNotCarried is returned when the license to renew carries a limit a draft cannot
 	// carry: renewing it here would issue a key that caps less.
 	ErrLimitsNotCarried = errors.New("the license to renew carries a limit that a draft cannot carry")
+	// ErrNothingToRenew is returned when a renewal is drafted without a license or without its
+	// customer.
+	ErrNothingToRenew = errors.New("there is no license to renew, or no customer to renew it for")
+	// ErrLicenseIDNotRenewable is returned when the license to renew has an id that is not of the
+	// form a draft names its predecessor by.
+	ErrLicenseIDNotRenewable = errors.New("the license to renew has an id that is not 16 lowercase hexadecimal characters")
 )
 
 // Draft is a license about to be signed: what the operator asked for, before and after the
@@ -173,35 +179,13 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 		Succeeds:           field(FieldSucceeds),
 	}
 
-	switch {
-	case draft.LicenseID == "":
+	if draft.LicenseID == "" {
 		draft.LicenseID = newLicenseID()
-	case !validLicenseID(draft.LicenseID):
-		problem("The license id must be 16 lowercase hexadecimal characters.")
 	}
-	// Text a key cannot carry as typed is refused here: the signing would refuse it too, but with
-	// nothing the operator can act on.
-	text := func(subject, typed string, maxLength int, lineBreaks bool) {
-		switch {
-		case !carriable(typed, lineBreaks):
-			problem("%s holds a control character or text that is not valid UTF-8.", subject)
-		case maxLength > 0 && utf8.RuneCountInString(typed) > maxLength:
-			problem("%s must be at most %d characters.", subject, maxLength)
-		}
-	}
-	if draft.CustomerExternalID == "" {
-		problem("The customer is required.")
-	}
-	text("The customer id", draft.CustomerExternalID, 0, false)
-	if draft.CustomerName == "" {
-		problem("The name of the customer is required.")
-	}
-	text("The name of the customer", draft.CustomerName, MaxCustomerNameLength, false)
-	text("The plan", draft.Plan, MaxPlanLength, false)
-	// The note is not in the key and may be of several lines.
-	text("The note", draft.Note, MaxNoteLength, true)
 
-	switch all := field(FieldAllFeatures); all {
+	// What a form can say that a draft cannot is told here; every rule of a draft is in problems,
+	// which the signing applies again.
+	switch field(FieldAllFeatures) {
 	case "":
 		draft.Features = []string{}
 	case "1":
@@ -209,95 +193,191 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 	default:
 		problem("The choice of all the features is unreadable.")
 	}
-	listed := form[FieldFeatures]
-	if draft.AllFeatures && len(listed) > 0 {
-		problem("Choose either all the features or a list of features, not both.")
-	}
-	seen := map[string]bool{}
-	for _, name := range listed {
-		switch _, declared := license.ParseFeature(name); {
-		case !declared:
-			problem("The feature %s is not a declared feature.", quoted(name))
-		case seen[name]:
-			problem("The feature %s is listed twice.", quoted(name))
-		case !draft.AllFeatures:
-			draft.Features = append(draft.Features, name)
-		}
-		seen[name] = true
-	}
+	// The names listed are kept even beside all the features, for problems to tell of both.
+	draft.Features = append(draft.Features, form[FieldFeatures]...)
 
-	draft.MaxSources = wholeNumber(field(FieldMaxSources), MaxSourcesCap, problem,
-		"The maximum number of sources must be a whole number.",
-		"The maximum number of sources cannot be negative.",
-		fmt.Sprintf("The maximum number of sources cannot be more than %d.", MaxSourcesCap))
-	draft.GraceDays = wholeNumber(field(FieldGraceDays), MaxGraceDays, problem,
-		"The grace period must be a whole number of days.",
-		"The grace period cannot be negative.",
-		fmt.Sprintf("The grace period cannot be more than %d days.", MaxGraceDays))
+	draft.MaxSources = wholeNumber(field(FieldMaxSources), problem, sourcesProblems)
+	draft.GraceDays = wholeNumber(field(FieldGraceDays), problem, graceProblems)
 
-	if day := field(FieldExpiresAt); day == "" {
-		problem("The expiry date is required.")
-	} else {
+	// A date that cannot be read is told once, as unreadable and not as missing too.
+	expiryTold := false
+	if day := field(FieldExpiresAt); day != "" {
 		parsed, err := time.Parse(dateLayout, day)
-		switch {
-		case err != nil:
+		if err != nil {
 			problem("The expiry date must be written YYYY-MM-DD.")
-		case !endOfDay(parsed).After(now):
-			problem("The expiry date is in the past.")
-		case endOfDay(parsed).After(endOfDay(now.UTC().AddDate(MaxExpiryYears, 0, 0))):
-			problem("The expiry date cannot be more than %d years from now.", MaxExpiryYears)
-		default:
+			expiryTold = true
+		} else {
 			draft.ExpiresAt = endOfDay(parsed)
 		}
 	}
 
-	if modes := Options().TelemetryModes; draft.Telemetry != "" && !slices.Contains(modes, draft.Telemetry) {
-		problem("The telemetry mode %s is not one of %s.", quoted(draft.Telemetry), strings.Join(modes, ", "))
-	}
-
+	problems = append(problems, draft.problems(now, expiryTold)...)
 	if len(problems) > 0 {
 		return nil, problems
 	}
 	return draft, nil
 }
 
-// wholeNumber reads a number between zero and highest; empty is nil, which means not written.
-func wholeNumber(
-	typed string, highest int, problem func(string, ...any), unreadable, negative, tooHigh string,
-) *int {
+// numberProblems are the sentences for a number that cannot be read, is below zero, or is over
+// its bound.
+type numberProblems struct {
+	highest                       int
+	unreadable, negative, tooHigh string
+}
+
+var (
+	sourcesProblems = numberProblems{
+		highest:    MaxSourcesCap,
+		unreadable: "The maximum number of sources must be a whole number.",
+		negative:   "The maximum number of sources cannot be negative.",
+		tooHigh:    fmt.Sprintf("The maximum number of sources cannot be more than %d.", MaxSourcesCap),
+	}
+	graceProblems = numberProblems{
+		highest:    MaxGraceDays,
+		unreadable: "The grace period must be a whole number of days.",
+		negative:   "The grace period cannot be negative.",
+		tooHigh:    fmt.Sprintf("The grace period cannot be more than %d days.", MaxGraceDays),
+	}
+)
+
+// outOfBounds gives the sentence for a number outside zero to highest; nothing for one inside, or
+// for a number not written.
+func (p numberProblems) outOfBounds(n *int) string {
+	switch {
+	case n == nil:
+		return ""
+	case *n < 0:
+		return p.negative
+	case *n > p.highest:
+		return p.tooHigh
+	default:
+		return ""
+	}
+}
+
+// wholeNumber reads a number; empty is nil, which means not written. Its bounds are for the rules
+// of the draft to tell, but for a number no int holds, which is told here.
+func wholeNumber(typed string, problem func(string, ...any), sentences numberProblems) *int {
 	if typed == "" {
 		return nil
 	}
 	n, err := strconv.Atoi(typed)
 	switch {
-	// A number no int holds is still a number: it is told as too low or too high.
 	case errors.Is(err, strconv.ErrRange) && strings.HasPrefix(typed, "-"):
-		problem("%s", negative)
+		problem("%s", sentences.negative)
 	case errors.Is(err, strconv.ErrRange):
-		problem("%s", tooHigh)
+		problem("%s", sentences.tooHigh)
 	case err != nil:
-		problem("%s", unreadable)
-	case n < 0:
-		problem("%s", negative)
-	case n > highest:
-		problem("%s", tooHigh)
+		problem("%s", sentences.unreadable)
 	default:
 		return &n
 	}
 	return nil
 }
 
-// carriable reports whether typed is text a key carries as it is: valid UTF-8 without a control
-// character. lineBreaks allows the ones a text of several lines has.
-func carriable(typed string, lineBreaks bool) bool {
-	if !utf8.ValidString(typed) {
+// problems gives what keeps the draft from being signed, as sentences for the page: every rule of
+// a draft is here and nowhere else. ParseDraft tells them to the operator and Signer.Issue refuses
+// on them, so a draft built by hand is held to what a form is held to. expiryTold leaves out the
+// missing expiry, for a form whose date was already told as unreadable.
+func (d *Draft) problems(now time.Time, expiryTold bool) []string {
+	var problems []string
+	problem := func(format string, args ...any) {
+		problems = append(problems, fmt.Sprintf(format, args...))
+	}
+	// shown is a text the key carries and a page shows: it must be the same to the eye as in the
+	// bytes that are signed.
+	shown := func(subject, text string, maxLength int) {
+		switch {
+		case !carriable(text, false):
+			problem("%s holds a control or formatting character, or text that is not valid UTF-8.", subject)
+		case text != strings.TrimSpace(text):
+			problem("%s cannot begin or end with a space.", subject)
+		case maxLength > 0 && utf8.RuneCountInString(text) > maxLength:
+			problem("%s must be at most %d characters.", subject, maxLength)
+		}
+	}
+
+	// Without an id of its own the draft would be given a new one at each signing, and a
+	// confirmation submitted twice would issue two licenses.
+	if !validLicenseID(d.LicenseID) {
+		problem("The license id must be 16 lowercase hexadecimal characters.")
+	}
+	if d.CustomerExternalID == "" {
+		problem("The customer is required.")
+	}
+	shown("The customer id", d.CustomerExternalID, 0)
+	if d.CustomerName == "" {
+		problem("The name of the customer is required.")
+	}
+	shown("The name of the customer", d.CustomerName, MaxCustomerNameLength)
+	shown("The plan", d.Plan, MaxPlanLength)
+	// The note is not in the key and may be of several lines.
+	switch {
+	case !carriable(d.Note, true):
+		problem("The note holds a control or formatting character, or text that is not valid UTF-8.")
+	case utf8.RuneCountInString(d.Note) > MaxNoteLength:
+		problem("The note must be at most %d characters.", MaxNoteLength)
+	}
+
+	if d.AllFeatures && len(d.Features) > 0 {
+		problem("Choose either all the features or a list of features, not both.")
+	}
+	// The wildcard is refused with the unknown names: every feature is said by AllFeatures, which
+	// writes no list.
+	seen := map[string]bool{}
+	for _, name := range d.Features {
+		switch _, declared := license.ParseFeature(name); {
+		case !declared:
+			problem("The feature %s is not a declared feature.", quoted(name))
+		case seen[name]:
+			problem("The feature %s is listed twice.", quoted(name))
+		}
+		seen[name] = true
+	}
+
+	for _, sentence := range []string{sourcesProblems.outOfBounds(d.MaxSources), graceProblems.outOfBounds(d.GraceDays)} {
+		if sentence != "" {
+			problem("%s", sentence)
+		}
+	}
+
+	switch {
+	case d.ExpiresAt.IsZero():
+		if !expiryTold {
+			problem("The expiry date is required.")
+		}
+	case !d.ExpiresAt.After(now):
+		problem("The expiry date is in the past.")
+	case d.ExpiresAt.After(endOfDay(now.UTC().AddDate(MaxExpiryYears, 0, 0))):
+		problem("The expiry date cannot be more than %d years from now.", MaxExpiryYears)
+	}
+
+	if modes := Options().TelemetryModes; d.Telemetry != "" && !slices.Contains(modes, d.Telemetry) {
+		problem("The telemetry mode %s is not one of %s.", quoted(d.Telemetry), strings.Join(modes, ", "))
+	}
+	if d.Succeeds != "" && !validLicenseID(d.Succeeds) {
+		problem("The license to renew must be named by an id of 16 lowercase hexadecimal characters.")
+	}
+	return problems
+}
+
+// carriable reports whether text can be carried as it is: valid UTF-8 without a control character.
+// Of several lines, it may hold the line breaks and tabs such a text has. Of one line, it is a
+// text a page shows from a key, and it holds no format character either — the bidirectional
+// overrides, the zero-width ones — nor a line or paragraph separator: what is signed must be what
+// is seen.
+func carriable(text string, severalLines bool) bool {
+	if !utf8.ValidString(text) {
 		return false
 	}
-	for _, r := range typed {
-		if lineBreaks && (r == '\n' || r == '\r' || r == '\t') {
+	for _, r := range text {
+		if severalLines {
+			if r != '\n' && r != '\r' && r != '\t' && unicode.IsControl(r) {
+				return false
+			}
 			continue
 		}
-		if unicode.IsControl(r) {
+		if unicode.In(r, unicode.Cc, unicode.Cf, unicode.Zl, unicode.Zp) {
 			return false
 		}
 	}
@@ -315,12 +395,17 @@ func quoted(typed string) string {
 }
 
 // TrialDraft drafts a trial for customer: every feature, no cap, and an expiry at the end of the
-// day TrialDays after now.
+// day TrialDays after now. The name and the id of the customer are trimmed as ParseDraft trims
+// them, so that the page that shows this draft and the key signed after it say the same. Without a
+// customer there is no draft: it returns nil.
 func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
+	if customer == nil {
+		return nil
+	}
 	return &Draft{
 		LicenseID:          newLicenseID(),
-		CustomerExternalID: customer.ExternalID,
-		CustomerName:       customer.Name,
+		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
+		CustomerName:       strings.TrimSpace(customer.Name),
 		AllFeatures:        true,
 		ExpiresAt:          endOfDay(now.UTC().AddDate(0, 0, TrialDays)),
 	}
@@ -328,18 +413,27 @@ func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 
 // RenewalDraft drafts the license that succeeds previous: the same content under a new id,
 // expiring at the end of the day one year after the later of now and the previous expiry. The name
-// is the one customer has today. It refuses a license of another customer, and one that carries a
-// limit a draft has no field for.
+// is the one customer has today, and the telemetry is what the key of previous says, not what the
+// product reads from it. Texts are trimmed as ParseDraft trims them. It refuses, with an error: a
+// missing license or customer (ErrNothingToRenew), a license of another customer, a license whose
+// id a draft cannot name as its predecessor, and one that carries a limit a draft has no field
+// for.
 func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDetail, now time.Time) (*Draft, error) {
+	if previous == nil || customer == nil {
+		return nil, ErrNothingToRenew
+	}
 	if previous.CustomerID != customer.ID {
 		return nil, ErrNotTheCustomerOfTheLicense
 	}
+	if !validLicenseID(previous.ID) {
+		return nil, ErrLicenseIDNotRenewable
+	}
 	draft := &Draft{
 		LicenseID:          newLicenseID(),
-		CustomerExternalID: customer.ExternalID,
-		CustomerName:       customer.Name,
-		Plan:               previous.Plan,
-		Telemetry:          previous.StoredTelemetry,
+		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
+		CustomerName:       strings.TrimSpace(customer.Name),
+		Plan:               strings.TrimSpace(previous.Plan),
+		Telemetry:          strings.TrimSpace(previous.StoredTelemetry),
 		Succeeds:           previous.ID,
 	}
 	// A key that lists the wildcard allows what a key without a list allows.
@@ -365,6 +459,8 @@ func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDet
 }
 
 // Form writes the draft as the fields ParseDraft reads, to carry it through the confirmation page.
+// A form carries the day of the expiry only: an expiry that is not the end of a UTC day comes back
+// from ParseDraft as the end of the UTC day it falls on.
 func (d *Draft) Form() url.Values {
 	form := url.Values{}
 	form.Set(FieldLicenseID, d.LicenseID)

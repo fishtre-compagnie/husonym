@@ -26,7 +26,7 @@ func validForm() url.Values {
 		FieldGraceDays:          {"7"},
 		FieldTelemetry:          {"offline_report"},
 		FieldNote:               {"a note"},
-		FieldSucceeds:           {"previous-license"},
+		FieldSucceeds:           {"fedcba9876543210"},
 	}
 }
 
@@ -56,7 +56,7 @@ func Test_ParseDraft_ReadsEveryField(t *testing.T) {
 		GraceDays:          &grace,
 		Telemetry:          "offline_report",
 		Note:               "a note",
-		Succeeds:           "previous-license",
+		Succeeds:           "fedcba9876543210",
 	}, draft)
 }
 
@@ -237,7 +237,7 @@ func Test_Draft_Form_ThenParseDraft_GivesTheSameDraft(t *testing.T) {
 		"every field": {
 			LicenseID: "0123456789abcdef", CustomerExternalID: "acme", CustomerName: "Acme & Co. <b>",
 			Plan: "a plan", Features: []string{"sso", "rbac"}, MaxSources: &sources, ExpiresAt: expiry,
-			GraceDays: &grace, Telemetry: "none", Note: "a note\nof two lines", Succeeds: "previous-license",
+			GraceDays: &grace, Telemetry: "none", Note: "a note\nof two lines", Succeeds: "fedcba9876543210",
 		},
 		"all features": {
 			LicenseID: "0123456789abcdef", CustomerExternalID: "acme", CustomerName: "Acme Co.",
@@ -282,7 +282,7 @@ func previousLicense(customer *cpstore.CustomerDetail) *cpstore.LicenseDetail {
 	sources, grace := 5, 7
 	return &cpstore.LicenseDetail{
 		LicenseSummary: cpstore.LicenseSummary{
-			ID: "previous-license", CustomerID: customer.ID, CustomerName: "Acme Co.", Plan: "a plan",
+			ID: "fedcba9876543210", CustomerID: customer.ID, CustomerName: "Acme Co.", Plan: "a plan",
 			Telemetry: license.TelemetryNone, ExpiresAt: time.Date(2027, 3, 4, 10, 22, 11, 0, time.UTC),
 		},
 		Features:        []string{"sso", "rbac"},
@@ -301,7 +301,7 @@ func Test_RenewalDraft_SameContentOneYearLater(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, validLicenseID(draft.LicenseID))
-	require.Equal(t, "previous-license", draft.Succeeds)
+	require.Equal(t, "fedcba9876543210", draft.Succeeds)
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Corporation", draft.CustomerName, "the name is the customer's of today")
 	require.Equal(t, "a plan", draft.Plan)
@@ -395,7 +395,7 @@ func Test_Draft_Lines(t *testing.T) {
 		LicenseID: "0123456789abcdef", CustomerExternalID: "acme", CustomerName: "Acme Co.", Plan: "a plan",
 		Features: []string{"sso", "rbac"}, MaxSources: &sources,
 		ExpiresAt: time.Date(2027, 10, 8, 23, 59, 59, 0, time.UTC), GraceDays: &grace, Telemetry: "none",
-		Note: "a note", Succeeds: "previous-license",
+		Note: "a note", Succeeds: "fedcba9876543210",
 	}
 	require.Equal(t, []Line{
 		{"License id", "0123456789abcdef"},

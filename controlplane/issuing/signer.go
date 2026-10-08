@@ -12,6 +12,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -36,10 +37,18 @@ var (
 const signerWord = "signer"
 
 // Signer signs licenses with a private key of the ring. It never gives the key back.
+//
+// No field of it holds a byte of the key. A printer that walks a value by reflection — fmt on a
+// struct that has a Signer in an unexported field, a structured logger, the diff of a failed test
+// — reaches every field whatever methods the type has, so the key is kept where none of them goes:
+// in what sign closes over. A function prints as an address.
 type Signer struct {
-	priv ed25519.PrivateKey
-	ring license.Keyring
-	kid  string
+	// sign signs a request with the key, which only it holds.
+	sign func(*license.IssueRequest) (*license.IssuedLicense, error)
+	// ring holds public keys only.
+	ring        license.Keyring
+	kid         string
+	fingerprint string
 }
 
 // LoadSigner reads the PEM Ed25519 private key at path and refuses one the ring does not hold: the
@@ -73,7 +82,17 @@ func readKeyFile(path string) ([]byte, error) {
 	}
 	defer func() { _ = file.Close() }()
 
-	raw, err := io.ReadAll(io.LimitReader(file, maxKeyFileSize+1))
+	// A file that says it is too large is refused before a byte of it is read.
+	if info, err := file.Stat(); err == nil && info.Mode().IsRegular() && info.Size() > maxKeyFileSize {
+		return nil, ErrKeyFileTooLarge
+	}
+	return readKey(file)
+}
+
+// readKey reads a key from source and stops one byte past maxKeyFileSize: what does not say its
+// size, or says it wrong, is not read whole either.
+func readKey(source io.Reader) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(source, maxKeyFileSize+1))
 	if err != nil {
 		clear(raw)
 		return nil, ErrKeyFileUnreadable
@@ -99,7 +118,17 @@ func NewSigner(priv ed25519.PrivateKey, ring license.Keyring) (*Signer, error) {
 	if !ok {
 		return nil, ErrKeyNotInRing
 	}
-	return &Signer{priv: slices.Clone(priv), ring: maps.Clone(ring), kid: kid}, nil
+	// Copies: what the caller does with its own afterwards changes nothing here.
+	key := slices.Clone(priv)
+	held := maps.Clone(ring)
+	return &Signer{
+		sign: func(req *license.IssueRequest) (*license.IssuedLicense, error) {
+			return license.Issue(req, key, held)
+		},
+		ring:        held,
+		kid:         kid,
+		fingerprint: license.PublicKeyFingerprint(pub),
+	}, nil
 }
 
 // Kid is the ring's name for the key this Signer signs with.
@@ -107,13 +136,19 @@ func (s *Signer) Kid() string {
 	return s.kid
 }
 
+// PublicKeyFingerprint identifies the public key that verifies what this Signer signs, as the
+// registry of issued licenses writes it. It is not secret.
+func (s *Signer) PublicKeyFingerprint() string {
+	return s.fingerprint
+}
+
 // String is a fixed word: a Signer printed by mistake shows nothing of its key.
 func (Signer) String() string {
 	return signerWord
 }
 
-// Format prints the same fixed word under every verb. Without it, %#v or %d would walk the fields
-// and print the key.
+// Format prints the same fixed word under every verb, so that a Signer printed for itself shows
+// nothing of what it holds. It is not what keeps the key out of a print: no field holds it.
 func (Signer) Format(state fmt.State, _ rune) {
 	_, _ = io.WriteString(state, signerWord)
 }
@@ -121,31 +156,27 @@ func (Signer) Format(state fmt.State, _ rune) {
 // Issue signs the license d describes, issued at now, and returns it with its key as the product
 // reads it: the value is parsed back against the ring, and what is returned is that verified
 // content. A draft the signed key would not say the same as is an error.
+//
+// The draft is held to every rule ParseDraft holds a form to, whoever built it: an expiry that is
+// not after now is refused here, against the instant given. The issuing code of the product then
+// checks the expiry once more against the wall clock, which cannot be given to it: with a now
+// that is behind the wall clock, an expiry between the two is refused by that second check.
 func (s *Signer) Issue(d *Draft, now time.Time) (*license.IssuedLicense, *license.Key, error) {
+	if s == nil || s.sign == nil {
+		return nil, nil, errors.New("there is no signing key")
+	}
 	if d == nil {
 		return nil, nil, errors.New("there is no draft to issue")
 	}
 	if now.IsZero() {
 		return nil, nil, errors.New("the instant of issuing is not set")
 	}
-	// Without an id of its own the draft would be given a new one at each signing, and a
-	// confirmation submitted twice would issue two licenses.
-	if !validLicenseID(d.LicenseID) {
-		return nil, nil, errors.New("the draft has no license id of 16 lowercase hexadecimal characters")
-	}
-	if d.AllFeatures && len(d.Features) > 0 {
-		return nil, nil, errors.New("the draft says both all the features and a list of features")
-	}
-	// The wildcard is refused with the unknown names: every feature is said by AllFeatures, which
-	// writes no list.
-	for _, name := range d.Features {
-		if _, declared := license.ParseFeature(name); !declared {
-			return nil, nil, errors.New("the draft lists a feature that is not declared")
-		}
+	if problems := d.problems(now, false); len(problems) > 0 {
+		return nil, nil, fmt.Errorf("the draft cannot be signed: %s", strings.Join(problems, " "))
 	}
 
 	req := d.request(now)
-	issued, err := license.Issue(req, s.priv, s.ring)
+	issued, err := s.sign(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to issue the license: %w", err)
 	}
