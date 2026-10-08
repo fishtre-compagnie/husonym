@@ -61,7 +61,7 @@ func newJobRunUnder(t *testing.T, license *testutil.FakeEELicense, tablesAtOnce 
 	var ts testsuite.WorkflowTestSuite
 	run := &jobRun{env: ts.NewTestWorkflowEnvironment()}
 	run.env.SetTestTimeout(30 * time.Second)
-	run.activities = NewActivities(nil, nil, nil, nil, nil, &Config{})
+	run.activities = NewActivities(nil, nil, nil, nil, nil, nil, &Config{})
 	run.env.RegisterWorkflow(NewJobWorkflow(license, tablesAtOnce).JobPiiDetect)
 	run.env.RegisterWorkflow(TablePiiDetect)
 	run.env.RegisterWorkflow(accounthooks.ProcessAccountHook)
@@ -124,6 +124,18 @@ func scanned(*TablePiiDetectRequest) (string, error) { return "", nil }
 // scanTables says how the scan of a table ends: the status of its model step, or a
 // failure. A scan lasts a minute of the run's clock.
 func (r *jobRun) scanTables(end func(req *TablePiiDetectRequest) (model string, err error)) {
+	r.scanTablesTo(func(req *TablePiiDetectRequest) (steps, error) {
+		model, err := end(req)
+		return steps{model: model}, err
+	})
+}
+
+// steps are the statuses of the model step and of the analyzer step of a scan.
+type steps struct{ model, analyzer string }
+
+// scanTablesTo says how the scan of a table ends: the statuses of its steps, or a
+// failure. A scan lasts a minute of the run's clock.
+func (r *jobRun) scanTablesTo(end func(req *TablePiiDetectRequest) (steps, error)) {
 	r.env.OnWorkflow(TablePiiDetect, mock.Anything, mock.Anything).
 		Return(func(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePiiDetectResponse, error) {
 			r.mu.Lock()
@@ -139,14 +151,15 @@ func (r *jobRun) scanTables(end func(req *TablePiiDetectRequest) (model string, 
 			if err := workflow.Sleep(ctx, time.Minute); err != nil {
 				return nil, err
 			}
-			model, err := end(req)
+			ended, err := end(req)
 			if err != nil {
 				return nil, err
 			}
 			return &TablePiiDetectResponse{
 				PiiColumns: map[string]report.Combined{},
 				ResultKey:  tableReportKey(testRunId, req.TableSchema, req.TableName),
-				Model:      model,
+				Model:      ended.model,
+				Analyzer:   ended.analyzer,
 			}, nil
 		})
 }

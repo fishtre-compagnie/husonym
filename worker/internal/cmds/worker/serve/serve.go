@@ -344,6 +344,11 @@ func serve(ctx context.Context) error {
 		husonymurl,
 		connectInterceptorOption,
 	)
+	conndataclient := mgmtv1alpha1connect.NewConnectionDataServiceClient(
+		httpclient,
+		husonymurl,
+		connectInterceptorOption,
+	)
 	jobclient := mgmtv1alpha1connect.NewJobServiceClient(
 		httpclient,
 		husonymurl,
@@ -509,6 +514,7 @@ func serve(ctx context.Context) error {
 		piidetect.NewActivities(
 			jobclient,
 			connclient,
+			conndataclient,
 			conndatabuilder,
 			temporalClient.ScheduleClient(),
 			piidetectClassifier,

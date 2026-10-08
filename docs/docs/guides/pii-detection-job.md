@@ -27,10 +27,12 @@ that names the kind of the source.
 1. It lists the tables of the source, filtered by the **Table Scan Mode** and **Patterns**
    settings.
 2. It scans each table in a child workflow, **three tables at once** by default.
-3. For each table two independent detections answer, and their findings are kept **side
+3. For each table three independent detections answer, and their findings are kept **side
    by side**, without a merged verdict:
    - the **rules** (`regex` in the report);
-   - the **language model** (`llm`), when the deployment configures one.
+   - the **language model** (`llm`), when the deployment configures one;
+   - the **content analyzer** (`analyzer`), when the deployment has one, for the
+     [free-text columns](#the-content-analyzer) the rules found nothing in.
 4. The report of each table is stored as soon as it is known: the page of the run shows it
    while the run goes on.
 5. At its end, the run stores the index of its reports.
@@ -216,6 +218,53 @@ Beside the request itself, the client library adds headers that describe it: a
 `User-Agent` with its version, and `X-Stainless-*` headers with the operating system, the
 processor architecture, the Go version, the retry count and the timeout of the request.
 
+## The content analyzer
+
+Rules read names and formats, and the model is given statistics by default: personal data
+buried in a sentence shows to neither. A column `comment` in which some values name a
+customer passes for harmless. The **content analyzer** reads the values themselves. It is
+the Presidio analyzer that the API already uses for the
+[GDPR detection](/guides/detection-rgpd), and it is optional.
+
+**Which columns.** The worker names the columns of text whose values average three words or
+more, and in which the rules found nothing. It needs the profile of the columns, so the
+analyzer is asked only when data sampling is enabled. The worker sends no value: it asks
+the API to analyze the columns, 20 at a time, by their names.
+
+**What leaves the database, and where it goes.** The API reads up to 50 filled values of
+each of these columns from the source and sends them, one at a time, to the analyzer set by
+`PRESIDIO_ANALYZER_URL`. The values go from the source to the API and from the API to the
+analyzer, cut to their first 200 characters: a person named further in a long text is not
+seen. They never reach the worker, nor the history of the run, nor a log of the worker. The
+log of the API can quote a value when the analyzer refuses it. What comes back to the
+worker is, per column, the category, the kind of entity that was recognized and two counts:
+the values in which it was found and the values that were analyzed.
+
+This holds for every job that samples data, **including one set to _Statistics only_**:
+that setting is about what the model receives, and the analyzer is a separate service of
+your deployment. There is no switch per job. To keep the values of these columns from the
+analyzer, do not set `PRESIDIO_ANALYZER_URL`.
+
+**What counts.** A column of free text is reported when the analyzer recognizes **a person**
+in at least **two** of the values it analyzed. Places, numbers, references and companies
+that sentences contain do not count. This rule is applied in the languages where it was
+measured, today French (the language set by `PRESIDIO_DEFAULT_LANGUAGE`); in another one,
+only the rule of the third below applies. A column reported this way has the category
+`free_text_pii`, a confidence _to review_, and the suggested transformer is
+`TransformPiiText`. A column in which one entity covers a third of the values is reported as
+it is by the GDPR detection, under that entity: a column of names, of cities, of telephone
+numbers.
+
+**Without an analyzer.** When the API has none, the first table that asks learns it, the
+tables of the run that start afterwards do not ask, the stored report of the table says that
+the analyzer was absent, and the run ends well.
+
+**A column the analyzer refuses.** The analyzer may refuse the values of a column on every
+run. The run ends well, the stored report of the table lists the columns that were not
+analyzed and marks the analysis as partial, and the table is scanned again by the next
+incremental run. An analyzer that is down while the API answers looks the same: check it
+when no table of a run has an analyzer finding.
+
 ## Configuring the model
 
 The model is set on the **worker**, through
@@ -273,7 +322,8 @@ scanned again when one of these changes:
 - the model configured on the worker;
 - the rules of the worker: an upgrade of the worker that changes what the rules answer
   scans every table again;
-- or when the earlier run could not ask the model about that table.
+- or when the earlier run could not ask the model, or the analyzer, about that table, or the
+  analyzer refused some of its columns.
 
 Unchanged tables keep their earlier report. A table that was dropped from the source, or
 that the filter now leaves out, leaves the report. When the earlier run cannot be found,
@@ -292,6 +342,11 @@ every table is scanned.
   the table is complete, the columns are listed in its stored report, and the run does
   not fail for it. Past half, the model did not scan the table: it counts as a model that
   cannot be asked.
+- **The analyzer cannot be asked** (the API cannot be reached): what the rules and the model
+  found is kept and stored for the table, and the run ends failed as above. An API that has
+  no analyzer is not this case, see [The content analyzer](#the-content-analyzer).
+- **The analyzer refuses some columns**: the table is stored with what was found, the
+  columns are listed in its report, and the run does not fail for it.
 - **The run is canceled**: the tables being scanned are canceled and no index is stored.
   The reports of the tables that had completed stay readable.
 
@@ -305,15 +360,19 @@ A deployment that runs PII detection jobs takes these steps when it upgrades:
 1. Stop every worker before starting the new ones, or pause the PII detection jobs
    meanwhile: a run must not be shared between two versions of the worker.
 2. The first incremental run after an upgrade scans every table.
-3. A run with a table that failed, or that the model could not scan, ends failed, once
-   its reports are stored.
-4. Before going back to a previous version of the API, set the jobs that send sample
+3. A run with a table that failed, or that the model or the analyzer could not scan, ends
+   failed, once its reports are stored.
+4. A deployment that has an analyzer sends it the values of the free-text columns of the jobs
+   that sample data, from the first run of the new version. A table that a run had already
+   scanned past the model before the upgrade goes on as it was.
+5. Before going back to a previous version of the API, set the jobs that send sample
    values back to _Statistics only_.
 
 ## Reading the report
 
 The page of a run shows the **PII Detection Report**: one line per reported column, with
-its table, the detections that reported it (`regex`, `llm`), their categories and the
-confidence of the model. The export button gives the same lines as a CSV file.
+its table, the detections that reported it (`regex`, `llm`, `analyzer`), their categories,
+the confidence of the model and, for the analyzer, in how many of the analyzed values the
+entity was found. The export button gives the same lines as a CSV file.
 
-A column that is not in the report was reported by neither detection.
+A column that is not in the report was reported by no detection.
