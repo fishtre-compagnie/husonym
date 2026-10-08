@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 )
 
@@ -22,6 +23,8 @@ const (
 	minRefreshGap = time.Minute
 	// fetchTimeout bounds one fetch of the keys.
 	fetchTimeout = 10 * time.Second
+	// maxKeySetBytes is the largest key set that is read. A real one is a few kilobytes.
+	maxKeySetBytes = 1 << 20
 )
 
 // keySource gives the key of a key id.
@@ -44,7 +47,7 @@ func (k fixedKeys) lookup(_ context.Context, kid string) (jwk.Key, bool) {
 // fetch that fails leaves the last set in place.
 type remoteKeys struct {
 	url    string
-	client *http.Client
+	client keyClient
 	now    func() time.Time
 	logger *slog.Logger
 
@@ -53,10 +56,41 @@ type remoteKeys struct {
 	// mu serializes the fetches asked for by an unknown key id; lastAsked is the time of the last.
 	mu        sync.Mutex
 	lastAsked time.Time
+
+	// stopped is closed when the background refresh has ended.
+	stopped chan struct{}
 }
 
-// fetch replaces the set by the one the team serves now. A set without a key is a failure: it
-// would refuse everybody, and is more likely a wrong answer than a team without keys.
+// keyClient fetches the key set. It never follows a redirect: the keys come from the address of
+// the team or from nowhere, and a redirect shows as an answer that is not 200. It cuts a body
+// at maxKeySetBytes, which fails the fetch, and bounds the whole exchange by fetchTimeout.
+type keyClient struct {
+	client *http.Client
+}
+
+// newKeyClient makes a keyClient that reaches the network as base does. base itself is not
+// changed.
+func newKeyClient(base *http.Client) keyClient {
+	hardened := *base
+	hardened.Timeout = fetchTimeout
+	hardened.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return keyClient{client: &hardened}
+}
+
+// Do is what jwk.Fetch asks of a client.
+func (c keyClient) Do(request *http.Request) (*http.Response, error) {
+	// The request is the one fetch builds, for the address made of the team domain New checked.
+	response, err := c.client.Do(request) //nolint:gosec // the address is configuration, not input
+	if err != nil {
+		return nil, err
+	}
+	response.Body = http.MaxBytesReader(nil, response.Body, maxKeySetBytes)
+	return response, nil
+}
+
+// fetch replaces the set by the one the team serves now. A set that holds no key a token could
+// be checked with is a failure: it would refuse everybody, and is more likely a wrong answer
+// than a team without keys.
 func (k *remoteKeys) fetch(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
@@ -64,11 +98,26 @@ func (k *remoteKeys) fetch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to fetch the keys of Access: %w", err)
 	}
-	if set.Len() == 0 {
-		return errors.New("unable to fetch the keys of Access: the set holds no key")
+	if !usable(set) {
+		return errors.New("unable to fetch the keys of Access: the set holds no RSA key with a key id")
 	}
 	k.set.Store(&set)
 	return nil
+}
+
+// usable says whether a set holds at least one key the gate could hand to a verification: an
+// RSA key that has a key id.
+func usable(set jwk.Set) bool {
+	for i := range set.Len() {
+		key, ok := set.Key(i)
+		if !ok || key.KeyType() != jwa.RSA() {
+			continue
+		}
+		if kid, ok := key.KeyID(); ok && kid != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (k *remoteKeys) held(kid string) (jwk.Key, bool) {
@@ -102,6 +151,7 @@ func (k *remoteKeys) lookup(ctx context.Context, kid string) (jwk.Key, bool) {
 
 // refreshEvery fetches the set again at every interval until ctx ends.
 func (k *remoteKeys) refreshEvery(ctx context.Context, interval time.Duration) {
+	defer close(k.stopped)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {

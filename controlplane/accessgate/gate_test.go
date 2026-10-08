@@ -2,10 +2,13 @@ package accessgate_test
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"log/slog"
 	"net/http"
@@ -68,6 +71,8 @@ type claims struct {
 	email     any
 	expiry    time.Time
 	notBefore time.Time
+	// issuedAt, when zero, is a minute ago.
+	issuedAt time.Time
 }
 
 func validClaims() claims {
@@ -81,7 +86,11 @@ func validClaims() claims {
 
 func (c claims) build(t *testing.T) jwt.Token {
 	t.Helper()
-	builder := jwt.NewBuilder().Subject("user-1").IssuedAt(testNow.Add(-time.Minute))
+	issuedAt := c.issuedAt
+	if issuedAt.IsZero() {
+		issuedAt = testNow.Add(-time.Minute)
+	}
+	builder := jwt.NewBuilder().Subject("user-1").IssuedAt(issuedAt)
 	if c.issuer != "" {
 		builder = builder.Issuer(c.issuer)
 	}
@@ -235,6 +244,90 @@ func Test_Gate_ClockSkew(t *testing.T) {
 		token := team.sign(t, c)
 		r.requireRefused(t, r.call(token), "invalid", token)
 	})
+	t.Run("issued in the future, within the allowance", func(t *testing.T) {
+		c := validClaims()
+		c.issuedAt = testNow.Add(accessgate.ClockSkew - 5*time.Second)
+		require.Equal(t, http.StatusOK, r.call(team.sign(t, c)).Code)
+	})
+	t.Run("issued in the future, beyond the allowance", func(t *testing.T) {
+		c := validClaims()
+		c.issuedAt = testNow.Add(accessgate.ClockSkew + 5*time.Second)
+		token := team.sign(t, c)
+		r.requireRefused(t, r.call(token), "invalid", token)
+	})
+}
+
+// The algorithm is decided by the gate, not by the token. Each token here carries a genuine
+// RS256 signature of the team over its own header and payload, and differs from a sound one only
+// by the algorithm its header declares: handing the key over as an RS256 key whatever the header
+// says would let every one of them through.
+func Test_Gate_DeclaredAlgorithm(t *testing.T) {
+	team := newSigner(t, "key-1")
+	r := newFixedRig(t, setOf(t, team))
+
+	sound := team.signedRS256(t, `{"alg":"RS256","kid":"key-1","typ":"JWT"}`)
+	require.Equal(t, http.StatusOK, r.call(sound).Code, "the hand-built token is sound when it says RS256")
+	require.Equal(t, testEmail, r.operator)
+
+	for _, alg := range []string{"RS384", "RS512", "PS256", "HS256", "ES256", "none", "rs256", ""} {
+		t.Run("declared as "+alg, func(t *testing.T) {
+			token := team.signedRS256(t, `{"alg":"`+alg+`","kid":"key-1","typ":"JWT"}`)
+			r.requireRefused(t, r.call(token), "invalid", token)
+		})
+	}
+	t.Run("declared as nothing", func(t *testing.T) {
+		token := team.signedRS256(t, `{"kid":"key-1","typ":"JWT"}`)
+		r.requireRefused(t, r.call(token), "invalid", token)
+	})
+}
+
+// A token may bring a key of its own in its header, or the address of one. The gate checks a
+// signature with the keys of the team and no other.
+func Test_Gate_KeyBroughtByTheToken_IsIgnored(t *testing.T) {
+	team := newSigner(t, "key-1")
+	forger := newSigner(t, "key-1")
+	brought, err := json.Marshal(forger.public)
+	require.NoError(t, err)
+
+	for name, header := range map[string]string{
+		"jwk":                    `{"alg":"RS256","kid":"key-1","jwk":` + string(brought) + `}`,
+		"jwk without a key id":   `{"alg":"RS256","jwk":` + string(brought) + `}`,
+		"jku":                    `{"alg":"RS256","kid":"key-1","jku":"https://forger.example.com/keys"}`,
+		"jku under another name": `{"alg":"RS256","kid":"key-of-the-forger","jku":"https://forger.example.com/keys"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newFixedRig(t, setOf(t, team))
+			token := forger.signedRS256(t, header)
+			r.requireRefused(t, r.call(token), "invalid", token)
+		})
+	}
+}
+
+// Access also sets a cookie for the browser. The gate reads the header only: a cookie is what a
+// page can be made to send.
+func Test_Gate_CookieAlone_IsNotAToken(t *testing.T) {
+	team := newSigner(t, "key-1")
+	r := newFixedRig(t, setOf(t, team))
+	sound := team.sign(t, validClaims())
+
+	request := httptest.NewRequest(http.MethodGet, testPath, http.NoBody)
+	request.AddCookie(&http.Cookie{Name: "CF_Authorization", Value: sound})
+	recorder := httptest.NewRecorder()
+	r.handler.ServeHTTP(recorder, request)
+
+	r.requireRefused(t, recorder, "missing", sound)
+}
+
+// signedRS256 builds a compact token by hand: the given protected header, the payload of sound
+// claims, and an RS256 signature by this key over the two.
+func (s *signer) signedRS256(t *testing.T, header string) string {
+	t.Helper()
+	payload := strings.Split(s.sign(t, validClaims()), ".")[1]
+	input := base64.RawURLEncoding.EncodeToString([]byte(header)) + "." + payload
+	digest := sha256.Sum256([]byte(input))
+	signature, err := rsa.SignPKCS1v15(rand.Reader, s.private, crypto.SHA256, digest[:])
+	require.NoError(t, err)
+	return input + "." + base64.RawURLEncoding.EncodeToString(signature)
 }
 
 func Test_Gate_Refusals(t *testing.T) {

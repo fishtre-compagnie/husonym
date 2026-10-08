@@ -3,6 +3,9 @@ package accessgate_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -26,6 +29,10 @@ type team struct {
 	keys   jwk.Set
 	status int
 	hits   int
+	// raw, when set, is served as the body in place of the keys.
+	raw []byte
+	// elsewhere, when set, is where every request is redirected.
+	elsewhere string
 }
 
 func newTeam(t *testing.T, keys jwk.Set) *team {
@@ -36,11 +43,17 @@ func newTeam(t *testing.T, keys jwk.Set) *team {
 		tm.mu.Lock()
 		defer tm.mu.Unlock()
 		tm.hits++
-		if tm.status != http.StatusOK {
+		switch {
+		case tm.elsewhere != "":
+			w.Header().Set("Location", tm.elsewhere)
+			w.WriteHeader(http.StatusFound)
+		case tm.status != http.StatusOK:
 			w.WriteHeader(tm.status)
-			return
+		case tm.raw != nil:
+			_, _ = w.Write(tm.raw)
+		default:
+			_ = json.NewEncoder(w).Encode(tm.keys)
 		}
-		_ = json.NewEncoder(w).Encode(tm.keys)
 	})
 	tm.server = httptest.NewTLSServer(mux)
 	t.Cleanup(tm.server.Close)
@@ -52,7 +65,67 @@ func (tm *team) domain() string { return strings.TrimPrefix(tm.server.URL, "http
 func (tm *team) serve(keys jwk.Set, status int) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	tm.keys, tm.status = keys, status
+	tm.keys, tm.status, tm.raw, tm.elsewhere = keys, status, nil, ""
+}
+
+func (tm *team) serveRaw(raw []byte) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	tm.raw, tm.status, tm.elsewhere = raw, http.StatusOK, ""
+}
+
+func (tm *team) redirectTo(elsewhere string) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	tm.elsewhere = elsewhere
+}
+
+func (tm *team) certsURL() string { return tm.server.URL + "/cdn-cgi/access/certs" }
+
+// padded is a sound key set made longer than size by a member no key set has.
+func padded(t *testing.T, keys jwk.Set, size int) []byte {
+	t.Helper()
+	sound, err := json.Marshal(keys)
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(sound, &document))
+	document["padding"] = strings.Repeat("x", size)
+	raw, err := json.Marshal(document)
+	require.NoError(t, err)
+	return raw
+}
+
+// withoutKeyID is the public key of a signer as a team would serve it with no key id.
+func withoutKeyID(t *testing.T, s *signer) jwk.Set {
+	t.Helper()
+	key, err := jwk.Import(&s.private.PublicKey)
+	require.NoError(t, err)
+	set := jwk.NewSet()
+	require.NoError(t, set.AddKey(key))
+	return set
+}
+
+// ellipticOnly is a set whose one key has a key id but is not an RSA key.
+func ellipticOnly(t *testing.T, kid string) jwk.Set {
+	t.Helper()
+	private, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	key, err := jwk.Import(&private.PublicKey)
+	require.NoError(t, err)
+	require.NoError(t, key.Set(jwk.KeyIDKey, kid))
+	set := jwk.NewSet()
+	require.NoError(t, set.AddKey(key))
+	return set
+}
+
+// start makes a gate on the endpoint of a team, with the config taken as it is.
+func (tm *team) start(ctx context.Context, now func() time.Time, logs *syncBuffer, interval time.Duration) (*accessgate.Gate, error) {
+	return accessgate.NewRemote(ctx, accessgate.Config{
+		TeamDomain: tm.domain(),
+		Audience:   testAudience,
+		Now:        now,
+		Logger:     slog.New(slog.NewTextHandler(logs, nil)),
+	}, tm.server.Client(), interval)
 }
 
 func (tm *team) fetched() int {
@@ -112,17 +185,12 @@ func newRemoteRig(t *testing.T, keys jwk.Set, interval time.Duration) *remoteRig
 	tm := newTeam(t, keys)
 	clock := &movingClock{now: testNow}
 	logs := &syncBuffer{}
-	gate, err := accessgate.NewRemote(t.Context(), accessgate.Config{
-		TeamDomain: tm.domain(),
-		Audience:   testAudience,
-		Now:        clock.Now,
-		Logger:     slog.New(slog.NewTextHandler(logs, nil)),
-	}, tm.server.Client(), interval)
+	gate, err := tm.start(t.Context(), clock.Now, logs, interval)
 	require.NoError(t, err)
 	return &remoteRig{rig: newRig(t, gate.Wrap, nil), team: tm, clock: clock, logs: logs}
 }
 
-// claimsOf gives sound claims for a team served locally: its issuer is the address of the server.
+// claims gives sound claims for a team served locally: its issuer is the address of the server.
 func (r *remoteRig) claims() claims {
 	c := validClaims()
 	c.issuer = r.team.server.URL
@@ -172,34 +240,118 @@ func Test_Remote_UnknownKeyID_RefreshesAtMostOncePerGap(t *testing.T) {
 	require.Equal(t, 3, r.team.fetched())
 }
 
-func Test_Remote_FailedRefresh_KeepsTheLastKeys(t *testing.T) {
+// Anybody can send tokens naming a key id nobody knows, and many at once: together they cost one
+// fetch, not one each.
+func Test_Remote_UnknownKeyID_ABurstCostsOneFetch(t *testing.T) {
 	known, stranger := newSigner(t, "key-1"), newSigner(t, "key-2")
-	r := newRemoteRig(t, setOf(t, known), never)
+	tm := newTeam(t, setOf(t, known))
+	gate, err := tm.start(t.Context(), func() time.Time { return testNow }, &syncBuffer{}, never)
+	require.NoError(t, err)
+	handler := gate.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	c := validClaims()
+	c.issuer = tm.server.URL
+	token := stranger.sign(t, c)
 
-	for _, failure := range []struct {
-		name   string
-		keys   jwk.Set
-		status int
-	}{
-		{"an error of the endpoint", setOf(t, known), http.StatusInternalServerError},
-		{"a set without a key", jwk.NewSet(), http.StatusOK},
-	} {
-		t.Run(failure.name, func(t *testing.T) {
-			r.team.serve(failure.keys, failure.status)
-			before := r.team.fetched()
-			token := stranger.sign(t, r.claims())
+	const callers = 100
+	codes := make([]int, callers)
+	var ready, done sync.WaitGroup
+	release := make(chan struct{})
+	for i := range callers {
+		ready.Add(1)
+		done.Add(1)
+		go func() {
+			defer done.Done()
+			request := httptest.NewRequest(http.MethodGet, testPath, http.NoBody)
+			request.Header.Set("Cf-Access-Jwt-Assertion", token)
+			recorder := httptest.NewRecorder()
+			ready.Done()
+			<-release
+			handler.ServeHTTP(recorder, request)
+			codes[i] = recorder.Code
+		}()
+	}
+	ready.Wait()
+	close(release)
+	done.Wait()
+
+	for _, code := range codes {
+		require.Equal(t, http.StatusUnauthorized, code)
+	}
+	require.Equal(t, 2, tm.fetched(), "one fetch at start, one for the whole burst")
+}
+
+// spoiledAnswer is an answer of the key endpoint the gate must not take a key set from.
+type spoiledAnswer struct {
+	name  string
+	spoil func(t *testing.T, tm *team)
+}
+
+// spoiledAnswers would each, if taken, bring in the key of the intruder beside the known one.
+func spoiledAnswers(known, intruder *signer) []spoiledAnswer {
+	return []spoiledAnswer{
+		{"an error of the endpoint", func(t *testing.T, tm *team) {
+			tm.serve(setOf(t, known, intruder), http.StatusInternalServerError)
+		}},
+		{"a set without a key", func(_ *testing.T, tm *team) {
+			tm.serve(jwk.NewSet(), http.StatusOK)
+		}},
+		{"a set without an RSA key", func(t *testing.T, tm *team) {
+			tm.serve(ellipticOnly(t, intruder.kid), http.StatusOK)
+		}},
+		{"a set whose key has no key id", func(t *testing.T, tm *team) {
+			tm.serve(withoutKeyID(t, intruder), http.StatusOK)
+		}},
+		{"not a key set", func(_ *testing.T, tm *team) {
+			tm.serveRaw([]byte("<html>sign in</html>"))
+		}},
+		// The other endpoint is one the client trusts as much as the first, and it serves a
+		// sound set: only not following the redirect keeps it out.
+		{"a redirect to another endpoint", func(t *testing.T, tm *team) {
+			tm.redirectTo(newTeam(t, setOf(t, known, intruder)).certsURL())
+		}},
+		// Sound but for its length: only the bound keeps it out.
+		{"a body beyond the bound", func(t *testing.T, tm *team) {
+			tm.serveRaw(padded(t, setOf(t, known, intruder), accessgate.MaxKeySetBytes))
+		}},
+	}
+}
+
+func Test_Remote_FailedRefresh_KeepsTheLastKeys(t *testing.T) {
+	known, intruder := newSigner(t, "key-1"), newSigner(t, "key-2")
+
+	for _, answer := range spoiledAnswers(known, intruder) {
+		t.Run(answer.name, func(t *testing.T) {
+			r := newRemoteRig(t, setOf(t, known), never)
+			answer.spoil(t, r.team)
+			token := intruder.sign(t, r.claims())
 
 			require.Equal(t, http.StatusUnauthorized, r.call(token).Code)
-			require.Equal(t, before+1, r.team.fetched(), "the refresh was tried")
+			require.Equal(t, 2, r.team.fetched(), "the refresh was tried")
 			require.Equal(t, http.StatusOK, r.call(known.sign(t, r.claims())).Code)
 
 			logged := r.logs.String()
 			require.Contains(t, logged, "level=ERROR")
 			require.NotContains(t, logged, token)
 			require.NotContains(t, logged, testPath)
+
+			// The endpoint recovers: the next refresh takes its set.
+			r.team.serve(setOf(t, known, intruder), http.StatusOK)
 			r.clock.advance(accessgate.MinRefreshGap)
+			require.Equal(t, http.StatusOK, r.call(token).Code)
 		})
 	}
+}
+
+func Test_Remote_ABodyWithinTheBound_IsTaken(t *testing.T) {
+	key := newSigner(t, "key-1")
+	tm := newTeam(t, setOf(t, key))
+	tm.serveRaw(padded(t, setOf(t, key), accessgate.MaxKeySetBytes-4096))
+
+	gate, err := tm.start(t.Context(), time.Now, &syncBuffer{}, never)
+	require.NoError(t, err)
+	require.NotNil(t, gate)
 }
 
 func Test_Remote_BackgroundRefresh(t *testing.T) {
@@ -226,75 +378,74 @@ func Test_Remote_BackgroundRefresh_StopsWithTheContext(t *testing.T) {
 	key := newSigner(t, "key-1")
 	tm := newTeam(t, setOf(t, key))
 	ctx, cancel := context.WithCancel(t.Context())
-	_, err := accessgate.NewRemote(ctx, accessgate.Config{
-		TeamDomain: tm.domain(),
-		Audience:   testAudience,
-		Now:        time.Now,
-		Logger:     slog.New(slog.NewTextHandler(&syncBuffer{}, nil)),
-	}, tm.server.Client(), 10*time.Millisecond)
+	gate, err := tm.start(ctx, time.Now, &syncBuffer{}, time.Millisecond)
 	require.NoError(t, err)
-	require.Eventually(t, func() bool { return tm.fetched() >= 3 }, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return tm.fetched() >= 3 }, 5*time.Second, time.Millisecond,
+		"the background refresh runs")
+
+	select {
+	case <-accessgate.RefreshStopped(gate):
+		require.Fail(t, "the background refresh ended before its context")
+	default:
+	}
 
 	cancel()
-	// One fetch may be on its way when the context ends; none starts after.
-	time.Sleep(50 * time.Millisecond)
-	settled := tm.fetched()
-	time.Sleep(100 * time.Millisecond)
-	require.Equal(t, settled, tm.fetched())
+	// The refresh fetches from its own loop and nowhere else: once the loop has returned, no
+	// fetch of it is on its way and none can start.
+	select {
+	case <-accessgate.RefreshStopped(gate):
+	case <-time.After(10 * time.Second):
+		require.Fail(t, "the background refresh outlived its context")
+	}
 }
 
 func Test_New_FailsWhenTheKeysCannotBeFetched(t *testing.T) {
-	key := newSigner(t, "key-1")
-	logger := slog.New(slog.NewTextHandler(&syncBuffer{}, nil))
+	known, intruder := newSigner(t, "key-1"), newSigner(t, "key-2")
 
-	cases := []struct {
-		name   string
-		keys   jwk.Set
-		status int
-	}{
-		{"an error of the endpoint", setOf(t, key), http.StatusInternalServerError},
-		{"a set without a key", jwk.NewSet(), http.StatusOK},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			tm := newTeam(t, c.keys)
-			tm.serve(c.keys, c.status)
-			gate, err := accessgate.NewRemote(t.Context(), accessgate.Config{
-				TeamDomain: tm.domain(), Audience: testAudience, Now: time.Now, Logger: logger,
-			}, tm.server.Client(), never)
+	for _, answer := range spoiledAnswers(known, intruder) {
+		t.Run(answer.name, func(t *testing.T) {
+			tm := newTeam(t, setOf(t, known))
+			answer.spoil(t, tm)
+			gate, err := tm.start(t.Context(), time.Now, &syncBuffer{}, never)
 			require.Error(t, err)
 			require.Nil(t, gate, "no gate, so nothing can be served behind one that holds no key")
+			require.Equal(t, 1, tm.fetched(), "the start does not insist")
 		})
 	}
 
 	t.Run("nothing answers", func(t *testing.T) {
-		tm := newTeam(t, setOf(t, key))
-		domain, client := tm.domain(), tm.server.Client()
+		tm := newTeam(t, setOf(t, known))
 		tm.server.Close()
-		gate, err := accessgate.NewRemote(t.Context(), accessgate.Config{
-			TeamDomain: domain, Audience: testAudience, Now: time.Now, Logger: logger,
-		}, client, never)
+		gate, err := tm.start(t.Context(), time.Now, &syncBuffer{}, never)
 		require.Error(t, err)
 		require.Nil(t, gate)
 	})
 }
 
-func Test_New_RefusesAnIncompleteConfig(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(&syncBuffer{}, nil))
-	sound := accessgate.Config{
-		TeamDomain: "team.example.com", Audience: testAudience, Now: time.Now, Logger: logger,
+func soundConfig() accessgate.Config {
+	return accessgate.Config{
+		TeamDomain: "team.example.com",
+		Audience:   testAudience,
+		Now:        time.Now,
+		Logger:     slog.New(slog.NewTextHandler(&syncBuffer{}, nil)),
 	}
+}
+
+func Test_New_RefusesAConfigItCannotUse(t *testing.T) {
 	cases := []struct {
 		name   string
 		change func(c *accessgate.Config)
 	}{
 		{"no team domain", func(c *accessgate.Config) { c.TeamDomain = "" }},
+		{"a blank team domain", func(c *accessgate.Config) { c.TeamDomain = "  " }},
 		{"a team domain with a scheme", func(c *accessgate.Config) { c.TeamDomain = "https://team.example.com" }},
+		{"a team domain with a port", func(c *accessgate.Config) { c.TeamDomain = "team.example.com:8443" }},
 		{"a team domain with a path", func(c *accessgate.Config) { c.TeamDomain = "team.example.com/other" }},
 		{"a team domain with a trailing slash", func(c *accessgate.Config) { c.TeamDomain = "team.example.com/" }},
+		{"a team domain with a trailing dot", func(c *accessgate.Config) { c.TeamDomain = "team.example.com." }},
 		{"a team domain with a query", func(c *accessgate.Config) { c.TeamDomain = "team.example.com?x=1" }},
 		{"a team domain with a user", func(c *accessgate.Config) { c.TeamDomain = "user@team.example.com" }},
-		{"a team domain with a space", func(c *accessgate.Config) { c.TeamDomain = " team.example.com" }},
+		{"a team domain with a space inside", func(c *accessgate.Config) { c.TeamDomain = "team .example.com" }},
 		{"no audience", func(c *accessgate.Config) { c.Audience = "" }},
 		{"a blank audience", func(c *accessgate.Config) { c.Audience = "  " }},
 		{"no clock", func(c *accessgate.Config) { c.Now = nil }},
@@ -302,12 +453,27 @@ func Test_New_RefusesAnIncompleteConfig(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			cfg := sound
+			cfg := soundConfig()
 			c.change(&cfg)
 			// The config is judged before anything is fetched: no network is needed to refuse it.
 			gate, err := accessgate.New(t.Context(), cfg)
 			require.Error(t, err)
 			require.Nil(t, gate)
+			if len(cfg.TeamDomain) > 3 {
+				require.NotContains(t, err.Error(), cfg.TeamDomain, "the value is not echoed")
+			}
 		})
 	}
+}
+
+func Test_New_NormalisesItsConfig(t *testing.T) {
+	cfg := soundConfig()
+	cfg.TeamDomain = "  Team.Example.COM\n"
+	cfg.Audience = " " + testAudience + "\n"
+
+	checked, err := accessgate.Checked(cfg)
+
+	require.NoError(t, err)
+	require.Equal(t, "team.example.com", checked.TeamDomain)
+	require.Equal(t, testAudience, checked.Audience)
 }

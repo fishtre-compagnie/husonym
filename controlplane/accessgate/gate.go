@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -56,28 +55,49 @@ type Gate struct {
 // here, and an error is returned when they cannot be: a server must not start behind a gate that
 // holds no key. They are then refreshed in the background until ctx ends, and a refresh that
 // fails keeps the last keys.
+//
+// The team domain is trimmed and lower-cased, the audience trimmed. A team domain that is not a
+// bare host name is refused, as is a config that lacks a field.
 func New(ctx context.Context, cfg Config) (*Gate, error) {
-	return newRemote(ctx, cfg, &http.Client{Timeout: fetchTimeout}, refreshInterval)
+	checked, err := cfg.checked()
+	if err != nil {
+		return nil, err
+	}
+	return newRemote(ctx, checked, &http.Client{}, refreshInterval)
 }
 
-func newRemote(ctx context.Context, cfg Config, client *http.Client, interval time.Duration) (*Gate, error) {
-	if cfg.Now == nil {
-		return nil, errors.New("the Access gate needs a clock")
+// checked gives the config as the gate uses it, or says what it lacks. No value is echoed: the
+// error of a start ends in a log.
+func (c Config) checked() (Config, error) {
+	if c.Now == nil {
+		return Config{}, errors.New("the Access gate needs a clock")
 	}
-	if cfg.Logger == nil {
-		return nil, errors.New("the Access gate needs a logger")
+	if c.Logger == nil {
+		return Config{}, errors.New("the Access gate needs a logger")
 	}
-	if strings.TrimSpace(cfg.Audience) == "" {
-		return nil, errors.New("the Access gate needs the audience of its application")
+	c.Audience = strings.TrimSpace(c.Audience)
+	if c.Audience == "" {
+		return Config{}, errors.New("the Access gate needs the audience of its application")
 	}
-	issuer := "https://" + cfg.TeamDomain
-	parsed, err := url.Parse(issuer)
-	if err != nil || cfg.TeamDomain == "" || parsed.Host != cfg.TeamDomain || strings.TrimSpace(cfg.TeamDomain) != cfg.TeamDomain {
-		// The value is not echoed: the error of a start ends in a log.
-		return nil, errors.New("the Access gate needs the domain of its team, as a bare host")
+	c.TeamDomain = strings.ToLower(strings.TrimSpace(c.TeamDomain))
+	if !bareHost(c.TeamDomain) {
+		return Config{}, errors.New(
+			"the Access gate needs the domain of its team as a bare host name: no scheme, no port, no path")
 	}
+	return c, nil
+}
 
-	keys := &remoteKeys{url: issuer + certsPath, client: client, now: cfg.Now, logger: cfg.Logger}
+// newRemote starts a gate from a config already checked. The client is the one the keys are
+// fetched with, see newKeyClient for what is changed of it.
+func newRemote(ctx context.Context, cfg Config, client *http.Client, interval time.Duration) (*Gate, error) {
+	issuer := "https://" + cfg.TeamDomain
+	keys := &remoteKeys{
+		url:     issuer + certsPath,
+		client:  newKeyClient(client),
+		now:     cfg.Now,
+		logger:  cfg.Logger,
+		stopped: make(chan struct{}),
+	}
 	if err := keys.fetch(ctx); err != nil {
 		return nil, err
 	}
