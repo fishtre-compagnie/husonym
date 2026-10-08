@@ -76,20 +76,58 @@ func Test_GrantViewerIfNone_GivesViewerToWhoHoldsNoRole(t *testing.T) {
 	requireRefused(t, service.Enforce(ctx, member, account, JobAction_Create), JobAction_Create)
 }
 
-// A role held costs one look at the table: no write, and the roles are not read again.
+// A role held, in the table and on this instance, costs one look at the table: no write, and the
+// roles are not read again.
 func Test_GrantViewerIfNone_ARoleHeldCostsNoWriteAndNoReload(t *testing.T) {
 	ctx := context.Background()
 	service, rows := serviceOnFirstRows(t)
 	member, account := someone(), someAccount()
-	// Another instance made the member an admin: this one has not read it.
+	require.NoError(t, service.SetRole(ctx, member, account, developer))
+	writes, loads := rows.writes, rows.loads
+
+	for range 3 {
+		require.NoError(t, service.GrantViewerIfNone(ctx, member, account))
+	}
+
+	require.Equal(t, [][]string{assignment(member, "job_developer", account)}, rows.stored())
+	require.Equal(t, writes, rows.writes)
+	require.Equal(t, loads, rows.loads)
+}
+
+// A role the table holds and this instance does not -- another instance gave it -- is kept, and
+// read: the member is let in here at once, at the cost of one reload, and of none afterwards.
+func Test_GrantViewerIfNone_ARoleThisInstanceDidNotKnowIsReadOnce(t *testing.T) {
+	ctx := context.Background()
+	service, rows := serviceOnFirstRows(t)
+	member, account := someone(), someAccount()
 	rows.write(assignment(member, roleAdmin, account)...)
+	requireRefused(t, service.Enforce(ctx, member, account, JobAction_Create), JobAction_Create)
 	writes, loads := rows.writes, rows.loads
 
 	require.NoError(t, service.GrantViewerIfNone(ctx, member, account))
 
 	require.Equal(t, [][]string{assignment(member, roleAdmin, account)}, rows.stored())
 	require.Equal(t, writes, rows.writes)
-	require.Equal(t, loads, rows.loads)
+	require.Equal(t, loads+1, rows.loads)
+	require.NoError(t, service.Enforce(ctx, member, account, JobAction_Create))
+
+	require.NoError(t, service.GrantViewerIfNone(ctx, member, account))
+	require.Equal(t, loads+1, rows.loads)
+}
+
+// The same when the reload fails: the role is stored, and told as not read back.
+func Test_GrantViewerIfNone_ARoleThisInstanceDidNotKnowAndCannotRead(t *testing.T) {
+	ctx := context.Background()
+	service, rows := serviceOnFirstRows(t)
+	member, account := someone(), someAccount()
+	rows.write(assignment(member, roleAdmin, account)...)
+
+	down := errors.New("the database is down")
+	rows.fail(nil, down)
+	err := service.GrantViewerIfNone(ctx, member, account)
+	require.ErrorIs(t, err, ErrRoleNotReadBack)
+	require.ErrorIs(t, err, down)
+	require.Equal(t, [][]string{assignment(member, roleAdmin, account)}, rows.stored())
 }
 
 // A role the table took and that could not be read back is told as SetRole tells it.

@@ -27,7 +27,8 @@ func (s *Service) SetRole(_ context.Context, user User, account Account, role mg
 // GrantViewerIfNone decides from the table, not from what this instance believes the person
 // holds, and in one step the table makes alone: a role another instance gave is never replaced,
 // and of two asked at once one writes. Where a role is held it costs one read of the table and
-// writes nothing.
+// writes nothing; the roles are read again only when this instance holds none of what the table
+// holds for that person, so that they are let in here at once.
 func (s *Service) GrantViewerIfNone(_ context.Context, user User, account Account) error {
 	if err := s.enforcer.SetRoleForUserInDomainIfNone(user.stored(), roleViewer, account.stored()); err != nil {
 		return fmt.Errorf("unable to give the role %s to who holds none: %w", roleViewer, err)

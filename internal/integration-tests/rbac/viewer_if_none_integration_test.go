@@ -62,6 +62,25 @@ func TestRbacGrantViewerIfNone(t *testing.T) {
 		require.NoError(t, here.GrantViewerIfNone(ctx, rbac.NewUser(userId), rbac.NewAccount(accountId)))
 
 		require.Equal(t, []string{"account_admin"}, rolesStoredFor(ctx, t, db, userId, accountId))
+		// And this instance now decides from it.
+		requireAccess(ctx, t, here, userId, accountId, allowedTo["account_admin"])
+	})
+
+	// Two instances of the API: the one that did not give the role lets the person in as soon as
+	// it is asked, without waiting for its periodic reload.
+	t.Run("a viewer another instance made is let in here at once", func(t *testing.T) {
+		ctx := t.Context()
+		here, there := instance(ctx, t), instance(ctx, t)
+		userId, accountId := uuid.NewString(), uuid.NewString()
+		user, account := rbac.NewUser(userId), rbac.NewAccount(accountId)
+
+		require.NoError(t, there.GrantViewerIfNone(ctx, user, account))
+		requireAccess(ctx, t, here, userId, accountId, nil)
+
+		require.NoError(t, here.GrantViewerIfNone(ctx, user, account))
+
+		requireAccess(ctx, t, here, userId, accountId, allowedTo["job_viewer"])
+		require.Equal(t, []string{"job_viewer"}, rolesStoredFor(ctx, t, db, userId, accountId))
 	})
 
 	// It is asked on every page load of every member: where a role is held it writes nothing,
