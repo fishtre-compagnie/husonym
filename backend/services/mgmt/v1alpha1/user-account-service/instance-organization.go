@@ -3,6 +3,7 @@ package v1alpha1_useraccountservice
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -156,6 +157,17 @@ func (s *Service) SetInstanceOrganization(
 	return connect.NewResponse(&mgmtv1alpha1.SetInstanceOrganizationResponse{
 		AccountId: husonymdb.UUIDString(account.ID),
 	}), nil
+}
+
+// isInstanceOrganization tells whether the account is the one the instance retains as its
+// organization. When that cannot be read it fails, so that what is refused for the organization
+// alone is not let through for want of knowing.
+func (s *Service) isInstanceOrganization(ctx context.Context, accountId pgtype.UUID) (bool, error) {
+	organization, retained, err := s.db.GetInstanceOrganization(ctx)
+	if err != nil {
+		return false, fmt.Errorf("unable to read the organization of the instance: %w", err)
+	}
+	return retained && organization.Bytes == accountId.Bytes, nil
 }
 
 // instanceOrganizationId gives the account the instance retains as its organization, or nothing

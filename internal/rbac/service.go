@@ -40,6 +40,13 @@ type Interface interface {
 	GrantViewerIfNone(ctx context.Context, user User, account Account) error
 	// RemoveMember takes away every role user holds in account.
 	RemoveMember(ctx context.Context, user User, account Account) error
+	// SetRoleKeepingAnAdmin is SetRole, refused with ErrLastAdmin, nothing changed, when it
+	// would leave account with no administrator.
+	SetRoleKeepingAnAdmin(ctx context.Context, user User, account Account, role mgmtv1alpha1.AccountRole) error
+	// RemoveMemberKeepingAnAdmin is RemoveMember, refused with ErrLastAdmin, nothing changed,
+	// when it would leave account with no administrator. ErrRoleNotReadBack means what it
+	// means for SetRole.
+	RemoveMemberKeepingAnAdmin(ctx context.Context, user User, account Account) error
 	// Roles gives the role of each of the users that has one in account.
 	Roles(users []User, account Account) map[User]mgmtv1alpha1.AccountRole
 }

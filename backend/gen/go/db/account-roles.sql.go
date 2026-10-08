@@ -61,6 +61,40 @@ func (q *Queries) HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRol
 	return exists, err
 }
 
+const isOnlyHolderOfAccountRole = `-- name: IsOnlyHolderOfAccountRole :one
+SELECT (
+  EXISTS (
+    SELECT 1 FROM husonym_api.casbin_rule
+    WHERE p_type = 'g'
+      AND v0 = $1::text
+      AND v1 = $2::text
+      AND v2 = $3::text
+  ) AND NOT EXISTS (
+    SELECT 1 FROM husonym_api.casbin_rule
+    WHERE p_type = 'g'
+      AND v0 <> $1::text
+      AND v1 = $2::text
+      AND v2 = $3::text
+  )
+)::boolean AS only_holder
+`
+
+type IsOnlyHolderOfAccountRoleParams struct {
+	Member  string
+	Role    string
+	Account string
+}
+
+// Tells whether the member holds that role in the account and nobody else does there: taking
+// it from the member would leave it held by nobody. After LockAccountRoles, in a transaction
+// that reads what was committed before each of its statements.
+func (q *Queries) IsOnlyHolderOfAccountRole(ctx context.Context, db DBTX, arg IsOnlyHolderOfAccountRoleParams) (bool, error) {
+	row := db.QueryRow(ctx, isOnlyHolderOfAccountRole, arg.Member, arg.Role, arg.Account)
+	var only_holder bool
+	err := row.Scan(&only_holder)
+	return only_holder, err
+}
+
 const lockAccountRole = `-- name: LockAccountRole :exec
 
 SELECT pg_advisory_xact_lock(
@@ -80,6 +114,38 @@ type LockAccountRoleParams struct {
 // first wrote.
 func (q *Queries) LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error {
 	_, err := db.Exec(ctx, lockAccountRole, arg.Member, arg.Account)
+	return err
+}
+
+const lockAccountRoles = `-- name: LockAccountRoles :exec
+SELECT pg_advisory_xact_lock(
+  hashtextextended('roles of ' || $1::text, 0)
+)
+`
+
+// Held until the transaction ends, so that the changes that must leave a role held by somebody
+// in an account are made one after the other in that account: the second sees who the first
+// left holding it. It is taken before LockAccountRole, never after.
+func (q *Queries) LockAccountRoles(ctx context.Context, db DBTX, account string) error {
+	_, err := db.Exec(ctx, lockAccountRoles, account)
+	return err
+}
+
+const removeAccountRoles = `-- name: RemoveAccountRoles :exec
+DELETE FROM husonym_api.casbin_rule
+WHERE p_type = 'g'
+  AND v0 = $1::text
+  AND v2 = $2::text
+`
+
+type RemoveAccountRolesParams struct {
+	Member  string
+	Account string
+}
+
+// Takes every role of the member in the account away.
+func (q *Queries) RemoveAccountRoles(ctx context.Context, db DBTX, arg RemoveAccountRolesParams) error {
+	_, err := db.Exec(ctx, removeAccountRoles, arg.Member, arg.Account)
 	return err
 }
 

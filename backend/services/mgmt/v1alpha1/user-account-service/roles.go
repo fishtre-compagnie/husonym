@@ -3,10 +3,12 @@ package v1alpha1_useraccountservice
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
@@ -22,6 +24,52 @@ func (s *Service) setRole(ctx context.Context, user rbac.User, account rbac.Acco
 		return nil
 	}
 	return err
+}
+
+// errOrganizationKeepsAnAdmin refuses the change that would leave the organization of the
+// instance with no administrator: it is the only account of the people of the instance, and
+// nobody could administer it again from the product.
+func errOrganizationKeepsAnAdmin() error {
+	return husonymerrors.NewFailedPrecondition(
+		"the organization of this instance must keep an administrator: make another member an administrator first",
+	)
+}
+
+// setRoleKeepingAnAdmin is setRole for the organization of the instance: the role is not changed
+// when the member is its only administrator and the role is another.
+func (s *Service) setRoleKeepingAnAdmin(ctx context.Context, user rbac.User, account rbac.Account, role mgmtv1alpha1.AccountRole) error {
+	err := s.rbacClient.SetRoleKeepingAnAdmin(ctx, user, account, role)
+	if errors.Is(err, rbac.ErrLastAdmin) {
+		return errOrganizationKeepsAnAdmin()
+	}
+	if errors.Is(err, rbac.ErrRoleNotReadBack) {
+		warnRoleNotReadBack(ctx, user, account, role, err)
+		return nil
+	}
+	return err
+}
+
+// removeRolesKeepingAnAdmin takes the roles of a member of the organization of the instance
+// away, unless they are its only administrator. Roles taken away in the table and still held on
+// this instance are taken away: they are no longer held here once the roles are read again,
+// within seconds, and a role grants nothing to who is no member, which the caller sees to next.
+func (s *Service) removeRolesKeepingAnAdmin(ctx context.Context, user rbac.User, account rbac.Account) error {
+	err := s.rbacClient.RemoveMemberKeepingAnAdmin(ctx, user, account)
+	if errors.Is(err, rbac.ErrLastAdmin) {
+		return errOrganizationKeepsAnAdmin()
+	}
+	if errors.Is(err, rbac.ErrRoleNotReadBack) {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+			ctx,
+			"the roles of a member are taken away, and are no longer held on this instance once the roles are read again",
+			"userId", user.String(), "accountId", account.String(), "error", err,
+		)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("unable to remove account user from rbac engine: %w", err)
+	}
+	return nil
 }
 
 // warnRoleNotReadBack tells that a role is stored and not held on this instance yet.

@@ -37,6 +37,19 @@ type FirstAssignments interface {
 	AddAssignmentIfNoneCtx(ctx context.Context, user, role, account string) (bool, error)
 }
 
+// KeptAssignments is the table of the rules, asked to change the roles of a person in an account
+// unless that would leave a role held by nobody there. The table of the API database answers it.
+type KeptAssignments interface {
+	// ReplaceAssignmentKeepingCtx is ReplaceAssignmentCtx, refused with ErrLastHolder when the
+	// person is the only one the table holds with the role kept in the account, and the role
+	// asked for is another. Refused, it changes nothing. Of two asked at once in one account,
+	// the second decides from what the first left.
+	ReplaceAssignmentKeepingCtx(ctx context.Context, user, role, account, kept string) error
+	// RemoveAssignmentsKeepingCtx takes every role of the person in the account away, refused
+	// with ErrLastHolder in the same case, and one after the other in the same way.
+	RemoveAssignmentsKeepingCtx(ctx context.Context, user, account, kept string) error
+}
+
 // roleStore is the store the enforcer loads from: the role assignments of the table, and the
 // rules that are the same in every account, which are not stored. Rule rows the table may hold
 // are not read.

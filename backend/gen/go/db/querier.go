@@ -195,6 +195,10 @@ type Querier interface {
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
 	IsJobHookNameAvailable(ctx context.Context, db DBTX, arg IsJobHookNameAvailableParams) (bool, error)
 	IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobNameAvailableParams) (int64, error)
+	// Tells whether the member holds that role in the account and nobody else does there: taking
+	// it from the member would leave it held by nobody. After LockAccountRoles, in a transaction
+	// that reads what was committed before each of its statements.
+	IsOnlyHolderOfAccountRole(ctx context.Context, db DBTX, arg IsOnlyHolderOfAccountRoleParams) (bool, error)
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
@@ -231,6 +235,10 @@ type Querier interface {
 	// account, wherever they are asked, are made one after the other: the second sees what the
 	// first wrote.
 	LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error
+	// Held until the transaction ends, so that the changes that must leave a role held by somebody
+	// in an account are made one after the other in that account: the second sees who the first
+	// left holding it. It is taken before LockAccountRole, never after.
+	LockAccountRoles(ctx context.Context, db DBTX, account string) error
 	// Holds a subject for the rest of the transaction: a second transaction asking for the
 	// same one waits here until the first is done. It is what stands for the row to hold when
 	// an identity is seen for the first time and has no row yet.
@@ -261,6 +269,8 @@ type Querier interface {
 	RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error
+	// Takes every role of the member in the account away.
+	RemoveAccountRoles(ctx context.Context, db DBTX, arg RemoveAccountRolesParams) error
 	RemoveAccountUser(ctx context.Context, db DBTX, arg RemoveAccountUserParams) error
 	RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveConnectionByNameAndAccount(ctx context.Context, db DBTX, arg RemoveConnectionByNameAndAccountParams) error

@@ -55,6 +55,68 @@ func (t *table) ReplaceAssignmentCtx(ctx context.Context, user, role, account st
 	return tx.Commit(ctx)
 }
 
+var _ KeptAssignments = (*table)(nil)
+
+// keeping makes a change of the roles of a person in an account, in one transaction that takes
+// its turn among the changes that keep a role held in that account, then among the changes of
+// the roles of that person there. Each statement reads what was committed before it, so that the
+// change decides from what the one it waited for left.
+func (t *table) keeping(ctx context.Context, user, account string, change func(tx pgx.Tx) error) error {
+	// Read committed for the reason ReplaceAssignmentCtx gives.
+	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := t.queries.LockAccountRoles(ctx, tx, account); err != nil {
+		return err
+	}
+	if err := t.queries.LockAccountRole(ctx, tx, db_queries.LockAccountRoleParams{Member: user, Account: account}); err != nil {
+		return err
+	}
+	if err := change(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// refuseLastHolder refuses with ErrLastHolder when the person is the only one the table holds
+// with that role in the account.
+func (t *table) refuseLastHolder(ctx context.Context, tx pgx.Tx, user, account, kept string) error {
+	last, err := t.queries.IsOnlyHolderOfAccountRole(ctx, tx, db_queries.IsOnlyHolderOfAccountRoleParams{
+		Member: user, Role: kept, Account: account,
+	})
+	if err != nil {
+		return err
+	}
+	if last {
+		return ErrLastHolder
+	}
+	return nil
+}
+
+func (t *table) ReplaceAssignmentKeepingCtx(ctx context.Context, user, role, account, kept string) error {
+	return t.keeping(ctx, user, account, func(tx pgx.Tx) error {
+		if role != kept {
+			if err := t.refuseLastHolder(ctx, tx, user, account, kept); err != nil {
+				return err
+			}
+		}
+		replacement := db_queries.ReplaceAccountRoleParams{Member: user, Role: role, Account: account}
+		return t.queries.ReplaceAccountRole(ctx, tx, replacement)
+	})
+}
+
+func (t *table) RemoveAssignmentsKeepingCtx(ctx context.Context, user, account, kept string) error {
+	return t.keeping(ctx, user, account, func(tx pgx.Tx) error {
+		if err := t.refuseLastHolder(ctx, tx, user, account, kept); err != nil {
+			return err
+		}
+		return t.queries.RemoveAccountRoles(ctx, tx, db_queries.RemoveAccountRolesParams{Member: user, Account: account})
+	})
+}
+
 var _ FirstAssignments = (*table)(nil)
 
 // HasAssignmentCtx is one read of the table, outside of any transaction.

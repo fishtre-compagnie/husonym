@@ -63,6 +63,15 @@ type Enforcer struct {
 	// firstAssignments asks the table for the role of a person that holds none, within the time
 	// a write is given. It is nil on a table that does not answer that.
 	firstAssignments *boundedFirstAssignments
+	// keptAssignments asks the table for the changes that keep a role held in an account, within
+	// the time a write is given. It is nil on a table that does not answer that.
+	keptAssignments *boundedKeptAssignments
+}
+
+// boundedKeptAssignments asks the table what KeptAssignments names, each within a time limit.
+type boundedKeptAssignments struct {
+	replace func(user, role, account, kept string) error
+	remove  func(user, account, kept string) error
 }
 
 // boundedFirstAssignments asks the table what FirstAssignments names, each within a time limit.
@@ -109,6 +118,20 @@ func New(ctx context.Context, rows Rows, fixedRules [][]string, logger *slog.Log
 			},
 		}
 	}
+	if kept, ok := rows.(KeptAssignments); ok {
+		e.keptAssignments = &boundedKeptAssignments{
+			replace: func(user, role, account, keptRole string) error {
+				return store.within(store.writeTimeout, func(ctx context.Context) error {
+					return kept.ReplaceAssignmentKeepingCtx(ctx, user, role, account, keptRole)
+				})
+			},
+			remove: func(user, account, keptRole string) error {
+				return store.within(store.writeTimeout, func(ctx context.Context) error {
+					return kept.RemoveAssignmentsKeepingCtx(ctx, user, account, keptRole)
+				})
+			},
+		}
+	}
 	go e.reloadEvery(ctx, reloadPeriod)
 	return e, nil
 }
@@ -151,6 +174,51 @@ func (e *Enforcer) SetRoleForUserInDomain(user, role, domain string) error {
 	e.reloading.Lock()
 	defer e.reloading.Unlock()
 	if err := e.replaceAssignment(user, role, domain); err != nil {
+		return err
+	}
+	if err := e.inner.LoadPolicy(); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotReadBack, err)
+	}
+	return nil
+}
+
+// ErrLastHolder tells that a change was refused, and nothing changed, because it would have left
+// a role that must stay held in an account held by nobody there.
+var ErrLastHolder = errors.New("the person is the only one that holds the role in the account")
+
+// ErrNoKeptAssignments tells that the table the enforcer was built on cannot keep a role held in
+// an account.
+var ErrNoKeptAssignments = errors.New("the table of the access rules does not keep a role held in an account")
+
+// SetRoleForUserInDomainKeeping is SetRoleForUserInDomain, refused with ErrLastHolder when the
+// table holds the person as the only one with the role kept in the account and the role asked
+// for is another. The table decides, in the transaction that makes the change, and never what
+// this instance holds in memory; two such changes in one account, wherever they are asked, are
+// made one after the other, so that two people who hold the role cannot each lose it to a change
+// that counted the other.
+func (e *Enforcer) SetRoleForUserInDomainKeeping(user, role, domain, kept string) error {
+	if e.keptAssignments == nil {
+		return ErrNoKeptAssignments
+	}
+	return e.changeKeeping(func() error { return e.keptAssignments.replace(user, role, domain, kept) })
+}
+
+// DeleteRolesForUserInDomainKeeping takes away every role of a person in an account, in the
+// table then in memory, refused as SetRoleForUserInDomainKeeping is and decided the same way.
+func (e *Enforcer) DeleteRolesForUserInDomainKeeping(user, domain, kept string) error {
+	if e.keptAssignments == nil {
+		return ErrNoKeptAssignments
+	}
+	return e.changeKeeping(func() error { return e.keptAssignments.remove(user, domain, kept) })
+}
+
+// changeKeeping makes in the table a change that keeps a role held, then reads the roles again
+// from it, as SetRoleForUserInDomain does and for the same reason. ErrNotReadBack means here what
+// it means there.
+func (e *Enforcer) changeKeeping(change func() error) error {
+	e.reloading.Lock()
+	defer e.reloading.Unlock()
+	if err := change(); err != nil {
 		return err
 	}
 	if err := e.inner.LoadPolicy(); err != nil {
