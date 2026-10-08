@@ -23,6 +23,11 @@ const (
 	// customerChanged is said of a form whose customer is not, or no longer, the one of the store.
 	customerChanged = "The form does not say of the customer what is recorded: it may have been changed since. " +
 		"Nothing was done; open the form again."
+	// untrimmedExternalID is said of a customer the console issues no license to. One recorded from
+	// here has its external id trimmed; one that came otherwise may not.
+	untrimmedExternalID = "The external id recorded for this customer begins or ends with a space. " +
+		"A key carries the external id as it is recorded, and the console issues none that would carry such an id: " +
+		"nothing is trimmed when a license is issued."
 	// elsewhere names the command that issues what a form of the console cannot.
 	elsewhere = "husonym-license, on the command line, can issue its successor."
 )
@@ -187,6 +192,23 @@ func licenseFormPage(customer *cpstore.CustomerDetail, form url.Values, problems
 	return &content{file: pageLicenseForm, title: view.Heading, nav: navCustomers, body: view}
 }
 
+// issuable says whether the console issues a license to customer: its external id, which the key
+// carries and the store finds it by, is its own trimmed form. It is never trimmed here to make it
+// so: the key would then name a customer that is not recorded under that id.
+func issuable(customer *cpstore.CustomerDetail) bool {
+	return customer.ExternalID == strings.TrimSpace(customer.ExternalID)
+}
+
+// notIssuable is the page shown in place of the form of a license for a customer that is not
+// issuable.
+func notIssuable(customer *cpstore.CustomerDetail) messageView {
+	return messageView{
+		Heading: "No license can be issued to this customer here",
+		Text:    untrimmedExternalID,
+		Back:    customerLink(customer.ID, "Back to the customer"),
+	}
+}
+
 func (c *console) newLicenseForm(r *http.Request) (*content, error) {
 	if c.signer == nil {
 		return nil, cpstore.ErrNotFound
@@ -194,6 +216,10 @@ func (c *console) newLicenseForm(r *http.Request) (*content, error) {
 	customer, err := c.customerOfPath(r)
 	if err != nil {
 		return nil, err
+	}
+	if !issuable(customer) {
+		message := notIssuable(customer)
+		return &content{file: pageMessage, title: message.Heading, body: message}, nil
 	}
 	now := c.now()
 	// No feature, and the expiry a year ahead. The id of the license is drawn at the confirmation.
@@ -226,6 +252,10 @@ func (c *console) renewLicenseForm(answer *reply, r *http.Request) {
 	var customer *cpstore.CustomerDetail
 	if err == nil {
 		customer, err = c.store.Customer(r.Context(), previous.CustomerID, now)
+	}
+	if err == nil && !issuable(customer) {
+		c.say(answer, http.StatusOK, notIssuable(customer))
+		return
 	}
 	var draft *issuing.Draft
 	if err == nil {
@@ -274,8 +304,13 @@ func (c *console) customerOfForm(answer *reply, r *http.Request, form url.Values
 		c.broke(answer, "unable to read the customer of a license", err)
 		return nil, false
 	}
-	// Trimmed on both sides, as a draft trims what it reads.
-	if typed(form, issuing.FieldCustomerExternalID) != strings.TrimSpace(customer.ExternalID) ||
+	if !issuable(customer) {
+		c.conflict(answer, untrimmedExternalID+" Nothing was done.", customerLink(customer.ID, "Back to the customer"))
+		return nil, false
+	}
+	// The name is trimmed on both sides, as a draft trims what it reads. The external id is the
+	// one recorded, which is its own trimmed form.
+	if typed(form, issuing.FieldCustomerExternalID) != customer.ExternalID ||
 		typed(form, issuing.FieldCustomerName) != strings.TrimSpace(customer.Name) {
 		c.conflict(answer, customerChanged, customerLink(customer.ID, "Back to the customer"))
 		return nil, false

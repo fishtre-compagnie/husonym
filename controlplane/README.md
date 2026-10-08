@@ -114,6 +114,11 @@ the console issued it or not; the one that succeeds it bears an id the console d
 whose key carries a limit the form has no field for is not renewed here: `husonym-license` issues
 its successor.
 
+A key carries the external id of its customer as it is recorded. A customer recorded from the
+console has its external id without the space around it. To a customer whose recorded external id
+begins or ends with a space, the console issues no license: the page says why in place of the
+form, and nothing is trimmed when a license is issued.
+
 The key of a license is shown on two pages only, both the answer to a `POST`: right after the
 issue, and when it is asked for again. It is in no other page, in no URL and in no log.
 

@@ -211,8 +211,8 @@ func Test_ParseDraft_TheLicenseIDKeepsItsRule(t *testing.T) {
 	require.Nil(t, draft)
 }
 
-func Test_TrialDraft_TrimsWhatTheCustomerSays(t *testing.T) {
-	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: " acme\t", Name: "  Acme Co. \n"}
+func Test_TrialDraft_TrimsTheNameOfTheCustomer(t *testing.T) {
+	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "  Acme Co. \n"}
 
 	draft := TrialDraft(customer, draftNow)
 
@@ -222,12 +222,34 @@ func Test_TrialDraft_TrimsWhatTheCustomerSays(t *testing.T) {
 	requireSameButTheID(t, draft)
 }
 
+// The key carries the external id the store finds the customer by. One that is not its own trimmed
+// form is never trimmed into another id: the draft keeps it, and the signing refuses it.
+func Test_ADraftForACustomer_NeverTrimsItsExternalID(t *testing.T) {
+	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: " acme ", Name: "Acme Co."}
+	renewal, err := RenewalDraft(previousLicense(customer), customer, draftNow)
+	require.NoError(t, err)
+	signer, _ := newTestSigner(t)
+
+	for name, draft := range map[string]*Draft{"of 30 days": TrialDraft(customer, draftNow), "a renewal": renewal} {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, " acme ", draft.CustomerExternalID)
+			draft.LicenseID = "0123456789abcdef"
+
+			issued, key, err := signer.Issue(draft, draftNow)
+
+			require.ErrorContains(t, err, "The customer id cannot begin or end with a space.")
+			require.Nil(t, issued)
+			require.Nil(t, key)
+		})
+	}
+}
+
 func Test_TrialDraft_WithoutACustomer(t *testing.T) {
 	require.Nil(t, TrialDraft(nil, draftNow))
 }
 
-func Test_RenewalDraft_TrimsWhatTheCustomerSays(t *testing.T) {
-	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: " acme ", Name: " Acme Co. "}
+func Test_RenewalDraft_TrimsTheNameOfTheCustomerAndThePlan(t *testing.T) {
+	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: " Acme Co. "}
 	previous := previousLicense(customer)
 	previous.Plan = " a plan "
 

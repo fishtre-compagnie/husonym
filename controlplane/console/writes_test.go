@@ -472,6 +472,63 @@ func Test_ADraftWhoseCustomerIsNotTheOneOfTheStore_IsRefused(t *testing.T) {
 	}
 }
 
+// A customer recorded from the console has its external id trimmed. One that came otherwise may
+// not: a key would carry an id that is not the one recorded, or one that begins or ends with a
+// space. Neither is issued, and nothing is trimmed on the way: the pages say why.
+func Test_ACustomerWhoseExternalIDIsNotItsTrimmedForm_IsIssuedNoLicense(t *testing.T) {
+	const why = "The external id recorded for this customer begins or ends with a space."
+	customerPath := "/customers/" + customerID.String()
+	for name, externalID := range map[string]string{
+		"a space after": "cust-1 ", "a space before": " cust-1", "a tab after": "cust-1\t", "a line break after": "cust-1\n",
+		"a no-break space before": " cust-1",
+	} {
+		untrimmed := func() *cpstore.CustomerDetail {
+			customer := acme()
+			customer.ExternalID = externalID
+			return customer
+		}
+		for _, path := range []string{
+			customerPath + "/licenses/new", customerPath + "/licenses/new?trial=1", "/licenses/" + previousLicenseID + "/renew",
+		} {
+			t.Run(name+": the form "+path, func(t *testing.T) {
+				b := newBench(t)
+				b.store.customer, b.store.license = untrimmed(), renewable()
+
+				got := b.get(path)
+
+				require.Equal(t, http.StatusOK, got.status)
+				require.Contains(t, got.body, "<h1>No license can be issued to this customer here</h1>")
+				require.Contains(t, got.body, why)
+				require.Contains(t, got.body, `href="`+customerPath+`"`)
+				require.NotContains(t, got.body, "<form")
+				require.NotContains(t, b.logs.String(), "level=ERROR")
+				requireLayout(t, got)
+			})
+		}
+		// What a form made by hand says of the id: as it is recorded, and as it would be trimmed.
+		for said, sent := range map[string]string{"as recorded": externalID, "trimmed": "cust-1"} {
+			for _, path := range []string{"/licenses/confirm", "/licenses"} {
+				t.Run(name+": POST "+path+" with the id "+said, func(t *testing.T) {
+					b := newBench(t)
+					b.store.customer = untrimmed()
+					form := draftForm()
+					form.Set(issuing.FieldCustomerExternalID, sent)
+
+					got := b.post(path, form)
+
+					require.Equal(t, http.StatusConflict, got.status)
+					require.Contains(t, got.body, why)
+					require.NotContains(t, got.body, "Issue the license")
+					requireNoKey(t, got)
+					require.Zero(t, b.signer.calls, "nothing is signed")
+					require.Zero(t, b.writer.writes, "nothing is written")
+					requireLayout(t, got)
+				})
+			}
+		}
+	}
+}
+
 func Test_IssueLicense_SignsRecordsPromotesAndShowsTheKey(t *testing.T) {
 	b := newBench(t)
 	b.store.customer = acme()

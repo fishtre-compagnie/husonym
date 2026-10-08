@@ -401,16 +401,18 @@ func quoted(typed string) string {
 }
 
 // TrialDraft drafts a trial for customer: every feature, no cap, and an expiry at the end of the
-// day TrialDays after now. The name and the id of the customer are trimmed as ParseDraft trims
-// them, so that the page that shows this draft and the key signed after it say the same. It bears
-// no license id: that one is drawn when the form is sent. Without a customer there is no draft: it
+// day TrialDays after now. The name of the customer is trimmed as ParseDraft trims it, so that the
+// page that shows this draft and the key signed after it say the same. Its external id is taken as
+// it is recorded, never trimmed: the key is to carry the id the store finds the customer by, and a
+// draft whose id begins or ends with a space is refused by the rules of a draft. It bears no
+// license id: that one is drawn when the form is sent. Without a customer there is no draft: it
 // returns nil.
 func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 	if customer == nil {
 		return nil
 	}
 	return &Draft{
-		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
+		CustomerExternalID: customer.ExternalID,
 		CustomerName:       strings.TrimSpace(customer.Name),
 		AllFeatures:        true,
 		ExpiresAt:          endOfDay(now.UTC().AddDate(0, 0, TrialDays)),
@@ -420,9 +422,10 @@ func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 // RenewalDraft drafts the license that succeeds previous: the same content, without an id yet,
 // expiring at the end of the day one year after the later of now and the previous expiry. The name
 // is the one customer has today, and the telemetry is what the key of previous says, not what the
-// product reads from it. Texts are trimmed as ParseDraft trims them. It refuses, with an error: a
-// missing license or customer (ErrNothingToRenew), a license of another customer, and one that
-// carries a limit a draft has no field for.
+// product reads from it. Texts are trimmed as ParseDraft trims them, but the external id of the
+// customer, taken as it is recorded. It refuses, with an error: a missing license or customer
+// (ErrNothingToRenew), a license of another customer, and one that carries a limit a draft has no
+// field for.
 func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDetail, now time.Time) (*Draft, error) {
 	if previous == nil || customer == nil {
 		return nil, ErrNothingToRenew
@@ -431,7 +434,7 @@ func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDet
 		return nil, ErrNotTheCustomerOfTheLicense
 	}
 	draft := &Draft{
-		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
+		CustomerExternalID: customer.ExternalID,
 		CustomerName:       strings.TrimSpace(customer.Name),
 		Plan:               strings.TrimSpace(previous.Plan),
 		Telemetry:          strings.TrimSpace(previous.StoredTelemetry),
