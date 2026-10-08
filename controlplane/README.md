@@ -80,7 +80,7 @@ only reads: every route is a `GET`, and there is no form.
 
 | Path                                                     | What it shows                                                   |
 | -------------------------------------------------------- | --------------------------------------------------------------- |
-| `/`                                                      | What needs attention: the five lists the gauges below count.     |
+| `/`                                                      | What needs attention, in five lists: see below.                 |
 | `/customers`                                             | The customers.                                                  |
 | `/customers/{id}`                                        | A customer, its licenses and its instances.                     |
 | `/licenses/{id}`                                         | A license: what its key carries, its instances, refused seals.  |
@@ -90,6 +90,14 @@ only reads: every route is a `GET`, and there is no form.
 | `/static/console.css`                                    | The stylesheet. The pages load nothing else.                    |
 
 The key of a license is on no page. Instants are shown in UTC.
+
+The five lists of `/` are the silent instances, the expiring licenses, the old pending reports,
+the seal rejections and the shared licenses, each as the gauge of the same name counts it (see
+Metrics). One differs: the list of the seal rejections covers the last 7 days, the current one
+included, where its gauge counts the current UTC day only.
+
+A license id or an instance id that the database cannot hold (not valid UTF-8, or with a zero
+byte) is answered the not found page. One that is `.` or `..` is shown as text, without a link.
 
 ### The gates
 
@@ -107,12 +115,13 @@ Every request passes two gates, in this order, before a page is rendered:
 path. The server serves no report intake, and the public server serves no page of the console.
 
 The command refuses to start when one of its variables is missing, when the host or the team
-domain is not a bare host name, or when the keys of the team cannot be fetched. Request headers
-are capped at 64 KiB.
+domain is not a bare host name, when the keys of the team cannot be fetched, or when the database
+cannot be reached. Request headers are capped at 64 KiB.
 
-Every answer carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
+Every answer of the server carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet and
-nothing else.
+nothing else: the pages, the 404 of the host gate, the 401 of the Access gate and the health
+check alike.
 
 ### On one's own machine
 
@@ -120,6 +129,11 @@ nothing else.
 Every page then says so in a banner and shows the operator as `local`. The flag is refused unless
 `CONTROLPLANE_LISTEN_ADDR` is a loopback address (`127.0.0.1:8080`, `[::1]:8080`,
 `localhost:8080`); the default, `:8080`, listens on every interface and is refused.
+
+In that mode the console answers only local names: a request whose `Host`, its port set aside, is
+not `localhost` or a loopback address (`127.0.0.0/8`, `::1`) is answered 404 with no body. A page
+open in the same browser cannot then read the console by making its own name resolve to this
+machine. `GET /healthz` stays outside that check too.
 
 ## What is stored
 
@@ -147,24 +161,29 @@ purged), or the text of its error. What `net/http` would log by itself is droppe
 The backoffice writes one line per request to the console: the email of the operator, the method,
 the pattern of the route (`GET /licenses/{id}`, never the path as written; `-` when no route
 matched) and the status. A read that fails adds a line with the text of our own error. A request
-refused by the Access gate is one line in fixed words; one refused for its host, and the health
-check, are not logged.
+refused by the Access gate is one line in fixed words, and so is a panic outside the pages, which
+is answered 500; a request refused for its host, and the health check, are not logged.
+
+A read of the gauges that fails is one line with the text of our own error. A panic of the public
+server is one line in fixed words.
 
 ## Metrics
 
 `serve public` serves `GET /metrics` on its own address, `CONTROLPLANE_METRICS_ADDR`; the report
 address serves none. Both listeners stop together, and `serve public` fails if either one cannot
-be bound. The gauges are read from the database at most once every 60 seconds.
+be bound. The gauges are read from the database at most once every 60 seconds while the reads
+succeed; a read that fails is counted and logged, and the next scrape tries again.
 
 - `husonym_controlplane_usage_reports_total{outcome}`: report requests received, by the fixed
-  word of the log line.
-- `husonym_controlplane_silent_instances`: instances in force that stopped reporting for more than
-  3 days and less than 30.
+  word of the log line. Every word has its series from the start, at 0; a request that ended in a
+  panic is counted as `panicked`.
+- `husonym_controlplane_silent_instances`: instances whose license is in force and whose telemetry
+  is online, with a last report more than 3 days and no more than 30 days ago.
 - `husonym_controlplane_expiring_licenses`: licenses expiring within 30 days, or in grace, that no
   other license succeeds.
 - `husonym_controlplane_old_pending_reports`: pending reports received more than 24 hours ago.
 - `husonym_controlplane_seal_rejections_today`: reports refused for their seal on the current UTC
-  day.
+  day (the page lists the last 7 days).
 - `husonym_controlplane_shared_licenses`: licenses seen within 30 days on more than one instance.
 - `husonym_controlplane_attention_read_failures_total`: reads of the five gauges that failed; the
   gauges are left out of a scrape whose read failed.
