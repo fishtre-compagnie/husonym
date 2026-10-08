@@ -265,6 +265,8 @@ func (c *console) renewLicenseForm(answer *reply, r *http.Request) {
 	switch {
 	case errors.Is(err, cpstore.ErrNotFound):
 		c.notFound(answer)
+	case errors.Is(err, issuing.ErrLicenseNotNameable):
+		c.cannotRenew(answer, previous, "Its id is one the form of this console cannot name. "+elsewhere)
 	case errors.Is(err, issuing.ErrLimitsNotCarried):
 		c.cannotRenew(answer, previous, "Its key carries a limit the form of this console has no field for. "+elsewhere)
 	case err != nil:

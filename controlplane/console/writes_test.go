@@ -364,7 +364,7 @@ func Test_LicenseForm_OffersWhatTheProductDeclaresAndAYearAhead(t *testing.T) {
 	require.Zero(t, b.signer.calls)
 }
 
-func Test_LicenseForm_OfThirtyDays_IsPrefilledWithEveryFeatureAndThirtyDays(t *testing.T) {
+func Test_LicenseForm_OfThirtyDays_IsPrefilled(t *testing.T) {
 	b := newBench(t)
 	b.store.customer = acme()
 

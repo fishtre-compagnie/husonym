@@ -171,7 +171,8 @@ func Test_ParseDraft_Succeeds(t *testing.T) {
 		"an id of another form":   {"lic-2024-001", "lic-2024-001", ""},
 		"capitals and a space in": {"ACME 2024/1", "ACME 2024/1", ""},
 		"dots and slashes":        {"../../licenses/x1", "../../licenses/x1", ""},
-		"the space around":        {"  lic-2024-001\n", "lic-2024-001", ""},
+		// Trimmed, it would name another license: it is refused as it is.
+		"the space around": {"  lic-2024-001 ", "", "The id of the license to renew cannot begin or end with a space."},
 		"128 characters":          {strings.Repeat("é", 128), strings.Repeat("é", 128), ""},
 		"129 characters":          {strings.Repeat("a", 129), "", "The license to renew must be named by an id of at most 128 characters."},
 		"a NUL":                   {"lic\x00-1", "", notText},
@@ -260,6 +261,29 @@ func Test_RenewalDraft_TrimsTheNameOfTheCustomerAndThePlan(t *testing.T) {
 	require.Equal(t, "Acme Co.", draft.CustomerName)
 	require.Equal(t, "a plan", draft.Plan)
 	requireSameButTheID(t, draft)
+}
+
+// A license whose id a draft cannot name is not drafted a renewal: the form would carry an id the
+// rules refuse, or one that names another license once trimmed.
+func Test_RenewalDraft_OfALicenseADraftCannotName(t *testing.T) {
+	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "Acme Co."}
+	for name, id := range map[string]string{
+		"a space around":     " lic-space ",
+		"a no-break space":   " lic-space",
+		"a tab inside":       "lic\t1",
+		"a zero width space": "lic​1",
+		"too long":           strings.Repeat("a", MaxLicenseIDLength+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			previous := previousLicense(customer)
+			previous.ID = id
+
+			draft, err := RenewalDraft(previous, customer, draftNow)
+
+			require.ErrorIs(t, err, ErrLicenseNotNameable)
+			require.Nil(t, draft)
+		})
+	}
 }
 
 func Test_RenewalDraft_WithoutALicenseOrACustomer(t *testing.T) {

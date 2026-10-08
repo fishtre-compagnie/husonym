@@ -74,7 +74,17 @@ var (
 	// ErrNothingToRenew is returned when a renewal is drafted without a license or without its
 	// customer.
 	ErrNothingToRenew = errors.New("there is no license to renew, or no customer to renew it for")
+	// ErrLicenseNotNameable is returned when the id of the license to renew is one a draft cannot
+	// name: it begins or ends with a space, holds a character a page does not show, or is too long.
+	ErrLicenseNotNameable = errors.New("the id of the license to renew is one a draft cannot name")
 )
+
+// nameable reports whether id can name the license a draft renews: the rule the rules of a draft
+// apply to Succeeds.
+func nameable(id string) bool {
+	return id != "" && id == strings.TrimSpace(id) && carriable(id, false) &&
+		utf8.RuneCountInString(id) <= MaxLicenseIDLength
+}
 
 // Draft is a license about to be signed: what the operator asked for, before and after the
 // confirmation page.
@@ -178,7 +188,9 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 		Plan:               field(FieldPlan),
 		Telemetry:          field(FieldTelemetry),
 		Note:               field(FieldNote),
-		Succeeds:           field(FieldSucceeds),
+		// Not trimmed: an id is the name of one license, and trimming it would name another. The
+		// rules of a draft refuse one that begins or ends with a space.
+		Succeeds: form.Get(FieldSucceeds),
 	}
 
 	if draft.LicenseID == "" {
@@ -401,8 +413,7 @@ func quoted(typed string) string {
 }
 
 // ShortDraft drafts a license of ShortLicenseDays days for customer, the preset a form offers
-// beside the plain one: every feature, no cap, and an expiry at the end of the day
-// ShortLicenseDays after now. The name of the customer is trimmed as ParseDraft trims it, so that the
+// beside the plain one, with an expiry at the end of the day ShortLicenseDays after now. The name of the customer is trimmed as ParseDraft trims it, so that the
 // page that shows this draft and the key signed after it say the same. Its external id is taken as
 // it is recorded, never trimmed: the key is to carry the id the store finds the customer by, and a
 // draft whose id begins or ends with a space is refused by the rules of a draft. It bears no
@@ -425,14 +436,17 @@ func ShortDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 // is the one customer has today, and the telemetry is what the key of previous says, not what the
 // product reads from it. Texts are trimmed as ParseDraft trims them, but the external id of the
 // customer, taken as it is recorded. It refuses, with an error: a missing license or customer
-// (ErrNothingToRenew), a license of another customer, and one that carries a limit a draft has no
-// field for.
+// (ErrNothingToRenew), a license of another customer, one whose id a draft cannot name
+// (ErrLicenseNotNameable), and one that carries a limit a draft has no field for.
 func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDetail, now time.Time) (*Draft, error) {
 	if previous == nil || customer == nil {
 		return nil, ErrNothingToRenew
 	}
 	if previous.CustomerID != customer.ID {
 		return nil, ErrNotTheCustomerOfTheLicense
+	}
+	if !nameable(previous.ID) {
+		return nil, ErrLicenseNotNameable
 	}
 	draft := &Draft{
 		CustomerExternalID: customer.ExternalID,
