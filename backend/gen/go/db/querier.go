@@ -126,6 +126,8 @@ type Querier interface {
 	// The usage counters belong to the instance. They hold counts and identifiers, never a name or
 	// a message a customer entered.
 	GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, error)
+	// Null while no organization is retained.
+	GetInstanceOrganization(ctx context.Context, db DBTX) (pgtype.UUID, error)
 	GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error)
 	GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (HusonymApiJob, error)
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
@@ -222,6 +224,11 @@ type Querier interface {
 	// The subject alone is the key, without its issuer, because a row recorded before issuers
 	// were is found by its subject under any of them.
 	LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error
+	// The organization of the instance is the one account the instance retains as its own.
+	// Holds the row of the instance for the rest of the transaction, so that what is decided once
+	// per instance is decided by one transaction at a time: a second one waits here until the first
+	// is done.
+	LockInstance(ctx context.Context, db DBTX) (pgtype.UUID, error)
 	// The license keys belong to the instance: there is no account here.
 	// Held until the transaction ends, so that two keys given at the same moment, wherever they
 	// are asked, are looked at one after the other: the second sees what the first wrote.
@@ -275,6 +282,9 @@ type Querier interface {
 	// a row-level conflict between two tabs of the same user. No row updated returns no row,
 	// which the caller reads as "nothing to do".
 	SetIdentityProviderProfile(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error)
+	// Only an instance that retains none retains one: the first stays. The count of rows tells
+	// whether this call retained it.
+	SetInstanceOrganization(ctx context.Context, db DBTX, accountid pgtype.UUID) (int64, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
 	// The run's write: no user to record in updated_by_id (the worker's key has none), and the
 	// journal of the run says who changed what.

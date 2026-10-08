@@ -4999,6 +4999,72 @@ func (_c *MockQuerier_GetInstanceId_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// GetInstanceOrganization provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetInstanceOrganization(ctx context.Context, db DBTX) (pgtype.UUID, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInstanceOrganization")
+	}
+
+	var r0 pgtype.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (pgtype.UUID, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) pgtype.UUID); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(pgtype.UUID)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetInstanceOrganization_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInstanceOrganization'
+type MockQuerier_GetInstanceOrganization_Call struct {
+	*mock.Call
+}
+
+// GetInstanceOrganization is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetInstanceOrganization(ctx any, db any) *MockQuerier_GetInstanceOrganization_Call {
+	return &MockQuerier_GetInstanceOrganization_Call{Call: _e.mock.On("GetInstanceOrganization", ctx, db)}
+}
+
+func (_c *MockQuerier_GetInstanceOrganization_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetInstanceOrganization_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetInstanceOrganization_Call) Return(uUID pgtype.UUID, err error) *MockQuerier_GetInstanceOrganization_Call {
+	_c.Call.Return(uUID, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetInstanceOrganization_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (pgtype.UUID, error)) *MockQuerier_GetInstanceOrganization_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -8911,6 +8977,72 @@ func (_c *MockQuerier_LockIdentityProviderSubject_Call) RunAndReturn(run func(ct
 	return _c
 }
 
+// LockInstance provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockInstance(ctx context.Context, db DBTX) (pgtype.UUID, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockInstance")
+	}
+
+	var r0 pgtype.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (pgtype.UUID, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) pgtype.UUID); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(pgtype.UUID)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_LockInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockInstance'
+type MockQuerier_LockInstance_Call struct {
+	*mock.Call
+}
+
+// LockInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) LockInstance(ctx any, db any) *MockQuerier_LockInstance_Call {
+	return &MockQuerier_LockInstance_Call{Call: _e.mock.On("LockInstance", ctx, db)}
+}
+
+func (_c *MockQuerier_LockInstance_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_LockInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockInstance_Call) Return(uUID pgtype.UUID, err error) *MockQuerier_LockInstance_Call {
+	_c.Call.Return(uUID, err)
+	return _c
+}
+
+func (_c *MockQuerier_LockInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (pgtype.UUID, error)) *MockQuerier_LockInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LockLicenseKeys provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) LockLicenseKeys(ctx context.Context, db DBTX) error {
 	ret := _mock.Called(ctx, db)
@@ -10277,6 +10409,78 @@ func (_c *MockQuerier_SetIdentityProviderProfile_Call) Return(husonymApiUserIden
 }
 
 func (_c *MockQuerier_SetIdentityProviderProfile_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_SetIdentityProviderProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetInstanceOrganization provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetInstanceOrganization(ctx context.Context, db DBTX, accountid pgtype.UUID) (int64, error) {
+	ret := _mock.Called(ctx, db, accountid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetInstanceOrganization")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) (int64, error)); ok {
+		return returnFunc(ctx, db, accountid)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) int64); ok {
+		r0 = returnFunc(ctx, db, accountid)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountid)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SetInstanceOrganization_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInstanceOrganization'
+type MockQuerier_SetInstanceOrganization_Call struct {
+	*mock.Call
+}
+
+// SetInstanceOrganization is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountid pgtype.UUID
+func (_e *MockQuerier_Expecter) SetInstanceOrganization(ctx any, db any, accountid any) *MockQuerier_SetInstanceOrganization_Call {
+	return &MockQuerier_SetInstanceOrganization_Call{Call: _e.mock.On("SetInstanceOrganization", ctx, db, accountid)}
+}
+
+func (_c *MockQuerier_SetInstanceOrganization_Call) Run(run func(ctx context.Context, db DBTX, accountid pgtype.UUID)) *MockQuerier_SetInstanceOrganization_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetInstanceOrganization_Call) Return(n int64, err error) *MockQuerier_SetInstanceOrganization_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_SetInstanceOrganization_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) (int64, error)) *MockQuerier_SetInstanceOrganization_Call {
 	_c.Call.Return(run)
 	return _c
 }
