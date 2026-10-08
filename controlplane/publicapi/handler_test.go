@@ -45,11 +45,14 @@ type rig struct {
 }
 
 // recordingObserver keeps the outcomes of the report requests, and apart the ones of the requests
-// for a renewal.
+// for a renewal; unrecorded is how many times a renewal said it could not write something down.
 type recordingObserver struct {
-	outcomes []string
-	renewals []string
+	outcomes   []string
+	renewals   []string
+	unrecorded int
 }
+
+func (o *recordingObserver) RenewalBookkeepingFailed() { o.unrecorded++ }
 
 func (o *recordingObserver) ReportReceived(outcome string) { o.outcomes = append(o.outcomes, outcome) }
 

@@ -95,9 +95,10 @@ type Querier interface {
 	// without the diagnostics does not erase the kind of installation already known.
 	UpsertInstance(ctx context.Context, arg UpsertInstanceParams) error
 	// The last ask of an instance for the renewal of a license, and what was served to it: an ask
-	// that is served nothing leaves what was served before. An instance that is not yet there is not
-	// added once the license has max_instances of them. The count is not locked: asks made at once
-	// may add a few rows over the cap.
+	// that is served nothing leaves what was served before. A license keeps max_instances rows at
+	// most, those of the instances that asked last: an instance that is not yet there takes the place
+	// of the one that asked the longest ago, and of any row left over the cap. Nothing is locked: asks
+	// made at once may leave a few rows over the cap, which the next new instance removes.
 	UpsertRenewalAsk(ctx context.Context, arg UpsertRenewalAskParams) error
 }
 

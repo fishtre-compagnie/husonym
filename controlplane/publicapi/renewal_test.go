@@ -264,7 +264,8 @@ func Test_Renewal_FailureOfOurs_LogsTheErrorOnly(t *testing.T) {
 	require.Contains(t, r.logs.String(), "database is down")
 }
 
-func Test_Renewal_CancelledRequest_IsNotLoggedAsAnError(t *testing.T) {
+// A caller that goes away is not a failure of ours: it has its own word, and no Error line.
+func Test_Renewal_ACallerThatWentAway_IsCountedAsInterrupted_NotAsFailed(t *testing.T) {
 	r := newRenewalRig(renewal.Nothing, context.Canceled)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -272,7 +273,20 @@ func Test_Renewal_CancelledRequest_IsNotLoggedAsAnError(t *testing.T) {
 	rec := r.do(ask(strings.NewReader("{}")).WithContext(ctx))
 
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Empty(t, rec.Body.String())
 	require.NotContains(t, r.logs.String(), "level=ERROR")
+	require.Contains(t, r.logs.String(), "outcome=interrupted\n")
+	require.Equal(t, []string{"interrupted"}, r.observer.renewals)
+}
+
+// The same error under a request that is still there is a failure of ours.
+func Test_Renewal_AnErrorUnderALiveRequest_IsCountedAsFailed(t *testing.T) {
+	r := newRenewalRig(renewal.Nothing, context.Canceled)
+
+	rec := r.do(ask(strings.NewReader("{}")))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, r.logs.String(), "level=ERROR")
 	require.Equal(t, []string{"failed"}, r.observer.renewals)
 }
 
@@ -303,6 +317,6 @@ func Test_Renewal_APanic_Answers503IsCountedAsFailedAndSaysNothingOfIt(t *testin
 }
 
 // The series of the counter are started from this list, and it is the whole of what is counted.
-func Test_RenewalOutcomes_AreTheFourWordsARenewalIsCountedBy(t *testing.T) {
-	require.ElementsMatch(t, []string{"served", "nothing", "refused", "failed"}, publicapi.RenewalOutcomes())
+func Test_RenewalOutcomes_AreTheFiveWordsARenewalIsCountedBy(t *testing.T) {
+	require.ElementsMatch(t, []string{"served", "nothing", "refused", "interrupted", "failed"}, publicapi.RenewalOutcomes())
 }

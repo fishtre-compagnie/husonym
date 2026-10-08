@@ -17,6 +17,14 @@ import (
 // walk. It is made of these words alone.
 const ChainCutShort = "the chain of successors of a license goes on past the bound of the walk"
 
+// The lines logged when something of a request could not be written down. The request was
+// answered all the same. Each is made of these words alone: no license, no instance, and not the
+// text of the error, which may quote what was to be written.
+const (
+	AskNotRecorded      = "an ask for a license renewal was answered and could not be recorded"
+	RejectionNotCounted = "a seal refused for a license renewal could not be counted"
+)
+
 // Outcome is what became of a request for a renewal.
 type Outcome int
 
@@ -34,17 +42,24 @@ const (
 	Refused
 )
 
+// Observer counts what the renewal could not write down of a request it answered all the same.
+type Observer interface {
+	RenewalBookkeepingFailed()
+}
+
 // Renewal answers the requests for a renewal.
 type Renewal struct {
-	store  *cpstore.Store
-	now    func() time.Time
-	logger *slog.Logger
+	store    *cpstore.Store
+	now      func() time.Time
+	logger   *slog.Logger
+	observer Observer
 }
 
 // New returns a Renewal that reads from store and takes the time from now. logger is only told
-// that a chain of successors was cut short.
-func New(store *cpstore.Store, now func() time.Time, logger *slog.Logger) *Renewal {
-	return &Renewal{store: store, now: now, logger: logger}
+// that a chain of successors was cut short and that something of a request could not be written
+// down, each in fixed words; the latter is also counted in observer, unless it is nil.
+func New(store *cpstore.Store, now func() time.Time, logger *slog.Logger, observer Observer) *Renewal {
+	return &Renewal{store: store, now: now, logger: logger, observer: observer}
 }
 
 // Answer checks a request and gives the license that succeeds the one it is sealed with: the last
@@ -52,9 +67,16 @@ func New(store *cpstore.Store, now func() time.Time, logger *slog.Logger) *Renew
 //
 // What is refused is refused before the database is read. Past that, an ask whose seal verifies
 // is recorded under its license and its instance, served or not; a seal that does not verify
-// under a license that is known is counted as the one of a report is. The answer is non-nil for
-// Served alone. A non-nil error is a failure of ours and comes with Nothing; it says nothing of
-// the request.
+// under a license that is known is counted as the one of a report is.
+//
+// Neither of those two writes decides the answer. One that fails is told in a line of fixed words
+// and counted in the observer, and the request is answered as the chain says: an instance is not
+// kept from its license by a trace of ours, and a seal refused under a license that is known is
+// answered as an unknown fingerprint is, whether it could be counted or not.
+//
+// The answer is non-nil for Served alone. A non-nil error comes with Nothing and says nothing of
+// the request: it is a read of ours that failed, the license by its fingerprint or its chain, or
+// the context of a caller that went away before the request was recorded.
 func (r *Renewal) Answer(
 	ctx context.Context, body []byte, seal, fingerprint string,
 ) (Outcome, *telemetry.RenewalAnswer, error) {
@@ -79,7 +101,10 @@ func (r *Renewal) Answer(
 	}
 	if telemetry.Verify(issued.Encoded, body, seal) != nil {
 		if err := r.store.CountSealRejection(ctx, issued.Id, now); err != nil {
-			return Nothing, nil, err
+			if ctx.Err() != nil {
+				return Nothing, nil, ctx.Err()
+			}
+			r.unrecorded(ctx, RejectionNotCounted)
 		}
 		return Nothing, nil, nil
 	}
@@ -100,7 +125,10 @@ func (r *Renewal) Answer(
 		served = successor.Id
 	}
 	if err := r.store.RecordRenewalAsk(ctx, issued.Id, request.InstanceID, now, served); err != nil {
-		return Nothing, nil, err
+		if ctx.Err() != nil {
+			return Nothing, nil, ctx.Err()
+		}
+		r.unrecorded(ctx, AskNotRecorded)
 	}
 	if successor == nil {
 		return Nothing, nil, nil
@@ -109,4 +137,14 @@ func (r *Renewal) Answer(
 		SchemaVersion: telemetry.RenewalSchemaVersion,
 		License:       successor.Encoded,
 	}, nil
+}
+
+// unrecorded tells, in the fixed words of line, that something of a request could not be written
+// down, and counts it. The error of the write is left out: the request is answered, and nothing of
+// it belongs in a log.
+func (r *Renewal) unrecorded(ctx context.Context, line string) {
+	r.logger.ErrorContext(ctx, line)
+	if r.observer != nil {
+		r.observer.RenewalBookkeepingFailed()
+	}
 }

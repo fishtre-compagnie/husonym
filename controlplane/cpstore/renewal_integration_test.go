@@ -186,38 +186,83 @@ func Test_RecordRenewalAsk_KeepsTheLastAskAndWhatWasLastServed(t *testing.T) {
 	require.Len(t, s.asks("lic-2"), 1)
 }
 
-func Test_RecordRenewalAsk_AtTheCap_ANewInstanceIsNotRecorded(t *testing.T) {
+// The rows show the instances that ask: at the cap, a new instance takes the place of the one that
+// asked the longest ago.
+func Test_RecordRenewalAsk_AtTheCap_ANewInstanceReplacesTheOneThatAskedTheLongestAgo(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
 	s := newSeeded(t)
 	s.chain("lic", "cust-1", 2)
 	s.license("lic-other", "cust-2", "Other", today.AddDate(1, 0, 0))
+	minute := func(n int) time.Time { return today.Add(time.Duration(n) * time.Minute) }
+	// inst-07 asked first of all; the others follow, a minute apart.
+	s.ask("lic-1", "inst-07", minute(-1), "lic-2")
 	for i := range cpstore.RenewalAsksPerLicense {
-		s.ask("lic-1", fmt.Sprintf("inst-%02d", i), today, "")
+		if i != 7 {
+			s.ask("lic-1", fmt.Sprintf("inst-%02d", i), minute(i), "")
+		}
 	}
+	s.ask("lic-other", "inst-07", minute(-5), "")
 	require.Len(t, s.asks("lic-1"), cpstore.RenewalAsksPerLicense)
-	later := today.Add(time.Hour)
+	instances := func() []string {
+		var ids []string
+		for _, ask := range s.asks("lic-1") {
+			ids = append(ids, ask.instance)
+		}
+		return ids
+	}
+	later := minute(120)
 
-	// One more instance: no error, and no row.
-	s.ask("lic-1", "inst-one-too-many", later, "lic-2")
+	// The fifty-first instance: fifty rows still, the oldest gone, the newest there.
+	s.ask("lic-1", "inst-new", later, "lic-2")
+	require.Len(t, s.asks("lic-1"), cpstore.RenewalAsksPerLicense)
+	require.NotContains(t, instances(), "inst-07")
+	require.Contains(t, instances(), "inst-new")
+	require.Contains(t, instances(), "inst-00", "only the oldest gave its place")
+
+	// An instance that is already there is kept up to date, and takes the place of nobody.
+	s.ask("lic-1", "inst-00", later.Add(time.Minute), "lic-2")
+	asks := s.asks("lic-1")
+	require.Len(t, asks, cpstore.RenewalAsksPerLicense)
+	require.Equal(t, "inst-00", asks[0].instance)
+	require.True(t, later.Add(time.Minute).Equal(asks[0].askedAt))
+	require.Equal(t, "lic-2", *asks[0].served)
+	require.Contains(t, instances(), "inst-01")
+
+	// The next new one replaces the oldest that is left, which is no longer inst-00.
+	s.ask("lic-1", "inst-newer", later.Add(2*time.Minute), "")
+	require.Len(t, s.asks("lic-1"), cpstore.RenewalAsksPerLicense)
+	require.NotContains(t, instances(), "inst-01")
+	require.Contains(t, instances(), "inst-00")
+
+	// The cap is the one of each license, and so is the oldest: the row of the other license,
+	// older than all of these, stays.
+	require.Len(t, s.asks("lic-other"), 1)
+}
+
+// Asks made at once may have left a few rows over the cap: the next new instance brings the
+// license back to it.
+func Test_RecordRenewalAsk_RowsOverTheCap_AreBroughtBackToItByTheNextNewInstance(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	s := newSeeded(t)
+	s.chain("lic", "cust-1", 2)
+	for i := range cpstore.RenewalAsksPerLicense + 3 {
+		_, err := s.pool.Exec(t.Context(), `
+			INSERT INTO controlplane.renewal_asks (license_id, instance_id, last_asked_at)
+			VALUES ('lic-1', $1, $2)`, fmt.Sprintf("inst-%02d", i), today.Add(time.Duration(i)*time.Minute))
+		require.NoError(t, err)
+	}
+
+	s.ask("lic-1", "inst-new", today.Add(2*time.Hour), "")
+
 	asks := s.asks("lic-1")
 	require.Len(t, asks, cpstore.RenewalAsksPerLicense)
 	for _, ask := range asks {
-		require.NotEqual(t, "inst-one-too-many", ask.instance)
+		require.NotContains(t, []string{"inst-00", "inst-01", "inst-02", "inst-03"}, ask.instance)
 	}
-
-	// An instance that is already there is still kept up to date.
-	s.ask("lic-1", "inst-00", later, "lic-2")
-	asks = s.asks("lic-1")
-	require.Len(t, asks, cpstore.RenewalAsksPerLicense)
-	require.Equal(t, "inst-00", asks[0].instance)
-	require.True(t, later.Equal(asks[0].askedAt))
-	require.Equal(t, "lic-2", *asks[0].served)
-
-	// The cap is the one of each license.
-	s.ask("lic-other", "inst-one-too-many", later, "")
-	require.Len(t, s.asks("lic-other"), 1)
 }
 
 func Test_LicenseDetail_GivesTheRenewalAsks_TheLastOneFirst(t *testing.T) {

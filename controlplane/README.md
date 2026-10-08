@@ -113,8 +113,14 @@ not fresh is refused before any license is looked up.
 A seal that does not verify under a license that is known is counted with the refused seals of
 the reports. An ask whose seal verifies is recorded, served or not: one row per license and
 instance, with the instant of the last ask and the last license served with its instant, for 50
-instances per license at most; an instance beyond them is answered all the same and not recorded.
-An ask under an unknown fingerprint or a wrong seal leaves no row.
+instances per license at most: the ones that asked last. A new instance beyond them takes the
+place of the one that asked the longest ago. An ask under an unknown fingerprint or a wrong seal
+leaves no row.
+
+Neither of those two writes decides an answer. When the ask cannot be recorded, the instance is
+answered all the same, with its license or with 204 as the chain says; when a refused seal cannot
+be counted, the answer is the 204 of an unknown fingerprint. Each is one line of the log in fixed
+words and one more in `husonym_controlplane_renewal_bookkeeping_failures_total`.
 
 Every answer carries `Cache-Control: no-store`. The 200 is the only answer of this server that
 carries a license key; it is never logged.
@@ -265,7 +271,7 @@ machine. `GET /healthz` stays outside that check too.
   seal, and when the last was.
 - For each license and each instance that asked for its renewal under a seal that verified: when
   it last asked, and the last license it was served, with the instant. The instance is the id the
-  request gives.
+  request gives. A license keeps the 50 instances that asked last.
 - The pending reports, as received: fingerprint, instance, day, document, seal and time of
   reception.
 - For each customer recorded from the console: its external id, its name and a note.
@@ -292,7 +298,9 @@ is answered 500; a request refused for its host, and the health check, are not l
 
 A read of the gauges that fails is one line with the text of our own error. A panic of the public
 server is one line in fixed words. So is a chain of successors that goes on past the 64 the
-renewal follows: the line names no license.
+renewal follows: the line names no license. So is, beside the line of its request, an ask for a
+renewal that could not be recorded or a refused seal that could not be counted: the line names
+no license and no instance, and does not carry the error.
 
 ## Metrics
 
@@ -305,9 +313,13 @@ succeed; a read that fails is counted and logged, and the next scrape tries agai
   word of the log line. Every word has its series from the start, at 0; a request that ended in a
   panic is counted as `panicked`.
 - `husonym_controlplane_license_renewals_total{outcome}`: requests for a renewal received, by the
-  word of their log line: `served` (200), `nothing` (204), `refused` (400, 405, 413) and `failed`
-  (503, a panic and a caller that went away included). The four have their series from the start,
-  at 0. A renewal is never counted among the reports.
+  word of their log line: `served` (200), `nothing` (204), `refused` (400, 405, 413),
+  `interrupted` (the caller went away before it was answered) and `failed` (503, a panic
+  included). The five have their series from the start, at 0. A renewal is never counted among
+  the reports.
+- `husonym_controlplane_renewal_bookkeeping_failures_total`: requests for a renewal that were
+  answered though their ask could not be recorded, or the refusal of their seal counted. It is no
+  outcome: such a request is counted as `served` or `nothing` as well. It starts at 0.
 - `husonym_controlplane_silent_instances`: instances whose license is in force and whose telemetry
   is online, with a last report more than 3 days and no more than 30 days ago.
 - `husonym_controlplane_expiring_licenses`: licenses expiring within 30 days, or in grace, that no

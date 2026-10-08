@@ -63,7 +63,7 @@ func Test_AskIfDue_TheControlPlaneAnswersTheLastLicenseOfTheChain(t *testing.T) 
 	controlPlaneLogs := &syncBuffer{}
 	controlPlaneLogger := slog.New(slog.NewTextHandler(controlPlaneLogs, nil))
 	server := httptest.NewServer(publicapi.NewHandler(
-		intake.New(store, now), cprenewal.New(store, now, controlPlaneLogger), nil, controlPlaneLogger))
+		intake.New(store, now), cprenewal.New(store, now, controlPlaneLogger, nil), nil, controlPlaneLogger))
 	t.Cleanup(server.Close)
 
 	// mint signs a license of the one customer; issue also records it in the control plane, as

@@ -133,7 +133,7 @@ func servePublic(
 		return store.AttentionCounts(ctx, now())
 	}, now, logger)
 	// The renewal reads the licenses as they were issued and stored: this server signs nothing.
-	server := newServer(publicapi.NewHandler(receiver, renewal.New(store, now, logger), metrics, logger))
+	server := newServer(publicapi.NewHandler(receiver, renewal.New(store, now, logger, metrics), metrics, logger))
 	metricsServer := newServer(metricsHandler(metrics.Handler()))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)

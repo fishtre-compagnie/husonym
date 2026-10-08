@@ -17,7 +17,7 @@ const (
 	// SuccessorChainBound is how many successors away from a license its chain is followed at most.
 	SuccessorChainBound = 64
 	// RenewalAsksPerLicense is on how many instances the asks for the renewal of a license are
-	// recorded at most.
+	// recorded at most: the ones that asked last.
 	RenewalAsksPerLicense = 50
 )
 
@@ -55,9 +55,10 @@ func (s *Store) LatestSuccessor(ctx context.Context, licenseID string) (successo
 
 // RecordRenewalAsk records that an instance asked for the renewal of a license at the instant at,
 // and the license that was served to it; served is empty when there was nothing to give, and what
-// was served before then stays. There is one row per license and instance. An instance that is
-// not recorded yet is left out, without an error, once the license has RenewalAsksPerLicense of
-// them; asks made at the same moment may leave a few rows more.
+// was served before then stays. There is one row per license and instance, and
+// RenewalAsksPerLicense rows per license at most: an instance that is not recorded yet takes the
+// place of the one that asked the longest ago, so that the rows are those of the instances that
+// ask. Asks made at the same moment may leave a few rows more, until the next new instance.
 func (s *Store) RecordRenewalAsk(ctx context.Context, licenseID, instanceID string, at time.Time, served string) error {
 	err := cpdb.New(s.pool).UpsertRenewalAsk(ctx, cpdb.UpsertRenewalAskParams{
 		LicenseID:       licenseID,

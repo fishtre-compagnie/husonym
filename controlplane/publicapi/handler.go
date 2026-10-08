@@ -91,8 +91,9 @@ func Outcomes() []string {
 }
 
 // renewalWords are the words a request for a renewal can end by: fewer than a report's, as what
-// the caller got wrong is one word whatever it is, and what kept us from answering another.
-var renewalWords = []word{wordServed, wordNothing, wordRefused, wordFailed}
+// the caller got wrong is one word whatever it is, and what kept us from answering another. A
+// caller that went away has its own, as for a report: it is no failure of ours.
+var renewalWords = []word{wordServed, wordNothing, wordRefused, wordInterrupted, wordFailed}
 
 // RenewalOutcomes lists the fixed words a request for a renewal is counted by, as Outcomes does
 // for a report.
@@ -106,11 +107,12 @@ func RenewalOutcomes() []string {
 
 // NewHandler returns the handler of the public server: POST /v1/usage-reports,
 // POST /v1/license-renewals and GET /healthz. Replies have no body, but the one that carries a
-// license. At most one line is logged per request, made of the path, the status and a fixed word
-// for the outcome, never of what the caller sent nor of a license answered; a failure of ours
+// license. The handler logs at most one line per request, made of the path, the status and a fixed
+// word for the outcome, never of what the caller sent nor of a license answered; a failure of ours
 // adds the text of our own error. Each report request and each request for a renewal is also
 // counted by that word in observer, unless it is nil; one that ends in a panic is answered 503,
-// and counted as "panicked" for a report and as "failed" for a renewal.
+// and counted as "panicked" for a report and as "failed" for a renewal. A request whose caller
+// went away is counted as "interrupted" for both.
 func NewHandler(receiver Receiver, renewer Renewer, observer Observer, logger *slog.Logger) http.Handler {
 	return &handler{receiver: receiver, renewer: renewer, observer: observer, logger: logger}
 }
@@ -235,9 +237,8 @@ func (h *handler) renewal(w http.ResponseWriter, r *http.Request) {
 	outcome, answer, err := h.renewer.Answer(r.Context(), sealed.body, sealed.seal, sealed.fingerprint)
 	if err != nil {
 		if r.Context().Err() != nil {
-			// The caller went away, or the server is stopping: answered as a failure, and not
-			// logged as one of ours.
-			h.reply(w, renewalPath, http.StatusServiceUnavailable, wordFailed)
+			// The caller went away, or the server is stopping: not a failure of ours.
+			h.reply(w, renewalPath, http.StatusServiceUnavailable, wordInterrupted)
 			return
 		}
 		h.failRenewal(w, err)

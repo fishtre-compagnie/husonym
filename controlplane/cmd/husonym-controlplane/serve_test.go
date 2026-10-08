@@ -131,10 +131,11 @@ func Test_ServePublic_ReceivesAReportAndStopsWhenItsContextEnds(t *testing.T) {
 	require.Equal(t, http.StatusOK, metrics.status)
 	require.Contains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="stored"} 1`)
 	require.Contains(t, metrics.body, `husonym_controlplane_license_renewals_total{outcome="nothing"} 1`)
-	for _, never := range []string{"served", "refused", "failed"} {
+	for _, never := range []string{"served", "refused", "interrupted", "failed"} {
 		require.Contains(t, metrics.body, `husonym_controlplane_license_renewals_total{outcome="`+never+`"} 0`,
 			"a word never counted has its series")
 	}
+	require.Contains(t, metrics.body, "husonym_controlplane_renewal_bookkeeping_failures_total 0\n")
 	require.NotContains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="nothing"}`,
 		"a renewal is not counted among the reports")
 	for _, never := range []string{"refused", "failed", "panicked"} {

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,7 +67,7 @@ func Test_Renewal_OverTheRealStore_TheThreeWaysToBeGivenNothingAnswerTheSame(t *
 	logs := &bytes.Buffer{}
 	logger := slog.New(slog.NewTextHandler(logs, nil))
 	server := httptest.NewServer(publicapi.NewHandler(
-		intake.New(store, clock), renewal.New(store, clock, logger), nil, logger))
+		intake.New(store, clock), renewal.New(store, clock, logger, nil), nil, logger))
 	t.Cleanup(server.Close)
 
 	withoutSuccessor := postRenewal(t, server.URL, cptest.RenewalFor(t, &lone, instanceA, now))
@@ -101,6 +102,68 @@ func Test_Renewal_OverTheRealStore_TheThreeWaysToBeGivenNothingAnswerTheSame(t *
 	// Five requests, five lines, and nothing in them of a key, a seal, a fingerprint or an instance.
 	logged := logs.String()
 	require.Equal(t, 5, bytes.Count([]byte(logged), []byte("\n")))
+	for _, secret := range []string{
+		successor.Encoded, renewed.Encoded, lone.Encoded, forged.Seal, forged.Fingerprint, instanceA,
+		"lic-renewed", "lic-successor", "lic-lone",
+	} {
+		require.NotContains(t, logged, secret)
+	}
+}
+
+// Review focus: a trace that cannot be written changes no answer. With neither table writable, the
+// holder of a key is given its successor, and the three ways to be given nothing still answer the
+// same: never a 503, which would tell a license that is known from one that is not.
+func Test_Renewal_OverTheRealStore_WhatCannotBeWrittenDownChangesNoAnswer(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	issuer := cptest.NewIssuer(t)
+	renewed := issuer.Entry("lic-renewed", "cust-1", "Acme")
+	successor := issuer.Entry("lic-successor", "cust-1", "Acme")
+	lone := issuer.Entry("lic-lone", "cust-2", "Globex")
+	unknown := issuer.Entry("lic-unknown", "cust-3", "Initech")
+	cptest.AddLicense(t, store, issuer, &renewed)
+	cptest.AddLicense(t, store, issuer, &successor)
+	cptest.AddLicense(t, store, issuer, &lone)
+	cptest.Succeed(t, pool, "lic-successor", "lic-renewed")
+	for _, table := range []string{"renewal_asks", "seal_rejections"} {
+		_, err := pool.Exec(t.Context(), `ALTER TABLE controlplane.`+table+` RENAME TO `+table+`_away`)
+		require.NoError(t, err)
+	}
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+	logs := &bytes.Buffer{}
+	logger := slog.New(slog.NewTextHandler(logs, nil))
+	observer := &recordingObserver{}
+	server := httptest.NewServer(publicapi.NewHandler(
+		intake.New(store, clock), renewal.New(store, clock, logger, observer), observer, logger))
+	t.Cleanup(server.Close)
+
+	served := postRenewal(t, server.URL, cptest.RenewalFor(t, &renewed, instanceA, now))
+	withoutSuccessor := postRenewal(t, server.URL, cptest.RenewalFor(t, &lone, instanceA, now))
+	fromNobody := postRenewal(t, server.URL, cptest.RenewalFor(t, &unknown, instanceA, now))
+	forged := cptest.RenewalFor(t, &renewed, instanceA, now)
+	forged.Seal = cptest.RenewalFor(t, &unknown, instanceA, now).Seal
+	wrongSeal := postRenewal(t, server.URL, forged)
+
+	require.Equal(t, http.StatusOK, served.status)
+	answer, err := telemetry.ParseRenewalAnswer(served.body)
+	require.NoError(t, err)
+	require.Equal(t, successor.Encoded, answer.License)
+	require.Equal(t, http.StatusNoContent, withoutSuccessor.status)
+	require.Empty(t, withoutSuccessor.body)
+	require.Equal(t, withoutSuccessor, fromNobody)
+	require.Equal(t, withoutSuccessor, wrongSeal)
+
+	require.Equal(t, []string{"served", "nothing", "nothing", "nothing"}, observer.renewals, "each was answered")
+	require.Equal(t, 3, observer.unrecorded, "two asks and one refused seal were not written down")
+	logged := logs.String()
+	require.Equal(t, 3, strings.Count(logged, "level=ERROR"))
+	require.Equal(t, 2, strings.Count(logged, renewal.AskNotRecorded))
+	require.Equal(t, 1, strings.Count(logged, renewal.RejectionNotCounted))
+	require.NotContains(t, logged, "status=503")
 	for _, secret := range []string{
 		successor.Encoded, renewed.Encoded, lone.Encoded, forged.Seal, forged.Fingerprint, instanceA,
 		"lic-renewed", "lic-successor", "lic-lone",

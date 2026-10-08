@@ -2,6 +2,7 @@ package renewal_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -42,13 +43,24 @@ type bench struct {
 	logs    *bytes.Buffer
 	// now is what the renewal reads the time from.
 	now time.Time
+	// unrecorded is how many times the renewal said it could not write something down.
+	unrecorded int
+}
+
+func (b *bench) RenewalBookkeepingFailed() { b.unrecorded++ }
+
+// away renames a table of the database of the bench, so that nothing can be written to it.
+func (b *bench) away(table string) {
+	b.t.Helper()
+	_, err := b.pool.Exec(b.t.Context(), `ALTER TABLE controlplane.`+table+` RENAME TO `+table+`_away`)
+	require.NoError(b.t, err)
 }
 
 func newBench(t *testing.T) *bench {
 	t.Helper()
 	b := &bench{t: t, pool: cptest.NewDatabase(t), issuer: cptest.NewIssuer(t), logs: &bytes.Buffer{}, now: asked}
 	b.store = cpstore.New(b.pool)
-	b.renewal = renewal.New(b.store, func() time.Time { return b.now }, slog.New(slog.NewTextHandler(b.logs, nil)))
+	b.renewal = renewal.New(b.store, func() time.Time { return b.now }, slog.New(slog.NewTextHandler(b.logs, nil)), b)
 	return b
 }
 
@@ -361,7 +373,9 @@ func Test_Answer_AChainLongerThanTheWalk_ServesTheLicenseAtTheBound_AndSaysSo(t 
 	}
 }
 
-func Test_Answer_BeyondFiftyInstances_ALicenseIsStillServed_AndTheAskIsNotRecorded(t *testing.T) {
+// The instances recorded are the ones that ask: at the cap, a new one takes the place of the one
+// that asked the longest ago.
+func Test_Answer_BeyondFiftyInstances_ALicenseIsStillServed_AndTheNewestInstancesAreTheOnesRecorded(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
@@ -369,14 +383,138 @@ func Test_Answer_BeyondFiftyInstances_ALicenseIsStillServed_AndTheAskIsNotRecord
 	first := b.license(firstID, "")
 	second := b.license(secondID, firstID)
 	for n := range cpstore.RenewalAsksPerLicense {
+		b.now = asked.Add(time.Duration(n) * time.Second)
 		outcome, _ := b.answer(&first, fmt.Sprintf("instance-%02d", n))
 		require.Equal(t, renewal.Served, outcome)
 	}
 	require.Equal(t, cpstore.RenewalAsksPerLicense, b.count("renewal_asks"))
 
-	outcome, answer := b.answer(&first, "one-instance-too-many")
+	b.now = asked.Add(time.Minute)
+	outcome, answer := b.answer(&first, "one-instance-more")
 
 	require.Equal(t, renewal.Served, outcome)
 	require.Equal(t, second.Encoded, answer.License)
 	require.Equal(t, cpstore.RenewalAsksPerLicense, b.count("renewal_asks"))
+	at, served := b.recorded(firstID, "one-instance-more")
+	require.True(t, b.now.Equal(at))
+	require.Equal(t, secondID, served)
+	var oldest int
+	require.NoError(t, b.pool.QueryRow(t.Context(),
+		`SELECT count(*) FROM controlplane.renewal_asks WHERE instance_id = 'instance-00'`).Scan(&oldest))
+	require.Zero(t, oldest, "the instance that asked the longest ago gave its place")
+	require.Zero(t, b.unrecorded)
+}
+
+// A trace that cannot be written never costs an instance its license: the ask is answered as the
+// chain says, and one line and one count tell us what was not written.
+func Test_Answer_AnAskThatCannotBeRecorded_IsAnsweredAllTheSame(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	first := b.license(firstID, "")
+	second := b.license(secondID, firstID)
+	lone := b.license(thirdID, "")
+	b.away("renewal_asks")
+
+	outcome, answer := b.answer(&first, instanceA)
+	require.Equal(t, renewal.Served, outcome)
+	require.Equal(t, second.Encoded, answer.License)
+	logged := b.logs.String()
+	require.Equal(t, 1, strings.Count(logged, "\n"), "one line: %s", logged)
+	require.Contains(t, logged, "level=ERROR")
+	require.Contains(t, logged, `msg="`+renewal.AskNotRecorded+`"`+"\n", "the words and nothing after them")
+	require.Equal(t, 1, b.unrecorded)
+
+	outcome, _ = b.answer(&lone, instanceA)
+	require.Equal(t, renewal.Nothing, outcome)
+	require.Equal(t, 2, b.unrecorded)
+	logged = b.logs.String()
+	require.Equal(t, 2, strings.Count(logged, "\n"))
+	for _, secret := range []string{
+		firstID, secondID, thirdID, instanceA, first.Encoded, second.Encoded, lone.Encoded,
+		telemetry.KeyFingerprint(first.Encoded), "renewal_asks",
+	} {
+		require.NotContains(t, logged, secret)
+	}
+}
+
+// A refused seal that cannot be counted is answered as an unknown fingerprint is: an error here
+// would tell a caller that the fingerprint is the one of a license.
+func Test_Answer_ASealRejectionThatCannotBeCounted_IsNothing_AsAnUnknownFingerprintIs(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	first := b.license(firstID, "")
+	b.license(secondID, firstID)
+	unknown := b.minted(thirdID)
+	b.away("seal_rejections")
+
+	forged := cptest.RenewalFor(t, &first, instanceA, b.now)
+	forged.Seal = cptest.RenewalFor(t, &unknown, instanceA, b.now).Seal
+	underAKnownLicense, _ := b.answerTo(forged)
+	fromNobody, _ := b.answer(&unknown, instanceA)
+
+	require.Equal(t, renewal.Nothing, underAKnownLicense)
+	require.Equal(t, fromNobody, underAKnownLicense)
+	require.Equal(t, 1, b.unrecorded, "only the seal refused under a license has something to count")
+	logged := b.logs.String()
+	require.Equal(t, 1, strings.Count(logged, "\n"), "one line: %s", logged)
+	require.Contains(t, logged, "level=ERROR")
+	require.Contains(t, logged, `msg="`+renewal.RejectionNotCounted+`"`+"\n", "the words and nothing after them")
+	for _, secret := range []string{firstID, instanceA, forged.Seal, forged.Fingerprint, "seal_rejections"} {
+		require.NotContains(t, logged, secret)
+	}
+	require.Zero(t, b.count("renewal_asks"))
+}
+
+// A caller that went away is not something that could not be written: the request is ended with
+// the error of its context, for the handler to tell it apart from a failure of ours.
+func Test_Answer_AnAskWhoseCallerWentAwayBeforeItWasRecorded_IsNotABookkeepingFailure(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	first := b.license(firstID, "")
+	b.license(secondID, firstID)
+	// The write of the ask waits far longer than the caller does: the reads before it are done
+	// when the caller goes away.
+	_, err := b.pool.Exec(t.Context(), `
+		CREATE FUNCTION controlplane.wait_long() RETURNS trigger LANGUAGE plpgsql AS
+			$$ BEGIN PERFORM pg_sleep(60); RETURN NEW; END $$;
+		CREATE TRIGGER wait_long BEFORE INSERT ON controlplane.renewal_asks
+			FOR EACH ROW EXECUTE FUNCTION controlplane.wait_long();`)
+	require.NoError(t, err)
+	ask := cptest.RenewalFor(t, &first, instanceA, b.now)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	time.AfterFunc(500*time.Millisecond, cancel)
+
+	outcome, answer, err := b.renewal.Answer(ctx, ask.Document, ask.Seal, ask.Fingerprint)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, renewal.Nothing, outcome)
+	require.Nil(t, answer)
+	require.Zero(t, b.unrecorded)
+	require.Empty(t, b.logs.String())
+}
+
+// A renewal that nobody counts for is one that counts nothing.
+func Test_Answer_WithoutAnObserver_AnAskThatCannotBeRecordedIsStillAnswered(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	first := b.license(firstID, "")
+	second := b.license(secondID, firstID)
+	b.away("renewal_asks")
+	unobserved := renewal.New(b.store, func() time.Time { return b.now }, slog.New(slog.NewTextHandler(b.logs, nil)), nil)
+	ask := cptest.RenewalFor(t, &first, instanceA, b.now)
+
+	outcome, answer, err := unobserved.Answer(t.Context(), ask.Document, ask.Seal, ask.Fingerprint)
+
+	require.NoError(t, err)
+	require.Equal(t, renewal.Served, outcome)
+	require.Equal(t, second.Encoded, answer.License)
 }

@@ -100,20 +100,28 @@ func (q *Queries) ListRenewalAsksOfLicense(ctx context.Context, licenseID string
 }
 
 const upsertRenewalAsk = `-- name: UpsertRenewalAsk :exec
+WITH replaced AS (
+    DELETE FROM controlplane.renewal_asks d
+    WHERE d.license_id = $1::text
+        AND NOT EXISTS (
+            SELECT 1 FROM controlplane.renewal_asks
+            WHERE license_id = $1::text AND instance_id = $2::text
+        )
+        AND d.instance_id IN (
+            SELECT k.instance_id FROM controlplane.renewal_asks k
+            WHERE k.license_id = $1::text
+            ORDER BY k.last_asked_at DESC, k.instance_id
+            OFFSET GREATEST($5::int - 1, 0)
+        )
+)
 INSERT INTO controlplane.renewal_asks AS a (
     license_id, instance_id, last_asked_at, last_served_license_id, last_served_at
 )
-SELECT
+VALUES (
     $1::text, $2::text, $3::timestamptz,
     $4::text,
     CASE WHEN $4::text IS NULL THEN NULL ELSE $3::timestamptz END
-WHERE EXISTS (
-        SELECT 1 FROM controlplane.renewal_asks
-        WHERE license_id = $1::text AND instance_id = $2::text
-    )
-    OR (
-        SELECT count(*) FROM controlplane.renewal_asks WHERE license_id = $1::text
-    ) < $5::int
+)
 ON CONFLICT (license_id, instance_id) DO UPDATE SET
     last_asked_at = EXCLUDED.last_asked_at,
     last_served_license_id = COALESCE(EXCLUDED.last_served_license_id, a.last_served_license_id),
@@ -129,9 +137,10 @@ type UpsertRenewalAskParams struct {
 }
 
 // The last ask of an instance for the renewal of a license, and what was served to it: an ask
-// that is served nothing leaves what was served before. An instance that is not yet there is not
-// added once the license has max_instances of them. The count is not locked: asks made at once
-// may add a few rows over the cap.
+// that is served nothing leaves what was served before. A license keeps max_instances rows at
+// most, those of the instances that asked last: an instance that is not yet there takes the place
+// of the one that asked the longest ago, and of any row left over the cap. Nothing is locked: asks
+// made at once may leave a few rows over the cap, which the next new instance removes.
 func (q *Queries) UpsertRenewalAsk(ctx context.Context, arg UpsertRenewalAskParams) error {
 	_, err := q.db.Exec(ctx, upsertRenewalAsk,
 		arg.LicenseID,

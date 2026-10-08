@@ -23,23 +23,32 @@ LIMIT 1;
 
 -- name: UpsertRenewalAsk :exec
 -- The last ask of an instance for the renewal of a license, and what was served to it: an ask
--- that is served nothing leaves what was served before. An instance that is not yet there is not
--- added once the license has max_instances of them. The count is not locked: asks made at once
--- may add a few rows over the cap.
+-- that is served nothing leaves what was served before. A license keeps max_instances rows at
+-- most, those of the instances that asked last: an instance that is not yet there takes the place
+-- of the one that asked the longest ago, and of any row left over the cap. Nothing is locked: asks
+-- made at once may leave a few rows over the cap, which the next new instance removes.
+WITH replaced AS (
+    DELETE FROM controlplane.renewal_asks d
+    WHERE d.license_id = sqlc.arg(license_id)::text
+        AND NOT EXISTS (
+            SELECT 1 FROM controlplane.renewal_asks
+            WHERE license_id = sqlc.arg(license_id)::text AND instance_id = sqlc.arg(instance_id)::text
+        )
+        AND d.instance_id IN (
+            SELECT k.instance_id FROM controlplane.renewal_asks k
+            WHERE k.license_id = sqlc.arg(license_id)::text
+            ORDER BY k.last_asked_at DESC, k.instance_id
+            OFFSET GREATEST(sqlc.arg(max_instances)::int - 1, 0)
+        )
+)
 INSERT INTO controlplane.renewal_asks AS a (
     license_id, instance_id, last_asked_at, last_served_license_id, last_served_at
 )
-SELECT
+VALUES (
     sqlc.arg(license_id)::text, sqlc.arg(instance_id)::text, sqlc.arg(at)::timestamptz,
     sqlc.narg(served_license_id)::text,
     CASE WHEN sqlc.narg(served_license_id)::text IS NULL THEN NULL ELSE sqlc.arg(at)::timestamptz END
-WHERE EXISTS (
-        SELECT 1 FROM controlplane.renewal_asks
-        WHERE license_id = sqlc.arg(license_id)::text AND instance_id = sqlc.arg(instance_id)::text
-    )
-    OR (
-        SELECT count(*) FROM controlplane.renewal_asks WHERE license_id = sqlc.arg(license_id)::text
-    ) < sqlc.arg(max_instances)::int
+)
 ON CONFLICT (license_id, instance_id) DO UPDATE SET
     last_asked_at = EXCLUDED.last_asked_at,
     last_served_license_id = COALESCE(EXCLUDED.last_served_license_id, a.last_served_license_id),

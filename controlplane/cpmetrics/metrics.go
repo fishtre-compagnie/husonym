@@ -16,6 +16,8 @@ type Metrics struct {
 	registry *prometheus.Registry
 	reports  *prometheus.CounterVec
 	renewals *prometheus.CounterVec
+	// renewalBookkeeping counts what could not be written down of a renewal that was answered.
+	renewalBookkeeping prometheus.Counter
 }
 
 // New returns the metrics, with the counter of the reports received. The series of each of
@@ -32,8 +34,12 @@ func New(outcomes ...string) *Metrics {
 			Name: prefix + "license_renewals_total",
 			Help: "Requests for a license renewal received, by outcome.",
 		}, []string{"outcome"}),
+		renewalBookkeeping: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prefix + "renewal_bookkeeping_failures_total",
+			Help: "Requests for a license renewal answered though their ask or the refusal of their seal could not be recorded.",
+		}),
 	}
-	m.registry.MustRegister(m.reports, m.renewals)
+	m.registry.MustRegister(m.reports, m.renewals, m.renewalBookkeeping)
 	for _, outcome := range outcomes {
 		m.reports.WithLabelValues(outcome)
 	}
@@ -57,6 +63,17 @@ func (m *Metrics) RenewalAsked(outcome string) {
 		return
 	}
 	m.renewals.WithLabelValues(outcome).Inc()
+}
+
+// RenewalBookkeepingFailed counts one request for a renewal that was answered though its ask, or
+// the refusal of its seal, could not be written down. It is no outcome: the request has its own.
+// The series is there from the start, at zero. On a nil *Metrics it counts nothing, as
+// ReportReceived.
+func (m *Metrics) RenewalBookkeepingFailed() {
+	if m == nil {
+		return
+	}
+	m.renewalBookkeeping.Inc()
 }
 
 // ReportReceived counts one report request. The outcome is one of the fixed words of the
