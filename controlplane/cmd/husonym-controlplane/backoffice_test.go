@@ -116,15 +116,6 @@ func Test_ServeBackoffice_InsecureNoAccess_IsRefusedOffLoopback(t *testing.T) {
 	}
 }
 
-func Test_LoopbackAddr(t *testing.T) {
-	for _, addr := range []string{"127.0.0.1:8080", "127.8.9.10:0", "[::1]:8080", "localhost:8080"} {
-		require.True(t, loopbackAddr(addr), addr)
-	}
-	for _, addr := range []string{":8080", "0.0.0.0:8080", "[::]:8080", "10.0.0.1:8080", "localhost.example.com:8080", "localhost"} {
-		require.False(t, loopbackAddr(addr), addr)
-	}
-}
-
 // nothingToSee is a store whose first page is empty; no other page is asked of it.
 type nothingToSee struct{ console.Reader }
 

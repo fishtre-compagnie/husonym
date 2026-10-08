@@ -73,7 +73,8 @@ func newServeBackofficeCmd() *cobra.Command {
 }
 
 // readBackofficeConfig reads the settings of the backoffice and says which one is missing or
-// wrong, by its name: a value is never echoed.
+// wrong, by its name. The one value echoed is the listen address, when --insecure-no-access is
+// refused for it: it is no secret, and it is what the operator has to change.
 func readBackofficeConfig(insecure bool) (*backofficeConfig, error) {
 	cfg := &backofficeConfig{
 		databaseURL: os.Getenv(databaseURLEnv),
@@ -114,20 +115,6 @@ func readBackofficeConfig(insecure bool) (*backofficeConfig, error) {
 	return cfg, nil
 }
 
-// loopbackAddr says whether a listen address names this machine only: localhost, or an address
-// of 127.0.0.0/8 or ::1. An address without a host listens on every interface.
-func loopbackAddr(addr string) bool {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return false
-	}
-	if host == "localhost" {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
-
 // runBackoffice builds what the backoffice needs and serves it until ctx ends. It does not apply
 // the migrations: the public server owns them.
 func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logger) error {
@@ -165,7 +152,7 @@ func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logg
 	}
 	if cfg.insecure {
 		// The name was judged; what it resolved to is what is listened on.
-		if bound, ok := listener.Addr().(*net.TCPAddr); !ok || !bound.IP.IsLoopback() {
+		if !loopbackBound(listener.Addr()) {
 			_ = listener.Close()
 			return fmt.Errorf("--%s is refused: %s does not resolve to a loopback address", insecureNoAccessFlag, cfg.addr)
 		}
@@ -177,7 +164,7 @@ func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logg
 // newBackofficeHandler is everything the backoffice answers: the console behind the host gate,
 // then the Access gate, and GET /healthz in front of both, since the kubelet that asks for it has
 // neither the host nor a token. It is the only path outside the gates. Without gates, the console
-// is the one that says so on every page.
+// is the one that says so on every page, and it answers under the names of this machine only.
 func newBackofficeHandler(
 	store console.Reader, gates *backofficeGates, now func() time.Time, logger *slog.Logger,
 ) (http.Handler, error) {
@@ -187,7 +174,7 @@ func newBackofficeHandler(
 		if err != nil {
 			return nil, err
 		}
-		guarded = pages
+		guarded = localNames(pages)
 	} else {
 		pages, err := console.New(store, now, logger)
 		if err != nil {
