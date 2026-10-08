@@ -41,7 +41,9 @@ type Querier interface {
 	// ones it would drop. The end of the grace period is counted as internal/license counts it
 	// (Key.GraceEndsAt): the days of the key, default_grace_days when it does not say, none when they
 	// are negative, of 24 hours each. Hours, not days: a day of an interval is as long as the day of
-	// the session's time zone, which is 23 hours once a year.
+	// the session's time zone, which is 23 hours once a year. The days are capped at a century: a key
+	// that says more would overflow the timestamp, and no license that expired a century ago is still
+	// to be shown.
 	ListExpiringCandidates(ctx context.Context, arg ListExpiringCandidatesParams) ([]ListExpiringCandidatesRow, error)
 	ListInstancesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListInstancesOfCustomerRow, error)
 	ListInstancesOfLicense(ctx context.Context, licenseID string) ([]ListInstancesOfLicenseRow, error)

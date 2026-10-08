@@ -116,12 +116,15 @@ ORDER BY i.last_report_day, i.license_id, i.instance_id;
 -- ones it would drop. The end of the grace period is counted as internal/license counts it
 -- (Key.GraceEndsAt): the days of the key, default_grace_days when it does not say, none when they
 -- are negative, of 24 hours each. Hours, not days: a day of an interval is as long as the day of
--- the session's time zone, which is 23 hours once a year.
+-- the session's time zone, which is 23 hours once a year. The days are capped at a century: a key
+-- that says more would overflow the timestamp, and no license that expired a century ago is still
+-- to be shown.
 SELECT l.id, l.customer_id, c.name AS customer_name, l.plan, l.telemetry, l.expires_at, l.grace_days
 FROM controlplane.licenses l
 JOIN controlplane.customers c ON c.id = l.customer_id
 WHERE l.expires_at < sqlc.arg(expires_before)
-    AND l.expires_at + GREATEST(COALESCE(l.grace_days, sqlc.arg(default_grace_days)::int), 0) * interval '24 hours'
+    AND l.expires_at
+        + LEAST(GREATEST(COALESCE(l.grace_days, sqlc.arg(default_grace_days)::int), 0), 36500) * interval '24 hours'
         > sqlc.arg(now)::timestamptz
     AND NOT EXISTS (SELECT 1 FROM controlplane.licenses s WHERE s.succeeds_license_id = l.id)
 ORDER BY l.expires_at, l.id;
