@@ -1,4 +1,5 @@
 import { useAccount } from '@/components/providers/account-provider';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
 import { getErrorMessage } from '@/util/util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
 import { useMutation } from '@connectrpc/connect-query';
-import { AccountUser, UserAccountService } from '@husonym/sdk';
+import { AccountUser, ConnectError, UserAccountService } from '@husonym/sdk';
 import { ReactElement, ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import UpdateMemberRoleForm from './UpdateMemberRoleForm';
@@ -28,11 +29,13 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
   );
   const { account } = useAccount();
   const [open, setOpen] = useState(false);
+  const [refusal, setRefusal] = useState<string>();
 
   async function onUpdate(values: UpdateMemberRoleFormValues): Promise<void> {
     if (!account) {
       return;
     }
+    setRefusal(undefined);
     try {
       await updateUserRole({
         userId: member.id,
@@ -44,14 +47,22 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
       setOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update user role', {
-        description: getErrorMessage(err),
-      });
+      // Kept in the dialog rather than in a toast, as a refused license key is: the API
+      // says which roles the license of the instance allows, in words to be read as
+      // they are.
+      setRefusal(
+        err instanceof ConnectError ? err.rawMessage : getErrorMessage(err)
+      );
     }
   }
 
+  function onOpenChange(value: boolean): void {
+    setOpen(value);
+    setRefusal(undefined);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{dialogButton}</DialogTrigger>
       <DialogContent
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -63,11 +74,17 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
           </DialogTitle>
           <DialogDescription>Change the role of the user.</DialogDescription>
         </DialogHeader>
+        {refusal && (
+          <Alert variant="destructive">
+            <AlertTitle>The role was not updated</AlertTitle>
+            <AlertDescription>{refusal}</AlertDescription>
+          </Alert>
+        )}
         <UpdateMemberRoleForm
           key={member.id}
           member={member}
           onSubmit={onUpdate}
-          onCancel={() => setOpen(false)}
+          onCancel={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>

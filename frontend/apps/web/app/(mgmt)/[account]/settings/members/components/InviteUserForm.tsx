@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { useRoleControls } from '@/libs/hooks/useRoleControls';
 import { invitationRole } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import { InviteMembersForm } from '@/yup-validations/invite-members';
@@ -44,8 +45,7 @@ interface Props {
 }
 export default function InviteUserForm(props: Props): ReactElement {
   const { accountId, onInvited } = props;
-  const { data: systemAppData } = useGetSystemAppConfig();
-  const isRbacEnabled = systemAppData?.isRbacEnabled ?? false;
+  const showRoles = useRoleControls();
   const { allowed: isRbacAllowed } = useLicenseFeature('rbac');
   const [showNewInviteDialog, setShowNewinviteDialog] = useState(false);
   const [newInviteToken, setNewInviteToken] = useState('');
@@ -109,7 +109,7 @@ export default function InviteUserForm(props: Props): ReactElement {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
-              {isRbacEnabled && <LicenseFeatureNotice feature="rbac" />}
+              {showRoles && <LicenseFeatureNotice feature="rbac" />}
               <FormField
                 control={form.control}
                 name="email"
@@ -133,7 +133,7 @@ export default function InviteUserForm(props: Props): ReactElement {
                   </FormItem>
                 )}
               />
-              {isRbacEnabled && (
+              {showRoles && (
                 <FormField
                   control={form.control}
                   name="role"

@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
+import { useRoleControls } from '@/libs/hooks/useRoleControls';
 import {
   formatDateTime,
   getAccountRoleString,
@@ -51,7 +52,7 @@ interface MemberInviteRow {
   role: AccountRole;
 }
 
-function getColumns(isRbacEnabled: boolean) {
+function getColumns(showRoles: boolean) {
   const columnHelper = createColumnHelper<AppTableFeatures, MemberInviteRow>();
   const emailColumn = columnHelper.accessor('email', {
     header: 'Email',
@@ -98,7 +99,7 @@ function getColumns(isRbacEnabled: boolean) {
     },
   });
 
-  if (isRbacEnabled) {
+  if (showRoles) {
     return columnHelper.columns([
       emailColumn,
       createdAtColumn,
@@ -117,11 +118,10 @@ function getColumns(isRbacEnabled: boolean) {
 }
 
 function useGetColumns(): ColumnDef<AppTableFeatures, MemberInviteRow>[] {
-  const { data: config } = useGetSystemAppConfig();
-  const isRbacEnabled = config?.isRbacEnabled ?? false;
+  const showRoles = useRoleControls();
   return useMemo(() => {
-    return getColumns(isRbacEnabled);
-  }, [isRbacEnabled]);
+    return getColumns(showRoles);
+  }, [showRoles]);
 }
 
 interface Props {
