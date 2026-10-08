@@ -29,8 +29,16 @@ func withFirst(texts ...string) []string {
 	return values
 }
 
+// frenchAnalysis is a content analysis of texts in French, the language the rule of free
+// text is measured in.
+func frenchAnalysis(analyzer presidio.Analyzer) *contentAnalysis {
+	content := newContentAnalysis(analyzer)
+	content.language = "fr"
+	return content
+}
+
 const (
-	personA = "Rappeler Marie avant midi svp"
+	personA ="Rappeler Marie avant midi svp"
 	personB = "Client Marie satisfait du service"
 	placeA  = "Visite sur place a Lille hier"
 	placeB  = "Livraison prevue a Lille demain"
@@ -40,7 +48,7 @@ const (
 // nothing else the analyzer finds in them.
 func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.T) {
 	t.Run("two values that name a person make the verdict", func(t *testing.T) {
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "comment", withFirst(personA, personB))
 
@@ -52,8 +60,29 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 		require.Empty(t, content.notAnalyzed)
 	})
 
-	t.Run("one value is not enough", func(t *testing.T) {
+	t.Run("a language the rule was not measured in keeps the rule of the third", func(t *testing.T) {
+		for _, language := range []string{"en", "de", ""} {
+			content := newContentAnalysis(entitiesIn(t, textMarkers))
+			content.language = language
+
+			_, ok := content.detect(t.Context(), "comment", withFirst(personA, personB))
+
+			require.False(t, ok, language)
+			require.Empty(t, content.notAnalyzed, language)
+		}
+	})
+
+	t.Run("a locale of French is French", func(t *testing.T) {
 		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content.language = "fr-FR"
+
+		_, ok := content.detect(t.Context(), "comment", withFirst(personA, personB))
+
+		require.True(t, ok)
+	})
+
+	t.Run("one value is not enough", func(t *testing.T) {
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		_, ok := content.detect(t.Context(), "comment", withFirst(personA))
 
@@ -62,7 +91,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 	})
 
 	t.Run("a value that holds a person twice counts once", func(t *testing.T) {
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		_, ok := content.detect(t.Context(), "comment", withFirst("Marie a rappele Marie hier soir"))
 
@@ -70,7 +99,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 	})
 
 	t.Run("the places of the sentences do not make the verdict", func(t *testing.T) {
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		_, ok := content.detect(t.Context(), "comment", withFirst(placeA, placeB, placeA, placeB))
 
@@ -79,7 +108,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 	})
 
 	t.Run("an email, a phone number or a link in the sentences do not make the verdict", func(t *testing.T) {
-		content := newContentAnalysis(entitiesIn(t, map[string]found{
+		content := frenchAnalysis(entitiesIn(t, map[string]found{
 			"a@b.fr": {"EMAIL_ADDRESS", 0.7},
 			"0612":   {"PHONE_NUMBER", 0.4},
 			"http":   {"URL", 0.9},
@@ -96,7 +125,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 
 	t.Run("the persons make the verdict whatever else the sentences hold", func(t *testing.T) {
 		values := withFirst(personA, personB, placeA, placeB, "Voir Lille et Lille", "Aller a Lille", "Retour de Lille")
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "comment", values)
 
@@ -113,7 +142,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 			values[i] = fmt.Sprintf("Camille%d", i)
 		}
 		values[0], values[1] = "Marie", "Marie"
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		_, ok := content.detect(t.Context(), "name", values)
 
@@ -127,7 +156,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 			values[i] = fmt.Sprintf("Camille%d", i)
 		}
 		values[0], values[1] = "Marie", "Marie"
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "name", values)
 
@@ -145,7 +174,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 			values[i] = fmt.Sprintf("Visite sur place a Lille hier %d", i)
 		}
 		values[0], values[1] = personA, personB
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "comment", values)
 
@@ -163,7 +192,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 			values[i] = long
 		}
 		values[0], values[1] = "Marie"+long, "Marie"+long
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "comment", values)
 
@@ -177,7 +206,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 		fake.OnAnalyze(func(context.Context, *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
 			return nil, silence
 		})
-		content := newContentAnalysis(fake)
+		content := frenchAnalysis(fake)
 
 		_, ok := content.detect(t.Context(), "comment", sentences(50))
 
@@ -186,7 +215,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 	})
 
 	t.Run("a value the analyzer refuses leaves the column not analyzed when too few values count", func(t *testing.T) {
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		_, ok := content.detect(t.Context(), "comment", withFirst(personA, "Dossier REFUSE suivi par le service"))
 
@@ -196,7 +225,7 @@ func Test_contentAnalysis_FreeTextIsToldFromTheValuesThatNameAPerson(t *testing.
 
 	t.Run("a value the analyzer refuses does not cost the verdict of the others", func(t *testing.T) {
 		values := withFirst(personA, personB, "Dossier REFUSE suivi par le service")
-		content := newContentAnalysis(entitiesIn(t, textMarkers))
+		content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 		told, ok := content.detect(t.Context(), "comment", values)
 
@@ -216,7 +245,7 @@ func Test_contentAnalysis_detection_ThirdRuleStandsForMultiWordColumns(t *testin
 		for i := range values {
 			values[i] = fmt.Sprintf("%d rue Sainte-Catherine 33000 Bordeaux", i+1)
 		}
-		content := newContentAnalysis(entitiesIn(t, markers))
+		content := frenchAnalysis(entitiesIn(t, markers))
 
 		got := content.detection(t.Context(), "public", "clients", "address", "text", values)
 
@@ -233,7 +262,7 @@ func Test_contentAnalysis_detection_ThirdRuleStandsForMultiWordColumns(t *testin
 		for i := range values {
 			values[i] = fmt.Sprintf("Jean Pierre Dupont%d", i)
 		}
-		content := newContentAnalysis(entitiesIn(t, markers))
+		content := frenchAnalysis(entitiesIn(t, markers))
 
 		got := content.detection(t.Context(), "public", "clients", "name", "text", values)
 
@@ -247,7 +276,7 @@ func Test_contentAnalysis_detection_ThirdRuleStandsForMultiWordColumns(t *testin
 }
 
 func Test_contentAnalysis_detection_FreeText(t *testing.T) {
-	content := newContentAnalysis(entitiesIn(t, textMarkers))
+	content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 	got := content.detection(t.Context(), "public", "tickets", "comment", "text", withFirst(personA, personB))
 
@@ -286,7 +315,7 @@ func Test_contentAnalysis_detection_FreeTextTransformerFollowsTheColumnType(t *t
 	}
 	for dataType, want := range cases {
 		t.Run("type "+dataType, func(t *testing.T) {
-			content := newContentAnalysis(entitiesIn(t, textMarkers))
+			content := frenchAnalysis(entitiesIn(t, textMarkers))
 
 			got := content.detection(t.Context(), "public", "tickets", "comment", dataType, values)
 

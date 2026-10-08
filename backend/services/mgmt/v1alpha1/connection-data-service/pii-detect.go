@@ -356,7 +356,8 @@ type columnVerdict struct {
 // The rule of the third is tried on every column: an entity must cover a fraction of the values
 // sufficient. A column it tells nothing of, and which is free text, is judged on the persons
 // alone: it is told when piidetect.FreeTextMinPersons of its values name a person, whatever the
-// size of the sample. No other entity makes a column of free text personal: the places, the
+// size of the sample, in a language where the rule was measured
+// (piidetect.FreeTextRuleApplies). No other entity makes a column of free text personal: the places, the
 // numbers and the references that sentences carry are found in sentences that name nobody.
 //
 // A column some values of which the analyzer refused is told by the values it took, when they
@@ -371,7 +372,8 @@ func (a *contentAnalysis) detect(ctx context.Context, name string, values []stri
 	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
 		return columnVerdict{entity: found.entity, avgScore: found.avgScore, matchCount: found.matchCount}, true
 	}
-	if found.persons.count >= piidetect.FreeTextMinPersons && piidetect.IsFreeText(values) {
+	if piidetect.FreeTextRuleApplies(a.language) &&
+		found.persons.count >= piidetect.FreeTextMinPersons && piidetect.IsFreeText(values) {
 		return columnVerdict{
 			entity: piidetect.PersonEntity, avgScore: found.persons.avgScore, matchCount: found.persons.count, freeText: true,
 		}, true

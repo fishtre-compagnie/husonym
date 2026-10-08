@@ -247,7 +247,9 @@ analyzer, do not set `PRESIDIO_ANALYZER_URL`.
 
 **What counts.** A column of free text is reported when the analyzer recognizes **a person**
 in at least **two** of the values it analyzed. Places, numbers, references and companies
-that sentences contain do not count. A column reported this way has the category
+that sentences contain do not count. This rule is applied in the languages where it was
+measured, today French (the language set by `PRESIDIO_DEFAULT_LANGUAGE`); in another one,
+only the rule of the third below applies. A column reported this way has the category
 `free_text_pii`, a confidence _to review_, and the suggested transformer is
 `TransformPiiText`. A column in which one entity covers a third of the values is reported as
 it is by the GDPR detection, under that entity: a column of names, of cities, of telephone

@@ -31,3 +31,12 @@ func TestIsFreeText(t *testing.T) {
 		})
 	}
 }
+
+func TestFreeTextRuleApplies(t *testing.T) {
+	for language, want := range map[string]bool{
+		"fr": true, "FR": true, " fr ": true, "fr-FR": true, "fr_FR": true,
+		"en": false, "de": false, "": false,
+	} {
+		require.Equal(t, want, FreeTextRuleApplies(language), language)
+	}
+}
