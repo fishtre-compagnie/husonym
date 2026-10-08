@@ -5,8 +5,8 @@
 <input type="hidden" name="customer" value="{{.CustomerID}}">
 <input type="hidden" name="customer_external_id" value="{{.CustomerExternalID}}">
 <input type="hidden" name="customer_name" value="{{.CustomerName}}">
-<input type="hidden" name="license_id" value="{{.LicenseID}}">
-<input type="hidden" name="succeeds" value="{{.Succeeds}}">
+{{if .LicenseID}}<input type="hidden" name="license_id" value="{{.LicenseID}}">
+{{end}}<input type="hidden" name="succeeds" value="{{.Succeeds}}">
 <dl class="facts">
 <dt>Issued to</dt><dd>{{.CustomerName}}</dd>
 <dt>Customer id</dt><dd class="id">{{.CustomerExternalID}}</dd>

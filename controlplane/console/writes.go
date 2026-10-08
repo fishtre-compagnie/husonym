@@ -20,8 +20,6 @@ const (
 	// maxFormBytes caps the body of a POST.
 	maxFormBytes = 64 << 10
 
-	// originConsole is the origin the store gives a license issued here.
-	originConsole = "console"
 	// customerChanged is said of a form whose customer is not, or no longer, the one of the store.
 	customerChanged = "The form does not say of the customer what is recorded: it may have been changed since. " +
 		"Nothing was done; open the form again."
@@ -94,8 +92,10 @@ func (c *console) broke(answer *reply, what string, err error) {
 	c.failed(answer)
 }
 
+// redirect leads to a page of the console. to is a path made here, "/customers/" or "/licenses/"
+// followed by an id escaped as one segment: it names no other host, whatever the id holds.
 func (c *console) redirect(answer *reply, r *http.Request, to string) {
-	http.Redirect(answer, r, to, http.StatusSeeOther)
+	http.Redirect(answer, r, to, http.StatusSeeOther) //nolint:gosec // see above: a path of the console, never a host
 }
 
 func (c *console) newCustomerForm(*http.Request) (*content, error) {
@@ -325,7 +325,7 @@ func (c *console) issueLicense(answer *reply, r *http.Request, form url.Values) 
 		c.render(answer, http.StatusBadRequest, licenseFormPage(customer, form, problems))
 		return
 	}
-	if c.alreadyIssued(answer, r, draft, customer) {
+	if c.idTaken(answer, r, draft, customer) {
 		return
 	}
 
@@ -355,9 +355,9 @@ func (c *console) issueLicense(answer *reply, r *http.Request, form url.Values) 
 		return
 	}
 	if !added {
-		// Another sending of the same confirmation recorded its license first: that one is shown,
-		// and the key just signed is dropped.
-		if !c.alreadyIssued(answer, r, draft, customer) {
+		// Another request recorded a license of that id first: the key just signed is dropped, and
+		// the answer is the one of a confirmation that finds its id taken.
+		if !c.idTaken(answer, r, draft, customer) {
 			c.broke(answer, "unable to record an issued license", errors.New("its id is taken by a license that cannot be read"))
 		}
 		return
@@ -372,12 +372,14 @@ func (c *console) issueLicense(answer *reply, r *http.Request, form url.Values) 
 	c.keyPage(answer, "The license is issued", draft.LicenseID, encoded)
 }
 
-// alreadyIssued answers a confirmation whose license is recorded already, and tells it did: the
-// confirmation was sent twice, and the license the first sending issued is shown again, unsigned
-// and unjournaled a second time. That holds only for the operator who issued it from here, for
-// that customer: the issue is in the journal under that name. For any other license of that id
-// the answer is a refusal, or this would show a key to whoever names its license.
-func (c *console) alreadyIssued(answer *reply, r *http.Request, draft *issuing.Draft, customer *cpstore.CustomerDetail) bool {
+// idTaken answers a confirmation whose license id is the one of a license already recorded, and
+// tells it did. Nothing is signed or written for it, and no key is shown: a key is shown by the
+// first issue and by asking for it again, which is journaled.
+//
+// When the license recorded says, field by field, what the draft says, the confirmation was sent
+// again: the answer leads to the page of that license. When it says anything else, the draft is
+// another one under the same id, and it is refused: a confirmation never answers for another draft.
+func (c *console) idTaken(answer *reply, r *http.Request, draft *issuing.Draft, customer *cpstore.CustomerDetail) bool {
 	stored, err := c.store.LicenseDetail(r.Context(), draft.LicenseID, c.now())
 	if errors.Is(err, cpstore.ErrNotFound) {
 		return false
@@ -386,20 +388,12 @@ func (c *console) alreadyIssued(answer *reply, r *http.Request, draft *issuing.D
 		c.broke(answer, "unable to read a license", err)
 		return true
 	}
-	if stored.Origin != originConsole || stored.IssuedBy != answer.operator || stored.CustomerID != customer.ID {
-		c.conflict(answer, "A license already has the id of this one. Nothing was issued; open the form again.",
+	if !draft.IsTheContentOf(stored, customer.ID) {
+		c.conflict(answer, "A license with this id already exists, with other content. Nothing was issued; open the form again.",
 			customerLink(customer.ID, "Back to the customer"))
 		return true
 	}
-	held, err := c.writer.LicenseByFingerprint(r.Context(), stored.KeyFingerprint)
-	if err == nil && held.Id != stored.ID {
-		err = errors.New("the fingerprint of a license leads to another license")
-	}
-	if err != nil {
-		c.broke(answer, "unable to read the license a confirmation issued", err)
-		return true
-	}
-	c.keyPage(answer, "The license is issued", stored.ID, strings.TrimSpace(held.Encoded))
+	c.redirect(answer, r, licenseHref(stored.ID))
 	return true
 }
 

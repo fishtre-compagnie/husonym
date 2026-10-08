@@ -111,9 +111,13 @@ form has no field for, or whose id is not 16 lowercase hexadecimal characters, i
 here: `husonym-license` issues its successor.
 
 The key of a license is shown on two pages only, both the answer to a `POST`: right after the
-issue, and when it is asked for again. It is in no other page, in no URL and in no log. The
-confirmation of an issue sent twice issues one license: the second answer shows that same license
-to the operator who issued it, and signs nothing.
+issue, and when it is asked for again. It is in no other page, in no URL and in no log.
+
+The id of a license is drawn when its form is sent, and the confirmation carries it. A
+confirmation sent twice issues one license: the second answer signs nothing, shows no key, and
+leads to the page of that license, which has its button to show the key again. A confirmation
+under the id of a license that says anything else than the draft is refused with 409, and nothing
+is signed.
 
 Every act is journaled in the transaction of its write, under the email of the operator (`local`
 without the gates): `customer_created`, `customer_updated`, `license_issued`, `license_renewed`,

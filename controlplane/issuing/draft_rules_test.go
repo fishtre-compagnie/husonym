@@ -188,9 +188,8 @@ func Test_TrialDraft_TrimsWhatTheCustomerSays(t *testing.T) {
 
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Co.", draft.CustomerName)
-	again, problems := ParseDraft(draft.Form(), draftNow)
-	require.Empty(t, problems)
-	require.Equal(t, draft, again, "the first confirmation page and the key signed after it agree")
+	// The first confirmation page and the key signed after it agree.
+	requireSameButTheID(t, draft)
 }
 
 func Test_TrialDraft_WithoutACustomer(t *testing.T) {
@@ -208,9 +207,7 @@ func Test_RenewalDraft_TrimsWhatTheCustomerSays(t *testing.T) {
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Co.", draft.CustomerName)
 	require.Equal(t, "a plan", draft.Plan)
-	again, problems := ParseDraft(draft.Form(), draftNow)
-	require.Empty(t, problems)
-	require.Equal(t, draft, again)
+	requireSameButTheID(t, draft)
 }
 
 func Test_RenewalDraft_WithoutALicenseOrACustomer(t *testing.T) {

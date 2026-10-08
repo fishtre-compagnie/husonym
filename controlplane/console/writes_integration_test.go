@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -200,9 +201,33 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	require.True(t, trial.AllowsEveryFeature())
 	require.WithinDuration(t, time.Now().AddDate(0, 0, issuing.TrialDays), trial.ExpiresAt, 25*time.Hour)
 
-	// Review focus: the confirmation sent again issues nothing more and shows that same license.
-	again, _ := w.keyOn(w.post("/licenses", trialConfirmation, http.StatusOK, true))
-	require.Equal(t, trialKey, again)
+	// Review focus: the confirmation sent again issues nothing more, leads to that same license and
+	// shows no key. Under the same id, a draft that says anything else is refused.
+	again := w.post("/licenses", trialConfirmation, http.StatusSeeOther, false)
+	require.Equal(t, "/licenses/"+trialID, again.header.Get("Location"))
+	for name, change := range map[string]func(form url.Values){
+		"another plan": func(form url.Values) { form.Set(issuing.FieldPlan, "another") },
+		"a list of features": func(form url.Values) {
+			form.Del(issuing.FieldAllFeatures)
+			form.Set(issuing.FieldFeatures, string(license.FeatureSso))
+		},
+		"another expiry": func(form url.Values) {
+			form.Set(issuing.FieldExpiresAt, time.Now().UTC().AddDate(2, 0, 0).Format(time.DateOnly))
+		},
+	} {
+		other := url.Values{}
+		for field, values := range trialConfirmation {
+			other[field] = append([]string{}, values...)
+		}
+		change(other)
+		refused := w.post("/licenses", other, http.StatusConflict, false)
+		require.Contains(t, refused.body, "A license with this id already exists, with other content.", name)
+	}
+	unchanged, err := store.LicenseDetail(t.Context(), trialID, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, unchanged.Plan)
+	require.Nil(t, unchanged.Features)
+	require.True(t, trial.ExpiresAt.Equal(unchanged.ExpiresAt), "the license is as it was issued")
 
 	// The page of the license names who issued it; the report that was pending under its key is stored.
 	trialPage := w.get("/licenses/" + trialID)
@@ -250,8 +275,8 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	shown, _ := w.keyOn(w.post("/licenses/"+trialID+"/key", nil, http.StatusOK, true))
 	require.Equal(t, trialKey, shown)
 
-	// The journal: five acts, the newest first. The confirmation sent twice and the renewal refused
-	// left no line.
+	// The journal: five acts, the newest first. The confirmation sent again, the drafts refused
+	// under its id and the renewal refused left no line.
 	journal := w.get("/journal")
 	rows := journalRows(t, journal.body)
 	require.Len(t, rows, 5)
@@ -310,7 +335,75 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 		}
 		require.NotContains(t, answer.body, `id="license-key"`, answer.what)
 	}
-	require.Equal(t, 8, keyPages, "six issues, one confirmation sent twice, one key shown again")
+	require.Equal(t, 7, keyPages, "six issues and one key shown again: a confirmation sent again shows none")
+}
+
+// Review focus: one confirmation sent many times at once issues one license. One answer carries its
+// key; every other one leads to the license and carries none.
+func Test_Console_OneConfirmationSentManyTimesAtOnce_IssuesOneLicenseAndShowsItsKeyOnce(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	ring := license.Keyring{"walk-kid": pub}
+	signer, err := issuing.NewSigner(priv, ring)
+	require.NoError(t, err)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	pages, err := console.New(&console.Config{
+		Reader: store, Writer: store, Signer: signer, Promoter: intake.New(store, time.Now), Now: time.Now, Logger: logger,
+	})
+	require.NoError(t, err)
+	w := &walk{t: t, handler: access(t).Gate(t, time.Now, logger).Wrap(pages), ring: ring}
+	created := w.post("/customers", url.Values{"external_id": {"cust-many"}, "name": {"Acme"}}, http.StatusSeeOther, false)
+	customerPath := created.header.Get("Location")
+	form := formOf(t, w.get(customerPath+"/licenses/new").body, "/licenses/confirm")
+	confirmation := formOf(t, w.post("/licenses/confirm", form, http.StatusOK, false).body, "/licenses")
+	id := confirmation.Get(issuing.FieldLicenseID)
+
+	const senders = 12
+	answers := make([]page, senders)
+	var wg sync.WaitGroup
+	for i := range senders {
+		wg.Go(func() { answers[i] = w.request(http.MethodPost, "/licenses", confirmation) })
+	}
+	wg.Wait()
+
+	withKey := 0
+	for _, got := range answers {
+		switch got.status {
+		case http.StatusOK:
+			withKey++
+			_, key := w.keyOn(got)
+			require.Equal(t, id, key.Id)
+		case http.StatusSeeOther:
+			require.Equal(t, "/licenses/"+id, got.header.Get("Location"))
+			require.NotContains(t, got.body, "license-key")
+			require.NotContains(t, got.body, "<textarea")
+		default:
+			require.Failf(t, "an answer that is neither the key nor the way to the license", "%d: %s", got.status, got.body)
+		}
+	}
+	require.Equal(t, 1, withKey, "exactly one answer carries the key")
+
+	var licenses int
+	require.NoError(t, pool.QueryRow(t.Context(), `SELECT count(*) FROM controlplane.licenses`).Scan(&licenses))
+	require.Equal(t, 1, licenses)
+	journal, err := store.Journal(t.Context(), cpstore.JournalCap)
+	require.NoError(t, err)
+	require.Len(t, journal, 2, "the customer and one license")
+	require.Equal(t, cpstore.ActionLicenseIssued, journal[0].Action)
+	require.Equal(t, id, journal[0].LicenseID)
+	// The key the one answer showed is the one that is stored.
+	shown, _ := w.keyOn(w.post("/licenses/"+id+"/key", nil, http.StatusOK, true))
+	for _, got := range answers {
+		if got.status == http.StatusOK {
+			first, _ := w.keyOn(got)
+			require.Equal(t, shown, first)
+		}
+	}
 }
 
 // Review focus: a POST another origin made the browser send writes nothing in the database.

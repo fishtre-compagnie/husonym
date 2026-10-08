@@ -247,7 +247,6 @@ func Test_Draft_Form_ThenParseDraft_GivesTheSameDraft(t *testing.T) {
 			LicenseID: "0123456789abcdef", CustomerExternalID: "acme", CustomerName: "Acme Co.",
 			Features: []string{}, MaxSources: &zero, GraceDays: &zero, ExpiresAt: expiry,
 		},
-		"a trial": TrialDraft(&cpstore.CustomerDetail{ExternalID: "acme", Name: "Acme Co."}, draftNow),
 	}
 	for name, draft := range drafts {
 		t.Run(name, func(t *testing.T) {
@@ -259,12 +258,24 @@ func Test_Draft_Form_ThenParseDraft_GivesTheSameDraft(t *testing.T) {
 	}
 }
 
+// requireSameButTheID holds a draft read back from the form of one that has no id to that one, but
+// for the id ParseDraft drew.
+func requireSameButTheID(t *testing.T, draft *Draft) {
+	t.Helper()
+	require.Empty(t, draft.LicenseID, "a draft made for a form to be filled has no id")
+	again, problems := ParseDraft(draft.Form(), draftNow)
+	require.Empty(t, problems)
+	require.True(t, validLicenseID(again.LicenseID), "the id is drawn when the form is read")
+	again.LicenseID = ""
+	require.Equal(t, draft, again)
+}
+
 func Test_TrialDraft(t *testing.T) {
 	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "Acme Co."}
 
 	draft := TrialDraft(customer, draftNow)
 
-	require.True(t, validLicenseID(draft.LicenseID))
+	requireSameButTheID(t, draft)
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Co.", draft.CustomerName)
 	require.Equal(t, time.Date(2026, 11, 7, 23, 59, 59, 0, time.UTC), draft.ExpiresAt, "30 days after now, to the end of the day")
@@ -275,7 +286,6 @@ func Test_TrialDraft(t *testing.T) {
 	require.Empty(t, draft.Plan)
 	require.Empty(t, draft.Telemetry)
 	require.Empty(t, draft.Succeeds)
-	require.NotEqual(t, draft.LicenseID, TrialDraft(customer, draftNow).LicenseID)
 }
 
 func previousLicense(customer *cpstore.CustomerDetail) *cpstore.LicenseDetail {
@@ -300,7 +310,7 @@ func Test_RenewalDraft_SameContentOneYearLater(t *testing.T) {
 	draft, err := RenewalDraft(previous, customer, draftNow)
 
 	require.NoError(t, err)
-	require.True(t, validLicenseID(draft.LicenseID))
+	requireSameButTheID(t, draft)
 	require.Equal(t, "fedcba9876543210", draft.Succeeds)
 	require.Equal(t, "acme", draft.CustomerExternalID)
 	require.Equal(t, "Acme Corporation", draft.CustomerName, "the name is the customer's of today")

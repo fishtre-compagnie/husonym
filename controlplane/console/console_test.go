@@ -38,7 +38,9 @@ type fakeStore struct {
 	customers []cpstore.CustomerSummary
 	customer  *cpstore.CustomerDetail
 	license   *cpstore.LicenseDetail
-	instance  *cpstore.InstanceDetail
+	// licenses, when it is set, answers each license by its id in place of license.
+	licenses map[string]*cpstore.LicenseDetail
+	instance *cpstore.InstanceDetail
 	report    *cpstore.StoredReport
 	pending   []cpstore.PendingGroup
 	attention *cpstore.Attention
@@ -68,6 +70,9 @@ func (f *fakeStore) Customer(_ context.Context, id uuid.UUID, now time.Time) (*c
 func (f *fakeStore) LicenseDetail(_ context.Context, id string, now time.Time) (*cpstore.LicenseDetail, error) {
 	f.calls++
 	f.askedAt, f.askedFor = now, []string{id}
+	if f.licenses != nil {
+		return answer(f.licenses[id], f.err)
+	}
 	return answer(f.license, f.err)
 }
 

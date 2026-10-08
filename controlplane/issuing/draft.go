@@ -79,8 +79,9 @@ var (
 // Draft is a license about to be signed: what the operator asked for, before and after the
 // confirmation page.
 type Draft struct {
-	// LicenseID is drawn when the draft is made, so that a confirmation submitted twice names the
-	// same license.
+	// LicenseID is drawn by ParseDraft for a form that carries none, which is the form the operator
+	// fills: the confirmation page then carries it, so that a confirmation submitted twice names
+	// the same license. A draft made for a form to be filled has none.
 	LicenseID          string
 	CustomerExternalID string
 	// CustomerName is what the key says it was issued to.
@@ -161,8 +162,8 @@ func Options() FormOptions {
 }
 
 // ParseDraft reads a draft from the fields of a form. The problems are sentences for the page;
-// with any of them there is no draft. A missing license id is drawn. It does not replace the
-// checks of the signing: it tells the operator before.
+// with any of them there is no draft. A missing license id is drawn: nothing else draws one. It
+// does not replace the checks of the signing: it tells the operator before.
 func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string) {
 	problem := func(format string, args ...any) {
 		problems = append(problems, fmt.Sprintf(format, args...))
@@ -396,14 +397,14 @@ func quoted(typed string) string {
 
 // TrialDraft drafts a trial for customer: every feature, no cap, and an expiry at the end of the
 // day TrialDays after now. The name and the id of the customer are trimmed as ParseDraft trims
-// them, so that the page that shows this draft and the key signed after it say the same. Without a
-// customer there is no draft: it returns nil.
+// them, so that the page that shows this draft and the key signed after it say the same. It bears
+// no license id: that one is drawn when the form is sent. Without a customer there is no draft: it
+// returns nil.
 func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 	if customer == nil {
 		return nil
 	}
 	return &Draft{
-		LicenseID:          newLicenseID(),
 		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
 		CustomerName:       strings.TrimSpace(customer.Name),
 		AllFeatures:        true,
@@ -411,7 +412,7 @@ func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 	}
 }
 
-// RenewalDraft drafts the license that succeeds previous: the same content under a new id,
+// RenewalDraft drafts the license that succeeds previous: the same content, without an id yet,
 // expiring at the end of the day one year after the later of now and the previous expiry. The name
 // is the one customer has today, and the telemetry is what the key of previous says, not what the
 // product reads from it. Texts are trimmed as ParseDraft trims them. It refuses, with an error: a
@@ -429,7 +430,6 @@ func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDet
 		return nil, ErrLicenseIDNotRenewable
 	}
 	draft := &Draft{
-		LicenseID:          newLicenseID(),
 		CustomerExternalID: strings.TrimSpace(customer.ExternalID),
 		CustomerName:       strings.TrimSpace(customer.Name),
 		Plan:               strings.TrimSpace(previous.Plan),

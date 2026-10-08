@@ -98,10 +98,8 @@ type Writer interface {
 		ctx context.Context, operator string, key *license.Key, issued *license.IssuedLicense,
 		signingKeyFingerprint, succeeds, note string, now time.Time,
 	) (added bool, err error)
+	// ShowLicenseKey is the only read of a key the console has, and it is journaled.
 	ShowLicenseKey(ctx context.Context, operator, licenseID string, now time.Time) (string, error)
-	// LicenseByFingerprint is read for one thing: to answer the confirmation of an issue submitted
-	// twice with the license the first one issued.
-	LicenseByFingerprint(ctx context.Context, fingerprint string) (*cpstore.License, error)
 }
 
 // Signer signs the licenses the console issues. The console holds it behind this interface only,

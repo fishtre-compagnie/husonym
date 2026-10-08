@@ -48,8 +48,6 @@ type fakeWriter struct {
 	onRecord func()
 	showErr  error
 	shownKey string
-	// stored is the license LicenseByFingerprint answers.
-	stored *cpstore.License
 
 	writes    int
 	operators []string
@@ -58,7 +56,6 @@ type fakeWriter struct {
 	updatedID uuid.UUID
 	records   []recorded
 	shown     []string
-	askedFor  []string
 }
 
 func (f *fakeWriter) CreateCustomer(_ context.Context, operator string, c cpstore.NewCustomer, _ time.Time) (uuid.UUID, error) {
@@ -99,14 +96,6 @@ func (f *fakeWriter) ShowLicenseKey(_ context.Context, operator, licenseID strin
 	f.operators = append(f.operators, operator)
 	f.shown = append(f.shown, licenseID)
 	return f.shownKey, f.showErr
-}
-
-func (f *fakeWriter) LicenseByFingerprint(_ context.Context, fingerprint string) (*cpstore.License, error) {
-	f.askedFor = append(f.askedFor, fingerprint)
-	if f.stored == nil {
-		return nil, cpstore.ErrNoLicense
-	}
-	return f.stored, nil
 }
 
 // fakeSigner signs nothing: the key it gives is a word made of the id of the draft.
@@ -384,7 +373,6 @@ func Test_LicenseForm_Trial_IsPrefilledWithEveryFeatureAndThirtyDays(t *testing.
 	require.Equal(t, http.StatusOK, got.status)
 	require.Contains(t, got.body, `<input type="checkbox" name="all_features" value="1" checked>`)
 	require.Contains(t, got.body, `name="expires_at" type="date" value="2026-11-07"`)
-	require.Regexp(t, `<input type="hidden" name="license_id" value="[0-9a-f]{16}">`, got.body)
 }
 
 func Test_ConfirmLicense_ShowsEveryLineOfTheKeyAndCarriesTheDraft(t *testing.T) {
@@ -521,62 +509,156 @@ func Test_IssueLicense_SignsRecordsPromotesAndShowsTheKey(t *testing.T) {
 	}
 }
 
-// Review focus: the confirmation submitted twice issues one license, and shows that one again.
-func Test_IssueLicense_SubmittedTwice_ShowsTheStoredLicenseWithoutSigningAgain(t *testing.T) {
-	stored := func() *cpstore.LicenseDetail {
-		return &cpstore.LicenseDetail{
-			LicenseSummary: cpstore.LicenseSummary{ID: draftLicenseID, CustomerID: customerID, CustomerName: "Acme"},
-			KeyFingerprint: fingerprint, Origin: "console", IssuedBy: operatorEmail,
-		}
+// issuedDraft is the license the store holds once draftForm was issued, by whoever and from wherever.
+func issuedDraft() *cpstore.LicenseDetail {
+	grace, maxSources := 7, 5
+	return &cpstore.LicenseDetail{
+		LicenseSummary: cpstore.LicenseSummary{
+			ID: draftLicenseID, CustomerID: customerID, CustomerName: "Acme", Plan: "standard",
+			Telemetry: license.TelemetryOfflineReport, ExpiresAt: time.Date(2027, 10, 8, 23, 59, 59, 0, time.UTC),
+		},
+		Features: []string{"job_hooks", "sso"}, StoredTelemetry: "offline_report", GraceDays: &grace,
+		Limits:         &license.Limits{MaxSources: &maxSources},
+		KeyFingerprint: fingerprint, Origin: "registry", IssuedBy: "another@example.com",
 	}
+}
+
+// requireNoKey holds an answer to showing no key and no page of a key.
+func requireNoKey(t *testing.T, got page) {
+	t.Helper()
+	require.NotContains(t, got.body, "KEY", "no key is in the answer")
+	require.NotContains(t, got.body, "<textarea")
+	require.NotContains(t, got.body, "license-key")
+}
+
+// Review focus: the confirmation submitted twice issues one license. The second answer leads to the
+// page of that license and shows no key: a key is shown by the first issue and by asking for it
+// again, which is journaled.
+func Test_IssueLicense_SubmittedAgain_LeadsToTheLicenseAndShowsNoKey(t *testing.T) {
 	t.Run("the license is there already", func(t *testing.T) {
 		b := newBench(t)
-		b.store.customer, b.store.license = acme(), stored()
-		b.writer.stored = &cpstore.License{Id: draftLicenseID, Encoded: "THE-STORED-KEY"}
+		b.store.customer, b.store.license = acme(), issuedDraft()
+		b.writer.shownKey = "THE-STORED-KEY"
 
 		got := b.post("/licenses", draftForm())
 
-		require.Equal(t, http.StatusOK, got.status)
-		require.Contains(t, between(t, got.body, "<textarea", "</textarea>"), ">THE-STORED-KEY")
-		require.Equal(t, []string{fingerprint}, b.writer.askedFor)
+		require.Equal(t, http.StatusSeeOther, got.status)
+		require.Equal(t, "/licenses/"+draftLicenseID, got.header.Get("Location"))
+		requireNoKey(t, got)
 		require.Zero(t, b.signer.calls, "nothing is signed again")
-		require.Zero(t, b.writer.writes, "nothing is written, and no second line of the journal")
+		require.Zero(t, b.writer.writes, "nothing is written: no key is read, and no second line of the journal")
 		require.Empty(t, b.promoter.fingerprints)
 	})
 	t.Run("the other request recorded it first", func(t *testing.T) {
 		b := newBench(t)
 		b.store.customer = acme()
 		b.writer.notAdded = true
-		b.writer.onRecord = func() { b.store.license = stored() }
-		b.writer.stored = &cpstore.License{Id: draftLicenseID, Encoded: "THE-STORED-KEY"}
+		b.writer.onRecord = func() { b.store.license = issuedDraft() }
 
 		got := b.post("/licenses", draftForm())
 
-		require.Equal(t, http.StatusOK, got.status)
-		require.Contains(t, between(t, got.body, "<textarea", "</textarea>"), ">THE-STORED-KEY")
-		require.NotContains(t, got.body, keyOf(draftLicenseID), "the key signed for nothing is not shown")
+		require.Equal(t, http.StatusSeeOther, got.status)
+		require.Equal(t, "/licenses/"+draftLicenseID, got.header.Get("Location"))
+		requireNoKey(t, got)
+		require.Len(t, b.writer.records, 1, "the store was asked once, and added nothing")
+		require.Empty(t, b.writer.shown)
 		require.Empty(t, b.promoter.fingerprints)
 	})
-	// Otherwise the confirmation would show any key to who names its license, with no journal line.
-	for name, change := range map[string]func(l *cpstore.LicenseDetail){
-		"issued by another operator": func(l *cpstore.LicenseDetail) { l.IssuedBy = "another@example.com" },
-		"of another customer":        func(l *cpstore.LicenseDetail) { l.CustomerID = uuid.New() },
-		"not issued from here":       func(l *cpstore.LicenseDetail) { l.Origin, l.IssuedBy = "registry", "" },
-	} {
-		t.Run("a license "+name+" is not shown", func(t *testing.T) {
-			b := newBench(t)
-			b.store.customer, b.store.license = acme(), stored()
-			change(b.store.license)
-			b.writer.stored = &cpstore.License{Id: draftLicenseID, Encoded: "THE-STORED-KEY"}
+}
 
-			got := b.post("/licenses", draftForm())
+// Review focus: a confirmation never answers for another draft. Under the id of a license that is
+// there, a draft that says anything else is refused: nothing is signed, written or shown.
+func Test_IssueLicense_UnderTheIDOfALicenseWithOtherContent_IsRefused(t *testing.T) {
+	changes := map[string]func(form url.Values){
+		"another plan":             func(form url.Values) { form.Set(issuing.FieldPlan, "another") },
+		"other features":           func(form url.Values) { form[issuing.FieldFeatures] = []string{"sso"} },
+		"no feature":               func(form url.Values) { form.Del(issuing.FieldFeatures) },
+		"every feature":            func(form url.Values) { form.Del(issuing.FieldFeatures); form.Set(issuing.FieldAllFeatures, "1") },
+		"another expiry":           func(form url.Values) { form.Set(issuing.FieldExpiresAt, "2027-10-09") },
+		"another cap on sources":   func(form url.Values) { form.Set(issuing.FieldMaxSources, "6") },
+		"no cap on sources":        func(form url.Values) { form.Set(issuing.FieldMaxSources, "") },
+		"another grace period":     func(form url.Values) { form.Set(issuing.FieldGraceDays, "8") },
+		"another telemetry":        func(form url.Values) { form.Set(issuing.FieldTelemetry, "none") },
+		"a telemetry not written":  func(form url.Values) { form.Set(issuing.FieldTelemetry, "") },
+		"a license that it renews": func(form url.Values) { form.Set(issuing.FieldSucceeds, previousLicenseID) },
+	}
+	for name, change := range changes {
+		t.Run(name, func(t *testing.T) {
+			b := newBench(t)
+			b.store.customer = acme()
+			b.store.licenses = map[string]*cpstore.LicenseDetail{draftLicenseID: issuedDraft()}
+			b.writer.shownKey = "THE-STORED-KEY"
+			form := draftForm()
+			change(form)
+
+			got := b.post("/licenses", form)
 
 			require.Equal(t, http.StatusConflict, got.status)
-			require.NotContains(t, got.body, "THE-STORED-KEY")
-			require.NotContains(t, got.body, "<textarea")
-			require.Zero(t, b.signer.calls)
-			require.Zero(t, b.writer.writes)
+			require.Contains(t, got.body, "A license with this id already exists, with other content.")
+			requireNoKey(t, got)
+			require.Zero(t, b.signer.calls, "nothing is signed")
+			require.Zero(t, b.writer.writes, "nothing is written")
+			require.Empty(t, b.promoter.fingerprints)
 			requireLayout(t, got)
+		})
+	}
+	t.Run("the license of another customer", func(t *testing.T) {
+		b := newBench(t)
+		b.store.customer, b.store.license = acme(), issuedDraft()
+		b.store.license.CustomerID = uuid.New()
+
+		got := b.post("/licenses", draftForm())
+
+		require.Equal(t, http.StatusConflict, got.status)
+		requireNoKey(t, got)
+		require.Zero(t, b.signer.calls)
+		require.Zero(t, b.writer.writes)
+	})
+	t.Run("another request recorded another draft first", func(t *testing.T) {
+		b := newBench(t)
+		b.store.customer = acme()
+		b.writer.notAdded = true
+		b.writer.onRecord = func() {
+			b.store.license = issuedDraft()
+			b.store.license.Plan = "another"
+		}
+
+		got := b.post("/licenses", draftForm())
+
+		require.Equal(t, http.StatusConflict, got.status)
+		require.Contains(t, got.body, "A license with this id already exists, with other content.")
+		requireNoKey(t, got)
+		require.Empty(t, b.promoter.fingerprints)
+	})
+	t.Run("the license that took the id cannot be read", func(t *testing.T) {
+		b := newBench(t)
+		b.store.customer = acme()
+		b.writer.notAdded = true
+
+		got := b.post("/licenses", draftForm())
+
+		require.Equal(t, http.StatusInternalServerError, got.status)
+		requireNoKey(t, got)
+		require.Empty(t, b.promoter.fingerprints)
+	})
+}
+
+// The id of a license is drawn when its form is sent, never when a form is shown: a form shown
+// twice, or reloaded, would otherwise carry an id that is not the one of what the operator filled.
+func Test_TheFormsOfALicense_CarryNoLicenseID(t *testing.T) {
+	customerPath := "/customers/" + customerID.String()
+	for _, path := range []string{
+		customerPath + "/licenses/new", customerPath + "/licenses/new?trial=1", "/licenses/" + previousLicenseID + "/renew",
+	} {
+		t.Run(path, func(t *testing.T) {
+			b := newBench(t)
+			b.store.customer, b.store.license = acme(), renewable()
+
+			got := b.get(path)
+
+			require.Equal(t, http.StatusOK, got.status)
+			require.Contains(t, got.body, `action="/licenses/confirm"`)
+			require.NotContains(t, got.body, "license_id")
 		})
 	}
 }
@@ -726,7 +808,6 @@ func Test_RenewForm_IsPrefilledFromTheLicenseItSucceeds(t *testing.T) {
 	require.Contains(t, got.body, `name="expires_at" type="date" value="2027-12-31"`)
 	require.Contains(t, got.body, `step="1" value="21"`)
 	require.Contains(t, got.body, `<option value="none" selected>`)
-	require.Regexp(t, `<input type="hidden" name="license_id" value="[0-9a-f]{16}">`, got.body)
 }
 
 func Test_RenewForm_OfALicenseThatCannotBeRenewedHere_SaysWhyAndHasNoForm(t *testing.T) {
