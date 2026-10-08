@@ -236,8 +236,6 @@ func (c *console) renewLicenseForm(answer *reply, r *http.Request) {
 		c.notFound(answer)
 	case errors.Is(err, issuing.ErrLimitsNotCarried):
 		c.cannotRenew(answer, previous, "Its key carries a limit the form of this console has no field for. "+elsewhere)
-	case errors.Is(err, issuing.ErrLicenseIDNotRenewable):
-		c.cannotRenew(answer, previous, "Its id is not of the form this console names a license by. "+elsewhere)
 	case err != nil:
 		// The errors of a renewal that cannot be drafted are fixed words.
 		c.broke(answer, "unable to draft the renewal of a license", err)
@@ -299,9 +297,43 @@ func (c *console) confirmLicense(answer *reply, r *http.Request, form url.Values
 		c.render(answer, http.StatusBadRequest, licenseFormPage(customer, form, problems))
 		return
 	}
+	if draft.Succeeds != "" && !c.canSucceed(answer, r, draft.Succeeds, customer) {
+		return
+	}
 	c.render(answer, http.StatusOK, &content{
 		file: pageLicenseConfirm, title: "Issue this license?", nav: navCustomers, body: newLicenseConfirmView(customer, draft),
 	})
+}
+
+// The refusals of a renewal, said when its form is sent and again should the store refuse it.
+const (
+	renewedNotRecorded  = "The license to renew is not recorded."
+	renewedOfAnother    = "The license to renew is a license of another customer."
+	renewedHasSuccessor = "The license to renew already has a successor: a license is renewed once."
+	nothingIssued       = " Nothing was issued."
+)
+
+// canSucceed tells whether a license of customer can be issued as the successor of the license of
+// id succeeds, as the store says it now: that license is there, is one of customer and has no
+// successor. Otherwise it answers by itself, before any page asks the operator to confirm a renewal
+// that the store would refuse. The store judges again when the license is recorded: this one tells
+// before the click, that one decides.
+func (c *console) canSucceed(answer *reply, r *http.Request, succeeds string, customer *cpstore.CustomerDetail) bool {
+	back := customerLink(customer.ID, "Back to the customer")
+	previous, err := c.store.LicenseDetail(r.Context(), succeeds, c.now())
+	switch {
+	case errors.Is(err, cpstore.ErrNotFound):
+		c.conflict(answer, renewedNotRecorded+nothingIssued, back)
+	case err != nil:
+		c.broke(answer, "unable to read the license to renew", err)
+	case previous.CustomerID != customer.ID:
+		c.conflict(answer, renewedOfAnother+nothingIssued, back)
+	case len(previous.SuccessorIDs) > 0:
+		c.conflict(answer, renewedHasSuccessor+nothingIssued, back)
+	default:
+		return true
+	}
+	return false
 }
 
 func (c *console) issueLicense(answer *reply, r *http.Request, form url.Values) {
@@ -342,10 +374,10 @@ func (c *console) issueLicense(answer *reply, r *http.Request, form url.Values) 
 	back := customerLink(customer.ID, "Back to the customer")
 	switch {
 	case errors.Is(err, cpstore.ErrAlreadySucceeded):
-		c.conflict(answer, "The license to renew already has a successor: a license is renewed once. Nothing was issued.", back)
+		c.conflict(answer, renewedHasSuccessor+nothingIssued, back)
 		return
 	case errors.Is(err, cpstore.ErrOtherCustomer):
-		c.conflict(answer, "The license to renew is a license of another customer. Nothing was issued.", back)
+		c.conflict(answer, renewedOfAnother+nothingIssued, back)
 		return
 	case errors.Is(err, cpstore.ErrNotFound):
 		c.conflict(answer, "The customer, or the license to renew, is not recorded any more. Nothing was issued.", back)

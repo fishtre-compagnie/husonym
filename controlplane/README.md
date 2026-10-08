@@ -106,9 +106,13 @@ Instants are shown in UTC.
 | `POST /licenses/{id}/key`              | Shows the key of a license again.                                           |
 
 A license cannot be deleted or changed once issued: no route does it. A license has one successor
-at most; renewing one that has a successor is refused. A license whose key carries a limit the
-form has no field for, or whose id is not 16 lowercase hexadecimal characters, is not renewed
-here: `husonym-license` issues its successor.
+at most: the page of a license that has one does not offer to renew it, and a renewal is refused
+with 409 when its form is sent, before any confirmation, if the license to renew is not recorded,
+belongs to another customer or already has a successor. The store refuses it again when the
+license is recorded, also of two renewals sent at once. A license of any id is renewed, whether
+the console issued it or not; the one that succeeds it bears an id the console draws. A license
+whose key carries a limit the form has no field for is not renewed here: `husonym-license` issues
+its successor.
 
 The key of a license is shown on two pages only, both the answer to a `POST`: right after the
 issue, and when it is asked for again. It is in no other page, in no URL and in no log.

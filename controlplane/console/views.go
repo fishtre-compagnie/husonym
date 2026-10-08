@@ -185,7 +185,8 @@ type licenseView struct {
 	// a license that came otherwise.
 	IssuedBy    string
 	JournaledAt string
-	// CanIssue tells this server issues licenses; RenewHref leads to the form of the renewal.
+	// CanIssue tells this server issues licenses; RenewHref leads to the form of the renewal, and is
+	// empty when the license cannot be renewed here: no license is issued, or it has its successor.
 	CanIssue  bool
 	RenewHref string
 	// KeyAction is where the form that asks for the key again is sent, empty when no path leads to
@@ -508,7 +509,8 @@ func newLicenseView(l *cpstore.LicenseDetail, canIssue bool) *licenseView {
 	}
 	if href := licenseHref(l.ID); href != "" {
 		view.KeyAction = href + "/key"
-		if canIssue {
+		// A license is renewed once: one that has its successor is not offered to be renewed.
+		if canIssue && len(l.SuccessorIDs) == 0 {
 			view.RenewHref = href + "/renew"
 		}
 	}

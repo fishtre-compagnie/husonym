@@ -40,12 +40,14 @@ type fakeStore struct {
 	license   *cpstore.LicenseDetail
 	// licenses, when it is set, answers each license by its id in place of license.
 	licenses map[string]*cpstore.LicenseDetail
-	instance *cpstore.InstanceDetail
-	report    *cpstore.StoredReport
-	pending   []cpstore.PendingGroup
-	attention *cpstore.Attention
-	journal   []cpstore.OperatorAction
-	err       error
+	// licenseErr fails the reading of a license, and of nothing else.
+	licenseErr error
+	instance   *cpstore.InstanceDetail
+	report     *cpstore.StoredReport
+	pending    []cpstore.PendingGroup
+	attention  *cpstore.Attention
+	journal    []cpstore.OperatorAction
+	err        error
 
 	calls       int
 	askedAt     time.Time
@@ -70,6 +72,9 @@ func (f *fakeStore) Customer(_ context.Context, id uuid.UUID, now time.Time) (*c
 func (f *fakeStore) LicenseDetail(_ context.Context, id string, now time.Time) (*cpstore.LicenseDetail, error) {
 	f.calls++
 	f.askedAt, f.askedFor = now, []string{id}
+	if f.licenseErr != nil {
+		return nil, f.licenseErr
+	}
 	if f.licenses != nil {
 		return answer(f.licenses[id], f.err)
 	}

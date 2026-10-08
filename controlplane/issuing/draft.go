@@ -54,6 +54,9 @@ const (
 	MaxCustomerNameLength = 200
 	MaxPlanLength         = 64
 	MaxNoteLength         = 1000
+	// MaxLicenseIDLength is the longest id, in characters, a draft names the license it succeeds
+	// by. The id of a draft itself is a drawn one, of another rule.
+	MaxLicenseIDLength = 128
 
 	dateLayout     = "2006-01-02"
 	licenseIDBytes = 8
@@ -71,9 +74,6 @@ var (
 	// ErrNothingToRenew is returned when a renewal is drafted without a license or without its
 	// customer.
 	ErrNothingToRenew = errors.New("there is no license to renew, or no customer to renew it for")
-	// ErrLicenseIDNotRenewable is returned when the license to renew has an id that is not of the
-	// form a draft names its predecessor by.
-	ErrLicenseIDNotRenewable = errors.New("the license to renew has an id that is not 16 lowercase hexadecimal characters")
 )
 
 // Draft is a license about to be signed: what the operator asked for, before and after the
@@ -103,7 +103,8 @@ type Draft struct {
 	// Note is not part of the key: it is stored beside it.
 	Note string
 	// Succeeds is the id of the license this one renews, empty when it renews none. It is not part
-	// of the key either.
+	// of the key either. It is whatever id the license to renew bears: one issued on the command
+	// line, or imported, is not named as the console names its own.
 	Succeeds string
 }
 
@@ -356,8 +357,12 @@ func (d *Draft) problems(now time.Time, expiryTold bool) []string {
 	if modes := Options().TelemetryModes; d.Telemetry != "" && !slices.Contains(modes, d.Telemetry) {
 		problem("The telemetry mode %s is not one of %s.", quoted(d.Telemetry), strings.Join(modes, ", "))
 	}
-	if d.Succeeds != "" && !validLicenseID(d.Succeeds) {
-		problem("The license to renew must be named by an id of 16 lowercase hexadecimal characters.")
+	// The license to renew is named by any id the store holds and a page shows as it is, of a
+	// bounded length. Whether there is such a license is for the store to say.
+	if utf8.RuneCountInString(d.Succeeds) > MaxLicenseIDLength {
+		problem("The license to renew must be named by an id of at most %d characters.", MaxLicenseIDLength)
+	} else {
+		shown("The id of the license to renew", d.Succeeds, 0)
 	}
 	return problems
 }
@@ -416,18 +421,14 @@ func TrialDraft(customer *cpstore.CustomerDetail, now time.Time) *Draft {
 // expiring at the end of the day one year after the later of now and the previous expiry. The name
 // is the one customer has today, and the telemetry is what the key of previous says, not what the
 // product reads from it. Texts are trimmed as ParseDraft trims them. It refuses, with an error: a
-// missing license or customer (ErrNothingToRenew), a license of another customer, a license whose
-// id a draft cannot name as its predecessor, and one that carries a limit a draft has no field
-// for.
+// missing license or customer (ErrNothingToRenew), a license of another customer, and one that
+// carries a limit a draft has no field for.
 func RenewalDraft(previous *cpstore.LicenseDetail, customer *cpstore.CustomerDetail, now time.Time) (*Draft, error) {
 	if previous == nil || customer == nil {
 		return nil, ErrNothingToRenew
 	}
 	if previous.CustomerID != customer.ID {
 		return nil, ErrNotTheCustomerOfTheLicense
-	}
-	if !validLicenseID(previous.ID) {
-		return nil, ErrLicenseIDNotRenewable
 	}
 	draft := &Draft{
 		CustomerExternalID: strings.TrimSpace(customer.ExternalID),

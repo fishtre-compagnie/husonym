@@ -403,7 +403,7 @@ func Test_ConfirmLicense_ShowsEveryLineOfTheKeyAndCarriesTheDraft(t *testing.T) 
 
 func Test_ConfirmLicense_WithoutALicenseID_DrawsTheOneTheConfirmationCarries(t *testing.T) {
 	b := newBench(t)
-	b.store.customer = acme()
+	b.store.customer, b.store.license = acme(), renewable()
 	form := draftForm()
 	form.Set(issuing.FieldLicenseID, "")
 	form.Set(issuing.FieldSucceeds, previousLicenseID)
@@ -816,9 +816,8 @@ func Test_RenewForm_OfALicenseThatCannotBeRenewedHere_SaysWhyAndHasNoForm(t *tes
 		change  func(l *cpstore.LicenseDetail)
 		message string
 	}{
-		"it has a successor":           {func(l *cpstore.LicenseDetail) { l.SuccessorIDs = []string{"aaaaaaaaaaaaaaaa"} }, "already has a successor"},
-		"a limit a form cannot carry":  {func(l *cpstore.LicenseDetail) { l.Limits.MaxJobs = &maxJobs }, "husonym-license"},
-		"an id a draft cannot succeed": {func(l *cpstore.LicenseDetail) { l.ID = "lic-1" }, "husonym-license"},
+		"it has a successor":          {func(l *cpstore.LicenseDetail) { l.SuccessorIDs = []string{"aaaaaaaaaaaaaaaa"} }, "already has a successor"},
+		"a limit a form cannot carry": {func(l *cpstore.LicenseDetail) { l.Limits.MaxJobs = &maxJobs }, "husonym-license"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -836,6 +835,133 @@ func Test_RenewForm_OfALicenseThatCannotBeRenewedHere_SaysWhyAndHasNoForm(t *tes
 			requireLayout(t, got)
 		})
 	}
+}
+
+// A license issued on the command line, or imported, bears whatever id it was given: it is renewed
+// from the console as any other, under a drawn id.
+func Test_ALicenseOfAnyID_IsRenewed(t *testing.T) {
+	const importedID = "lic-2024-001"
+	b := newBench(t)
+	imported := renewable()
+	imported.ID = importedID
+	b.store.customer = acme()
+	b.store.licenses = map[string]*cpstore.LicenseDetail{importedID: imported}
+
+	page := b.get("/licenses/" + importedID)
+	require.Contains(t, page.body, `<a class="button" href="/licenses/`+importedID+`/renew">Renew</a>`)
+	form := b.get("/licenses/" + importedID + "/renew")
+	require.Equal(t, http.StatusOK, form.status)
+	require.Contains(t, form.body, "<h1>Renew a license</h1>")
+	require.Contains(t, form.body, `<input type="hidden" name="succeeds" value="`+importedID+`">`)
+
+	confirm := b.post("/licenses/confirm", formOf(t, form.body, "/licenses/confirm"))
+	require.Equal(t, http.StatusOK, confirm.status)
+	require.Contains(t, section(t, confirm.body, "beside-the-key"), `href="/licenses/`+importedID+`"`)
+	confirmation := formOf(t, confirm.body, "/licenses")
+	require.Equal(t, importedID, confirmation.Get(issuing.FieldSucceeds))
+	id := confirmation.Get(issuing.FieldLicenseID)
+	require.Regexp(t, `^[0-9a-f]{16}$`, id, "the license that succeeds it bears a drawn id")
+
+	issued := b.post("/licenses", confirmation)
+	require.Equal(t, http.StatusOK, issued.status)
+	require.Contains(t, between(t, issued.body, "<textarea", "</textarea>"), ">"+keyOf(id))
+	require.Len(t, b.writer.records, 1)
+	require.Equal(t, importedID, b.writer.records[0].succeeds, "the link is given to the store")
+	require.Equal(t, id, b.writer.records[0].key.Id)
+}
+
+// A renewal that cannot succeed is refused when its form is sent, before any page asks to confirm
+// it: the license to renew is not there, is the one of another customer, or has its successor.
+func Test_ConfirmLicense_OfARenewalThatCannotSucceed_IsRefusedBeforeTheConfirmation(t *testing.T) {
+	cases := map[string]struct {
+		previous func() *cpstore.LicenseDetail
+		message  string
+	}{
+		"the license to renew is not there": {
+			func() *cpstore.LicenseDetail { return nil }, "The license to renew is not recorded.",
+		},
+		"the license to renew is the one of another customer": {
+			func() *cpstore.LicenseDetail {
+				previous := renewable()
+				previous.CustomerID = uuid.New()
+				return previous
+			}, "The license to renew is a license of another customer.",
+		},
+		"the license to renew has a successor": {
+			func() *cpstore.LicenseDetail {
+				previous := renewable()
+				previous.SuccessorIDs = []string{"aaaaaaaaaaaaaaaa"}
+				return previous
+			}, "The license to renew already has a successor: a license is renewed once.",
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			b := newBench(t)
+			b.store.customer = acme()
+			b.store.licenses = map[string]*cpstore.LicenseDetail{}
+			if previous := tc.previous(); previous != nil {
+				b.store.licenses[previousLicenseID] = previous
+			}
+			form := draftForm()
+			form.Del(issuing.FieldLicenseID)
+			form.Set(issuing.FieldSucceeds, previousLicenseID)
+
+			got := b.post("/licenses/confirm", form)
+
+			require.Equal(t, http.StatusConflict, got.status)
+			require.Contains(t, got.body, tc.message)
+			require.NotContains(t, got.body, "Issue the license")
+			require.NotContains(t, got.body, "<form")
+			require.Equal(t, []string{previousLicenseID}, b.store.askedFor, "the store is asked for the license to renew")
+			require.Zero(t, b.signer.calls)
+			require.Zero(t, b.writer.writes)
+			requireLayout(t, got)
+		})
+	}
+	t.Run("the store fails", func(t *testing.T) {
+		b := newBench(t)
+		b.store.customer = acme()
+		b.store.licenses = map[string]*cpstore.LicenseDetail{}
+		form := draftForm()
+		form.Set(issuing.FieldSucceeds, previousLicenseID)
+		// The customer is read, then the license to renew: only that second read fails.
+		b.store.licenseErr = errors.New("the database is away")
+
+		got := b.post("/licenses/confirm", form)
+
+		require.Equal(t, http.StatusInternalServerError, got.status)
+		require.NotContains(t, got.body, "Issue the license")
+		require.Contains(t, b.logs.String(), "the database is away")
+	})
+	t.Run("a draft with problems is told its problems first", func(t *testing.T) {
+		b := newBench(t)
+		b.store.customer = acme()
+		b.store.licenses = map[string]*cpstore.LicenseDetail{}
+		form := draftForm()
+		form.Set(issuing.FieldSucceeds, previousLicenseID)
+		form.Set(issuing.FieldGraceDays, "-3")
+
+		got := b.post("/licenses/confirm", form)
+
+		require.Equal(t, http.StatusBadRequest, got.status)
+		require.Contains(t, got.body, "The grace period cannot be negative.")
+	})
+}
+
+func Test_LicensePage_OfALicenseThatHasASuccessor_DoesNotOfferToRenew(t *testing.T) {
+	b := newBench(t)
+	b.store.license = renewable()
+	b.store.license.SuccessorIDs = []string{"aaaaaaaaaaaaaaaa"}
+
+	got := b.get("/licenses/" + previousLicenseID)
+
+	require.Equal(t, http.StatusOK, got.status)
+	require.NotContains(t, got.body, "/renew")
+	require.NotContains(t, got.body, ">Renew<")
+	require.Contains(t, between(t, got.body, "<dt>Succeeded by</dt>", "</dd>"), `href="/licenses/aaaaaaaaaaaaaaaa"`)
+	require.Contains(t, got.body, "Show the key again", "its key can still be shown")
+	require.NotContains(t, got.body, "not configured")
 }
 
 func Test_LicensePage_NamesItsIssuerAndOffersToRenewAndToShowTheKey(t *testing.T) {

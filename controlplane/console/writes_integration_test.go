@@ -251,7 +251,7 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	// Its renewal, from the link of the page of the license.
 	renewForm := formOf(t, w.get(hrefTo(t, trialPage.body, `/licenses/[^"/]+/renew`)).body, "/licenses/confirm")
 	require.Equal(t, trialID, renewForm.Get(issuing.FieldSucceeds))
-	_, renewedID, renewedKey, renewed := w.issue(renewForm)
+	renewConfirmation, renewedID, renewedKey, renewed := w.issue(renewForm)
 	require.NotEqual(t, trialID, renewedID)
 	require.Nil(t, renewed.Features, "the renewal of a key without a list has no list either")
 	require.True(t, renewed.ExpiresAt.After(trial.ExpiresAt.AddDate(0, 11, 0)))
@@ -259,16 +259,21 @@ func Test_Console_RecordsACustomerIssuesRenewsAndJournals(t *testing.T) {
 	require.Contains(t, between(t, renewedPage.body, "<dt>Succeeds</dt>", "</dd>"), `href="/licenses/`+trialID+`"`)
 	require.Contains(t, between(t, w.get("/licenses/"+trialID).body, "<dt>Succeeded by</dt>", "</dd>"), `href="/licenses/`+renewedID+`"`)
 
-	// Review focus: a license has one successor. The form is not offered again, and a form kept
-	// from before is refused.
+	// Review focus: a license has one successor. Its page does not offer to renew it any more, the
+	// form is not shown again, a form kept from before is refused when it is sent, and so is a
+	// confirmation kept from before, by the store.
+	require.NotContains(t, w.get("/licenses/"+trialID).body, "/renew")
 	refusedForm := w.get("/licenses/" + trialID + "/renew")
 	require.Contains(t, refusedForm.body, "cannot be renewed here")
 	require.NotContains(t, refusedForm.body, "<form")
-	renewForm.Set(issuing.FieldLicenseID, "")
-	second := formOf(t, w.post("/licenses/confirm", renewForm, http.StatusOK, false).body, "/licenses")
-	refused := w.post("/licenses", second, http.StatusConflict, false)
+	keptForm := w.post("/licenses/confirm", renewForm, http.StatusConflict, false)
+	require.Contains(t, keptForm.body, "already has a successor")
+	require.NotContains(t, keptForm.body, "<form", "no page asks to confirm it")
+	const neverIssuedID = "aaaaaaaaaaaaaaaa"
+	renewConfirmation.Set(issuing.FieldLicenseID, neverIssuedID)
+	refused := w.post("/licenses", renewConfirmation, http.StatusConflict, false)
 	require.Contains(t, refused.body, "already has a successor")
-	_, err = store.LicenseDetail(t.Context(), second.Get(issuing.FieldLicenseID), time.Now())
+	_, err = store.LicenseDetail(t.Context(), neverIssuedID, time.Now())
 	require.ErrorIs(t, err, cpstore.ErrNotFound, "nothing was issued")
 
 	// The key again.
@@ -404,6 +409,50 @@ func Test_Console_OneConfirmationSentManyTimesAtOnce_IssuesOneLicenseAndShowsIts
 			require.Equal(t, shown, first)
 		}
 	}
+}
+
+// A license that did not come from the console bears whatever id it was given. It is renewed from
+// the console all the same, and the link to it is stored.
+func Test_Console_RenewsALicenseWhoseIDIsNotADrawnOne(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	const importedID = "lic-2024-001"
+	pool := cptest.NewDatabase(t)
+	store := cpstore.New(pool)
+	issuer := cptest.NewIssuer(t)
+	entry := issuer.Entry(importedID, "cust-1", "Acme")
+	cptest.AddLicense(t, store, issuer, &entry)
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	ring := license.Keyring{"walk-kid": pub}
+	signer, err := issuing.NewSigner(priv, ring)
+	require.NoError(t, err)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	pages, err := console.New(&console.Config{
+		Reader: store, Writer: store, Signer: signer, Promoter: intake.New(store, time.Now), Now: time.Now, Logger: logger,
+	})
+	require.NoError(t, err)
+	w := &walk{t: t, handler: access(t).Gate(t, time.Now, logger).Wrap(pages), ring: ring}
+
+	importedPage := w.get("/licenses/" + importedID)
+	form := formOf(t, w.get(hrefTo(t, importedPage.body, `/licenses/[^"/]+/renew`)).body, "/licenses/confirm")
+	require.Equal(t, importedID, form.Get(issuing.FieldSucceeds))
+	confirmation, id, _, key := w.issue(form)
+
+	require.Equal(t, importedID, confirmation.Get(issuing.FieldSucceeds))
+	require.Equal(t, "cust-1", key.CustomerId)
+	stored, err := store.LicenseDetail(t.Context(), id, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, importedID, stored.PredecessorID, "the link is stored")
+	previous, err := store.LicenseDetail(t.Context(), importedID, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, []string{id}, previous.SuccessorIDs)
+	journal, err := store.Journal(t.Context(), cpstore.JournalCap)
+	require.NoError(t, err)
+	require.Len(t, journal, 1)
+	require.Equal(t, cpstore.ActionLicenseRenewed, journal[0].Action)
+	require.Equal(t, importedID, journal[0].Detail["succeeds"])
 }
 
 // Review focus: a POST another origin made the browser send writes nothing in the database.

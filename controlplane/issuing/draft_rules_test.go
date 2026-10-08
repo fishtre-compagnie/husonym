@@ -50,8 +50,14 @@ func Test_Signer_Issue_HoldsAHandBuiltDraftToTheRules(t *testing.T) {
 		"license id of another form": {func(d *Draft) { d.LicenseID = "0123456789abcdeg" }, "The license id must be 16 lowercase hexadecimal characters."},
 		"no license id":              {func(d *Draft) { d.LicenseID = "" }, "The license id must be 16 lowercase hexadecimal characters."},
 		"succeeds none":              {func(d *Draft) { d.Succeeds = "" }, ""},
-		"succeeds of another form":   {func(d *Draft) { d.Succeeds = "the-previous-one" }, "The license to renew must be named by an id of 16 lowercase hexadecimal characters."},
-		"succeeds in capitals":       {func(d *Draft) { d.Succeeds = "FEDCBA9876543210" }, "The license to renew must be named by an id of 16 lowercase hexadecimal characters."},
+		"succeeds of another form":   {func(d *Draft) { d.Succeeds = "lic-2024-001" }, ""},
+		"succeeds in capitals":       {func(d *Draft) { d.Succeeds = "FEDCBA9876543210" }, ""},
+		"succeeds of the maximum":    {func(d *Draft) { d.Succeeds = strings.Repeat("é", MaxLicenseIDLength) }, ""},
+		"succeeds over the maximum":  {func(d *Draft) { d.Succeeds = strings.Repeat("é", MaxLicenseIDLength+1) }, "The license to renew must be named by an id of at most 128 characters."},
+		"succeeds with a space":      {func(d *Draft) { d.Succeeds = " lic-1" }, "The id of the license to renew cannot begin or end with a space."},
+		"succeeds with a control":    {func(d *Draft) { d.Succeeds = "lic\x00-1" }, "The id of the license to renew" + notText},
+		"succeeds with an override":  {func(d *Draft) { d.Succeeds = "lic‮-1" }, "The id of the license to renew" + notText},
+		"succeeds not UTF-8":         {func(d *Draft) { d.Succeeds = "lic\xff" }, "The id of the license to renew" + notText},
 		"an unknown feature":         {func(d *Draft) { d.Features = []string{"not_a_feature"} }, `The feature "not_a_feature" is not a declared feature.`},
 		"a feature twice":            {func(d *Draft) { d.Features = []string{"sso", "sso"} }, `The feature "sso" is listed twice.`},
 		"all features and a list":    {func(d *Draft) { d.AllFeatures = true }, "Choose either all the features or a list of features, not both."},
@@ -81,12 +87,12 @@ func Test_Signer_Issue_NamesEveryProblemOfTheDraft(t *testing.T) {
 	now := testNow()
 	draft := validDraft(now)
 	draft.Telemetry = "sometimes"
-	draft.Succeeds = "x"
+	draft.Succeeds = "x\x00"
 
 	_, _, err := signer.Issue(draft, now)
 
 	require.ErrorContains(t, err, "The telemetry mode")
-	require.ErrorContains(t, err, "The license to renew")
+	require.ErrorContains(t, err, "The id of the license to renew")
 }
 
 // The expiry is judged against the instant given, in the words of this package: the product's
@@ -153,32 +159,56 @@ func Test_ParseDraft_RefusesFormatCharactersInWhatAKeyShows(t *testing.T) {
 	})
 }
 
+// The license a draft succeeds is named by whatever id the store can hold: the licenses issued on
+// the command line, or imported, bear ids of other forms than the one drawn here.
 func Test_ParseDraft_Succeeds(t *testing.T) {
-	const wrong = "The license to renew must be named by an id of 16 lowercase hexadecimal characters."
-	cases := map[string]string{
-		"":                  "",
-		"fedcba9876543210":  "",
-		"fedcba987654321":   wrong,
-		"fedcba98765432100": wrong,
-		"FEDCBA9876543210":  wrong,
-		"fedcba987654321g":  wrong,
-		"../../licenses/x1": wrong,
+	const notText = "The id of the license to renew holds a control or formatting character, or text that is not valid UTF-8."
+	cases := map[string]struct {
+		typed, read, want string
+	}{
+		"none":                    {"", "", ""},
+		"a drawn id":              {"fedcba9876543210", "fedcba9876543210", ""},
+		"an id of another form":   {"lic-2024-001", "lic-2024-001", ""},
+		"capitals and a space in": {"ACME 2024/1", "ACME 2024/1", ""},
+		"dots and slashes":        {"../../licenses/x1", "../../licenses/x1", ""},
+		"the space around":        {"  lic-2024-001\n", "lic-2024-001", ""},
+		"128 characters":          {strings.Repeat("é", 128), strings.Repeat("é", 128), ""},
+		"129 characters":          {strings.Repeat("a", 129), "", "The license to renew must be named by an id of at most 128 characters."},
+		"a NUL":                   {"lic\x00-1", "", notText},
+		"a line break inside":     {"lic\n-1", "", notText},
+		"a right-to-left mark":    {"lic‏-1", "", notText},
+		"a zero width space":      {"lic​-1", "", notText},
+		"a line separator":        {"lic -1", "", notText},
+		"bytes that are not text": {"lic\xff", "", notText},
 	}
-	for typed, want := range cases {
-		t.Run(typed, func(t *testing.T) {
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
 			form := validForm()
-			form.Set(FieldSucceeds, typed)
+			form.Set(FieldSucceeds, tc.typed)
 
 			draft, problems := ParseDraft(form, draftNow)
 
-			if want == "" {
+			if tc.want == "" {
 				require.Empty(t, problems)
-				require.Equal(t, typed, draft.Succeeds)
+				require.Equal(t, tc.read, draft.Succeeds)
 				return
 			}
-			require.Equal(t, []string{want}, problems)
+			require.Equal(t, []string{tc.want}, problems)
+			require.Nil(t, draft)
 		})
 	}
+}
+
+// The id the console draws for a license keeps its form, whatever the license it succeeds is named.
+func Test_ParseDraft_TheLicenseIDKeepsItsRule(t *testing.T) {
+	form := validForm()
+	form.Set(FieldLicenseID, "lic-2024-002")
+	form.Set(FieldSucceeds, "lic-2024-001")
+
+	draft, problems := ParseDraft(form, draftNow)
+
+	require.Equal(t, []string{"The license id must be 16 lowercase hexadecimal characters."}, problems)
+	require.Nil(t, draft)
 }
 
 func Test_TrialDraft_TrimsWhatTheCustomerSays(t *testing.T) {
@@ -226,15 +256,22 @@ func Test_RenewalDraft_WithoutALicenseOrACustomer(t *testing.T) {
 	require.Nil(t, draft)
 }
 
-func Test_RenewalDraft_RefusesALicenseWhoseIdADraftCannotName(t *testing.T) {
+// A license issued on the command line, or imported, bears whatever id it was given.
+func Test_RenewalDraft_OfALicenseOfAnyID(t *testing.T) {
 	customer := &cpstore.CustomerDetail{ID: uuid.New(), ExternalID: "acme", Name: "Acme Co."}
 	previous := previousLicense(customer)
-	previous.ID = "acme-2025"
+	previous.ID = "lic-2024-001"
 
 	draft, err := RenewalDraft(previous, customer, draftNow)
 
-	require.ErrorIs(t, err, ErrLicenseIDNotRenewable)
-	require.Nil(t, draft)
+	require.NoError(t, err)
+	require.Equal(t, "lic-2024-001", draft.Succeeds)
+	requireSameButTheID(t, draft)
+	signer, _ := newTestSigner(t)
+	draft.LicenseID = "0123456789abcdef"
+	_, key, err := signer.Issue(draft, draftNow)
+	require.NoError(t, err, "the signing takes the draft")
+	require.Equal(t, "0123456789abcdef", key.Id)
 }
 
 // The telemetry of a renewal is what the key of the previous license says, not what the product
