@@ -20,19 +20,16 @@ const (
 	// journalLines is how many lines the page of the journal shows, the newest.
 	journalLines = 200
 
-	// The fields of the form of a customer.
-	fieldExternalID = "external_id"
-	fieldName       = "name"
-	fieldNote       = "note"
+	// The fields of the form of a customer. Its external id is not one of them: the console draws
+	// it, and a form that sends one is read as if it had not.
+	fieldName = "name"
+	fieldNote = "note"
 	// fieldCustomer carries, beside the fields of a draft, the id of the customer the draft is for:
 	// what the draft says of the customer is checked against the store through it.
 	fieldCustomer = "customer"
 	// queryDays asks for the form of a license prefilled as issuing.ShortDraft drafts it. Its only
 	// value is issuing.ShortLicenseDays, in digits; with any other one the form is the plain one.
 	queryDays = "days"
-
-	// maxExternalIDLength is counted in characters, as the lengths of a draft are.
-	maxExternalIDLength = 200
 )
 
 type customerFormView struct {
@@ -41,16 +38,17 @@ type customerFormView struct {
 	Action string
 	// Customer is the customer edited; it has no Href on the form of a new one.
 	Customer link
-	// New tells the customer is to be created: its external id is typed. It is only shown otherwise.
-	New        bool
+	// New tells the customer is to be created: it has no external id yet, the console draws one
+	// when it is recorded.
+	New bool
+	// ExternalID is the one of the store, shown and never sent; empty on the form of a new one.
 	ExternalID string
 	Name       string
 	Note       string
 	Problems   []string
 
-	MaxExternalIDLength int
-	MaxNameLength       int
-	MaxNoteLength       int
+	MaxNameLength int
+	MaxNoteLength int
 }
 
 // choice is one of the values a field offers.
@@ -149,9 +147,9 @@ func writable(value string, severalLines bool) bool {
 	return true
 }
 
-// customerProblems says, in sentences for the page, what of a customer typed cannot be recorded.
-// A new customer is judged on its external id too.
-func customerProblems(form url.Values, isNew bool) []string {
+// customerProblems says, in sentences for the page, what of a customer typed cannot be recorded:
+// of its name and of its note, which is all a form says of a customer.
+func customerProblems(form url.Values) []string {
 	options := issuing.Options()
 	var problems []string
 	check := func(subject, value string, maxLength int, required, severalLines bool) {
@@ -164,9 +162,6 @@ func customerProblems(form url.Values, isNew bool) []string {
 			problems = append(problems, subject+" is too long.")
 		}
 	}
-	if isNew {
-		check("The external id", typed(form, fieldExternalID), maxExternalIDLength, true, false)
-	}
 	check("The name", typed(form, fieldName), options.MaxCustomerNameLength, true, false)
 	check("The note", typed(form, fieldNote), options.MaxNoteLength, false, true)
 	return problems
@@ -175,16 +170,14 @@ func customerProblems(form url.Values, isNew bool) []string {
 func newCustomerFormView(customer *cpstore.CustomerDetail, form url.Values, problems []string) *customerFormView {
 	options := issuing.Options()
 	view := &customerFormView{
-		Heading:             "New customer",
-		Action:              "/customers",
-		New:                 customer == nil,
-		ExternalID:          form.Get(fieldExternalID),
-		Name:                form.Get(fieldName),
-		Note:                form.Get(fieldNote),
-		Problems:            problems,
-		MaxExternalIDLength: maxExternalIDLength,
-		MaxNameLength:       options.MaxCustomerNameLength,
-		MaxNoteLength:       options.MaxNoteLength,
+		Heading:       "New customer",
+		Action:        "/customers",
+		New:           customer == nil,
+		Name:          form.Get(fieldName),
+		Note:          form.Get(fieldNote),
+		Problems:      problems,
+		MaxNameLength: options.MaxCustomerNameLength,
+		MaxNoteLength: options.MaxNoteLength,
 	}
 	if customer != nil {
 		view.Customer = customerLink(customer.ID, customer.Name)

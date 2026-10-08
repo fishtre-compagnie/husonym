@@ -155,7 +155,7 @@ Instants are shown in UTC.
 
 | Request                                | What it does                                                                |
 | -------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /customers/new`, `POST /customers` | Records a customer: an external id, a name, a note.                        |
+| `GET /customers/new`, `POST /customers` | Records a customer: a name and a note. The console draws its external id.  |
 | `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it. |
 | `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
 | `GET /licenses/{id}/renew`             | The same form, prefilled from the license it succeeds.                      |
@@ -172,10 +172,16 @@ the console issued it or not; the one that succeeds it bears an id the console d
 whose key carries a limit the form has no field for is not renewed here: `husonym-license` issues
 its successor.
 
-A key carries the external id of its customer as it is recorded. A customer recorded from the
-console has its external id without the space around it. To a customer whose recorded external id
-begins or ends with a space, the console issues no license: the page says why in place of the
-form, and nothing is trimmed when a license is issued.
+The external id of a customer recorded from the console is a UUID the console draws when the
+customer is recorded. The form does not ask for it, and one that is posted is ignored: two
+customers of the same name are two customers, each under its own. It is shown, read-only, on the
+page of the customer and on the form that edits it. A customer that came from the registry keeps
+the external id its keys carry.
+
+A key carries the external id of its customer as it is recorded. To a customer whose recorded
+external id begins or ends with a space, which only one that came otherwise can have, the console
+issues no license: the page says why in place of the form, and nothing is trimmed when a license
+is issued.
 
 The key of a license is shown on two pages only, both the answer to a `POST`: right after the
 issue, and when it is asked for again. It is in no other page, in no URL and in no log.
@@ -282,7 +288,7 @@ machine. `GET /healthz` stays outside that check too.
   request gives. A license keeps the 50 instances that asked last.
 - The pending reports, as received: fingerprint, instance, day, document, seal and time of
   reception.
-- For each customer recorded from the console: its external id, its name and a note.
+- For each customer recorded from the console: the external id drawn for it, its name and a note.
 - For each license issued from the console: what is stored of any license, the note typed with
   it, and the license it succeeds.
 - The journal of the operators: see "The acts of the operator".

@@ -299,7 +299,7 @@ func Test_Backoffice_ACrossOriginPostWithAValidToken_IsRefusedAndWritesNothing(t
 		&backofficeGates{host: backofficeHost, access: access.Gate(t, time.Now, logger)})
 	require.NoError(t, err)
 	post := func(fetchSite, origin string) *httptest.ResponseRecorder {
-		form := url.Values{"external_id": {"cust-1"}, "name": {"Acme"}}
+		form := url.Values{"name": {"Acme"}}
 		req := httptest.NewRequest(http.MethodPost, "/customers", strings.NewReader(form.Encode()))
 		req.Host = backofficeHost
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -524,11 +524,16 @@ func Test_ServeBackoffice_WithASigningKey_IssuesALicenseTheRingVerifies(t *testi
 	keyFile, pub := writeSigningKey(t)
 	addr, stop := runLocalBackofficeWith(t, pool, keyFile, ringOf(pub))
 
-	status, customerPath, _ := postForm(t, addr, "/customers", url.Values{"external_id": {"cust-cmd"}, "name": {"Acme"}})
+	status, customerPath, _ := postForm(t, addr, "/customers", url.Values{"name": {"Acme"}})
 	require.Equal(t, http.StatusSeeOther, status)
-	require.Contains(t, get(t, "http://"+addr+customerPath).body, "New 30-day license")
+	customerPage := get(t, "http://"+addr+customerPath).body
+	require.Contains(t, customerPage, "New 30-day license")
+	// The identifier of the customer is the one the console drew, as its page shows it.
+	shownID := regexp.MustCompile(`<dt>External id</dt><dd class="id">([0-9a-f-]{36})</dd>`).FindStringSubmatch(customerPage)
+	require.Len(t, shownID, 2, "the page of the customer shows the identifier drawn for it")
+	externalID := shownID[1]
 	draft := url.Values{
-		"customer": {strings.TrimPrefix(customerPath, "/customers/")}, "customer_external_id": {"cust-cmd"}, "customer_name": {"Acme"},
+		"customer": {strings.TrimPrefix(customerPath, "/customers/")}, "customer_external_id": {externalID}, "customer_name": {"Acme"},
 		"all_features": {"1"}, "expires_at": {time.Now().UTC().AddDate(0, 0, 30).Format(time.DateOnly)},
 	}
 	status, _, confirmation := postForm(t, addr, "/licenses/confirm", draft)
@@ -547,7 +552,7 @@ func Test_ServeBackoffice_WithASigningKey_IssuesALicenseTheRingVerifies(t *testi
 	key, err := license.ParseWith(html.UnescapeString(shown[1]), ring)
 	require.NoError(t, err)
 	require.Equal(t, id[1], key.Id)
-	require.Equal(t, "cust-cmd", key.CustomerId)
+	require.Equal(t, externalID, key.CustomerId)
 	require.True(t, key.AllowsEveryFeature())
 	stored, err := cpstore.New(pool).LicenseDetail(t.Context(), id[1], time.Now())
 	require.NoError(t, err)
