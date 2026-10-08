@@ -3,8 +3,9 @@ import { accountToOpen, defaultAccountName } from '@/libs/default-account';
 import { useHusonymUser } from '@/libs/hooks/useHusonymUser';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
-import { useQuery } from '@connectrpc/connect-query';
+import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
 import { UserAccount, UserAccountService } from '@husonym/sdk';
+import { useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ReactElement,
@@ -61,6 +62,7 @@ export default function AccountProvider(props: Props): ReactElement {
 
   const {
     data: user,
+    dataUpdatedAt: userSetAt,
     isLoading: isUserLoading,
     isFetching: isUserFetching,
     error: userError,
@@ -77,15 +79,51 @@ export default function AccountProvider(props: Props): ReactElement {
   } = useQuery(UserAccountService.method.getUserAccounts, undefined, {
     enabled: !isUserLoading,
   });
-  const { data: systemInfo, isPending: isSystemInfoPending } = useQuery(
-    UserAccountService.method.getSystemInformation
-  );
+  const {
+    data: systemInfo,
+    isPending: isSystemInfoPending,
+    refetch: refetchSystemInfo,
+  } = useQuery(UserAccountService.method.getSystemInformation);
 
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [userAccount, setUserAccount] = useState<UserAccount | undefined>(
     undefined
   );
+  // Whether the accounts were asked again since the user entered the instance.
+  const [isListReadSinceEntry, setIsListReadSinceEntry] = useState(false);
+
+  // The entry may create the organization of the instance and bring the user into it:
+  // what was asked before it, by this provider or by the header, tells neither. Each
+  // time the entry passes, the system information is asked again; the accounts are, the
+  // first time. A call still on its way is dropped rather than waited for: it may have
+  // been answered before the entry.
+  useEffect(() => {
+    if (!userSetAt) {
+      return;
+    }
+    queryClient
+      .cancelQueries({
+        queryKey: createConnectQueryKey({
+          schema: UserAccountService.method.getSystemInformation,
+          cardinality: undefined,
+        }),
+      })
+      .then(() => refetchSystemInfo());
+    if (isListReadSinceEntry) {
+      return;
+    }
+    queryClient
+      .cancelQueries({
+        queryKey: createConnectQueryKey({
+          schema: UserAccountService.method.getUserAccounts,
+          cardinality: undefined,
+        }),
+      })
+      .then(() => mutate())
+      .then(() => setIsListReadSinceEntry(true));
+  }, [userSetAt]);
 
   // Where to land when no account was chosen, or when the one chosen is not among the
   // user's. It waits for the system information, which says which account is the
@@ -107,7 +145,18 @@ export default function AccountProvider(props: Props): ReactElement {
     if (isLoading || accountsResponse == null || isPending) {
       return;
     }
-    if (userAccount && userAccount.name === accountName) {
+    // A list asked before the entry may miss the organization the entry brings the
+    // user into: no account is opened from it.
+    if (!isListReadSinceEntry) {
+      return;
+    }
+    // An account opened by setAccount may not be in the list yet (an invitation just
+    // accepted): it stays. One the list holds is compared below, for it may have changed.
+    if (
+      userAccount &&
+      userAccount.name === accountName &&
+      !accountsResponse.accounts.some((a) => a.name === accountName)
+    ) {
       return;
     }
     const target = accountToOpen(
@@ -144,6 +193,7 @@ export default function AccountProvider(props: Props): ReactElement {
     accountsKey,
     isLoading,
     isPending,
+    isListReadSinceEntry,
     accountName,
     fallbackAccountName,
   ]);
@@ -160,12 +210,16 @@ export default function AccountProvider(props: Props): ReactElement {
     if (userAccount || !user) {
       return undefined;
     }
+    // A list asked before the entry, by this provider or by the header, may answer
+    // empty or with an error, even after the entry: it tells nothing. Only the one
+    // asked since does.
+    if (!isListReadSinceEntry || isFetching) {
+      return undefined;
+    }
     if (accountsError) {
       return getErrorMessage(accountsError);
     }
-    // The list may have been read by another component before the user was set: it
-    // counts once it was read again.
-    if (!isFetching && accountsResponse?.accounts.length === 0) {
+    if (accountsResponse?.accounts.length === 0) {
       return 'You are signed in, but you have no account on this instance.';
     }
     return undefined;

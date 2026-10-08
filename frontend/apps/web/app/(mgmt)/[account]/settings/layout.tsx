@@ -114,9 +114,11 @@ function useGetNavSettings(): Item[] {
       ? items.filter((item) => item.ref !== 'hooks')
       : items;
   // the organization of the instance is designated once, and only where people sign in
+  // to an instance of their own
   items =
     !isSystemConfigLoading &&
     systemAppConfigData?.isAuthEnabled &&
+    !systemAppConfigData.isHusonymCloud &&
     systemInfo !== undefined &&
     !systemInfo.instanceOrganizationAccountId
       ? items

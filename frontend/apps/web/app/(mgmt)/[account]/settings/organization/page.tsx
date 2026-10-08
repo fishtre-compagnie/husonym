@@ -41,6 +41,13 @@ export default function Page(): ReactElement {
             {getErrorMessage(systemInfo.error)}
           </AlertDescription>
         </Alert>
+      ) : systemAppConfig?.isHusonymCloud ? (
+        <Alert>
+          <AlertTitle>Nothing to designate</AlertTitle>
+          <AlertDescription>
+            An organization is designated on a self-hosted instance only.
+          </AlertDescription>
+        </Alert>
       ) : organizationId ? (
         // The entry leaves the settings once an organization is retained; the page
         // still answers whoever comes to it by its address.
