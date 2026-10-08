@@ -107,10 +107,9 @@ func (r *Renewal) Answer(
 		writing, done := context.WithTimeout(ctx, bookkeepingTimeout)
 		err = r.store.CountSealRejection(writing, issued.Id, now)
 		done()
-		if err != nil {
-			if ctx.Err() != nil {
-				return Nothing, nil, ctx.Err()
-			}
+		// A caller that went away while the refusal was counted is answered as any wrong seal
+		// is: an error here would answer a known fingerprint otherwise than an unknown one.
+		if err != nil && ctx.Err() == nil {
 			r.unrecorded(ctx, RejectionNotCounted)
 		}
 		return Nothing, nil, nil

@@ -71,7 +71,7 @@ func (a *attempts) connect(context.Context) error {
 
 func Test_DatabaseWait_OfTheCommands_IsTwoSecondsApartForAMinute(t *testing.T) {
 	require.Equal(t, 2*time.Second, startWait.every)
-	require.Equal(t, 60*time.Second, startWait.atMost)
+	require.Equal(t, 20*time.Second, startWait.atMost)
 	require.LessOrEqual(t, startWait.attempt, startWait.atMost)
 }
 

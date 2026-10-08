@@ -31,8 +31,10 @@ type databaseWait struct {
 	attempt time.Duration
 }
 
-// startWait is the wait of `serve public` and of `serve backoffice`.
-var startWait = databaseWait{every: 2 * time.Second, atMost: 60 * time.Second, attempt: 5 * time.Second}
+// startWait is the wait of `serve public` and of `serve backoffice`. It is kept well under the
+// time whatever runs the server gives it to start: a wait as long as that time would leave none
+// for the migration that follows, and a migration cut short leaves a version to repair by hand.
+var startWait = databaseWait{every: 2 * time.Second, atMost: 20 * time.Second, attempt: 5 * time.Second}
 
 // awaitDatabase waits for the database at databaseURL to be reachable, as startWait says.
 func awaitDatabase(ctx context.Context, databaseURL string, logger *slog.Logger) error {

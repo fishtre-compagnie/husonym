@@ -25,7 +25,7 @@ counts are printed all the same, the command exits non-zero, and the server take
 within the hour.
 
 Both servers wait for a database that cannot be reached yet when they start: they try again every
-2 seconds, for 60 seconds at most, then fail with the error they would have had at once. One line
+2 seconds, for 20 seconds at most, then fail with the error they would have had at once. One line
 of the log, in fixed words, says that a server is waiting. Only a database that cannot be reached
 is waited for, one that is starting up included: an address that cannot be read, a database that
 answers and refuses the connection, and a migration that fails are told at once. A server told to
@@ -127,7 +127,8 @@ leaves no row.
 Neither of those two writes decides an answer. When the ask cannot be recorded, the instance is
 answered all the same, with its license or with 204 as the chain says; when a refused seal cannot
 be counted, the answer is the 204 of an unknown fingerprint. Each is one line of the log in fixed
-words and one more in `husonym_controlplane_renewal_bookkeeping_failures_total`.
+words and one more in `husonym_controlplane_renewal_bookkeeping_failures_total`. A write that
+hangs is given up after 2 seconds and told like one that failed.
 
 A request proves that whoever sealed it held the key of the license at the instant it states, and
 nothing more. It is not used up by its answer: within the 5 minutes its instant stays fresh,
