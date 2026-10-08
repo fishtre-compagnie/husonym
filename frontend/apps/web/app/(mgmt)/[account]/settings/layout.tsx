@@ -6,7 +6,8 @@ import { useAccount } from '@/components/providers/account-provider';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { cn } from '@/libs/utils';
 import { toTitleCase } from '@/util/util';
-import { UserAccountType } from '@husonym/sdk';
+import { useQuery } from '@connectrpc/connect-query';
+import { UserAccountService, UserAccountType } from '@husonym/sdk';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactElement } from 'react';
@@ -79,6 +80,9 @@ function useGetNavSettings(): Item[] {
   const { account } = useAccount();
   const { data: systemAppConfigData, isLoading: isSystemConfigLoading } =
     useGetSystemAppConfig();
+  const { data: systemInfo } = useQuery(
+    UserAccountService.method.getSystemInformation
+  );
 
   let items = getAllNavSettings(account?.name ?? '');
   items =
@@ -109,6 +113,14 @@ function useGetNavSettings(): Item[] {
     !isSystemConfigLoading && !systemAppConfigData?.isAccountHooksEnabled
       ? items.filter((item) => item.ref !== 'hooks')
       : items;
+  // the organization of the instance is designated once, and only where people sign in
+  items =
+    !isSystemConfigLoading &&
+    systemAppConfigData?.isAuthEnabled &&
+    systemInfo !== undefined &&
+    !systemInfo.instanceOrganizationAccountId
+      ? items
+      : items.filter((item) => item.ref !== 'organization');
 
   return items;
 }
@@ -129,6 +141,11 @@ function getAllNavSettings(accountName: string): Item[] {
       href: `/${accountName}/settings/members`,
       ref: 'members',
       title: 'Members',
+    },
+    {
+      href: `/${accountName}/settings/organization`,
+      ref: 'organization',
+      title: 'Organization',
     },
     {
       href: `/${accountName}/settings/billing`,

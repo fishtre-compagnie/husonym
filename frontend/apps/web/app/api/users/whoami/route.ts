@@ -1,9 +1,6 @@
 import { withHusonymContext } from '@/api-only/husonym-context';
 import { create } from '@bufbuild/protobuf';
-import {
-  SetPersonalAccountRequestSchema,
-  SetUserRequestSchema,
-} from '@husonym/sdk';
+import { EnterInstanceRequestSchema, SetUserRequestSchema } from '@husonym/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -12,8 +9,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       create(SetUserRequestSchema, {})
     );
 
-    await ctx.client.users.setPersonalAccount(
-      create(SetPersonalAccountRequestSchema, {})
+    // The API decides where the user lands: the organization of the instance, or their
+    // personal account where no organization applies.
+    await ctx.client.users.enterInstance(
+      create(EnterInstanceRequestSchema, {})
     );
     return setUserResp;
   })(req);

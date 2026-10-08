@@ -41,9 +41,15 @@ export default function AccountSwitcher(_: Props): ReactElement | null {
   const { data, isLoading } = useQuery(
     UserAccountService.method.getUserAccounts
   );
+  const { data: systemInfo, isLoading: isSystemInfoLoading } = useQuery(
+    UserAccountService.method.getSystemInformation
+  );
   const [showNewTeamDialog, setShowNewTeamDialog] = useState(false);
   const { data: systemAppConfigData } = useGetSystemAppConfig();
   const accounts = data?.accounts ?? [];
+  // Once the instance retains an organization, people work in it: no team is created
+  // from here any more, and no personal account is converted.
+  const hasOrganization = !!systemInfo?.instanceOrganizationAccountId;
   const createNewTeamForm = useForm<CreateTeamFormValues>({
     mode: 'onChange',
     resolver: yupResolver(CreateTeamFormValues),
@@ -59,8 +65,14 @@ export default function AccountSwitcher(_: Props): ReactElement | null {
     },
   });
 
-  if (isLoading) {
+  if (isLoading || isSystemInfoLoading) {
     return <Skeleton className=" h-full w-[200px]" />;
+  }
+  // With a single account there is nothing to switch to: its name stands alone.
+  if (hasOrganization && accounts.length <= 1) {
+    return account ? (
+      <span className="px-2 text-sm font-medium">{account.name}</span>
+    ) : null;
   }
 
   return (
@@ -83,9 +95,10 @@ export default function AccountSwitcher(_: Props): ReactElement | null {
             setShowNewTeamDialog(true);
           }}
           showCreateTeamDialog={
-            !systemAppConfigData?.isHusonymCloud ||
-            (systemAppConfigData.isHusonymCloud &&
-              systemAppConfigData.isStripeEnabled)
+            !hasOrganization &&
+            (!systemAppConfigData?.isHusonymCloud ||
+              (systemAppConfigData.isHusonymCloud &&
+                systemAppConfigData.isStripeEnabled))
           }
         />
       }
@@ -94,7 +107,7 @@ export default function AccountSwitcher(_: Props): ReactElement | null {
         (systemAppConfigData?.isStripeEnabled ?? false)
       }
       showConvertPersonalToTeamOption={
-        account?.type === UserAccountType.PERSONAL
+        !hasOrganization && account?.type === UserAccountType.PERSONAL
       }
     />
   );
