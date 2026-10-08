@@ -117,7 +117,7 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 						TableName:       table.Table,
 						ReportKey:       scanned.ResultKey,
 						ScanFingerprint: table.Fingerprint,
-						Incomplete:      unanswered != "",
+						Incomplete:      unanswered != "" || scanned.Analyzer == report.AnalyzerPartial,
 					},
 					unanswered: unanswered,
 				})
@@ -128,22 +128,19 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 	return outcome
 }
 
-// unansweredBy says what is missing from the scan of a table: the model when it could not
-// be asked, the analyzer when it could not be asked or did not analyze every column. It
-// is empty for a table that was fully scanned.
+// unansweredBy says what is missing from the scan of a table, and fails the run: the model
+// when it could not be asked, the analyzer when it could not be asked. It is empty for a
+// table that was scanned, though perhaps not every column of it: an analyzer that refuses
+// a column may refuse it on every run, and does not fail the run for that. The report of
+// the table says which columns were not analyzed, and the index marks the table
+// incomplete, so that an incremental run scans it again.
 func unansweredBy(scanned *TablePiiDetectResponse) string {
 	model := scanned.Model == report.ModelFailed
-	switch scanned.Analyzer {
-	case report.AnalyzerFailed:
+	if scanned.Analyzer == report.AnalyzerFailed {
 		if model {
 			return "the model and the analyzer did not answer"
 		}
 		return "the analyzer did not answer"
-	case report.AnalyzerPartial:
-		if model {
-			return "the model did not answer and the analyzer could not analyze every column"
-		}
-		return "the analyzer could not analyze every column"
 	}
 	if model {
 		return "the model did not answer"

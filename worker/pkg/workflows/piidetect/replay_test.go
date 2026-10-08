@@ -49,6 +49,10 @@ func Test_ReplaysARunThatRecordedAVersion(t *testing.T) {
 		// Three tables scanned one at a time, by an API without analyzer: the first
 		// learns it, the two others are started knowing it, and the run completes.
 		{name: "job-analyzer-absent", tablesAtOnce: 3},
+		// Three tables whose free-text column the analyzer refuses, recorded after the runs
+		// reported their start and their end: each is analyzed in part, and the run
+		// completes.
+		{name: "job-analyzer-partial", tablesAtOnce: 3},
 	} {
 		t.Run(history.name, func(t *testing.T) {
 			// The runs recorded the answer of the license they started with: they follow

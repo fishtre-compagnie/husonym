@@ -42,7 +42,7 @@ func Test_JobPiiDetect_ATableWithoutAnalyzerTellsTheTablesStartedAfterIt(t *test
 		SuccessfulTableReports: []*report.TableEntry{entry("t1"), entry("t2"), entry("t3")},
 	}, *saved)
 	require.Equal(t, []string{createdKind, succeededKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1"}, versions.all())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1"}, versions.all())
 }
 
 // The tables that are being scanned when another learns that there is no analyzer were
@@ -120,10 +120,10 @@ func Test_UnansweredBy(t *testing.T) {
 		{report.ModelFailed, report.AnalyzerNone, "the model did not answer"},
 		{report.ModelAnswered, report.AnalyzerFailed, "the analyzer did not answer"},
 		{"", report.AnalyzerFailed, "the analyzer did not answer"},
-		{report.ModelAnswered, report.AnalyzerPartial, "the analyzer could not analyze every column"},
-		{report.ModelNone, report.AnalyzerPartial, "the analyzer could not analyze every column"},
+		{report.ModelAnswered, report.AnalyzerPartial, ""},
+		{report.ModelNone, report.AnalyzerPartial, ""},
 		{report.ModelFailed, report.AnalyzerFailed, "the model and the analyzer did not answer"},
-		{report.ModelFailed, report.AnalyzerPartial, "the model did not answer and the analyzer could not analyze every column"},
+		{report.ModelFailed, report.AnalyzerPartial, "the model did not answer"},
 	} {
 		t.Run("model "+tt.model+", analyzer "+tt.analyzer, func(t *testing.T) {
 			require.Equal(t, tt.want, unansweredBy(&TablePiiDetectResponse{Model: tt.model, Analyzer: tt.analyzer}))
@@ -137,21 +137,20 @@ func Test_NotFullyScanned(t *testing.T) {
 	outcome := &scanOutcome{
 		scanned: []scannedTable{
 			{entry: entry("whole")},
-			{entry: entry("partly"), unanswered: "the analyzer could not analyze every column"},
+			{entry: entry("silent"), unanswered: "the analyzer did not answer"},
 			{entry: &report.TableEntry{TableSchema: "public", TableName: "marked", Incomplete: true}},
 		},
 		failed: []*report.FailedTable{{TableSchema: "public", TableName: "broken", Reason: "the columns cannot be read"}},
 	}
 
 	require.Equal(t,
-		[]string{"public.broken (failed)", "public.partly (the analyzer could not analyze every column)"},
+		[]string{"public.broken (failed)", "public.silent (the analyzer did not answer)"},
 		outcome.notFullyScanned(),
 	)
 }
 
-// A table whose analyzer could not be asked, or did not analyze every column, is marked
-// in the index. The run saves the index, then ends failed on a message that names the
-// table and what did not answer.
+// A table whose analyzer could not be asked is marked in the index. The run saves the
+// index, then ends failed on a message that names the table and what did not answer.
 func Test_JobPiiDetect_ATableTheAnalyzerDidNotAnswerForFailsTheRunOnceTheIndexIsSaved(t *testing.T) {
 	run := newJobRun(t, 3)
 	versions := watchVersions(run.env)
@@ -179,8 +178,7 @@ func Test_JobPiiDetect_ATableTheAnalyzerDidNotAnswerForFailsTheRunOnceTheIndexIs
 	require.ErrorAs(t, run.env.GetWorkflowError(), &appErr)
 	require.Equal(t, "ScanIncomplete", appErr.Type())
 	require.Equal(t,
-		"4 of 5 tables were not fully scanned: public.partly_analyzed (the analyzer could not analyze every column), "+
-			"public.silent_analyzer (the analyzer did not answer), "+
+		"3 of 5 tables were not fully scanned: public.silent_analyzer (the analyzer did not answer), "+
 			"public.silent_both (the model and the analyzer did not answer), "+
 			"public.silent_model (the model did not answer)",
 		appErr.Message(),
@@ -196,5 +194,36 @@ func Test_JobPiiDetect_ATableTheAnalyzerDidNotAnswerForFailsTheRunOnceTheIndexIs
 		entry("t1"),
 	}}, *saved)
 	require.Equal(t, []string{createdKind, failedKind}, run.started())
-	require.Equal(t, []string{"license-read-recorded-1", "pii-detect-incomplete-run-fails-1"}, versions.all())
+	require.Equal(t, []string{
+		"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1",
+		"pii-detect-incomplete-run-fails-1",
+	}, versions.all())
+}
+
+// An analyzer that refuses a column of a table, as it may on every run, does not fail the
+// run: it ends well, with the table marked incomplete in the index so that an incremental
+// run scans it again, and reads no version of its own for it. The report of the table, not
+// the run, says which columns were not analyzed.
+func Test_JobPiiDetect_AColumnTheAnalyzerRefusesDoesNotFailTheRun(t *testing.T) {
+	run := newJobRun(t, 2)
+	versions := watchVersions(run.env)
+	run.withDetails(plainDetails())
+	run.withTables("t1", "partly_analyzed")
+	run.scanTablesTo(func(req *TablePiiDetectRequest) (steps, error) {
+		if req.TableName == "partly_analyzed" {
+			return steps{model: report.ModelAnswered, analyzer: report.AnalyzerPartial}, nil
+		}
+		return steps{model: report.ModelAnswered, analyzer: report.AnalyzerAnswered}, nil
+	})
+	saved := run.savesReport()
+
+	run.execute()
+
+	require.True(t, run.env.IsWorkflowCompleted())
+	require.NoError(t, run.env.GetWorkflowError())
+	partly := entry("partly_analyzed")
+	partly.Incomplete = true
+	requireReport(t, &report.JobReport{SuccessfulTableReports: []*report.TableEntry{partly, entry("t1")}}, *saved)
+	require.Equal(t, []string{createdKind, succeededKind}, run.started())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "run-usage-reported-1"}, versions.all())
 }

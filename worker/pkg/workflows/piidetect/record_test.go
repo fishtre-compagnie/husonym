@@ -15,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
@@ -91,6 +92,17 @@ func Test_RecordsHistories(t *testing.T) {
 			input:    &JobPiiDetectRequest{JobId: recordedJob},
 			analyzer: &DetectPiiContentResponse{PiiColumns: map[string]report.AnalyzerFinding{}, Status: report.AnalyzerNone},
 			analyzed: 1,
+		},
+		// Three tables scanned one at a time, whose free-text column the analyzer refuses:
+		// each is analyzed in part, and the run ends well.
+		{
+			name:     "job-analyzer-partial",
+			workflow: JobWorkflowName,
+			input:    &JobPiiDetectRequest{JobId: recordedJob},
+			analyzer: &DetectPiiContentResponse{
+				PiiColumns: map[string]report.AnalyzerFinding{}, NotAnalyzed: []string{"note"}, Status: report.AnalyzerPartial,
+			},
+			analyzed: 3,
 		},
 	} {
 		t.Run(run.name, func(t *testing.T) {
@@ -215,5 +227,7 @@ func registerStubActivities(recorder worker.Worker, analyzer *DetectPiiContentRe
 			ExternalId: report.TableReportExternalId(req.TableSchema, req.TableName),
 		}}, nil
 	})
+	stub("RecordRunStarted", func(context.Context, *runusage.RunStartedRequest) error { return nil })
+	stub("RecordRunEnded", func(context.Context, *runusage.RunEndedRequest) error { return nil })
 	return analyzed
 }
