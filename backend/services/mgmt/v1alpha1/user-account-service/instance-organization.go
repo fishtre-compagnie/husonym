@@ -36,8 +36,8 @@ func (s *Service) isInstanceIdentity(ctx context.Context) bool {
 }
 
 // EnterInstance brings the caller into the organization of the instance, and answers the account
-// they land in. Whoever the organization is not for, and whoever enters an instance that has
-// accounts and retains none, gets what SetPersonalAccount gives, from SetPersonalAccount itself.
+// they land in. Whoever the organization is not for, and whoever enters an instance where people
+// have accounts and that retains none, gets what SetPersonalAccount gives, from SetPersonalAccount itself.
 func (s *Service) EnterInstance(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.EnterInstanceRequest],

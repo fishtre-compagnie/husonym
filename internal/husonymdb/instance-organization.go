@@ -65,13 +65,19 @@ func (d *HusonymDb) GetInstanceOrganization(ctx context.Context) (pgtype.UUID, b
 }
 
 // EnterInstance brings a user into the organization of the instance: it creates the
-// organization on an instance that has no account at all, and adds the user to the one retained
-// otherwise. An instance that has accounts and retains none is left as it is.
+// organization on an instance that is new for people, and adds the user to the one retained
+// otherwise. An instance where people have accounts and that retains none is left as it is.
+//
+// An instance is new for people when no account has a person among its members, a person being a
+// user an identity provider vouches for. The account of the anonymous user, which is there before
+// anybody signs in on an instance that was seeded or first ran without authentication, does not
+// make it an instance that has accounts; nor does the account of the user of an API key. The
+// user who enters has an association already and no account yet: they do not count either.
 //
 // An entry is made on every page load, so it holds nothing on the instance once an
 // organization is retained: the organization never changes then, and two entries of one user at
 // once write the same membership. Only the entry that may create the organization holds the row
-// of the instance, so that two first entries at once do not both find no account: the second
+// of the instance, so that two first entries at once do not both find no such account: the second
 // waits, looks again, then joins what the first created. That is why that transaction is read
 // committed, as in SetPersonalAccount.
 //
@@ -95,7 +101,7 @@ func (d *HusonymDb) EnterInstance(
 	if organization.Valid {
 		return d.enterOrganization(ctx, userId, organization, roles)
 	}
-	accounts, err := d.Q.CountAccounts(ctx, d.Db)
+	accounts, err := d.Q.CountAccountsWithPersonMember(ctx, d.Db)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +144,7 @@ func (d *HusonymDb) EnterInstance(
 		if organization.Valid {
 			return nil
 		}
-		accounts, err := d.Q.CountAccounts(ctx, dbtx)
+		accounts, err := d.Q.CountAccountsWithPersonMember(ctx, dbtx)
 		if err != nil {
 			return err
 		}
@@ -197,8 +203,8 @@ func (d *HusonymDb) enterOrganization(
 	return &InstanceEntry{Outcome: EntryJoined, AccountId: organization}, nil
 }
 
-// createOrganization creates, under the id given, the organization of an instance that has no
-// account, with the user as its first member, and has the instance retain it. The user was given
+// createOrganization creates, under the id given, the organization of an instance that is new
+// for people, with the user as its first member, and has the instance retain it. The user was given
 // the admin role for that id beforehand.
 func createOrganization(
 	ctx context.Context,

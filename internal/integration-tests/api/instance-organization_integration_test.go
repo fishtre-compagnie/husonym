@@ -203,6 +203,37 @@ func (s *IntegrationTestSuite) Test_EnterInstance_InstanceWithAccounts_IsThePers
 	require.False(t, retained)
 }
 
+// An instance that first ran without authentication holds the anonymous user and their personal
+// account, and nobody else: it is new for people. The first one to sign in creates the
+// organization and administers it, and the account of the anonymous user stays as it was.
+func (s *IntegrationTestSuite) Test_EnterInstance_OnlyTheAnonymousAccount_IsANewInstanceForPeople() {
+	t := s.T()
+	anonymous := s.OSSUnauthenticatedLicensedClients.Users()
+	anonymousAccount := s.createPersonalAccount(s.ctx, anonymous)
+
+	first := s.person("after-anonymous-first")
+	organization := s.enterInstance(first)
+
+	require.NotEqual(t, anonymousAccount, organization)
+	retainedId, retained := s.retainedOrganization()
+	require.True(t, retained)
+	require.Equal(t, organization, retainedId)
+	accounts := s.accountsOf(first)
+	require.Len(t, accounts, 1, "the organization, and neither a personal account nor the anonymous one")
+	require.Equal(t, mgmtv1alpha1.UserAccountType_USER_ACCOUNT_TYPE_TEAM, accounts[organization].GetType())
+	s.requireAdminOf(first, organization)
+
+	second := s.person("after-anonymous-second")
+	require.Equal(t, organization, s.enterInstance(second))
+	s.requireViewerOf(second, organization)
+
+	untouched := s.accountsOf(anonymous)
+	require.Len(t, untouched, 1)
+	require.Equal(t, "personal", untouched[anonymousAccount].GetName())
+	require.Equal(t, mgmtv1alpha1.UserAccountType_USER_ACCOUNT_TYPE_PERSONAL, untouched[anonymousAccount].GetType())
+	require.Equal(t, 1, s.membersOf(anonymousAccount))
+}
+
 // The organization is for the people the provider of the deployment vouches for. Somebody
 // another provider vouches for, and an API key, get a personal account as before, on a new
 // instance as on one that retains an organization: neither creates it, neither enters it.

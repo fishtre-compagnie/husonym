@@ -264,6 +264,106 @@ func (s *IntegrationTestSuite) Test_EnterInstance_AccountsPresentAndNoneRetained
 	require.Empty(t, accounts)
 }
 
+// seedAnonymousAccount leaves what scripts/seed-husonym.sql leaves before anybody signs in, and
+// what an instance first run without authentication holds: the anonymous user and their personal
+// account, under the identifiers of the script.
+func (s *IntegrationTestSuite) seedAnonymousAccount(t testing.TB) (userId, accountId pgtype.UUID) {
+	t.Helper()
+	const anonymous, personal = "00000000-0000-0000-0000-000000000000", "43c71652-b3f7-4dbb-87c2-508075496054"
+	_, err := s.pgcontainer.DB.Exec(s.ctx,
+		"INSERT INTO husonym_api.users (id) VALUES ($1) ON CONFLICT DO NOTHING", anonymous)
+	require.NoError(t, err)
+	_, err = s.pgcontainer.DB.Exec(s.ctx,
+		"INSERT INTO husonym_api.accounts (id, account_type, account_slug) VALUES ($1, 0, 'personal') ON CONFLICT DO NOTHING",
+		personal)
+	require.NoError(t, err)
+	_, err = s.pgcontainer.DB.Exec(s.ctx,
+		"INSERT INTO husonym_api.account_user_associations (account_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+		personal, anonymous)
+	require.NoError(t, err)
+
+	userId, err = husonymdb.ToUuid(anonymous)
+	require.NoError(t, err)
+	accountId, err = husonymdb.ToUuid(personal)
+	require.NoError(t, err)
+	return userId, accountId
+}
+
+// The anonymous user is not a person: the account seeded for them before anybody signs in does
+// not make the instance one that already has accounts. The first person creates the organization
+// beside it, and what was seeded stays as it was.
+func (s *IntegrationTestSuite) Test_EnterInstance_OnlyTheAnonymousAccountIsANewInstanceForPeople() {
+	t := s.T()
+	roles := &fakeRoles{}
+	anonymous, seeded := s.seedAnonymousAccount(t)
+	first := s.setUser(t, s.ctx, "first")
+	second := s.setUser(t, s.ctx, "second")
+
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
+	requireNoErrResp(t, created, err)
+	require.Equal(t, husonymdb.EntryCreated, created.Outcome)
+	require.NotEqual(t, husonymdb.UUIDString(seeded), husonymdb.UUIDString(created.AccountId))
+	s.requireOrganization(t, created.AccountId)
+	organization, err := s.db.Q.GetAccount(s.ctx, s.db.Db, created.AccountId)
+	require.NoError(t, err)
+	require.Equal(t, "organization", organization.AccountSlug)
+	require.Equal(t, fakeAdmin, roles.of(first.ID, created.AccountId))
+
+	joined, err := s.db.EnterInstance(s.ctx, second.ID, roles)
+	requireNoErrResp(t, joined, err)
+	require.Equal(t, husonymdb.EntryJoined, joined.Outcome)
+	require.Equal(t, fakeViewer, roles.of(second.ID, created.AccountId))
+
+	// What was seeded is untouched: the same account, with the anonymous user alone in it.
+	untouched, err := s.db.Q.GetAccount(s.ctx, s.db.Db, seeded)
+	require.NoError(t, err)
+	require.Equal(t, husonymdb.AccountType_Personal, husonymdb.AccountType(untouched.AccountType))
+	require.Equal(t, "personal", untouched.AccountSlug)
+	require.True(t, s.isMember(t, anonymous, seeded))
+	require.False(t, s.isMember(t, first.ID, seeded))
+	require.False(t, s.isMember(t, second.ID, seeded))
+	require.False(t, s.isMember(t, anonymous, created.AccountId))
+	require.Equal(t, int64(2), s.countAccounts(t))
+	require.Empty(t, roles.in(seeded))
+}
+
+// Nor is the user of an API key a person: an account whose only member is one is not an account
+// people have.
+func (s *IntegrationTestSuite) Test_EnterInstance_AccountOfAMachineUserAloneIsANewInstanceForPeople() {
+	t := s.T()
+	roles := &fakeRoles{}
+	machine, err := s.db.Q.CreateMachineUser(s.ctx, s.db.Db)
+	require.NoError(t, err)
+	account, err := s.db.Q.CreateTeamAccount(s.ctx, s.db.Db, "machines")
+	require.NoError(t, err)
+	require.NoError(t, s.db.Q.CreateAccountUserAssociation(s.ctx, s.db.Db, db_queries.CreateAccountUserAssociationParams{
+		AccountID: account.ID,
+		UserID:    machine.ID,
+	}))
+	first := s.setUser(t, s.ctx, "first")
+
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
+	requireNoErrResp(t, created, err)
+	require.Equal(t, husonymdb.EntryCreated, created.Outcome)
+	require.NotEqual(t, husonymdb.UUIDString(account.ID), husonymdb.UUIDString(created.AccountId))
+	s.requireOrganization(t, created.AccountId)
+}
+
+// Signing in gives a person their association before they enter, and gives them no account: the
+// people who signed in and have not entered yet do not make the instance one that has accounts.
+func (s *IntegrationTestSuite) Test_EnterInstance_PeopleWithoutAnAccountDoNotMakeTheInstanceExisting() {
+	t := s.T()
+	roles := &fakeRoles{}
+	waiting := s.setUser(t, s.ctx, "signed-in-and-not-entered")
+	first := s.setUser(t, s.ctx, "first")
+
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
+	requireNoErrResp(t, created, err)
+	require.Equal(t, husonymdb.EntryCreated, created.Outcome)
+	require.Equal(t, int64(1), s.countAccounts(t))
+	require.False(t, s.isMember(t, waiting.ID, created.AccountId))
+}
+
 func (s *IntegrationTestSuite) Test_EnterInstance_TwoFirstEntriesAtOnceCreateOneOrganization() {
 	t := s.T()
 	roles := &fakeRoles{}

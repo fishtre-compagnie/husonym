@@ -13,6 +13,18 @@ FOR UPDATE;
 SELECT organization_account_id
 FROM husonym_api.instance;
 
+-- The accounts that have a person among their members. A person is a user an identity provider
+-- vouches for: neither the anonymous user nor the user of an API key is one, so the account of
+-- either alone is not counted. A person who is in no account yet counts for nothing.
+-- name: CountAccountsWithPersonMember :one
+SELECT count(DISTINCT aua.account_id)::bigint
+FROM husonym_api.account_user_associations aua
+WHERE EXISTS (
+  SELECT 1
+  FROM husonym_api.user_identity_provider_associations uipa
+  WHERE uipa.user_id = aua.user_id
+);
+
 -- Only an instance that retains none retains one: the first stays. The count of rows tells
 -- whether this call retained it.
 -- name: SetInstanceOrganization :execrows

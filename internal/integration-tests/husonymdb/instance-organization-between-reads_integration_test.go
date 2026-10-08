@@ -10,16 +10,17 @@ import (
 )
 
 // beforeFirstCount is the queries of the database, with something done once, just before the
-// accounts are first counted: what another entry does between the two reads an entry starts with.
+// accounts people have are first counted: what another entry does between the two reads an entry
+// starts with.
 type beforeFirstCount struct {
 	db_queries.Querier
 	once sync.Once
 	do   func()
 }
 
-func (q *beforeFirstCount) CountAccounts(ctx context.Context, db db_queries.DBTX) (int64, error) {
+func (q *beforeFirstCount) CountAccountsWithPersonMember(ctx context.Context, db db_queries.DBTX) (int64, error) {
 	q.once.Do(q.do)
-	return q.Querier.CountAccounts(ctx, db)
+	return q.Querier.CountAccountsWithPersonMember(ctx, db)
 }
 
 // An entry reads the organization, then counts the accounts. The first entry of all commits
