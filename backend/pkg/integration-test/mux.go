@@ -56,8 +56,19 @@ var (
 	TestIssuer = "https://idp.test.husonym.dev/"
 
 	validAuthUser = &authmgmt.User{Name: "foo", Email: "bar", EmailVerified: true, Picture: "baz"}
+)
 
-	authinterceptor = auth_interceptor.NewInterceptor(
+// issuerHeader carries the issuer a fake token claims, for a test that needs another one than
+// TestIssuer. See WithIssuer.
+const issuerHeader = "X-Husonym-Test-Issuer"
+
+// newAuthInterceptor stands for the authentication of a deployment. A worker key is taken at its
+// word, an account API key is looked up and held to its permissions as a deployment does, and
+// anything else is the subject of a token TestIssuer issued, unless the call names another
+// issuer.
+func newAuthInterceptor(pgcontainer *tcpostgres.PostgresTestContainer) connect.Interceptor {
+	accountKeys := auth_apikey.New(db_queries.New(), pgcontainer.DB, nil, nil)
+	return auth_interceptor.NewInterceptor(
 		func(ctx context.Context, header http.Header, spec connect.Spec) (context.Context, error) {
 			// will need to further fill this out as the tests grow
 			authuserid, err := utils.GetBearerTokenFromHeader(header, "Authorization")
@@ -71,9 +82,16 @@ var (
 					ApiKeyType: apikey.WorkerApiKey,
 				}), nil
 			}
+			if apikey.IsValidV1AccountKey(authuserid) {
+				return accountKeys.InjectTokenCtx(ctx, header, spec)
+			}
+			issuer := TestIssuer
+			if named := header.Get(issuerHeader); named != "" {
+				issuer = named
+			}
 			return auth_jwt.SetTokenData(ctx, &auth_jwt.TokenContextData{
 				AuthUserId: authuserid,
-				AuthIssuer: TestIssuer,
+				AuthIssuer: issuer,
 				Claims: &auth_jwt.CustomClaims{
 					Email:         &validAuthUser.Email,
 					EmailVerified: utils.LenientBool(validAuthUser.EmailVerified),
@@ -81,7 +99,7 @@ var (
 			}), nil
 		},
 	)
-)
+}
 
 const (
 	// OSS, Unauthenticated, Licensed
@@ -436,7 +454,7 @@ func (s *HusonymApiTestClient) setupMux(
 	interceptors := []connect.Interceptor{}
 
 	if isAuthEnabled {
-		interceptors = append(interceptors, authinterceptor)
+		interceptors = append(interceptors, newAuthInterceptor(pgcontainer))
 	}
 
 	mux.Handle(mgmtv1alpha1connect.NewUserAccountServiceHandler(

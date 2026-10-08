@@ -855,6 +855,8 @@ func (s *Service) GetSystemInformation(
 		Platform:  versionInfo.Platform,
 		BuildDate: timestamppb.New(builtDate),
 		License:   s.systemLicense(ctx),
+
+		InstanceOrganizationAccountId: s.instanceOrganizationId(ctx),
 	}), nil
 }
 

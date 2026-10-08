@@ -19,6 +19,7 @@ func newHusonymClients(httpUrl string) *HusonymClients {
 
 type clientConfig struct {
 	userId string
+	issuer string
 }
 
 type ClientConfigOption func(*clientConfig)
@@ -26,6 +27,14 @@ type ClientConfigOption func(*clientConfig)
 func WithUserId(userId string) ClientConfigOption {
 	return func(c *clientConfig) {
 		c.userId = userId
+	}
+}
+
+// WithIssuer has the fake token of the client claim another issuer than TestIssuer: the identity
+// of somebody a provider the deployment is not configured with vouches for.
+func WithIssuer(issuer string) ClientConfigOption {
+	return func(c *clientConfig) {
+		c.issuer = issuer
 	}
 }
 
@@ -99,8 +108,12 @@ func getHydratedClientConfig(opts ...ClientConfigOption) *clientConfig {
 }
 
 func getHttpClient(config *clientConfig) *http.Client {
+	client := &http.Client{}
 	if config.userId != "" {
-		return http_client.WithBearerAuth(&http.Client{}, &config.userId)
+		client = http_client.WithBearerAuth(client, &config.userId)
 	}
-	return &http.Client{}
+	if config.issuer != "" {
+		client = http_client.WithHeaders(client, map[string]string{issuerHeader: config.issuer})
+	}
+	return client
 }

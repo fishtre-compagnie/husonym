@@ -45,6 +45,12 @@ const (
 	// UserAccountServiceSetPersonalAccountProcedure is the fully-qualified name of the
 	// UserAccountService's SetPersonalAccount RPC.
 	UserAccountServiceSetPersonalAccountProcedure = "/mgmt.v1alpha1.UserAccountService/SetPersonalAccount"
+	// UserAccountServiceEnterInstanceProcedure is the fully-qualified name of the UserAccountService's
+	// EnterInstance RPC.
+	UserAccountServiceEnterInstanceProcedure = "/mgmt.v1alpha1.UserAccountService/EnterInstance"
+	// UserAccountServiceSetInstanceOrganizationProcedure is the fully-qualified name of the
+	// UserAccountService's SetInstanceOrganization RPC.
+	UserAccountServiceSetInstanceOrganizationProcedure = "/mgmt.v1alpha1.UserAccountService/SetInstanceOrganization"
 	// UserAccountServiceConvertPersonalToTeamAccountProcedure is the fully-qualified name of the
 	// UserAccountService's ConvertPersonalToTeamAccount RPC.
 	UserAccountServiceConvertPersonalToTeamAccountProcedure = "/mgmt.v1alpha1.UserAccountService/ConvertPersonalToTeamAccount"
@@ -135,6 +141,10 @@ type UserAccountServiceClient interface {
 	GetUserAccounts(context.Context, *connect.Request[v1alpha1.GetUserAccountsRequest]) (*connect.Response[v1alpha1.GetUserAccountsResponse], error)
 	// Sets the current personal account.
 	SetPersonalAccount(context.Context, *connect.Request[v1alpha1.SetPersonalAccountRequest]) (*connect.Response[v1alpha1.SetPersonalAccountResponse], error)
+	// Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.
+	EnterInstance(context.Context, *connect.Request[v1alpha1.EnterInstanceRequest]) (*connect.Response[v1alpha1.EnterInstanceResponse], error)
+	// Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.
+	SetInstanceOrganization(context.Context, *connect.Request[v1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[v1alpha1.SetInstanceOrganizationResponse], error)
 	// Convert a personal account to a team account retaining all of the jobs and connections. This will also create a new empty personal account.
 	ConvertPersonalToTeamAccount(context.Context, *connect.Request[v1alpha1.ConvertPersonalToTeamAccountRequest]) (*connect.Response[v1alpha1.ConvertPersonalToTeamAccountResponse], error)
 	// Creates a new team account
@@ -224,6 +234,18 @@ func NewUserAccountServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			httpClient,
 			baseURL+UserAccountServiceSetPersonalAccountProcedure,
 			connect.WithSchema(userAccountServiceMethods.ByName("SetPersonalAccount")),
+			connect.WithClientOptions(opts...),
+		),
+		enterInstance: connect.NewClient[v1alpha1.EnterInstanceRequest, v1alpha1.EnterInstanceResponse](
+			httpClient,
+			baseURL+UserAccountServiceEnterInstanceProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("EnterInstance")),
+			connect.WithClientOptions(opts...),
+		),
+		setInstanceOrganization: connect.NewClient[v1alpha1.SetInstanceOrganizationRequest, v1alpha1.SetInstanceOrganizationResponse](
+			httpClient,
+			baseURL+UserAccountServiceSetInstanceOrganizationProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("SetInstanceOrganization")),
 			connect.WithClientOptions(opts...),
 		),
 		convertPersonalToTeamAccount: connect.NewClient[v1alpha1.ConvertPersonalToTeamAccountRequest, v1alpha1.ConvertPersonalToTeamAccountResponse](
@@ -403,6 +425,8 @@ type userAccountServiceClient struct {
 	setUser                          *connect.Client[v1alpha1.SetUserRequest, v1alpha1.SetUserResponse]
 	getUserAccounts                  *connect.Client[v1alpha1.GetUserAccountsRequest, v1alpha1.GetUserAccountsResponse]
 	setPersonalAccount               *connect.Client[v1alpha1.SetPersonalAccountRequest, v1alpha1.SetPersonalAccountResponse]
+	enterInstance                    *connect.Client[v1alpha1.EnterInstanceRequest, v1alpha1.EnterInstanceResponse]
+	setInstanceOrganization          *connect.Client[v1alpha1.SetInstanceOrganizationRequest, v1alpha1.SetInstanceOrganizationResponse]
 	convertPersonalToTeamAccount     *connect.Client[v1alpha1.ConvertPersonalToTeamAccountRequest, v1alpha1.ConvertPersonalToTeamAccountResponse]
 	createTeamAccount                *connect.Client[v1alpha1.CreateTeamAccountRequest, v1alpha1.CreateTeamAccountResponse]
 	isUserInAccount                  *connect.Client[v1alpha1.IsUserInAccountRequest, v1alpha1.IsUserInAccountResponse]
@@ -449,6 +473,16 @@ func (c *userAccountServiceClient) GetUserAccounts(ctx context.Context, req *con
 // SetPersonalAccount calls mgmt.v1alpha1.UserAccountService.SetPersonalAccount.
 func (c *userAccountServiceClient) SetPersonalAccount(ctx context.Context, req *connect.Request[v1alpha1.SetPersonalAccountRequest]) (*connect.Response[v1alpha1.SetPersonalAccountResponse], error) {
 	return c.setPersonalAccount.CallUnary(ctx, req)
+}
+
+// EnterInstance calls mgmt.v1alpha1.UserAccountService.EnterInstance.
+func (c *userAccountServiceClient) EnterInstance(ctx context.Context, req *connect.Request[v1alpha1.EnterInstanceRequest]) (*connect.Response[v1alpha1.EnterInstanceResponse], error) {
+	return c.enterInstance.CallUnary(ctx, req)
+}
+
+// SetInstanceOrganization calls mgmt.v1alpha1.UserAccountService.SetInstanceOrganization.
+func (c *userAccountServiceClient) SetInstanceOrganization(ctx context.Context, req *connect.Request[v1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[v1alpha1.SetInstanceOrganizationResponse], error) {
+	return c.setInstanceOrganization.CallUnary(ctx, req)
 }
 
 // ConvertPersonalToTeamAccount calls mgmt.v1alpha1.UserAccountService.ConvertPersonalToTeamAccount.
@@ -593,6 +627,10 @@ type UserAccountServiceHandler interface {
 	GetUserAccounts(context.Context, *connect.Request[v1alpha1.GetUserAccountsRequest]) (*connect.Response[v1alpha1.GetUserAccountsResponse], error)
 	// Sets the current personal account.
 	SetPersonalAccount(context.Context, *connect.Request[v1alpha1.SetPersonalAccountRequest]) (*connect.Response[v1alpha1.SetPersonalAccountResponse], error)
+	// Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.
+	EnterInstance(context.Context, *connect.Request[v1alpha1.EnterInstanceRequest]) (*connect.Response[v1alpha1.EnterInstanceResponse], error)
+	// Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.
+	SetInstanceOrganization(context.Context, *connect.Request[v1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[v1alpha1.SetInstanceOrganizationResponse], error)
 	// Convert a personal account to a team account retaining all of the jobs and connections. This will also create a new empty personal account.
 	ConvertPersonalToTeamAccount(context.Context, *connect.Request[v1alpha1.ConvertPersonalToTeamAccountRequest]) (*connect.Response[v1alpha1.ConvertPersonalToTeamAccountResponse], error)
 	// Creates a new team account
@@ -678,6 +716,18 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 		UserAccountServiceSetPersonalAccountProcedure,
 		svc.SetPersonalAccount,
 		connect.WithSchema(userAccountServiceMethods.ByName("SetPersonalAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userAccountServiceEnterInstanceHandler := connect.NewUnaryHandler(
+		UserAccountServiceEnterInstanceProcedure,
+		svc.EnterInstance,
+		connect.WithSchema(userAccountServiceMethods.ByName("EnterInstance")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userAccountServiceSetInstanceOrganizationHandler := connect.NewUnaryHandler(
+		UserAccountServiceSetInstanceOrganizationProcedure,
+		svc.SetInstanceOrganization,
+		connect.WithSchema(userAccountServiceMethods.ByName("SetInstanceOrganization")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userAccountServiceConvertPersonalToTeamAccountHandler := connect.NewUnaryHandler(
@@ -858,6 +908,10 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 			userAccountServiceGetUserAccountsHandler.ServeHTTP(w, r)
 		case UserAccountServiceSetPersonalAccountProcedure:
 			userAccountServiceSetPersonalAccountHandler.ServeHTTP(w, r)
+		case UserAccountServiceEnterInstanceProcedure:
+			userAccountServiceEnterInstanceHandler.ServeHTTP(w, r)
+		case UserAccountServiceSetInstanceOrganizationProcedure:
+			userAccountServiceSetInstanceOrganizationHandler.ServeHTTP(w, r)
 		case UserAccountServiceConvertPersonalToTeamAccountProcedure:
 			userAccountServiceConvertPersonalToTeamAccountHandler.ServeHTTP(w, r)
 		case UserAccountServiceCreateTeamAccountProcedure:
@@ -933,6 +987,14 @@ func (UnimplementedUserAccountServiceHandler) GetUserAccounts(context.Context, *
 
 func (UnimplementedUserAccountServiceHandler) SetPersonalAccount(context.Context, *connect.Request[v1alpha1.SetPersonalAccountRequest]) (*connect.Response[v1alpha1.SetPersonalAccountResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.SetPersonalAccount is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) EnterInstance(context.Context, *connect.Request[v1alpha1.EnterInstanceRequest]) (*connect.Response[v1alpha1.EnterInstanceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.EnterInstance is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) SetInstanceOrganization(context.Context, *connect.Request[v1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[v1alpha1.SetInstanceOrganizationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.SetInstanceOrganization is not implemented"))
 }
 
 func (UnimplementedUserAccountServiceHandler) ConvertPersonalToTeamAccount(context.Context, *connect.Request[v1alpha1.ConvertPersonalToTeamAccountRequest]) (*connect.Response[v1alpha1.ConvertPersonalToTeamAccountResponse], error) {

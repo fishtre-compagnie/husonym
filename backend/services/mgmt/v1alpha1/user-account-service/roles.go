@@ -18,14 +18,19 @@ import (
 func (s *Service) setRole(ctx context.Context, user rbac.User, account rbac.Account, role mgmtv1alpha1.AccountRole) error {
 	err := s.rbacClient.SetRole(ctx, user, account, role)
 	if errors.Is(err, rbac.ErrRoleNotReadBack) {
-		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
-			ctx,
-			"the role of a member is stored, and is held on this instance once the roles are read again",
-			"userId", user.String(), "accountId", account.String(), "role", role.String(), "error", err,
-		)
+		warnRoleNotReadBack(ctx, user, account, role, err)
 		return nil
 	}
 	return err
+}
+
+// warnRoleNotReadBack tells that a role is stored and not held on this instance yet.
+func warnRoleNotReadBack(ctx context.Context, user rbac.User, account rbac.Account, role mgmtv1alpha1.AccountRole, err error) {
+	logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+		ctx,
+		"the role of a member is stored, and is held on this instance once the roles are read again",
+		"userId", user.String(), "accountId", account.String(), "role", role.String(), "error", err,
+	)
 }
 
 // enforceRbacForRole asks for the rbac feature when a role other than administrator is being
