@@ -2232,6 +2232,78 @@ func (_c *MockQuerier_CreateTeamAccount_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// CreateTeamAccountWithId provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CreateTeamAccountWithId(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams) (HusonymApiAccount, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateTeamAccountWithId")
+	}
+
+	var r0 HusonymApiAccount
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CreateTeamAccountWithIdParams) (HusonymApiAccount, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CreateTeamAccountWithIdParams) HusonymApiAccount); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiAccount)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, CreateTeamAccountWithIdParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CreateTeamAccountWithId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateTeamAccountWithId'
+type MockQuerier_CreateTeamAccountWithId_Call struct {
+	*mock.Call
+}
+
+// CreateTeamAccountWithId is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg CreateTeamAccountWithIdParams
+func (_e *MockQuerier_Expecter) CreateTeamAccountWithId(ctx any, db any, arg any) *MockQuerier_CreateTeamAccountWithId_Call {
+	return &MockQuerier_CreateTeamAccountWithId_Call{Call: _e.mock.On("CreateTeamAccountWithId", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_CreateTeamAccountWithId_Call) Run(run func(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams)) *MockQuerier_CreateTeamAccountWithId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 CreateTeamAccountWithIdParams
+		if args[2] != nil {
+			arg2 = args[2].(CreateTeamAccountWithIdParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CreateTeamAccountWithId_Call) Return(husonymApiAccount HusonymApiAccount, err error) *MockQuerier_CreateTeamAccountWithId_Call {
+	_c.Call.Return(husonymApiAccount, err)
+	return _c
+}
+
+func (_c *MockQuerier_CreateTeamAccountWithId_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams) (HusonymApiAccount, error)) *MockQuerier_CreateTeamAccountWithId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateUserDefinedTransformer provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error) {
 	ret := _mock.Called(ctx, db, arg)

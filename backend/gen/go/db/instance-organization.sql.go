@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createTeamAccountWithId = `-- name: CreateTeamAccountWithId :one
+INSERT INTO husonym_api.accounts (
+  id, account_type, account_slug
+) VALUES (
+  $1, 1, $2
+)
+RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
+`
+
+type CreateTeamAccountWithIdParams struct {
+	ID          pgtype.UUID
+	AccountSlug string
+}
+
+// Creates a team account under an id chosen by the caller, who needed the id before the account
+// existed.
+func (q *Queries) CreateTeamAccountWithId(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams) (HusonymApiAccount, error) {
+	row := db.QueryRow(ctx, createTeamAccountWithId, arg.ID, arg.AccountSlug)
+	var i HusonymApiAccount
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.AccountType,
+		&i.AccountSlug,
+		&i.TemporalConfig,
+		&i.OnboardingConfig,
+		&i.MaxAllowedRecords,
+		&i.StripeCustomerID,
+	)
+	return i, err
+}
+
 const getInstanceOrganization = `-- name: GetInstanceOrganization :one
 SELECT organization_account_id
 FROM husonym_api.instance

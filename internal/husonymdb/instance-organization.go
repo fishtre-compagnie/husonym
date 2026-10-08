@@ -7,6 +7,7 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -35,14 +36,15 @@ type InstanceEntry struct {
 	AccountId pgtype.UUID
 }
 
-// RoleSetter gives a user the admin role in an account, or the viewer role. Roles are not
-// stored by the transactions of this package: it writes them wherever they are.
-type RoleSetter func(ctx context.Context, userId, accountId pgtype.UUID, admin bool) error
-
-// RoleReader tells whether the user holds any role in the account. A member it says holds none
-// is given the viewer role, whatever they held: it has to answer from the roles as they are
-// stored, not from a copy that may be late.
-type RoleReader func(ctx context.Context, userId, accountId pgtype.UUID) (bool, error)
+// InstanceRoles is what an entry needs of the role store. Roles are not stored by the
+// transactions of this package: they are written wherever they are, outside of them.
+type InstanceRoles interface {
+	// GrantAdmin gives the administrator role.
+	GrantAdmin(ctx context.Context, userId, accountId pgtype.UUID) error
+	// GrantViewerIfNone gives the viewer role only where the stored roles hold none for this
+	// user in this account. It never replaces a role.
+	GrantViewerIfNone(ctx context.Context, userId, accountId pgtype.UUID) error
+}
 
 // ErrInstanceOrganizationSet is returned when an organization is designated on an instance
 // that already retains one.
@@ -77,18 +79,21 @@ func (d *HusonymDb) GetInstanceOrganization(ctx context.Context) (pgtype.UUID, b
 // goes with. When the API starts, the members of an account where nobody holds a role are all
 // made admins; a role without a membership grants nothing, since membership is checked before
 // any role. So when one of the two writes is lost, it has to be the membership.
+//
+// No role is written while the instance is held either: the role store may need a connection of
+// the pool this transaction took its own from, and every entry waiting for the instance holds
+// one too.
 func (d *HusonymDb) EnterInstance(
 	ctx context.Context,
 	userId pgtype.UUID,
-	setRole RoleSetter,
-	hasRole RoleReader,
+	roles InstanceRoles,
 ) (*InstanceEntry, error) {
 	organization, err := d.Q.GetInstanceOrganization(ctx, d.Db)
 	if err != nil {
 		return nil, err
 	}
 	if organization.Valid {
-		return d.enterOrganization(ctx, d.Db, userId, organization, setRole, hasRole)
+		return d.enterOrganization(ctx, userId, organization, roles)
 	}
 	accounts, err := d.Q.CountAccounts(ctx, d.Db)
 	if err != nil {
@@ -96,6 +101,18 @@ func (d *HusonymDb) EnterInstance(
 	}
 	if accounts > 0 {
 		return &InstanceEntry{Outcome: EntryPersonal}, nil
+	}
+
+	// The admin role needs the id of the account, and is written before the instance is held:
+	// the id is therefore chosen here, and the account created under it. When this entry ends up
+	// creating nothing -- another one did meanwhile, or what follows fails -- the role stays,
+	// for an account that never exists. It grants nothing.
+	newId, err := ToUuid(uuid.NewString())
+	if err != nil {
+		return nil, err
+	}
+	if err := roles.GrantAdmin(ctx, userId, newId); err != nil {
+		return nil, fmt.Errorf("unable to give its role to the first member: %w", err)
 	}
 
 	var entry *InstanceEntry
@@ -119,7 +136,7 @@ func (d *HusonymDb) EnterInstance(
 			entry = &InstanceEntry{Outcome: EntryPersonal}
 			return nil
 		}
-		entry, err = d.createOrganization(ctx, dbtx, userId, setRole)
+		entry, err = createOrganization(ctx, d.Q, dbtx, userId, newId)
 		return err
 	}); err != nil {
 		return nil, err
@@ -127,50 +144,41 @@ func (d *HusonymDb) EnterInstance(
 	if entry == nil {
 		// Another entry created the organization meanwhile: the instance is released, and this
 		// one enters it as any newcomer does.
-		return d.enterOrganization(ctx, d.Db, userId, organization, setRole, hasRole)
+		return d.enterOrganization(ctx, userId, organization, roles)
 	}
 	return entry, nil
 }
 
 // enterOrganization adds the user to the organization retained, unless they are in it already.
 // It holds nothing: the membership is one statement, which a second one at once leaves as it is.
+//
+// The viewer role is asked for either way, and given only to who holds none: a member keeps the
+// role they hold, and a member whose role was lost gets one back.
 func (d *HusonymDb) enterOrganization(
 	ctx context.Context,
-	dbtx BaseDBTX,
 	userId, organization pgtype.UUID,
-	setRole RoleSetter,
-	hasRole RoleReader,
+	roles InstanceRoles,
 ) (*InstanceEntry, error) {
-	if _, err := d.Q.GetAccount(ctx, dbtx, organization); err != nil {
+	if _, err := d.Q.GetAccount(ctx, d.Db, organization); err != nil {
 		if IsNoRows(err) {
 			return nil, fmt.Errorf("%w: account %s", ErrInstanceOrganizationMissing, UUIDString(organization))
 		}
 		return nil, err
 	}
-	members, err := d.Q.IsUserInAccount(ctx, dbtx, db_queries.IsUserInAccountParams{
+	members, err := d.Q.IsUserInAccount(ctx, d.Db, db_queries.IsUserInAccountParams{
 		AccountId: organization,
 		UserId:    userId,
 	})
 	if err != nil {
 		return nil, err
 	}
+	if err := roles.GrantViewerIfNone(ctx, userId, organization); err != nil {
+		return nil, fmt.Errorf("unable to give a role in the organization: %w", err)
+	}
 	if members > 0 {
-		held, err := hasRole(ctx, userId, organization)
-		if err != nil {
-			return nil, fmt.Errorf("unable to tell whether the member holds a role: %w", err)
-		}
-		if !held {
-			if err := setRole(ctx, userId, organization, false); err != nil {
-				return nil, fmt.Errorf("unable to give a role to a member that held none: %w", err)
-			}
-		}
 		return &InstanceEntry{Outcome: EntryMember, AccountId: organization}, nil
 	}
-
-	if err := setRole(ctx, userId, organization, false); err != nil {
-		return nil, fmt.Errorf("unable to give its role to the new member: %w", err)
-	}
-	if err := d.Q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{
+	if err := d.Q.CreateAccountUserAssociation(ctx, d.Db, db_queries.CreateAccountUserAssociationParams{
 		AccountID: organization,
 		UserID:    userId,
 	}); err != nil {
@@ -179,32 +187,29 @@ func (d *HusonymDb) enterOrganization(
 	return &InstanceEntry{Outcome: EntryJoined, AccountId: organization}, nil
 }
 
-// createOrganization creates the organization of an instance that has no account, with the user
-// as its first member and admin, and has the instance retain it.
-//
-// The role needs the id of the account, so it is written once the account is created and before
-// anything else is. Should what follows fail, the account is rolled back and the role is left
-// for an account that does not exist.
-func (d *HusonymDb) createOrganization(
+// createOrganization creates, under the id given, the organization of an instance that has no
+// account, with the user as its first member, and has the instance retain it. The user was given
+// the admin role for that id beforehand.
+func createOrganization(
 	ctx context.Context,
+	q db_queries.Querier,
 	dbtx BaseDBTX,
-	userId pgtype.UUID,
-	setRole RoleSetter,
+	userId, accountId pgtype.UUID,
 ) (*InstanceEntry, error) {
-	account, err := d.Q.CreateTeamAccount(ctx, dbtx, instanceOrganizationName)
+	account, err := q.CreateTeamAccountWithId(ctx, dbtx, db_queries.CreateTeamAccountWithIdParams{
+		ID:          accountId,
+		AccountSlug: instanceOrganizationName,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the organization: %w", err)
 	}
-	if err := setRole(ctx, userId, account.ID, true); err != nil {
-		return nil, fmt.Errorf("unable to give its role to the first member: %w", err)
-	}
-	if err := d.Q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{
+	if err := q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{
 		AccountID: account.ID,
 		UserID:    userId,
 	}); err != nil {
 		return nil, fmt.Errorf("unable to add the user to the organization: %w", err)
 	}
-	if err := retainOrganization(ctx, d.Q, dbtx, account.ID); err != nil {
+	if err := retainOrganization(ctx, q, dbtx, account.ID); err != nil {
 		return nil, err
 	}
 	return &InstanceEntry{Outcome: EntryCreated, AccountId: account.ID}, nil

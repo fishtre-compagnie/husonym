@@ -67,6 +67,9 @@ type Querier interface {
 	CreatePersonalAccount(ctx context.Context, db DBTX, arg CreatePersonalAccountParams) (HusonymApiAccount, error)
 	CreateSlackOAuthConnection(ctx context.Context, db DBTX, arg CreateSlackOAuthConnectionParams) (HusonymApiSlackOauthConnection, error)
 	CreateTeamAccount(ctx context.Context, db DBTX, accountSlug string) (HusonymApiAccount, error)
+	// Creates a team account under an id chosen by the caller, who needed the id before the account
+	// existed.
+	CreateTeamAccountWithId(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams) (HusonymApiAccount, error)
 	CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error)
 	DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DeleteJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) error

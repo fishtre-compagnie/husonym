@@ -13,53 +13,96 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
-// roleGiven is one call of the role setter.
-type roleGiven struct {
+const (
+	fakeAdmin     = "admin"
+	fakeViewer    = "viewer"
+	fakeDeveloper = "developer"
+)
+
+// roleKey names a user in an account.
+type roleKey struct {
 	user    string
 	account string
-	admin   bool
 }
 
-// fakeRoles stands for the access control: it records the roles given, and answers whether a
-// role is held from them. It can be told to refuse every role.
+func newRoleKey(userId, accountId pgtype.UUID) roleKey {
+	return roleKey{user: husonymdb.UUIDString(userId), account: husonymdb.UUIDString(accountId)}
+}
+
+// fakeRoles stands for the role store, and keeps its contract: one role per user and account,
+// and a viewer role that is given only where none is held. It can be told to refuse every role,
+// and to do something before each write, as a store that needs a connection would.
 type fakeRoles struct {
 	mu     sync.Mutex
-	given  []roleGiven
+	held   map[roleKey]string
 	refuse error
+	before func(ctx context.Context) error
 }
 
-func (f *fakeRoles) set(_ context.Context, userId, accountId pgtype.UUID, admin bool) error {
+var _ husonymdb.InstanceRoles = (*fakeRoles)(nil)
+
+func (f *fakeRoles) grant(ctx context.Context, key roleKey, role string, replace bool) error {
+	if f.before != nil {
+		if err := f.before(ctx); err != nil {
+			return err
+		}
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.refuse != nil {
 		return f.refuse
 	}
-	f.given = append(f.given, roleGiven{
-		user:    husonymdb.UUIDString(userId),
-		account: husonymdb.UUIDString(accountId),
-		admin:   admin,
-	})
+	if f.held == nil {
+		f.held = map[roleKey]string{}
+	}
+	if _, ok := f.held[key]; ok && !replace {
+		return nil
+	}
+	f.held[key] = role
 	return nil
 }
 
-func (f *fakeRoles) has(_ context.Context, userId, accountId pgtype.UUID) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, role := range f.given {
-		if role.user == husonymdb.UUIDString(userId) && role.account == husonymdb.UUIDString(accountId) {
-			return true, nil
-		}
-	}
-	return false, nil
+func (f *fakeRoles) GrantAdmin(ctx context.Context, userId, accountId pgtype.UUID) error {
+	return f.grant(ctx, newRoleKey(userId, accountId), fakeAdmin, true)
 }
 
-func (f *fakeRoles) calls() []roleGiven {
+func (f *fakeRoles) GrantViewerIfNone(ctx context.Context, userId, accountId pgtype.UUID) error {
+	return f.grant(ctx, newRoleKey(userId, accountId), fakeViewer, false)
+}
+
+// set writes a role as something other than an entry would.
+func (f *fakeRoles) set(userId, accountId pgtype.UUID, role string) {
+	_ = f.grant(context.Background(), newRoleKey(userId, accountId), role, true)
+}
+
+// of gives the role a user holds in an account, or nothing.
+func (f *fakeRoles) of(userId, accountId pgtype.UUID) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]roleGiven(nil), f.given...)
+	return f.held[newRoleKey(userId, accountId)]
+}
+
+// in gives the roles held in an account.
+func (f *fakeRoles) in(accountId pgtype.UUID) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var roles []string
+	for key, role := range f.held {
+		if key.account == husonymdb.UUIDString(accountId) {
+			roles = append(roles, role)
+		}
+	}
+	return roles
+}
+
+func (f *fakeRoles) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.held)
 }
 
 func (s *IntegrationTestSuite) countAccounts(t testing.TB) int64 {
@@ -101,7 +144,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_FirstEntryCreatesTheOrganizati
 
 	s.requireNoOrganization(t)
 
-	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles)
 	requireNoErrResp(t, entry, err)
 	require.Equal(t, husonymdb.EntryCreated, entry.Outcome)
 
@@ -113,9 +156,8 @@ func (s *IntegrationTestSuite) Test_EnterInstance_FirstEntryCreatesTheOrganizati
 	s.requireOrganization(t, account.ID)
 	require.True(t, s.isMember(t, user.ID, account.ID))
 	require.Equal(t, int64(1), s.countAccounts(t), "the first entry creates no personal account")
-	require.Equal(t, []roleGiven{
-		{user: husonymdb.UUIDString(user.ID), account: husonymdb.UUIDString(account.ID), admin: true},
-	}, roles.calls())
+	require.Equal(t, fakeAdmin, roles.of(user.ID, account.ID))
+	require.Equal(t, 1, roles.count())
 }
 
 func (s *IntegrationTestSuite) Test_EnterInstance_SecondUserJoinsAsViewer() {
@@ -124,42 +166,61 @@ func (s *IntegrationTestSuite) Test_EnterInstance_SecondUserJoinsAsViewer() {
 	first := s.setUser(t, s.ctx, "first")
 	second := s.setUser(t, s.ctx, "second")
 
-	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
 	requireNoErrResp(t, created, err)
 
-	joined, err := s.db.EnterInstance(s.ctx, second.ID, roles.set, roles.has)
+	joined, err := s.db.EnterInstance(s.ctx, second.ID, roles)
 	requireNoErrResp(t, joined, err)
 	require.Equal(t, husonymdb.EntryJoined, joined.Outcome)
 	require.Equal(t, husonymdb.UUIDString(created.AccountId), husonymdb.UUIDString(joined.AccountId))
 
 	require.True(t, s.isMember(t, second.ID, created.AccountId))
 	require.Equal(t, int64(1), s.countAccounts(t))
-	require.Equal(t, roleGiven{
-		user: husonymdb.UUIDString(second.ID), account: husonymdb.UUIDString(created.AccountId), admin: false,
-	}, roles.calls()[1])
+	require.Equal(t, fakeViewer, roles.of(second.ID, created.AccountId))
+	require.Equal(t, fakeAdmin, roles.of(first.ID, created.AccountId))
 }
 
-func (s *IntegrationTestSuite) Test_EnterInstance_MemberWithARoleIsLeftAsIs() {
+func (s *IntegrationTestSuite) Test_EnterInstance_MemberReentryNeverChangesTheRoleHeld() {
 	t := s.T()
 	roles := &fakeRoles{}
 	first := s.setUser(t, s.ctx, "first")
 	second := s.setUser(t, s.ctx, "second")
+	third := s.setUser(t, s.ctx, "third")
 
-	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
 	requireNoErrResp(t, created, err)
-	_, err = s.db.EnterInstance(s.ctx, second.ID, roles.set, roles.has)
-	require.NoError(t, err)
-	before := roles.calls()
+	for _, user := range []*db_queries.HusonymApiUser{second, third} {
+		_, err = s.db.EnterInstance(s.ctx, user.ID, roles)
+		require.NoError(t, err)
+	}
+	// An administrator gave the third another role since.
+	roles.set(third.ID, created.AccountId, fakeDeveloper)
 
-	for _, user := range []db_queries.HusonymApiUser{*first, *second} {
-		again, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	for _, user := range []*db_queries.HusonymApiUser{second, third} {
+		again, err := s.db.EnterInstance(s.ctx, user.ID, roles)
 		requireNoErrResp(t, again, err)
 		require.Equal(t, husonymdb.EntryMember, again.Outcome)
 		require.Equal(t, husonymdb.UUIDString(created.AccountId), husonymdb.UUIDString(again.AccountId))
 	}
 
-	require.Equal(t, before, roles.calls(), "a member that holds a role is given none")
+	require.Equal(t, fakeViewer, roles.of(second.ID, created.AccountId))
+	require.Equal(t, fakeDeveloper, roles.of(third.ID, created.AccountId))
 	require.Equal(t, int64(1), s.countAccounts(t))
+}
+
+func (s *IntegrationTestSuite) Test_EnterInstance_CreatorWhoReentersStaysAdministrator() {
+	t := s.T()
+	roles := &fakeRoles{}
+	first := s.setUser(t, s.ctx, "first")
+
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
+	requireNoErrResp(t, created, err)
+
+	again, err := s.db.EnterInstance(s.ctx, first.ID, roles)
+	requireNoErrResp(t, again, err)
+	require.Equal(t, husonymdb.EntryMember, again.Outcome)
+	require.Equal(t, husonymdb.UUIDString(created.AccountId), husonymdb.UUIDString(again.AccountId))
+	require.Equal(t, fakeAdmin, roles.of(first.ID, created.AccountId))
 }
 
 func (s *IntegrationTestSuite) Test_EnterInstance_MemberWithoutARoleIsGivenViewer() {
@@ -168,7 +229,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_MemberWithoutARoleIsGivenViewe
 	first := s.setUser(t, s.ctx, "first")
 	second := s.setUser(t, s.ctx, "second")
 
-	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
 	requireNoErrResp(t, created, err)
 	// A member whose role was never written, or was lost.
 	require.NoError(t, s.db.Q.CreateAccountUserAssociation(s.ctx, s.db.Db, db_queries.CreateAccountUserAssociationParams{
@@ -176,12 +237,10 @@ func (s *IntegrationTestSuite) Test_EnterInstance_MemberWithoutARoleIsGivenViewe
 		UserID:    second.ID,
 	}))
 
-	entry, err := s.db.EnterInstance(s.ctx, second.ID, roles.set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, second.ID, roles)
 	requireNoErrResp(t, entry, err)
 	require.Equal(t, husonymdb.EntryMember, entry.Outcome)
-	require.Equal(t, roleGiven{
-		user: husonymdb.UUIDString(second.ID), account: husonymdb.UUIDString(created.AccountId), admin: false,
-	}, roles.calls()[1])
+	require.Equal(t, fakeViewer, roles.of(second.ID, created.AccountId))
 }
 
 func (s *IntegrationTestSuite) Test_EnterInstance_AccountsPresentAndNoneRetainedIsPersonal() {
@@ -192,14 +251,14 @@ func (s *IntegrationTestSuite) Test_EnterInstance_AccountsPresentAndNoneRetained
 	require.NoError(t, err)
 	user := s.setUser(t, s.ctx, "newcomer")
 
-	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles)
 	requireNoErrResp(t, entry, err)
 	require.Equal(t, husonymdb.EntryPersonal, entry.Outcome)
 	require.False(t, entry.AccountId.Valid)
 
 	s.requireNoOrganization(t)
 	require.Equal(t, int64(1), s.countAccounts(t))
-	require.Empty(t, roles.calls())
+	require.Zero(t, roles.count())
 	accounts, err := s.db.Q.GetAccountsByUser(s.ctx, s.db.Db, user.ID)
 	require.NoError(t, err)
 	require.Empty(t, accounts)
@@ -220,7 +279,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_TwoFirstEntriesAtOnceCreateOne
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			entries[i], errs[i] = s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+			entries[i], errs[i] = s.db.EnterInstance(s.ctx, user.ID, roles)
 		}()
 	}
 	wg.Wait()
@@ -233,17 +292,77 @@ func (s *IntegrationTestSuite) Test_EnterInstance_TwoFirstEntriesAtOnceCreateOne
 	require.Equal(t, int64(1), s.countAccounts(t))
 	s.requireOrganization(t, entries[0].AccountId)
 
-	admins := 0
-	for _, role := range roles.calls() {
-		if role.admin {
-			admins++
-		}
-	}
-	require.Len(t, roles.calls(), 2)
-	require.Equal(t, 1, admins, "one administrator, one viewer")
+	// The one that created nothing may have left an administrator role for an account that
+	// never existed: in the organization there is one administrator and one viewer.
+	require.ElementsMatch(t, []string{fakeAdmin, fakeViewer}, roles.in(entries[0].AccountId))
 	for i, user := range users {
 		require.True(t, s.isMember(t, user.ID, entries[i].AccountId))
+		want := fakeViewer
+		if entries[i].Outcome == husonymdb.EntryCreated {
+			want = fakeAdmin
+		}
+		require.Equal(t, want, roles.of(user.ID, entries[i].AccountId))
 	}
+}
+
+// As many first entries at once as the pool has connections, with a role store that takes its
+// connections from that pool: an entry that wrote a role while it holds the instance would wait
+// for a connection the entries waiting for the instance hold.
+func (s *IntegrationTestSuite) Test_EnterInstance_FirstEntriesAtOnceDoNotExhaustThePool() {
+	t := s.T()
+	const entries = 4
+
+	config, err := pgxpool.ParseConfig(s.pgcontainer.URL)
+	require.NoError(t, err)
+	config.MaxConns = entries
+	pool, err := pgxpool.NewWithConfig(s.ctx, config)
+	require.NoError(t, err)
+	defer pool.Close()
+	db := husonymdb.New(pool, db_queries.New())
+
+	roles := &fakeRoles{before: func(ctx context.Context) error {
+		_, err := pool.Exec(ctx, "SELECT 1")
+		return err
+	}}
+	users := make([]*db_queries.HusonymApiUser, entries)
+	for i := range users {
+		users[i] = s.setUser(t, s.ctx, uuid.NewString())
+	}
+
+	// Bounded, so that entries that wait for one another fail instead of hanging.
+	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
+	defer cancel()
+
+	outcomes := make([]husonymdb.EntryOutcome, entries)
+	errs := make([]error, entries)
+	var wg sync.WaitGroup
+	for i, user := range users {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			entry, err := db.EnterInstance(ctx, user.ID, roles)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			outcomes[i] = entry.Outcome
+		}()
+	}
+	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+
+	created := 0
+	for _, outcome := range outcomes {
+		if outcome == husonymdb.EntryCreated {
+			created++
+		} else {
+			require.Equal(t, husonymdb.EntryJoined, outcome)
+		}
+	}
+	require.Equal(t, 1, created)
+	require.Equal(t, int64(1), s.countAccounts(t))
 }
 
 // An entry is made on every page load: once the organization is retained it must not wait for
@@ -253,7 +372,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RetainedOrganizationIsEnteredW
 	roles := &fakeRoles{}
 	first := s.setUser(t, s.ctx, "first")
 	second := s.setUser(t, s.ctx, "second")
-	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles)
 	requireNoErrResp(t, created, err)
 
 	holder, err := s.pgcontainer.DB.Begin(s.ctx)
@@ -266,11 +385,11 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RetainedOrganizationIsEnteredW
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
-	member, err := s.db.EnterInstance(ctx, first.ID, roles.set, roles.has)
+	member, err := s.db.EnterInstance(ctx, first.ID, roles)
 	requireNoErrResp(t, member, err)
 	require.Equal(t, husonymdb.EntryMember, member.Outcome)
 
-	joined, err := s.db.EnterInstance(ctx, second.ID, roles.set, roles.has)
+	joined, err := s.db.EnterInstance(ctx, second.ID, roles)
 	requireNoErrResp(t, joined, err)
 	require.Equal(t, husonymdb.EntryJoined, joined.Outcome)
 	require.True(t, s.isMember(t, second.ID, created.AccountId))
@@ -282,7 +401,7 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RoleRefusedOnANewInstanceWrite
 	roles := &fakeRoles{refuse: refused}
 	user := s.setUser(t, s.ctx, "first")
 
-	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles)
 	requireErrResp(t, entry, err)
 	require.ErrorIs(t, err, refused)
 
@@ -292,14 +411,13 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RoleRefusedOnANewInstanceWrite
 
 func (s *IntegrationTestSuite) Test_EnterInstance_RoleRefusedOnJoiningWritesNoMembership() {
 	t := s.T()
-	roles := &fakeRoles{}
 	first := s.setUser(t, s.ctx, "first")
 	second := s.setUser(t, s.ctx, "second")
-	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, first.ID, &fakeRoles{})
 	requireNoErrResp(t, created, err)
 
 	refused := errors.New("the roles are not writable")
-	entry, err := s.db.EnterInstance(s.ctx, second.ID, (&fakeRoles{refuse: refused}).set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, second.ID, &fakeRoles{refuse: refused})
 	requireErrResp(t, entry, err)
 	require.ErrorIs(t, err, refused)
 
@@ -309,9 +427,8 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RoleRefusedOnJoiningWritesNoMe
 
 func (s *IntegrationTestSuite) Test_EnterInstance_RetainedAccountIsHeldByTheSchema() {
 	t := s.T()
-	roles := &fakeRoles{}
 	user := s.setUser(t, s.ctx, "first")
-	created, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	created, err := s.db.EnterInstance(s.ctx, user.ID, &fakeRoles{})
 	requireNoErrResp(t, created, err)
 
 	_, err = s.pgcontainer.DB.Exec(s.ctx, "DELETE FROM husonym_api.accounts WHERE id = $1", created.AccountId)
@@ -335,12 +452,12 @@ func (s *IntegrationTestSuite) Test_EnterInstance_RetainedAccountMissingIsRefuse
 	_, err = s.pgcontainer.DB.Exec(s.ctx, "UPDATE husonym_api.instance SET organization_account_id = $1", gone)
 	require.NoError(t, err)
 
-	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles.set, roles.has)
+	entry, err := s.db.EnterInstance(s.ctx, user.ID, roles)
 	requireErrResp(t, entry, err)
 	require.ErrorIs(t, err, husonymdb.ErrInstanceOrganizationMissing)
 
 	require.Equal(t, int64(0), s.countAccounts(t), "no second organization is created")
-	require.Empty(t, roles.calls())
+	require.Zero(t, roles.count())
 	organization, retained, err := s.db.GetInstanceOrganization(s.ctx)
 	require.NoError(t, err)
 	require.True(t, retained)

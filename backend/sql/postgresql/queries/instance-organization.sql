@@ -19,3 +19,13 @@ FROM husonym_api.instance;
 UPDATE husonym_api.instance
 SET organization_account_id = sqlc.arg('accountId')
 WHERE organization_account_id IS NULL;
+
+-- Creates a team account under an id chosen by the caller, who needed the id before the account
+-- existed.
+-- name: CreateTeamAccountWithId :one
+INSERT INTO husonym_api.accounts (
+  id, account_type, account_slug
+) VALUES (
+  sqlc.arg('id'), 1, sqlc.arg('accountSlug')
+)
+RETURNING *;
