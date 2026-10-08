@@ -31,6 +31,14 @@ The descriptions of each environment variable detail exactly what the `AUTH_*` i
 
 If there is any trouble configuring authentication with Husonym, reach out to us for help at support@husonym.com.
 
+### The organization of the instance
+
+With authentication enabled, a self-hosted instance has one organization that everyone works in.
+The first person to sign in creates it and is its administrator, so make that first sign-in yours.
+Everyone who signs in afterwards through the same identity provider joins it as a viewer, and an administrator gives them another role from the members settings.
+The identity provider is the door: someone removed from the members comes back as a viewer at their next sign-in, so withdraw their access in the provider.
+On an instance that already had accounts before this version, nothing changes until an administrator opens **Settings > Organization** in the account to keep and makes it the organization of the instance. This is done once and cannot be undone from the interface.
+
 ## How to Authenticate against Husonym API
 
 The API expects the standard `Authorization` header to come in via the HTTP request. The format should be `Bearer <token>`. This is true for both API Keys as well as user JWTs.
