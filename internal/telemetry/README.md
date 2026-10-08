@@ -135,6 +135,27 @@ The schema file of the period says of its own only how a period and a month are 
 block it shares with the report of a day, and every `enum` those blocks name, is copied from the
 schema of the day by the command below, so that nothing is kept in two places.
 
+## Renewal
+
+An instance can ask for the license that succeeds the one it holds. The request and the answers
+are defined in `renewal.go`, for both sides.
+
+- **Request**: a `POST` to `telemetry.RenewalPath` (`/v1/license-renewals`) whose body is
+  `{"schema_version":1,"license_id":"…","instance_id":"…","requested_at":"…"}`, at most
+  `RenewalBodyCap` (4 KiB). The body is closed: an unknown field, data after the object or another
+  version is refused. `license_id` and `instance_id` are required, at most 128 characters, without
+  a control character. `requested_at` is RFC 3339 in UTC to the second (`2026-10-08T10:00:00Z`) and
+  has no other spelling. `RenewalRequest.Marshal` gives stable bytes.
+- **Seal**: the same as a report's. The headers are `Content-Type` (`application/json`),
+  `Husonym-Seal` (`Seal` of the exact bytes of the body) and `Husonym-Key-Fingerprint`
+  (`KeyFingerprint` of the key that sealed it).
+- **Freshness**: `requested_at` must be within `RenewalFreshness` (5 minutes) of the clock of the
+  receiver, either side.
+- **Answers**: `200` with `{"schema_version":1,"license":"<encoded license>"}` (at most 16 KiB,
+  read by the caller up to `RenewalAnswerCap`, 64 KiB), `204` when there is nothing to give, `400`
+  for a request that is malformed or stale, `413` for one that is too large and `503` for a
+  failure of the receiver.
+
 ## Evolving the schema
 
 `schema_version` is 1. Within a version:
