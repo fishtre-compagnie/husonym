@@ -74,6 +74,7 @@ docker run --rm -i \
   --volume "./backend/gen:/workspace/backend/gen" \
   --volume "./backend/sql:/workspace/backend/sql" \
   --volume "./backend/pkg/dbschemas/sql:/workspace/backend/pkg/dbschemas/sql" \
+  --volume "./controlplane:/workspace/controlplane" \
   --volume "./sqlc.yaml:/workspace/sqlc.yaml" \
   --workdir "/workspace" \
   "sqlc/sqlc:${SQLC_VERSION}" generate &
