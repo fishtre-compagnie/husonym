@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -17,13 +18,30 @@ import (
 //go:embed sql/*.sql
 var files embed.FS
 
+// bookkeepingTable is where golang-migrate records the version applied, named with its schema.
+// Left to itself, the driver looks the table up in the current schema of the connection, and that
+// schema changes under it: the first migration creates the schema controlplane, which a role of
+// the same name then has first in its search path. The next start would find no table there,
+// take the database for an empty one and run the first migration again.
+const bookkeepingTable = `"public"."schema_migrations"`
+
 // Up applies the pending migrations. Nothing to apply is not an error.
 func Up(_ context.Context, databaseURL string, logger *slog.Logger) error {
+	target, err := url.Parse(databaseURL)
+	if err != nil {
+		// The URL carries the password: its error text is not passed on.
+		return errors.New("open the migrations: the address of the database cannot be parsed")
+	}
+	query := target.Query()
+	query.Set("x-migrations-table", bookkeepingTable)
+	query.Set("x-migrations-table-quoted", "1")
+	target.RawQuery = query.Encode()
+
 	source, err := iofs.New(files, "sql")
 	if err != nil {
 		return fmt.Errorf("open the embedded migrations: %w", err)
 	}
-	m, err := migrate.NewWithSourceInstance("iofs", source, databaseURL)
+	m, err := migrate.NewWithSourceInstance("iofs", source, target.String())
 	if err != nil {
 		_ = source.Close()
 		// The URL carries the password: its error text is not passed on.
