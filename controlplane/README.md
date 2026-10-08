@@ -28,6 +28,7 @@ within the hour.
 | --------------------------- | ------------------------------------------------- |
 | `CONTROLPLANE_DATABASE_URL` | PostgreSQL connection string (required).          |
 | `CONTROLPLANE_LISTEN_ADDR`  | Listen address of the server, `:8080` by default. |
+| `CONTROLPLANE_METRICS_ADDR` | Listen address of the metrics of `serve public`, `:9090` by default. |
 
 The tables live in the `controlplane` schema. The table in which golang-migrate keeps the version
 of the schema, `schema_migrations`, sits in `public`.
@@ -90,6 +91,25 @@ The line of a request is a path, a status and a fixed word for the outcome; a pa
 of the service is written `-`. When the service itself fails, the line carries the text of its own
 error as well. The hourly maintenance writes one line with three counts (stored, discarded,
 purged), or the text of its error. What `net/http` would log by itself is dropped.
+
+## Metrics
+
+`serve public` serves `GET /metrics` on its own address, `CONTROLPLANE_METRICS_ADDR`; the report
+address serves none. Both listeners stop together, and `serve public` fails if either one cannot
+be bound. The gauges are read from the database at most once every 60 seconds.
+
+- `husonym_controlplane_usage_reports_total{outcome}`: report requests received, by the fixed
+  word of the log line.
+- `husonym_controlplane_silent_instances`: instances in force that stopped reporting for more than
+  3 days and less than 30.
+- `husonym_controlplane_expiring_licenses`: licenses expiring within 30 days, or in grace, that no
+  other license succeeds.
+- `husonym_controlplane_old_pending_reports`: pending reports received more than 24 hours ago.
+- `husonym_controlplane_seal_rejections_today`: reports refused for their seal on the current UTC
+  day.
+- `husonym_controlplane_shared_licenses`: licenses seen within 30 days on more than one instance.
+- `husonym_controlplane_attention_read_failures_total`: reads of the five gauges that failed; the
+  gauges are left out of a scrape whose read failed.
 
 ## Tests
 

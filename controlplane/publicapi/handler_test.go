@@ -40,11 +40,16 @@ type rig struct {
 	receiver *fakeReceiver
 	logs     *bytes.Buffer
 	handler  http.Handler
+	observer *recordingObserver
 }
 
+type recordingObserver struct{ outcomes []string }
+
+func (o *recordingObserver) ReportReceived(outcome string) { o.outcomes = append(o.outcomes, outcome) }
+
 func newRig(outcome intake.Outcome, err error) *rig {
-	r := &rig{receiver: &fakeReceiver{outcome: outcome, err: err}, logs: &bytes.Buffer{}}
-	r.handler = publicapi.NewHandler(r.receiver, slog.New(slog.NewTextHandler(r.logs, nil)))
+	r := &rig{receiver: &fakeReceiver{outcome: outcome, err: err}, logs: &bytes.Buffer{}, observer: &recordingObserver{}}
+	r.handler = publicapi.NewHandler(r.receiver, r.observer, slog.New(slog.NewTextHandler(r.logs, nil)))
 	return r
 }
 
@@ -250,7 +255,7 @@ func (panickingReceiver) Receive(context.Context, []byte, string, string) (intak
 
 func Test_Handler_APanic_Answers503AndSaysNothingOfIt(t *testing.T) {
 	logs := &bytes.Buffer{}
-	handler := publicapi.NewHandler(panickingReceiver{}, slog.New(slog.NewTextHandler(logs, nil)))
+	handler := publicapi.NewHandler(panickingReceiver{}, nil, slog.New(slog.NewTextHandler(logs, nil)))
 	req := post(strings.NewReader("{}"))
 	require.Equal(t, "192.0.2.1:1234", req.RemoteAddr)
 	rec := httptest.NewRecorder()
@@ -357,4 +362,39 @@ func (*endlessReader) Read(p []byte) (int, error) {
 		p[i] = 'x'
 	}
 	return len(p), nil
+}
+
+func Test_Handler_CountsEachReportRequestByTheWordItLogs(t *testing.T) {
+	cases := map[string]struct {
+		outcome intake.Outcome
+		err     error
+		req     func() *http.Request
+	}{
+		"stored":             {outcome: intake.Stored, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"pending":            {outcome: intake.Pending, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"refused":            {outcome: intake.Refused, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"full":               {outcome: intake.Full, req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"failed":             {err: errors.New("down"), req: func() *http.Request { return post(strings.NewReader("{}")) }},
+		"method_not_allowed": {req: func() *http.Request { return httptest.NewRequest(http.MethodGet, "/v1/usage-reports", nil) }},
+		"missing_header": {req: func() *http.Request {
+			req := post(strings.NewReader("{}"))
+			req.Header.Del("Husonym-Seal")
+			return req
+		}},
+	}
+	for want, tc := range cases {
+		t.Run(want, func(t *testing.T) {
+			r := newRig(tc.outcome, tc.err)
+			r.do(tc.req())
+			require.Equal(t, []string{want}, r.observer.outcomes)
+		})
+	}
+}
+
+func Test_Handler_DoesNotCountTheOtherPaths(t *testing.T) {
+	r := newRig(intake.Stored, nil)
+	r.do(httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	r.do(httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	r.do(httptest.NewRequest(http.MethodGet, "/whatever-a-caller-wrote", nil))
+	require.Empty(t, r.observer.outcomes)
 }

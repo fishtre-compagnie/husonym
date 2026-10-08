@@ -27,16 +27,48 @@ type Receiver interface {
 	Receive(ctx context.Context, document []byte, seal, fingerprint string) (intake.Outcome, error)
 }
 
+// Observer counts the report requests by outcome. It is given the fixed words of the log line.
+type Observer interface {
+	ReportReceived(outcome string)
+}
+
+// The fixed words that say how a request ended. They are the ones logged, and the only ones
+// counted: nothing a caller sent can become one.
+// word is a fixed word of the log line.
+type word string
+
+const (
+	wordNotFound         word = "not_found"
+	wordMethodNotAllowed word = "method_not_allowed"
+	wordBadContentType   word = "bad_content_type"
+	wordMissingHeader    word = "missing_header"
+	wordMalformedHeader  word = "malformed_header"
+	wordTooLarge         word = "too_large"
+	wordUnreadableBody   word = "unreadable_body"
+	wordInterrupted      word = "interrupted"
+	wordFailed           word = "failed"
+	wordStored           word = "stored"
+	wordPending          word = "pending"
+	wordRepeat           word = "repeat"
+	wordConflict         word = "conflict"
+	wordRefused          word = "refused"
+	wordTooManyInstances word = "too_many_instances"
+	wordFull             word = "full"
+	wordUnknown          word = "unknown"
+)
+
 // NewHandler returns the handler of the public server: POST /v1/usage-reports and GET /healthz.
 // Replies have no body. At most one line is logged per request, made of the path, the status
 // and a fixed word for the outcome, never of what the caller sent; a failure of ours adds the
-// text of our own error.
-func NewHandler(receiver Receiver, logger *slog.Logger) http.Handler {
-	return &handler{receiver: receiver, logger: logger}
+// text of our own error. Each report request is also counted by that word in observer, unless it
+// is nil.
+func NewHandler(receiver Receiver, observer Observer, logger *slog.Logger) http.Handler {
+	return &handler{receiver: receiver, observer: observer, logger: logger}
 }
 
 type handler struct {
 	receiver Receiver
+	observer Observer
 	logger   *slog.Logger
 }
 
@@ -60,32 +92,32 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case reportPath:
 		h.report(w, r)
 	default:
-		h.reply(w, "-", http.StatusNotFound, "not_found")
+		h.reply(w, "-", http.StatusNotFound, wordNotFound)
 	}
 }
 
 func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		h.reply(w, reportPath, http.StatusMethodNotAllowed, "method_not_allowed")
+		h.reply(w, reportPath, http.StatusMethodNotAllowed, wordMethodNotAllowed)
 		return
 	}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
-		h.reply(w, reportPath, http.StatusBadRequest, "bad_content_type")
+		h.reply(w, reportPath, http.StatusBadRequest, wordBadContentType)
 		return
 	}
 	seal, fingerprint := r.Header.Get(sealHeader), r.Header.Get(fingerprintHeader)
 	if seal == "" || fingerprint == "" {
-		h.reply(w, reportPath, http.StatusBadRequest, "missing_header")
+		h.reply(w, reportPath, http.StatusBadRequest, wordMissingHeader)
 		return
 	}
 	// What can be refused without the body is refused before it is read.
 	if !intake.HexShaped(seal) || !intake.HexShaped(fingerprint) {
-		h.reply(w, reportPath, http.StatusBadRequest, "malformed_header")
+		h.reply(w, reportPath, http.StatusBadRequest, wordMalformedHeader)
 		return
 	}
 	if r.ContentLength > MaxBodyBytes {
-		h.reply(w, reportPath, http.StatusRequestEntityTooLarge, "too_large")
+		h.reply(w, reportPath, http.StatusRequestEntityTooLarge, wordTooLarge)
 		return
 	}
 
@@ -94,10 +126,10 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			h.reply(w, reportPath, http.StatusRequestEntityTooLarge, "too_large")
+			h.reply(w, reportPath, http.StatusRequestEntityTooLarge, wordTooLarge)
 			return
 		}
-		h.reply(w, reportPath, http.StatusBadRequest, "unreadable_body")
+		h.reply(w, reportPath, http.StatusBadRequest, wordUnreadableBody)
 		return
 	}
 
@@ -105,11 +137,11 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if r.Context().Err() != nil {
 			// The caller went away, or the server is stopping: not a failure of ours.
-			h.logger.Info("request", "path", reportPath, "status", http.StatusServiceUnavailable, "outcome", "interrupted")
-			w.WriteHeader(http.StatusServiceUnavailable)
+			h.reply(w, reportPath, http.StatusServiceUnavailable, wordInterrupted)
 			return
 		}
 		// A failure of ours: fixed words and the error, nothing of the request.
+		h.count(reportPath, wordFailed)
 		h.logger.Error("unable to receive a usage report", "path", reportPath,
 			"status", http.StatusServiceUnavailable, "error", err.Error())
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -122,30 +154,38 @@ func (h *handler) report(w http.ResponseWriter, r *http.Request) {
 // describe gives the status and the fixed word of an outcome. A stored report and a pending one
 // answer the same. That is all that is promised: the other answers differ with the license, as a
 // wrong seal is only refused under a license that is known.
-func describe(outcome intake.Outcome) (status int, name string) {
+func describe(outcome intake.Outcome) (status int, name word) {
 	switch outcome {
 	case intake.Stored:
-		return http.StatusNoContent, "stored"
+		return http.StatusNoContent, wordStored
 	case intake.Pending:
-		return http.StatusNoContent, "pending"
+		return http.StatusNoContent, wordPending
 	case intake.Repeat:
-		return http.StatusNoContent, "repeat"
+		return http.StatusNoContent, wordRepeat
 	case intake.Conflict:
-		return http.StatusNoContent, "conflict"
+		return http.StatusNoContent, wordConflict
 	case intake.Refused:
-		return http.StatusBadRequest, "refused"
+		return http.StatusBadRequest, wordRefused
 	case intake.TooManyInstances:
-		return http.StatusBadRequest, "too_many_instances"
+		return http.StatusBadRequest, wordTooManyInstances
 	case intake.Full:
-		return http.StatusServiceUnavailable, "full"
+		return http.StatusServiceUnavailable, wordFull
 	default:
-		return http.StatusServiceUnavailable, "unknown"
+		return http.StatusServiceUnavailable, wordUnknown
 	}
 }
 
 // reply answers with a status and no body, and logs the line of the request. A path that is not
 // one of ours is logged as "-", never as the caller wrote it.
-func (h *handler) reply(w http.ResponseWriter, path string, status int, outcome string) {
+func (h *handler) reply(w http.ResponseWriter, path string, status int, outcome word) {
 	w.WriteHeader(status)
-	h.logger.Info("request", "path", path, "status", status, "outcome", outcome)
+	h.logger.Info("request", "path", path, "status", status, "outcome", string(outcome))
+	h.count(path, outcome)
+}
+
+// count tells the observer how a report request ended; the other paths are not counted.
+func (h *handler) count(path string, outcome word) {
+	if path == reportPath && h.observer != nil {
+		h.observer.ReportReceived(string(outcome))
+	}
 }

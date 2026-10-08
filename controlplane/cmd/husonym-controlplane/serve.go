@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/controlplane/cpmetrics"
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
 	"github.com/fishtre-compagnie/husonym/controlplane/intake"
 	"github.com/fishtre-compagnie/husonym/controlplane/migrations"
@@ -23,8 +24,11 @@ import (
 )
 
 const (
-	listenAddrEnv     = "CONTROLPLANE_LISTEN_ADDR"
-	defaultListenAddr = ":8080"
+	listenAddrEnv      = "CONTROLPLANE_LISTEN_ADDR"
+	defaultListenAddr  = ":8080"
+	metricsAddrEnv     = "CONTROLPLANE_METRICS_ADDR"
+	defaultMetricsAddr = ":9090"
+	metricsPath        = "/metrics"
 
 	maintenanceTick   = time.Hour
 	readHeaderTimeout = 5 * time.Second
@@ -49,6 +53,10 @@ func newServeCmd() *cobra.Command {
 			if addr == "" {
 				addr = defaultListenAddr
 			}
+			metricsAddr := os.Getenv(metricsAddrEnv)
+			if metricsAddr == "" {
+				metricsAddr = defaultMetricsAddr
+			}
 			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
 
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, syscall.SIGINT)
@@ -66,7 +74,12 @@ func newServeCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("unable to listen on %s: %w", addr, err)
 			}
-			return servePublic(ctx, pool, listener, logger, maintenanceTick)
+			metricsListener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", metricsAddr)
+			if err != nil {
+				_ = listener.Close()
+				return fmt.Errorf("unable to listen on %s: %w", metricsAddr, err)
+			}
+			return servePublic(ctx, pool, listener, metricsListener, logger, maintenanceTick)
 		},
 	})
 	return serve
@@ -88,15 +101,33 @@ func newPublicServer(handler http.Handler) *http.Server {
 	}
 }
 
-// servePublic serves the public API on listener and runs the maintenance of the pending reports,
-// until ctx ends; it then stops the server gracefully, within shutdownTimeout.
+// metricsHandler serves GET /metrics from metrics and answers 404 to anything else.
+func metricsHandler(metrics http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != metricsPath || r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		metrics.ServeHTTP(w, r)
+	})
+}
+
+// servePublic serves the public API on listener and the metrics on metricsListener, and runs the
+// maintenance of the pending reports, until ctx ends; it then stops both servers gracefully,
+// within shutdownTimeout. Should either server stop by itself, the other is stopped too.
 func servePublic(
-	ctx context.Context, pool *pgxpool.Pool, listener net.Listener, logger *slog.Logger, tick time.Duration,
+	ctx context.Context, pool *pgxpool.Pool, listener, metricsListener net.Listener, logger *slog.Logger,
+	tick time.Duration,
 ) error {
 	store := cpstore.New(pool)
 	now := time.Now
 	receiver := intake.New(store, now)
-	server := newPublicServer(publicapi.NewHandler(receiver, logger))
+	metrics := cpmetrics.New()
+	metrics.WatchAttention(func(ctx context.Context) (cpstore.AttentionCounts, error) {
+		return store.AttentionCounts(ctx, now())
+	}, now)
+	server := newPublicServer(publicapi.NewHandler(receiver, metrics, logger))
+	metricsServer := newPublicServer(metricsHandler(metrics.Handler()))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)
 	defer cancelMaintenance()
@@ -106,23 +137,27 @@ func servePublic(
 		publicapi.RunMaintenance(maintenanceCtx, receiver, store, logger, now, tick)
 	}()
 
-	served := make(chan error, 1)
+	served := make(chan error, 2)
 	go func() { served <- server.Serve(listener) }()
+	go func() { served <- metricsServer.Serve(metricsListener) }()
 	logger.Info("the public server is listening")
 
+	var stoppedBy error
 	select {
 	case err := <-served:
-		// The server stopped by itself: the maintenance has no reason to go on.
+		// A server stopped by itself: the other one and the maintenance have no reason to go on.
+		stoppedBy = fmt.Errorf("a server of the control plane stopped: %w", err)
 		cancelMaintenance()
-		<-maintenanceDone
-		return fmt.Errorf("the public server stopped: %w", err)
 	case <-ctx.Done():
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 	defer cancel()
-	err := server.Shutdown(shutdownCtx)
+	err := errors.Join(server.Shutdown(shutdownCtx), metricsServer.Shutdown(shutdownCtx))
 	<-maintenanceDone
+	if stoppedBy != nil {
+		return stoppedBy
+	}
 	if err != nil {
 		return fmt.Errorf("unable to stop the public server gracefully: %w", err)
 	}
