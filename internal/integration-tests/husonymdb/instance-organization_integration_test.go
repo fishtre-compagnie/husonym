@@ -246,6 +246,36 @@ func (s *IntegrationTestSuite) Test_EnterInstance_TwoFirstEntriesAtOnceCreateOne
 	}
 }
 
+// An entry is made on every page load: once the organization is retained it must not wait for
+// the row of the instance, which another connection holds here.
+func (s *IntegrationTestSuite) Test_EnterInstance_RetainedOrganizationIsEnteredWithoutHoldingTheInstance() {
+	t := s.T()
+	roles := &fakeRoles{}
+	first := s.setUser(t, s.ctx, "first")
+	second := s.setUser(t, s.ctx, "second")
+	created, err := s.db.EnterInstance(s.ctx, first.ID, roles.set, roles.has)
+	requireNoErrResp(t, created, err)
+
+	holder, err := s.pgcontainer.DB.Begin(s.ctx)
+	require.NoError(t, err)
+	defer func() { _ = holder.Rollback(s.ctx) }()
+	_, err = holder.Exec(s.ctx, "SELECT id FROM husonym_api.instance FOR UPDATE")
+	require.NoError(t, err)
+
+	// Bounded, so that an entry that waits for the instance fails instead of hanging.
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	member, err := s.db.EnterInstance(ctx, first.ID, roles.set, roles.has)
+	requireNoErrResp(t, member, err)
+	require.Equal(t, husonymdb.EntryMember, member.Outcome)
+
+	joined, err := s.db.EnterInstance(ctx, second.ID, roles.set, roles.has)
+	requireNoErrResp(t, joined, err)
+	require.Equal(t, husonymdb.EntryJoined, joined.Outcome)
+	require.True(t, s.isMember(t, second.ID, created.AccountId))
+}
+
 func (s *IntegrationTestSuite) Test_EnterInstance_RoleRefusedOnANewInstanceWritesNothing() {
 	t := s.T()
 	refused := errors.New("the roles are not writable")

@@ -66,34 +66,51 @@ func (d *HusonymDb) GetInstanceOrganization(ctx context.Context) (pgtype.UUID, b
 // organization on an instance that has no account at all, and adds the user to the one retained
 // otherwise. An instance that has accounts and retains none is left as it is.
 //
-// The row of the instance is held first, so two first entries at once do not both find no
-// account: the second waits, then joins what the first created. That is why the transaction is
-// read committed, as in SetPersonalAccount.
+// An entry is made on every page load, so it holds nothing on the instance once an
+// organization is retained: the organization never changes then, and two entries of one user at
+// once write the same membership. Only the entry that may create the organization holds the row
+// of the instance, so that two first entries at once do not both find no account: the second
+// waits, looks again, then joins what the first created. That is why that transaction is read
+// committed, as in SetPersonalAccount.
 //
-// A role is not part of the transaction, and is always written before the membership it goes
-// with. A member without a role is made an admin when the API starts, if nobody else holds one
-// in the account; a role without a membership grants nothing, since membership is checked
-// before any role. So when one of the two writes is lost, it has to be the membership.
+// A role is not part of any transaction here, and is always written before the membership it
+// goes with. When the API starts, the members of an account where nobody holds a role are all
+// made admins; a role without a membership grants nothing, since membership is checked before
+// any role. So when one of the two writes is lost, it has to be the membership.
 func (d *HusonymDb) EnterInstance(
 	ctx context.Context,
 	userId pgtype.UUID,
 	setRole RoleSetter,
 	hasRole RoleReader,
 ) (*InstanceEntry, error) {
+	organization, err := d.Q.GetInstanceOrganization(ctx, d.Db)
+	if err != nil {
+		return nil, err
+	}
+	if organization.Valid {
+		return d.enterOrganization(ctx, d.Db, userId, organization, setRole, hasRole)
+	}
+	accounts, err := d.Q.CountAccounts(ctx, d.Db)
+	if err != nil {
+		return nil, err
+	}
+	if accounts > 0 {
+		return &InstanceEntry{Outcome: EntryPersonal}, nil
+	}
+
 	var entry *InstanceEntry
 	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(dbtx BaseDBTX) error {
 		if _, err := d.Q.LockInstance(ctx, dbtx); err != nil {
 			return fmt.Errorf("unable to hold the instance: %w", err)
 		}
-		organization, err := d.Q.GetInstanceOrganization(ctx, dbtx)
+		// What was read before the wait may no longer hold.
+		organization, err = d.Q.GetInstanceOrganization(ctx, dbtx)
 		if err != nil {
 			return err
 		}
 		if organization.Valid {
-			entry, err = d.enterOrganization(ctx, dbtx, userId, organization, setRole, hasRole)
-			return err
+			return nil
 		}
-
 		accounts, err := d.Q.CountAccounts(ctx, dbtx)
 		if err != nil {
 			return err
@@ -107,10 +124,16 @@ func (d *HusonymDb) EnterInstance(
 	}); err != nil {
 		return nil, err
 	}
+	if entry == nil {
+		// Another entry created the organization meanwhile: the instance is released, and this
+		// one enters it as any newcomer does.
+		return d.enterOrganization(ctx, d.Db, userId, organization, setRole, hasRole)
+	}
 	return entry, nil
 }
 
 // enterOrganization adds the user to the organization retained, unless they are in it already.
+// It holds nothing: the membership is one statement, which a second one at once leaves as it is.
 func (d *HusonymDb) enterOrganization(
 	ctx context.Context,
 	dbtx BaseDBTX,
