@@ -121,11 +121,14 @@ type ReportSummary struct {
 	Sources *int
 }
 
-// StoredReport is a report as it was received and what happened to its row since.
+// StoredReport is a report as it was received, what happened to its row since, and the customer
+// of its license.
 type StoredReport struct {
-	LicenseID  string
-	InstanceID string
-	Day        time.Time
+	LicenseID    string
+	InstanceID   string
+	CustomerID   uuid.UUID
+	CustomerName string
+	Day          time.Time
 	// Document is the exact bytes received, which the seal is over.
 	Document   []byte
 	Seal       string
@@ -320,8 +323,8 @@ func (s *Store) Instance(ctx context.Context, licenseID, instanceID string) (*In
 	return instance, nil
 }
 
-// Report gives the report stored for a license, an instance and the UTC day of day. ErrNotFound
-// when there is none.
+// Report gives the report stored for a license, an instance and the UTC day of day, with the
+// customer of the license. ErrNotFound when there is none.
 func (s *Store) Report(ctx context.Context, licenseID, instanceID string, day time.Time) (*StoredReport, error) {
 	row, err := cpdb.New(s.pool).GetUsageReport(ctx, cpdb.GetUsageReportParams{
 		LicenseID:  licenseID,
@@ -337,6 +340,8 @@ func (s *Store) Report(ctx context.Context, licenseID, instanceID string, day ti
 	return &StoredReport{
 		LicenseID:      row.LicenseID,
 		InstanceID:     row.InstanceID,
+		CustomerID:     row.CustomerID.Bytes,
+		CustomerName:   row.CustomerName,
 		Day:            row.Day.Time,
 		Document:       []byte(row.Document),
 		Seal:           row.Seal,

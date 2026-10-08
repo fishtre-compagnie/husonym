@@ -23,14 +23,19 @@
 
 <section id="instances">
 <h2>Instances <span class="count">{{len .Instances}}</span></h2>
-{{if .Instances}}{{template "instances" .Instances}}{{else}}<p class="empty">No instance.</p>{{end}}
+{{if .Instances}}{{template "table" "Instances of the license"}}
+<thead><tr><th scope="col">Instance</th><th scope="col">Version</th><th scope="col">Install kind</th><th scope="col">First seen</th><th scope="col">Last seen</th><th scope="col">Last report day</th></tr></thead>
+<tbody>
+{{range .Instances}}<tr><td>{{template "id" .Instance}}</td><td>{{.Version}}</td><td>{{.InstallKind}}</td><td>{{.FirstSeen}}</td><td>{{.LastSeen}}</td><td>{{.LastReportDay}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No instance.</p>{{end}}
 </section>
 
-<section id="seal-rejections"{{if .Rejections}} class="some"{{end}}>
+<section id="seal-rejections">
 <h2>Seal rejections</h2>
 <p class="definition">Reports refused for their seal in the last {{.RejectionDays}} days, by day.</p>
-{{if .Rejections}}<div class="table-wrap"><table>
-<thead><tr><th>Day</th><th class="number">Refused</th><th>Last refused</th></tr></thead>
+{{if .Rejections}}{{template "table" "Seal rejections of the license by day"}}
+<thead><tr><th scope="col">Day</th><th scope="col" class="number">Refused</th><th scope="col">Last refused</th></tr></thead>
 <tbody>
 {{range .Rejections}}<tr><td>{{.Day}}</td><td class="number">{{.Count}}</td><td>{{.LastAt}}</td></tr>
 {{end}}</tbody>

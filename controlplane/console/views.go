@@ -218,6 +218,7 @@ type reportView struct {
 	Day            string
 	Instance       link
 	License        link
+	Customer       link
 	ReceivedAt     string
 	Conflicts      int
 	LastConflictAt string
@@ -561,6 +562,7 @@ func newReportView(r *cpstore.StoredReport) *reportView {
 		Day:            day(r.Day),
 		Instance:       instanceLink(r.LicenseID, r.InstanceID),
 		License:        licenseLink(r.LicenseID),
+		Customer:       customerLink(r.CustomerID, r.CustomerName),
 		ReceivedAt:     instant(r.ReceivedAt),
 		Conflicts:      r.Conflicts,
 		LastConflictAt: instant(r.LastConflictAt),

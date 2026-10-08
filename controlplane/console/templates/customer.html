@@ -10,8 +10,8 @@
 
 <section id="licenses">
 <h2>Licenses <span class="count">{{len .Licenses}}</span></h2>
-{{if .Licenses}}<div class="table-wrap"><table>
-<thead><tr><th>License</th><th>State</th><th>Expires</th><th>Plan</th><th>Telemetry</th><th>Succeeded</th></tr></thead>
+{{if .Licenses}}{{template "table" "Licenses of the customer"}}
+<thead><tr><th scope="col">License</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Plan</th><th scope="col">Telemetry</th><th scope="col">Succeeded</th></tr></thead>
 <tbody>
 {{range .Licenses}}<tr><td>{{template "id" .License}}</td><td>{{template "state" .State}}</td><td>{{.ExpiresAt}}</td><td>{{.Plan}}</td><td>{{.Telemetry}}</td><td>{{.Succeeded}}</td></tr>
 {{end}}</tbody>
@@ -20,5 +20,10 @@
 
 <section id="instances">
 <h2>Instances <span class="count">{{len .Instances}}</span></h2>
-{{if .Instances}}{{template "instances" .Instances}}{{else}}<p class="empty">No instance.</p>{{end}}
+{{if .Instances}}{{template "table" "Instances of the customer"}}
+<thead><tr><th scope="col">Instance</th><th scope="col">License</th><th scope="col">Version</th><th scope="col">Install kind</th><th scope="col">First seen</th><th scope="col">Last seen</th><th scope="col">Last report day</th></tr></thead>
+<tbody>
+{{range .Instances}}<tr><td>{{template "id" .Instance}}</td><td>{{template "id" .License}}</td><td>{{.Version}}</td><td>{{.InstallKind}}</td><td>{{.FirstSeen}}</td><td>{{.LastSeen}}</td><td>{{.LastReportDay}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No instance.</p>{{end}}
 </section>{{end}}{{end}}

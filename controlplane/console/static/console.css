@@ -65,13 +65,28 @@ a:focus-visible {
 
 code,
 pre,
-.id {
+.id,
+.fingerprint {
   font-family: var(--mono);
   font-size: 0.9em;
 }
 
 .id {
   overflow-wrap: anywhere;
+}
+
+/* What is said for who does not see the page: there to be read out, not to be looked at. */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
 }
 
 /* The banner of a console served without its gates. */
@@ -264,13 +279,19 @@ section {
   color: var(--alert);
 }
 
-/* Tables. A wide one scrolls inside its frame, the page does not. */
+/* Tables. A wide one scrolls inside its frame, the page does not; the frame takes the focus so
+   that the keyboard scrolls it too. */
 
 .table-wrap {
   overflow-x: auto;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
+}
+
+.table-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 table {
@@ -311,6 +332,14 @@ td.id,
 td .id,
 td code {
   white-space: nowrap;
+}
+
+/* A fingerprint is shown whole: it breaks where it must, in a cell wide enough to hold it on a
+   few lines, and does not widen the table. */
+
+.fingerprint {
+  min-width: 17rem;
+  overflow-wrap: anywhere;
 }
 
 /* A row, or a value, that is over what it is measured against. The word says it; the colour

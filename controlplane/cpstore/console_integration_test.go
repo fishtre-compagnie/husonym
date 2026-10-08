@@ -412,6 +412,8 @@ func Test_Report_GivesWhatWasReceived(t *testing.T) {
 
 	require.Equal(t, "lic-1", report.LicenseID)
 	require.Equal(t, "inst-1", report.InstanceID)
+	require.Equal(t, s.customerID("cust-1"), report.CustomerID)
+	require.Equal(t, "Acme", report.CustomerName)
 	require.True(t, daysAgo(1).Equal(report.Day))
 	require.Equal(t, sealed.Document, report.Document)
 	require.Equal(t, sealed.Seal, report.Seal)

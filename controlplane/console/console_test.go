@@ -587,7 +587,7 @@ func Test_Instance_WithoutASourceCap_ShowsTheSourcesAlone(t *testing.T) {
 func Test_Report_ShowsTheDocumentIndentedAndLeadsBackToTheInstance(t *testing.T) {
 	b := newBench(t)
 	b.store.report = &cpstore.StoredReport{
-		LicenseID: "lic-1", InstanceID: instanceOne,
+		LicenseID: "lic-1", InstanceID: instanceOne, CustomerID: customerID, CustomerName: "Acme",
 		Day:            time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
 		Document:       []byte(`{"day":"2026-10-02","sources":{"count":7},"note":"<b>bold</b>"}`),
 		Seal:           "5ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea15ea1",
@@ -602,6 +602,11 @@ func Test_Report_ShowsTheDocumentIndentedAndLeadsBackToTheInstance(t *testing.T)
 	require.Equal(t, []string{"lic-1", instanceOne}, b.store.askedFor)
 	require.Equal(t, time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC), b.store.askedForDay)
 	require.Contains(t, got.body, "<h1>Report of 2026-10-02</h1>")
+	require.Equal(t, `<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a>`+
+		` <span aria-hidden="true">/</span> <a href="/customers/`+customerID.String()+`">Acme</a>`+
+		` <span aria-hidden="true">/</span> <a class="id" href="/licenses/lic-1">lic-1</a>`+
+		` <span aria-hidden="true">/</span> <a class="id" href="/licenses/lic-1/instances/`+instanceOne+`">`+instanceOne+`</a>`,
+		between(t, got.body, `<nav class="crumbs"`, "</nav>"), "from the customers down, as on the other pages")
 	facts := between(t, got.body, "<dl", "</dl>")
 	require.Contains(t, facts, `<a class="id" href="/licenses/lic-1/instances/`+instanceOne+`">`+instanceOne+`</a>`)
 	require.Contains(t, between(t, facts, "<dt>Received</dt>", "</dd>"), "2026-10-03 02:30")
@@ -627,7 +632,7 @@ func Test_Report_ThatIsNotJSON_IsShownAsReceived(t *testing.T) {
 	require.Contains(t, between(t, got.body, "<dt>Conflicting re-sends</dt>", "</dd>"), "0")
 }
 
-func Test_Pending_ListsTheFingerprintsShortenedWithTheFullValueAtHand(t *testing.T) {
+func Test_Pending_ListsTheFingerprintsWhole(t *testing.T) {
 	b := newBench(t)
 	b.store.pending = []cpstore.PendingGroup{{
 		KeyFingerprint: fingerprint, Reports: 5, OldReports: 3,
@@ -641,7 +646,8 @@ func Test_Pending_ListsTheFingerprintsShortenedWithTheFullValueAtHand(t *testing
 	require.Equal(t, today, b.store.askedAt)
 	require.Contains(t, got.body, "<h1>Pending</h1>")
 	group := row(t, got.body, `id="fp-`+fingerprint+`"`)
-	require.Contains(t, group, `<code title="`+fingerprint+`">0123456789ab</code>`)
+	require.Contains(t, group, `<td class="fingerprint">`+fingerprint+`</td>`, "whole, where it can be read and copied")
+	require.NotContains(t, group, "title=")
 	require.Contains(t, group, `<td class="number">5</td>`)
 	require.Contains(t, group, "3 old", "said in a word")
 	require.Contains(t, group, "2026-10-05 04:00")

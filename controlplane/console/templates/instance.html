@@ -15,8 +15,8 @@
 <section id="reports">
 <h2>Reports <span class="count">{{len .Reports}}</span></h2>
 {{if .Truncated}}<p class="definition">The {{.ReportsCap}} latest days.</p>
-{{end}}{{if .Reports}}<div class="table-wrap"><table>
-<thead><tr><th>Day</th><th>Received</th><th class="number">Sources</th><th class="number">Conflicting re-sends</th></tr></thead>
+{{end}}{{if .Reports}}{{template "table" "Reports of the instance"}}
+<thead><tr><th scope="col">Day</th><th scope="col">Received</th><th scope="col" class="number">Sources</th><th scope="col" class="number">Conflicting re-sends</th></tr></thead>
 <tbody>
 {{range .Reports}}<tr{{if .Over}} class="over"{{end}}><td>{{template "named" .Day}}</td><td>{{.ReceivedAt}}</td><td class="number">{{.Sources}}{{if .Over}} <strong class="mark">over the cap</strong>{{end}}</td><td class="number">{{.Conflicts}}</td></tr>
 {{end}}</tbody>

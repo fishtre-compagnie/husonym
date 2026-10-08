@@ -28,7 +28,8 @@ type Querier interface {
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
 	// Every column of a license but the encoded key.
 	GetLicenseDetail(ctx context.Context, id string) (GetLicenseDetailRow, error)
-	GetUsageReport(ctx context.Context, arg GetUsageReportParams) (ControlplaneUsageReport, error)
+	// A report, with the customer of its license.
+	GetUsageReport(ctx context.Context, arg GetUsageReportParams) (GetUsageReportRow, error)
 	InsertLicense(ctx context.Context, arg InsertLicenseParams) (int64, error)
 	InsertPendingReport(ctx context.Context, arg InsertPendingReportParams) error
 	// The first report received for a license, an instance and a day is the one that stays.

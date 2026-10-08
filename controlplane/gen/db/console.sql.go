@@ -126,9 +126,13 @@ func (q *Queries) GetLicenseDetail(ctx context.Context, id string) (GetLicenseDe
 }
 
 const getUsageReport = `-- name: GetUsageReport :one
-SELECT license_id, instance_id, day, document, seal, received_at, conflicts, last_conflict_at
-FROM controlplane.usage_reports
-WHERE license_id = $1 AND instance_id = $2 AND day = $3
+SELECT
+    r.license_id, r.instance_id, r.day, r.document, r.seal, r.received_at, r.conflicts, r.last_conflict_at,
+    l.customer_id, c.name AS customer_name
+FROM controlplane.usage_reports r
+JOIN controlplane.licenses l ON l.id = r.license_id
+JOIN controlplane.customers c ON c.id = l.customer_id
+WHERE r.license_id = $1 AND r.instance_id = $2 AND r.day = $3
 `
 
 type GetUsageReportParams struct {
@@ -137,9 +141,23 @@ type GetUsageReportParams struct {
 	Day        pgtype.Date
 }
 
-func (q *Queries) GetUsageReport(ctx context.Context, arg GetUsageReportParams) (ControlplaneUsageReport, error) {
+type GetUsageReportRow struct {
+	LicenseID      string
+	InstanceID     string
+	Day            pgtype.Date
+	Document       string
+	Seal           string
+	ReceivedAt     pgtype.Timestamptz
+	Conflicts      int32
+	LastConflictAt pgtype.Timestamptz
+	CustomerID     pgtype.UUID
+	CustomerName   string
+}
+
+// A report, with the customer of its license.
+func (q *Queries) GetUsageReport(ctx context.Context, arg GetUsageReportParams) (GetUsageReportRow, error) {
 	row := q.db.QueryRow(ctx, getUsageReport, arg.LicenseID, arg.InstanceID, arg.Day)
-	var i ControlplaneUsageReport
+	var i GetUsageReportRow
 	err := row.Scan(
 		&i.LicenseID,
 		&i.InstanceID,
@@ -149,6 +167,8 @@ func (q *Queries) GetUsageReport(ctx context.Context, arg GetUsageReportParams) 
 		&i.ReceivedAt,
 		&i.Conflicts,
 		&i.LastConflictAt,
+		&i.CustomerID,
+		&i.CustomerName,
 	)
 	return i, err
 }

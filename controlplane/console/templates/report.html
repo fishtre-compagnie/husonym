@@ -1,4 +1,4 @@
-{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is">{{template "id" .License}} <span aria-hidden="true">/</span> {{template "id" .Instance}}</nav>
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}} <span aria-hidden="true">/</span> {{template "id" .License}} <span aria-hidden="true">/</span> {{template "id" .Instance}}</nav>
 <h1>Report of {{.Day}}</h1>
 <dl class="facts">
 <dt>Instance</dt><dd>{{template "id" .Instance}}</dd>
