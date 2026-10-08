@@ -54,3 +54,37 @@ func (t *table) ReplaceAssignmentCtx(ctx context.Context, user, role, account st
 	}
 	return tx.Commit(ctx)
 }
+
+var _ FirstAssignments = (*table)(nil)
+
+// HasAssignmentCtx is one read of the table, outside of any transaction.
+func (t *table) HasAssignmentCtx(ctx context.Context, user, account string) (bool, error) {
+	return t.queries.HasAccountRole(ctx, t.pool, db_queries.HasAccountRoleParams{Member: user, Account: account})
+}
+
+// AddAssignmentIfNoneCtx gives the person that role in the account only where the table holds
+// none for them there, in one transaction that takes its turn among the replacements of a role
+// of that person in that account: a role given meanwhile, wherever it was asked, is seen and
+// kept.
+func (t *table) AddAssignmentIfNoneCtx(ctx context.Context, user, role, account string) (bool, error) {
+	// Read committed for the reason ReplaceAssignmentCtx gives.
+	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	lock := db_queries.LockAccountRoleParams{Member: user, Account: account}
+	if err := t.queries.LockAccountRole(ctx, tx, lock); err != nil {
+		return false, err
+	}
+	first := db_queries.AddAccountRoleIfNoneParams{Member: user, Role: role, Account: account}
+	written, err := t.queries.AddAccountRoleIfNone(ctx, tx, first)
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return written > 0, nil
+}

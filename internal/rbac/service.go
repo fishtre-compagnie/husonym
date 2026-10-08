@@ -34,6 +34,10 @@ type Interface interface {
 	// refused as an invalid argument, and changes nothing. ErrRoleNotReadBack tells a role
 	// that is stored and not yet held on this instance.
 	SetRole(ctx context.Context, user User, account Account, role mgmtv1alpha1.AccountRole) error
+	// GrantViewerIfNone gives user the viewer role in account when no role is stored for them
+	// there, and leaves the role they hold otherwise. ErrRoleNotReadBack means what it means
+	// for SetRole.
+	GrantViewerIfNone(ctx context.Context, user User, account Account) error
 	// RemoveMember takes away every role user holds in account.
 	RemoveMember(ctx context.Context, user User, account Account) error
 	// Roles gives the role of each of the users that has one in account.

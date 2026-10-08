@@ -26,6 +26,17 @@ type Rows interface {
 	ReplaceAssignmentCtx(ctx context.Context, user, role, account string) error
 }
 
+// FirstAssignments is the table of the rules, asked to give a role to a person that holds none
+// in an account. The table of the API database answers it.
+type FirstAssignments interface {
+	// HasAssignmentCtx tells whether the table holds a role for the person in the account.
+	HasAssignmentCtx(ctx context.Context, user, account string) (bool, error)
+	// AddAssignmentIfNoneCtx gives the person that role in the account when the table holds
+	// none for them there, and says whether it did. It never replaces a role, and of two asked
+	// at once only one writes.
+	AddAssignmentIfNoneCtx(ctx context.Context, user, role, account string) (bool, error)
+}
+
 // roleStore is the store the enforcer loads from: the role assignments of the table, and the
 // rules that are the same in every account, which are not stored. Rule rows the table may hold
 // are not read.

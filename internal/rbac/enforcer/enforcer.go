@@ -60,6 +60,15 @@ type Enforcer struct {
 	// replaceAssignment leaves a person one role in an account, in the table, within the time
 	// a write is given.
 	replaceAssignment func(user, role, account string) error
+	// firstAssignments asks the table for the role of a person that holds none, within the time
+	// a write is given. It is nil on a table that does not answer that.
+	firstAssignments *boundedFirstAssignments
+}
+
+// boundedFirstAssignments asks the table what FirstAssignments names, each within a time limit.
+type boundedFirstAssignments struct {
+	has func(user, account string) (bool, error)
+	add func(user, role, account string) (bool, error)
 }
 
 // New builds the enforcer on the rows of the rule table and on the rules that are the same in
@@ -81,6 +90,24 @@ func New(ctx context.Context, rows Rows, fixedRules [][]string, logger *slog.Log
 		return store.within(store.writeTimeout, func(ctx context.Context) error {
 			return rows.ReplaceAssignmentCtx(ctx, user, role, account)
 		})
+	}
+	if first, ok := rows.(FirstAssignments); ok {
+		e.firstAssignments = &boundedFirstAssignments{
+			has: func(user, account string) (held bool, err error) {
+				err = store.within(store.writeTimeout, func(ctx context.Context) error {
+					held, err = first.HasAssignmentCtx(ctx, user, account)
+					return err
+				})
+				return held, err
+			},
+			add: func(user, role, account string) (given bool, err error) {
+				err = store.within(store.writeTimeout, func(ctx context.Context) error {
+					given, err = first.AddAssignmentIfNoneCtx(ctx, user, role, account)
+					return err
+				})
+				return given, err
+			},
+		}
 	}
 	go e.reloadEvery(ctx, reloadPeriod)
 	return e, nil
@@ -125,6 +152,50 @@ func (e *Enforcer) SetRoleForUserInDomain(user, role, domain string) error {
 	defer e.reloading.Unlock()
 	if err := e.replaceAssignment(user, role, domain); err != nil {
 		return err
+	}
+	if err := e.inner.LoadPolicy(); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotReadBack, err)
+	}
+	return nil
+}
+
+// ErrNoFirstAssignments tells that the table the enforcer was built on cannot give a role to who
+// holds none.
+var ErrNoFirstAssignments = errors.New("the table of the access rules does not give a role to who holds none")
+
+// SetRoleForUserInDomainIfNone gives a person that role in an account when the table holds none
+// for them there, and leaves the role they hold otherwise. The table decides, never what this
+// instance holds in memory: a role another instance gave since the last reload is kept.
+//
+// It is made to be asked often. Where a role is held it is one read of the table: nothing is
+// written, the roles are not read again, and neither a reload nor a change of the rules waits
+// for it. Only when the read finds no role does it take its turn as SetRoleForUserInDomain
+// does: the table is asked to write unless a role was given meanwhile, and when it did write
+// the roles are read again from it, so that this instance holds the role once it returns nil.
+// ErrNotReadBack means here what it means there.
+//
+// A role it finds stored and that this instance has not read yet is held here at the next
+// reload, as any role another instance gave.
+func (e *Enforcer) SetRoleForUserInDomainIfNone(user, role, domain string) error {
+	if e.firstAssignments == nil {
+		return ErrNoFirstAssignments
+	}
+	held, err := e.firstAssignments.has(user, domain)
+	if err != nil {
+		return err
+	}
+	if held {
+		return nil
+	}
+
+	e.reloading.Lock()
+	defer e.reloading.Unlock()
+	given, err := e.firstAssignments.add(user, role, domain)
+	if err != nil {
+		return err
+	}
+	if !given {
+		return nil
 	}
 	if err := e.inner.LoadPolicy(); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotReadBack, err)

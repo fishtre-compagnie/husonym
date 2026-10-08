@@ -24,6 +24,17 @@ func (s *Service) SetRole(_ context.Context, user User, account Account, role mg
 	return nil
 }
 
+// GrantViewerIfNone decides from the table, not from what this instance believes the person
+// holds, and in one step the table makes alone: a role another instance gave is never replaced,
+// and of two asked at once one writes. Where a role is held it costs one read of the table and
+// writes nothing.
+func (s *Service) GrantViewerIfNone(_ context.Context, user User, account Account) error {
+	if err := s.enforcer.SetRoleForUserInDomainIfNone(user.stored(), roleViewer, account.stored()); err != nil {
+		return fmt.Errorf("unable to give the role %s to who holds none: %w", roleViewer, err)
+	}
+	return nil
+}
+
 func (s *Service) RemoveMember(_ context.Context, user User, account Account) error {
 	if _, err := s.enforcer.DeleteRolesForUserInDomain(user.stored(), account.stored()); err != nil {
 		return fmt.Errorf("unable to take the roles of the member away: %w", err)

@@ -9,6 +9,58 @@ import (
 	"context"
 )
 
+const addAccountRoleIfNone = `-- name: AddAccountRoleIfNone :execrows
+INSERT INTO husonym_api.casbin_rule (p_type, v0, v1, v2)
+SELECT 'g', $1::text, $2::text, $3::text
+WHERE NOT EXISTS (
+  SELECT 1 FROM husonym_api.casbin_rule
+  WHERE p_type = 'g'
+    AND v0 = $1::text
+    AND v2 = $3::text
+)
+ON CONFLICT DO NOTHING
+`
+
+type AddAccountRoleIfNoneParams struct {
+	Member  string
+	Role    string
+	Account string
+}
+
+// Gives the member that role in the account when the member holds none there, and changes
+// nothing otherwise. It says how many rows it wrote. After LockAccountRole, in a transaction
+// that reads what was committed before each of its statements, no role can be given to the
+// member between its look and its write.
+func (q *Queries) AddAccountRoleIfNone(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams) (int64, error) {
+	result, err := db.Exec(ctx, addAccountRoleIfNone, arg.Member, arg.Role, arg.Account)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const hasAccountRole = `-- name: HasAccountRole :one
+SELECT EXISTS (
+  SELECT 1 FROM husonym_api.casbin_rule
+  WHERE p_type = 'g'
+    AND v0 = $1::text
+    AND v2 = $2::text
+)
+`
+
+type HasAccountRoleParams struct {
+	Member  string
+	Account string
+}
+
+// Tells whether the member holds a role in the account, whichever.
+func (q *Queries) HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error) {
+	row := db.QueryRow(ctx, hasAccountRole, arg.Member, arg.Account)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const lockAccountRole = `-- name: LockAccountRole :exec
 
 SELECT pg_advisory_xact_lock(

@@ -12,6 +12,11 @@ import (
 )
 
 type Querier interface {
+	// Gives the member that role in the account when the member holds none there, and changes
+	// nothing otherwise. It says how many rows it wrote. After LockAccountRole, in a transaction
+	// that reads what was committed before each of its statements, no role can be given to the
+	// member between its look and its write.
+	AddAccountRoleIfNone(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams) (int64, error)
 	// Adopts a row recorded before issuers were, and only such a row: the WHERE clause on the
 	// empty string is what stops one issuer from claiming another's identity. No row updated
 	// means somebody got there first, which the caller reads as "look again".
@@ -170,6 +175,8 @@ type Querier interface {
 	GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
+	// Tells whether the member holds a role in the account, whichever.
+	HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error)
 	IncrementGateRefusal(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error

@@ -48,6 +48,78 @@ func (_m *MockQuerier) EXPECT() *MockQuerier_Expecter {
 	return &MockQuerier_Expecter{mock: &_m.Mock}
 }
 
+// AddAccountRoleIfNone provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) AddAccountRoleIfNone(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams) (int64, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddAccountRoleIfNone")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, AddAccountRoleIfNoneParams) (int64, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, AddAccountRoleIfNoneParams) int64); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, AddAccountRoleIfNoneParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_AddAccountRoleIfNone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddAccountRoleIfNone'
+type MockQuerier_AddAccountRoleIfNone_Call struct {
+	*mock.Call
+}
+
+// AddAccountRoleIfNone is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg AddAccountRoleIfNoneParams
+func (_e *MockQuerier_Expecter) AddAccountRoleIfNone(ctx any, db any, arg any) *MockQuerier_AddAccountRoleIfNone_Call {
+	return &MockQuerier_AddAccountRoleIfNone_Call{Call: _e.mock.On("AddAccountRoleIfNone", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_AddAccountRoleIfNone_Call) Run(run func(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams)) *MockQuerier_AddAccountRoleIfNone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 AddAccountRoleIfNoneParams
+		if args[2] != nil {
+			arg2 = args[2].(AddAccountRoleIfNoneParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_AddAccountRoleIfNone_Call) Return(n int64, err error) *MockQuerier_AddAccountRoleIfNone_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_AddAccountRoleIfNone_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams) (int64, error)) *MockQuerier_AddAccountRoleIfNone_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AdoptIdentityProviderIssuer provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -7453,6 +7525,78 @@ func (_c *MockQuerier_GetUserIdentityByUserId_Call) Return(husonymApiUserIdentit
 }
 
 func (_c *MockQuerier_GetUserIdentityByUserId_Call) RunAndReturn(run func(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_GetUserIdentityByUserId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasAccountRole provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasAccountRole")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, HasAccountRoleParams) (bool, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, HasAccountRoleParams) bool); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, HasAccountRoleParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_HasAccountRole_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasAccountRole'
+type MockQuerier_HasAccountRole_Call struct {
+	*mock.Call
+}
+
+// HasAccountRole is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg HasAccountRoleParams
+func (_e *MockQuerier_Expecter) HasAccountRole(ctx any, db any, arg any) *MockQuerier_HasAccountRole_Call {
+	return &MockQuerier_HasAccountRole_Call{Call: _e.mock.On("HasAccountRole", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_HasAccountRole_Call) Run(run func(ctx context.Context, db DBTX, arg HasAccountRoleParams)) *MockQuerier_HasAccountRole_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 HasAccountRoleParams
+		if args[2] != nil {
+			arg2 = args[2].(HasAccountRoleParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_HasAccountRole_Call) Return(b bool, err error) *MockQuerier_HasAccountRole_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *MockQuerier_HasAccountRole_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error)) *MockQuerier_HasAccountRole_Call {
 	_c.Call.Return(run)
 	return _c
 }

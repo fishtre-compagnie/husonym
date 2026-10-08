@@ -22,3 +22,27 @@ WITH removed AS (
 INSERT INTO husonym_api.casbin_rule (p_type, v0, v1, v2)
 VALUES ('g', sqlc.arg('member'), sqlc.arg('role'), sqlc.arg('account'))
 ON CONFLICT DO NOTHING;
+
+-- Tells whether the member holds a role in the account, whichever.
+-- name: HasAccountRole :one
+SELECT EXISTS (
+  SELECT 1 FROM husonym_api.casbin_rule
+  WHERE p_type = 'g'
+    AND v0 = sqlc.arg('member')::text
+    AND v2 = sqlc.arg('account')::text
+);
+
+-- Gives the member that role in the account when the member holds none there, and changes
+-- nothing otherwise. It says how many rows it wrote. After LockAccountRole, in a transaction
+-- that reads what was committed before each of its statements, no role can be given to the
+-- member between its look and its write.
+-- name: AddAccountRoleIfNone :execrows
+INSERT INTO husonym_api.casbin_rule (p_type, v0, v1, v2)
+SELECT 'g', sqlc.arg('member')::text, sqlc.arg('role')::text, sqlc.arg('account')::text
+WHERE NOT EXISTS (
+  SELECT 1 FROM husonym_api.casbin_rule
+  WHERE p_type = 'g'
+    AND v0 = sqlc.arg('member')::text
+    AND v2 = sqlc.arg('account')::text
+)
+ON CONFLICT DO NOTHING;
