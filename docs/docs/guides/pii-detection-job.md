@@ -234,9 +234,11 @@ the API to analyze the columns, 20 at a time, by their names.
 **What leaves the database, and where it goes.** The API reads up to 50 filled values of
 each of these columns from the source and sends them, one at a time, to the analyzer set by
 `PRESIDIO_ANALYZER_URL`. The values go from the source to the API and from the API to the
-analyzer. They never reach the worker, nor the history of the run, nor a log. What comes
-back to the worker is, per column, the category, the kind of entity that was recognized and
-two counts: the values in which it was found and the values that were analyzed.
+analyzer, cut to their first 200 characters: a person named further in a long text is not
+seen. They never reach the worker, nor the history of the run, nor a log of the worker. The
+log of the API can quote a value when the analyzer refuses it. What comes back to the
+worker is, per column, the category, the kind of entity that was recognized and two counts:
+the values in which it was found and the values that were analyzed.
 
 This holds for every job that samples data, **including one set to _Statistics only_**:
 that setting is about what the model receives, and the analyzer is a separate service of
@@ -252,13 +254,14 @@ it is by the GDPR detection, under that entity: a column of names, of cities, of
 numbers.
 
 **Without an analyzer.** When the API has none, the first table that asks learns it, the
-tables of the run that start afterwards do not ask, the report says that the analyzer was
-absent, and the run ends well.
+tables of the run that start afterwards do not ask, the stored report of the table says that
+the analyzer was absent, and the run ends well.
 
 **A column the analyzer refuses.** The analyzer may refuse the values of a column on every
-run. The run ends well, the report of the table lists the columns that were not analyzed
-and marks the analysis as partial, and the table is scanned again by the next incremental
-run.
+run. The run ends well, the stored report of the table lists the columns that were not
+analyzed and marks the analysis as partial, and the table is scanned again by the next
+incremental run. An analyzer that is down while the API answers looks the same: check it
+when no table of a run has an analyzer finding.
 
 ## Configuring the model
 

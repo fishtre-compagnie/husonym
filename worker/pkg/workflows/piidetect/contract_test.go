@@ -391,6 +391,11 @@ func Test_RecordedPayloads_DecodeAndEncodeBack(t *testing.T) {
 			return &SaveTablePiiDetectReportRequest{}, &SaveTablePiiDetectReportResponse{}
 		},
 	}
+	// The two reports of a run to the API answer nothing: only what they are given is read.
+	reports := map[string]func() any{
+		"RecordRunStarted": func() any { return &runusage.RunStartedRequest{} },
+		"RecordRunEnded":   func() any { return &runusage.RunEndedRequest{} },
+	}
 
 	seen := map[string]int{}
 	for _, file := range files {
@@ -427,6 +432,11 @@ func Test_RecordedPayloads_DecodeAndEncodeBack(t *testing.T) {
 				}
 				if scheduled := event.GetActivityTaskScheduledEventAttributes(); scheduled != nil {
 					name := scheduled.GetActivityType().GetName()
+					if report, isReport := reports[name]; isReport {
+						roundTrip(t, scheduled.GetInput(), report())
+						seen[name+" input"]++
+						continue
+					}
 					types, known := requests[name]
 					require.True(t, known, "an activity of another type: %s", name)
 					request, response := types()
@@ -434,7 +444,8 @@ func Test_RecordedPayloads_DecodeAndEncodeBack(t *testing.T) {
 					results[event.GetEventId()] = response
 					seen[name+" input"]++
 				}
-				if completed := event.GetActivityTaskCompletedEventAttributes(); completed != nil {
+				if completed := event.GetActivityTaskCompletedEventAttributes(); completed != nil &&
+					results[completed.GetScheduledEventId()] != nil {
 					roundTrip(t, completed.GetResult(), results[completed.GetScheduledEventId()])
 					seen[reflect.TypeOf(results[completed.GetScheduledEventId()]).Elem().Name()]++
 				}
