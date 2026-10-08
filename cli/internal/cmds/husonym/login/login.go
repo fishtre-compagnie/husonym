@@ -85,17 +85,7 @@ func login(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	// The organization of the instance is what a person without a personal account works in: it
-	// is asked for, without authentication, as the web asks for it.
-	systemResp, err := userclient.GetSystemInformation(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetSystemInformationRequest{}),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to read the organization of the instance: %w", err)
-	}
-
-	account := defaultAccount(accountsResp.Msg.GetAccounts(), systemResp.Msg.GetInstanceOrganizationAccountId())
+	account := defaultAccount(accountsResp.Msg.GetAccounts(), instanceOrganizationId(ctx, userclient, logger))
 	if account == nil {
 		return nil
 	}
