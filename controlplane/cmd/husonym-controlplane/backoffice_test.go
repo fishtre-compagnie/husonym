@@ -20,6 +20,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/publicapi"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
@@ -204,6 +205,41 @@ func Test_Backoffice_WithoutGates_SaysSoOnThePage(t *testing.T) {
 	require.Contains(t, page.Body.String(), `<span class="operator">local</span>`)
 }
 
+// The console sets its headers on what it answers; what is answered before it is reached carries
+// them as well.
+func Test_Backoffice_EveryAnswerCarriesTheSecurityHeaders(t *testing.T) {
+	handler, token := gatedBackoffice(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	local, err := newBackofficeHandler(nothingToSee{}, nil, time.Now, logger)
+	require.NoError(t, err)
+	panicking := outermost(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("away") }), logger)
+
+	answers := map[string]struct {
+		got    *httptest.ResponseRecorder
+		status int
+	}{
+		"the 404 of the host gate":        {request(handler, http.MethodGet, "reports.example.com", "/customers", token), http.StatusNotFound},
+		"the 401 of the Access gate":      {request(handler, http.MethodGet, backofficeHost, "/customers", ""), http.StatusUnauthorized},
+		"the health check":                {request(handler, http.MethodGet, "10.42.0.17:8080", "/healthz", ""), http.StatusOK},
+		"the health check, wrong method":  {request(handler, http.MethodPost, "10.42.0.17:8080", "/healthz", ""), http.StatusMethodNotAllowed},
+		"a page":                          {request(handler, http.MethodGet, backofficeHost, "/", token), http.StatusOK},
+		"the 404 of the local mode":       {request(local, http.MethodGet, "attacker.example", "/", ""), http.StatusNotFound},
+		"the 500 of a panic before pages": {request(panicking, http.MethodGet, backofficeHost, "/", ""), http.StatusInternalServerError},
+	}
+	for name, answer := range answers {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, answer.status, answer.got.Code)
+			header := answer.got.Header()
+			require.Equal(t, []string{"no-store"}, header.Values("Cache-Control"))
+			require.Equal(t,
+				[]string{"default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"},
+				header.Values("Content-Security-Policy"))
+			require.Equal(t, []string{"nosniff"}, header.Values("X-Content-Type-Options"))
+			require.Equal(t, []string{"no-referrer"}, header.Values("Referrer-Policy"))
+		})
+	}
+}
+
 // The console recovers from its own panics; a gate is in front of it, and what net/http would say
 // of a panic is dropped by the server.
 func Test_Backoffice_APanicOutsideTheConsole_Answers500AndLogsFixedWords(t *testing.T) {
@@ -288,9 +324,56 @@ func Test_ServeBackoffice_InsecureNoAccessOnLoopback_ServesTheConsoleOverTheData
 	issuer := cptest.NewIssuer(t)
 	entry := issuer.Entry("lic-1", "cust-1", "Acme")
 	cptest.AddLicense(t, cpstore.New(pool), issuer, &entry)
+	addr, stop := runLocalBackoffice(t, pool)
+
+	require.Equal(t, http.StatusOK, get(t, "http://"+addr+"/healthz").status)
+	customers := get(t, "http://"+addr+"/customers")
+	require.Equal(t, http.StatusOK, customers.status)
+	require.Contains(t, customers.body, ">Acme</a>")
+	require.Contains(t, customers.body, "The host and Access gates are off")
+	require.NotContains(t, customers.body, entry.Encoded)
+	require.Equal(t, http.StatusNotFound, get(t, "http://"+addr+"/v1/usage-reports").status, "no report intake")
+
+	require.NoError(t, stop())
+}
+
+// The public server owns the schema: the console, started on a database it finds empty, shows
+// its failure page and leaves the database as it found it.
+func Test_ServeBackoffice_OnAnEmptyDatabase_AppliesNoMigration(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	pool := cptest.NewEmptyDatabase(t)
+	schemaExists := func() bool {
+		var exists bool
+		require.NoError(t, pool.QueryRow(t.Context(), `SELECT to_regnamespace('controlplane') IS NOT NULL`).Scan(&exists))
+		return exists
+	}
+	require.False(t, schemaExists(), "the database starts empty")
+	addr, stop := runLocalBackoffice(t, pool)
+
+	require.Equal(t, http.StatusOK, get(t, "http://"+addr+"/healthz").status)
+	customers := get(t, "http://"+addr+"/customers")
+	require.Equal(t, http.StatusInternalServerError, customers.status)
+	require.Contains(t, customers.body, "<h1>Something went wrong</h1>")
+	require.NotContains(t, customers.body, "controlplane.customers", "the error of the database is not on the page")
+
+	require.NoError(t, stop())
+	require.False(t, schemaExists(), "no migration was applied")
+	var tables int
+	require.NoError(t, pool.QueryRow(t.Context(),
+		`SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')`).Scan(&tables))
+	require.Zero(t, tables, "not even the table of the schema version")
+}
+
+// runLocalBackoffice runs `serve backoffice --insecure-no-access` over the database of pool, on a
+// free port of 127.0.0.1, and waits until it listens. It returns the address and what stops the
+// command and gives its error.
+func runLocalBackoffice(t *testing.T, pool *pgxpool.Pool) (addr string, stop func() error) {
+	t.Helper()
 	probe, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	addr := probe.Addr().String()
+	addr = probe.Addr().String()
 	require.NoError(t, probe.Close())
 	t.Setenv(databaseURLEnv, pool.Config().ConnString())
 	t.Setenv(listenAddrEnv, addr)
@@ -298,14 +381,23 @@ func Test_ServeBackoffice_InsecureNoAccessOnLoopback_ServesTheConsoleOverTheData
 	t.Setenv(backofficeHostEnv, "")
 	t.Setenv(accessTeamDomainEnv, "")
 	t.Setenv(accessAudienceEnv, "")
-	ctx, stop := context.WithCancel(t.Context())
-	defer stop()
+	ctx, cancel := context.WithCancel(t.Context())
 	cmd := newRootCmd(license.EmbeddedKeyring)
 	cmd.SetArgs([]string{"serve", "backoffice", "--" + insecureNoAccessFlag})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	stopped := make(chan error, 1)
 	go func() { stopped <- cmd.ExecuteContext(ctx) }()
+	stop = sync.OnceValue(func() error {
+		cancel()
+		select {
+		case err := <-stopped:
+			return err
+		case <-time.After(15 * time.Second):
+			return errors.New("the server did not stop when its context ended")
+		}
+	})
+	t.Cleanup(func() { _ = stop() })
 
 	require.Eventually(t, func() bool {
 		conn, err := net.DialTimeout("tcp", addr, time.Second)
@@ -315,19 +407,5 @@ func Test_ServeBackoffice_InsecureNoAccessOnLoopback_ServesTheConsoleOverTheData
 		_ = conn.Close()
 		return true
 	}, 15*time.Second, 50*time.Millisecond, "the server listens")
-	require.Equal(t, http.StatusOK, get(t, "http://"+addr+"/healthz").status)
-	customers := get(t, "http://"+addr+"/customers")
-	require.Equal(t, http.StatusOK, customers.status)
-	require.Contains(t, customers.body, ">Acme</a>")
-	require.Contains(t, customers.body, "The host and Access gates are off")
-	require.NotContains(t, customers.body, entry.Encoded)
-	require.Equal(t, http.StatusNotFound, get(t, "http://"+addr+"/v1/usage-reports").status, "no report intake")
-
-	stop()
-	select {
-	case err := <-stopped:
-		require.NoError(t, err)
-	case <-time.After(15 * time.Second):
-		t.Fatal("the server did not stop when its context ended")
-	}
+	return addr, stop
 }

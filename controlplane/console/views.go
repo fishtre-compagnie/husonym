@@ -40,7 +40,7 @@ type layout struct {
 	Body any
 }
 
-// link is a text that leads somewhere.
+// link is a text that leads somewhere. Without an Href it leads nowhere and is shown as text.
 type link struct {
 	Text string
 	Href string
@@ -256,7 +256,18 @@ func customerLink(id uuid.UUID, name string) link {
 	return link{Text: name, Href: "/customers/" + id.String()}
 }
 
+// dotSegment says whether an id, written as a segment of a path, would be taken out of it: a
+// browser resolves "." and ".." before it asks, escaped or not, so that a link to such an id
+// leads to another page.
+func dotSegment(id string) bool {
+	return id == "." || id == ".."
+}
+
+// licenseHref is the path of the page of a license, empty when no link can lead to it.
 func licenseHref(id string) string {
+	if dotSegment(id) {
+		return ""
+	}
 	return "/licenses/" + url.PathEscape(id)
 }
 
@@ -264,8 +275,21 @@ func licenseLink(id string) link {
 	return link{Text: id, Href: licenseHref(id)}
 }
 
+// instanceHref is the path of the page of an instance, empty when no link can lead to it.
 func instanceHref(licenseID, instanceID string) string {
+	if dotSegment(licenseID) || dotSegment(instanceID) {
+		return ""
+	}
 	return licenseHref(licenseID) + "/instances/" + url.PathEscape(instanceID)
+}
+
+// reportHref is the path of the page of a report, empty when no link can lead to it.
+func reportHref(licenseID, instanceID string, day time.Time) string {
+	instance := instanceHref(licenseID, instanceID)
+	if instance == "" {
+		return ""
+	}
+	return instance + "/reports/" + day.UTC().Format(time.DateOnly)
 }
 
 func instanceLink(licenseID, instanceID string) link {
@@ -515,10 +539,7 @@ func newInstanceView(i *cpstore.InstanceDetail) *instanceView {
 	for n := range i.Reports {
 		report := &i.Reports[n]
 		row := reportRow{
-			Day: link{
-				Text: day(report.Day),
-				Href: instanceHref(i.LicenseID, i.InstanceID) + "/reports/" + report.Day.UTC().Format(time.DateOnly),
-			},
+			Day:        link{Text: day(report.Day), Href: reportHref(i.LicenseID, i.InstanceID, report.Day)},
 			ReceivedAt: instant(report.ReceivedAt),
 			Conflicts:  report.Conflicts,
 			Sources:    absent,

@@ -473,6 +473,51 @@ func Test_License_AnIDThatNeedsEscaping_IsAskedAsWrittenAndLinkedEscaped(t *test
 	require.Contains(t, got.body, `href="/licenses/lic%2F1%20a/instances/`+instanceOne+`"`)
 }
 
+// A browser takes "." and ".." out of a path before it asks for it: a link to such an id would
+// lead to another page.
+func Test_AnIDThatIsADotSegment_IsShownAsTextNotAsALink(t *testing.T) {
+	b := newBench(t)
+	b.store.customer = &cpstore.CustomerDetail{
+		ID: customerID, ExternalID: "cust-1", Name: "Acme",
+		Licenses: []cpstore.LicenseSummary{
+			licenseSummary(".", license.StateValid, today.AddDate(1, 0, 0)),
+			licenseSummary("..", license.StateValid, today.AddDate(1, 0, 0)),
+			licenseSummary("...", license.StateValid, today.AddDate(1, 0, 0)),
+		},
+		Instances: []cpstore.InstanceSummary{
+			instanceSummary("lic-1", ".."), instanceSummary(".", instanceOne), instanceSummary("lic-2", instanceTwo),
+		},
+	}
+
+	got := b.get("/customers/" + customerID.String())
+
+	require.Equal(t, http.StatusOK, got.status)
+	licenses := section(t, got.body, "licenses")
+	require.Contains(t, licenses, `<td><span class="id">.</span></td>`)
+	require.Contains(t, licenses, `<td><span class="id">..</span></td>`)
+	require.Contains(t, licenses, `<a class="id" href="/licenses/...">...</a>`, "three dots are a name like another")
+	instances := section(t, got.body, "instances")
+	require.Contains(t, instances, `<td><span class="id">..</span></td><td><a class="id" href="/licenses/lic-1">lic-1</a></td>`)
+	require.Contains(t, instances, `<td><span class="id">`+instanceOne+`</span></td><td><span class="id">.</span></td>`)
+	require.Contains(t, instances, `href="/licenses/lic-2/instances/`+instanceTwo+`"`)
+	for _, link := range []string{`href="/licenses/."`, `href="/licenses/.."`, `href="/licenses/./`, `/instances/.."`, `href=""`} {
+		require.NotContains(t, got.body, link)
+	}
+}
+
+func Test_Instance_WhoseIDIsADotSegment_LinksNoneOfItsReports(t *testing.T) {
+	b := newBench(t)
+	b.store.instance = instanceWithReports(nil)
+	b.store.instance.InstanceID = ".."
+
+	got := b.get("/licenses/lic-1/instances/x")
+
+	require.Equal(t, http.StatusOK, got.status)
+	require.Contains(t, row(t, section(t, got.body, "reports"), "2026-10-02"), "<td>2026-10-02</td>")
+	require.NotContains(t, got.body, "/reports/")
+	require.NotContains(t, got.body, `href=""`)
+}
+
 func instanceWithReports(limits *license.Limits) *cpstore.InstanceDetail {
 	three, seven := 3, 7
 	return &cpstore.InstanceDetail{
@@ -624,6 +669,17 @@ func Test_WhatIsNotThere_AnswersTheNotFoundPage(t *testing.T) {
 		"a path with a trailing slash":  "/customers/",
 		"another static file":           "/static/console.js",
 		"the health check":              "/healthz",
+		// What a text column cannot hold: the store would answer an error, not "no such row".
+		"a license id with a zero byte":       "/licenses/%00",
+		"a license id that is not UTF-8":      "/licenses/%ff",
+		"an instance id with a zero byte":     "/licenses/lic-1/instances/a%00b",
+		"an instance id that is not UTF-8":    "/licenses/lic-1/instances/%ff",
+		"the license of an instance, zero":    "/licenses/%00/instances/" + instanceOne,
+		"the license of an instance, invalid": "/licenses/%c3%28/instances/" + instanceOne,
+		"the instance of a report, zero":      "/licenses/lic-1/instances/%00/reports/2026-10-02",
+		"the license of a report, invalid":    "/licenses/%ff/instances/" + instanceOne + "/reports/2026-10-02",
+		"a customer id with a zero byte":      "/customers/%00",
+		"a customer id that is not UTF-8":     "/customers/%ff",
 	}
 	for name, path := range malformed {
 		t.Run(name, func(t *testing.T) {
@@ -742,10 +798,10 @@ func Test_NoRouteAcceptsAnotherMethod(t *testing.T) {
 
 func Test_EachRequest_LogsOneLineWithTheOperatorTheMethodTheRouteAndTheStatus(t *testing.T) {
 	routes := map[string]string{
-		"/":                       `route="GET /{$}"`,
-		"/customers":              `route="GET /customers"`,
-		"/customers/not-a-uuid":   `route="GET /customers/{id}"`,
-		"/licenses/lic-SECRET":    `route="GET /licenses/{id}"`,
+		"/":                     `route="GET /{$}"`,
+		"/customers":            `route="GET /customers"`,
+		"/customers/not-a-uuid": `route="GET /customers/{id}"`,
+		"/licenses/lic-SECRET":  `route="GET /licenses/{id}"`,
 		"/licenses/lic-SECRET/instances/inst-SECRET":                    `route="GET /licenses/{license}/instances/{instance}"`,
 		"/licenses/lic-SECRET/instances/inst-SECRET/reports/2026-10-02": `route="GET /licenses/{license}/instances/{instance}/reports/{day}"`,
 		"/pending":                `route="GET /pending"`,

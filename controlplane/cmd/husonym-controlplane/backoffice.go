@@ -191,8 +191,12 @@ func newBackofficeHandler(
 // The console recovers from its own panics, the gates in front of it do not, and what net/http
 // would say of a panic is dropped by the server: one that comes this far is answered 500 and
 // logged here.
+//
+// Every answer carries the security headers of the console, whoever writes it: the refusal of a
+// gate and the health check as much as a page.
 func outermost(guarded http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		console.SetSecurityHeaders(w.Header())
 		defer func() {
 			if recover() != nil {
 				// Fixed words only: what a panic carries may hold something of the request. A
@@ -207,7 +211,6 @@ func outermost(guarded http.Handler, logger *slog.Logger) http.Handler {
 		}
 		// The health check does not ask the database: a database that is away is not mended by
 		// restarting the console.
-		w.Header().Set("Cache-Control", "no-store")
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return

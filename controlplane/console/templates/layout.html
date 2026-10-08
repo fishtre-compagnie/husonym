@@ -26,9 +26,9 @@
 </html>
 {{end}}
 
-{{define "id"}}<a class="id" href="{{.Href}}">{{.Text}}</a>{{end}}
+{{define "id"}}{{if .Href}}<a class="id" href="{{.Href}}">{{.Text}}</a>{{else}}<span class="id">{{.Text}}</span>{{end}}{{end}}
 
-{{define "named"}}<a href="{{.Href}}">{{.Text}}</a>{{end}}
+{{define "named"}}{{if .Href}}<a href="{{.Href}}">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}
 
 {{define "state"}}<span class="state state-{{.}}">{{.}}</span>{{end}}
 

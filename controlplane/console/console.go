@@ -14,7 +14,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/accessgate"
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
@@ -194,12 +196,19 @@ func (a *reply) send(status int, contentType string, body []byte) {
 	_, _ = a.Write(body)
 }
 
-func (c *console) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	header := w.Header()
+// SetSecurityHeaders sets on an answer the headers every answer of the console carries: no
+// caching, a content security policy that allows the stylesheet of the console and nothing else,
+// no guessing of the content type and no referrer. The console sets them itself; whoever answers
+// in front of it, a gate or a health check, sets them with this.
+func SetSecurityHeaders(header http.Header) {
 	header.Set("Cache-Control", "no-store")
 	header.Set("Content-Security-Policy", contentSecurityPolicy)
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("Referrer-Policy", "no-referrer")
+}
+
+func (c *console) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	SetSecurityHeaders(w.Header())
 
 	answer := &reply{ResponseWriter: w, operator: noValue, route: noValue}
 	defer func() {
@@ -323,8 +332,24 @@ func (c *console) customer(r *http.Request) (*content, error) {
 	return &content{file: pageCustomer, title: customer.Name, nav: navCustomers, body: newCustomerView(customer)}, nil
 }
 
+// storable says whether the store can hold every one of values. A text of PostgreSQL is valid
+// UTF-8 without a zero byte: asked for another one, it answers an error where there is simply
+// nothing under that name.
+func storable(values ...string) bool {
+	for _, value := range values {
+		if !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *console) license(r *http.Request) (*content, error) {
-	license, err := c.store.LicenseDetail(r.Context(), r.PathValue("id"), c.now())
+	id := r.PathValue("id")
+	if !storable(id) {
+		return nil, cpstore.ErrNotFound
+	}
+	license, err := c.store.LicenseDetail(r.Context(), id, c.now())
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +357,11 @@ func (c *console) license(r *http.Request) (*content, error) {
 }
 
 func (c *console) instance(r *http.Request) (*content, error) {
-	instance, err := c.store.Instance(r.Context(), r.PathValue("license"), r.PathValue("instance"))
+	licenseID, instanceID := r.PathValue("license"), r.PathValue("instance")
+	if !storable(licenseID, instanceID) {
+		return nil, cpstore.ErrNotFound
+	}
+	instance, err := c.store.Instance(r.Context(), licenseID, instanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -343,10 +372,11 @@ func (c *console) instance(r *http.Request) (*content, error) {
 
 func (c *console) report(r *http.Request) (*content, error) {
 	day, err := time.Parse(time.DateOnly, r.PathValue("day"))
-	if err != nil {
+	licenseID, instanceID := r.PathValue("license"), r.PathValue("instance")
+	if err != nil || !storable(licenseID, instanceID) {
 		return nil, cpstore.ErrNotFound
 	}
-	report, err := c.store.Report(r.Context(), r.PathValue("license"), r.PathValue("instance"), day)
+	report, err := c.store.Report(r.Context(), licenseID, instanceID, day)
 	if err != nil {
 		return nil, err
 	}
