@@ -25,6 +25,10 @@ const (
 	RejectionNotCounted = "a seal refused for a license renewal could not be counted"
 )
 
+// bookkeepingTimeout bounds each of the two writes that do not decide the answer: one that hangs
+// is given up and told like one that fails, so that it cannot hold the answer of an instance.
+const bookkeepingTimeout = 2 * time.Second
+
 // Outcome is what became of a request for a renewal.
 type Outcome int
 
@@ -100,7 +104,10 @@ func (r *Renewal) Answer(
 		return Nothing, nil, err
 	}
 	if telemetry.Verify(issued.Encoded, body, seal) != nil {
-		if err := r.store.CountSealRejection(ctx, issued.Id, now); err != nil {
+		writing, done := context.WithTimeout(ctx, bookkeepingTimeout)
+		err = r.store.CountSealRejection(writing, issued.Id, now)
+		done()
+		if err != nil {
 			if ctx.Err() != nil {
 				return Nothing, nil, ctx.Err()
 			}
@@ -124,7 +131,10 @@ func (r *Renewal) Answer(
 	if successor != nil {
 		served = successor.Id
 	}
-	if err := r.store.RecordRenewalAsk(ctx, issued.Id, request.InstanceID, now, served); err != nil {
+	writing, done := context.WithTimeout(ctx, bookkeepingTimeout)
+	err = r.store.RecordRenewalAsk(writing, issued.Id, request.InstanceID, now, served)
+	done()
+	if err != nil {
 		if ctx.Err() != nil {
 			return Nothing, nil, ctx.Err()
 		}

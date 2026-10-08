@@ -472,6 +472,32 @@ func Test_Answer_AnAskThatCannotBeRecorded_IsAnsweredAllTheSame(t *testing.T) {
 	}
 }
 
+// A trace whose write hangs is given up: it holds the answer of an instance for the bound of a
+// bookkeeping write, not for as long as the table stays locked.
+func Test_Answer_AnAskWhoseRecordingHangs_IsAnsweredWithinTheBound(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	b := newBench(t)
+	first := b.license(firstID, "")
+	second := b.license(secondID, firstID)
+
+	locking, err := b.pool.Begin(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = locking.Rollback(context.Background()) })
+	_, err = locking.Exec(t.Context(), `LOCK TABLE controlplane.renewal_asks IN ACCESS EXCLUSIVE MODE`)
+	require.NoError(t, err)
+
+	started := time.Now()
+	outcome, answer := b.answer(&first, instanceA)
+
+	require.Equal(t, renewal.Served, outcome)
+	require.Equal(t, second.Encoded, answer.License)
+	require.Less(t, time.Since(started), 10*time.Second)
+	require.Equal(t, 1, b.unrecorded)
+	require.Contains(t, b.logs.String(), `msg="`+renewal.AskNotRecorded+`"`)
+}
+
 // A refused seal that cannot be counted is answered as an unknown fingerprint is: an error here
 // would tell a caller that the fingerprint is the one of a license.
 func Test_Answer_ASealRejectionThatCannotBeCounted_IsNothing_AsAnUnknownFingerprintIs(t *testing.T) {
