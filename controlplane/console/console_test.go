@@ -42,6 +42,7 @@ type fakeStore struct {
 	report    *cpstore.StoredReport
 	pending   []cpstore.PendingGroup
 	attention *cpstore.Attention
+	journal   []cpstore.OperatorAction
 	err       error
 
 	calls       int
@@ -49,6 +50,7 @@ type fakeStore struct {
 	askedID     uuid.UUID
 	askedFor    []string
 	askedForDay time.Time
+	askedLimit  int
 }
 
 func (f *fakeStore) Customers(_ context.Context, now time.Time) ([]cpstore.CustomerSummary, error) {
@@ -93,6 +95,12 @@ func (f *fakeStore) Attention(_ context.Context, now time.Time) (*cpstore.Attent
 	return answer(f.attention, f.err)
 }
 
+func (f *fakeStore) Journal(_ context.Context, limit int) ([]cpstore.OperatorAction, error) {
+	f.calls++
+	f.askedLimit = limit
+	return f.journal, f.err
+}
+
 func answer[T any](value *T, err error) (*T, error) {
 	if err != nil {
 		return nil, err
@@ -115,19 +123,37 @@ func access(t *testing.T) *cptest.Access {
 	return sharedAccess
 }
 
-// bench is a console over a fake store, behind the Access gate, and what it logged.
+// bench is a console over a fake store, a fake signer and a fake promoter, behind the Access gate,
+// and what it logged.
 type bench struct {
-	t       *testing.T
-	store   *fakeStore
-	handler http.Handler
-	logs    *bytes.Buffer
+	t        *testing.T
+	store    *fakeStore
+	writer   *fakeWriter
+	signer   *fakeSigner
+	promoter *fakePromoter
+	handler  http.Handler
+	logs     *bytes.Buffer
 }
 
+// newBench is a console that issues licenses.
 func newBench(t *testing.T) *bench {
 	t.Helper()
-	b := &bench{t: t, store: &fakeStore{attention: &cpstore.Attention{}}, logs: &bytes.Buffer{}}
+	return newBenchWith(t, true)
+}
+
+// newBenchWith is a console that issues licenses, or one without a signer.
+func newBenchWith(t *testing.T, issuing bool) *bench {
+	t.Helper()
+	b := &bench{
+		t: t, store: &fakeStore{attention: &cpstore.Attention{}}, writer: &fakeWriter{}, signer: &fakeSigner{},
+		promoter: &fakePromoter{}, logs: &bytes.Buffer{},
+	}
 	logger := slog.New(slog.NewTextHandler(b.logs, nil))
-	pages, err := console.New(b.store, func() time.Time { return today }, logger)
+	cfg := &console.Config{Reader: b.store, Writer: b.writer, Now: func() time.Time { return today }, Logger: logger}
+	if issuing {
+		cfg.Signer, cfg.Promoter = b.signer, b.promoter
+	}
+	pages, err := console.New(cfg)
 	require.NoError(t, err)
 	b.handler = access(t).Gate(t, func() time.Time { return today }, logger).Wrap(pages)
 	return b
@@ -744,7 +770,8 @@ func Test_StoreFailure_AnswersTheFailurePageInFixedWordsAndLogsTheError(t *testi
 	}
 }
 
-const policy = "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+// A form of the console is sent to the console and nowhere else.
+const policy = "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 func Test_EveryAnswer_CarriesTheSecurityHeaders(t *testing.T) {
 	b := newBench(t)
@@ -754,7 +781,8 @@ func Test_EveryAnswer_CarriesTheSecurityHeaders(t *testing.T) {
 		"a page":             b.get("/customers"),
 		"the stylesheet":     b.get("/static/console.css"),
 		"the not found page": b.get("/nothing-here"),
-		"a refused method":   b.do(http.MethodPost, "/customers"),
+		"a refused method":   b.do(http.MethodPut, "/customers"),
+		"a refused origin":   b.post("/customers", nil, crossSite),
 		"the failure page":   failing.get("/"),
 	}
 	for name, got := range answers {
@@ -779,15 +807,22 @@ func Test_Stylesheet_IsServedAsCSSAndNamesNothingOutside(t *testing.T) {
 	require.NotContains(t, got.body, "@import")
 }
 
-// The console only reads: nothing but a GET, or the HEAD of one, gets anything.
-func Test_NoRouteAcceptsAnotherMethod(t *testing.T) {
+// A page is read with a GET, or the HEAD of one, and nothing else gets it. The two paths of the
+// customers take a POST too, which records or changes a customer: they are left out of that method.
+func Test_NoPageAcceptsAnotherMethod(t *testing.T) {
 	paths := []string{
 		"/", "/customers", "/customers/" + customerID.String(), "/licenses/lic-1",
 		"/licenses/lic-1/instances/" + instanceOne,
-		"/licenses/lic-1/instances/" + instanceOne + "/reports/2026-10-02", "/pending", "/static/console.css",
+		"/licenses/lic-1/instances/" + instanceOne + "/reports/2026-10-02", "/pending", "/journal",
+		"/customers/new", "/customers/" + customerID.String() + "/edit",
+		"/customers/" + customerID.String() + "/licenses/new", "/licenses/lic-1/renew", "/static/console.css",
 	}
+	posted := map[string]bool{"/customers": true, "/customers/" + customerID.String(): true}
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		for _, path := range paths {
+			if method == http.MethodPost && posted[path] {
+				continue
+			}
 			t.Run(method+" "+path, func(t *testing.T) {
 				b := newBench(t)
 				b.store.customer, b.store.license = &cpstore.CustomerDetail{}, &cpstore.LicenseDetail{}
@@ -797,8 +832,25 @@ func Test_NoRouteAcceptsAnotherMethod(t *testing.T) {
 
 				require.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, got.status)
 				require.Zero(t, b.store.calls, "the store is not asked")
+				require.Zero(t, b.writer.writes, "nothing is written")
 			})
 		}
+	}
+}
+
+// An act of the operator is a POST: asked for with a GET, it does nothing.
+func Test_NoActIsDoneByAGet(t *testing.T) {
+	for _, path := range []string{"/licenses", "/licenses/confirm", "/licenses/lic-1/key"} {
+		t.Run(path, func(t *testing.T) {
+			b := newBench(t)
+			b.store.license = &cpstore.LicenseDetail{}
+
+			got := b.get(path + "?license_id=0123456789abcdef")
+
+			require.Zero(t, b.writer.writes, "nothing is written")
+			require.Zero(t, b.signer.calls, "nothing is signed")
+			require.NotContains(t, got.body, "<textarea")
+		})
 	}
 }
 
@@ -835,7 +887,10 @@ func Test_EachRequest_LogsOneLineWithTheOperatorTheMethodTheRouteAndTheStatus(t 
 func Test_RequestThatDidNotPassTheGate_GetsNoPage(t *testing.T) {
 	store := &fakeStore{attention: &cpstore.Attention{}}
 	var logs bytes.Buffer
-	pages, err := console.New(store, func() time.Time { return today }, slog.New(slog.NewTextHandler(&logs, nil)))
+	pages, err := console.New(&console.Config{
+		Reader: store, Writer: &fakeWriter{}, Now: func() time.Time { return today },
+		Logger: slog.New(slog.NewTextHandler(&logs, nil)),
+	})
 	require.NoError(t, err)
 
 	for _, path := range []string{"/", "/customers", "/static/console.css", "/nothing-here"} {
@@ -852,7 +907,10 @@ func Test_RequestThatDidNotPassTheGate_GetsNoPage(t *testing.T) {
 func Test_Unguarded_ShowsABannerOnEveryPageAndTheOperatorAsLocal(t *testing.T) {
 	store := &fakeStore{attention: &cpstore.Attention{}}
 	var logs bytes.Buffer
-	pages, err := console.NewUnguarded(store, func() time.Time { return today }, slog.New(slog.NewTextHandler(&logs, nil)))
+	pages, err := console.NewUnguarded(&console.Config{
+		Reader: store, Writer: &fakeWriter{}, Now: func() time.Time { return today },
+		Logger: slog.New(slog.NewTextHandler(&logs, nil)),
+	})
 	require.NoError(t, err)
 
 	for path, status := range map[string]int{

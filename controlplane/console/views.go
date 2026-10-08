@@ -50,6 +50,8 @@ type link struct {
 type messageView struct {
 	Heading string
 	Text    string
+	// Back leads to where the operator goes on from; without an Href there is no such link.
+	Back link
 }
 
 type attentionView struct {
@@ -150,6 +152,11 @@ type customerView struct {
 	UpdatedAt  string
 	Licenses   []licenseRow
 	Instances  []instanceRow
+	EditHref   string
+	// CanIssue tells this server issues licenses; NewLicenseHref and NewTrialHref lead to the form.
+	CanIssue       bool
+	NewLicenseHref string
+	NewTrialHref   string
 }
 
 type licenseView struct {
@@ -174,11 +181,21 @@ type licenseView struct {
 	Origin                string
 	Note                  string
 	CreatedAt             string
-	Predecessor           *link
-	Successors            []link
-	Instances             []instanceRow
-	Rejections            []rejectionRow
-	RejectionDays         int
+	// IssuedBy is the operator who issued the license from the console, at JournaledAt; empty for
+	// a license that came otherwise.
+	IssuedBy    string
+	JournaledAt string
+	// CanIssue tells this server issues licenses; RenewHref leads to the form of the renewal.
+	CanIssue  bool
+	RenewHref string
+	// KeyAction is where the form that asks for the key again is sent, empty when no path leads to
+	// the license.
+	KeyAction     string
+	Predecessor   *link
+	Successors    []link
+	Instances     []instanceRow
+	Rejections    []rejectionRow
+	RejectionDays int
 }
 
 // fact is a named value.
@@ -437,21 +454,29 @@ func newCustomersView(customers []cpstore.CustomerSummary) *customersView {
 	return view
 }
 
-func newCustomerView(c *cpstore.CustomerDetail) *customerView {
+func newCustomerView(c *cpstore.CustomerDetail, canIssue bool) *customerView {
+	href := customerLink(c.ID, c.Name).Href
 	return &customerView{
-		Name:       c.Name,
-		ID:         c.ID.String(),
-		ExternalID: c.ExternalID,
-		Note:       orAbsent(c.Note),
-		CreatedAt:  instant(c.CreatedAt),
-		UpdatedAt:  instant(c.UpdatedAt),
-		Licenses:   newLicenseRows(c.Licenses),
-		Instances:  newInstanceRows(c.Instances),
+		Name:           c.Name,
+		ID:             c.ID.String(),
+		ExternalID:     c.ExternalID,
+		Note:           orAbsent(c.Note),
+		CreatedAt:      instant(c.CreatedAt),
+		UpdatedAt:      instant(c.UpdatedAt),
+		Licenses:       newLicenseRows(c.Licenses),
+		Instances:      newInstanceRows(c.Instances),
+		EditHref:       href + "/edit",
+		CanIssue:       canIssue,
+		NewLicenseHref: href + "/licenses/new",
+		NewTrialHref:   href + "/licenses/new?trial=1",
 	}
 }
 
-func newLicenseView(l *cpstore.LicenseDetail) *licenseView {
+func newLicenseView(l *cpstore.LicenseDetail, canIssue bool) *licenseView {
 	view := &licenseView{
+		IssuedBy:              l.IssuedBy,
+		JournaledAt:           instant(l.JournaledAt),
+		CanIssue:              canIssue,
 		ID:                    l.ID,
 		Customer:              customerLink(l.CustomerID, l.CustomerName),
 		Plan:                  orAbsent(l.Plan),
@@ -480,6 +505,12 @@ func newLicenseView(l *cpstore.LicenseDetail) *licenseView {
 	}
 	if l.GraceDays != nil {
 		view.GraceDays = strconv.Itoa(*l.GraceDays)
+	}
+	if href := licenseHref(l.ID); href != "" {
+		view.KeyAction = href + "/key"
+		if canIssue {
+			view.RenewHref = href + "/renew"
+		}
 	}
 	if l.PredecessorID != "" {
 		predecessor := licenseLink(l.PredecessorID)

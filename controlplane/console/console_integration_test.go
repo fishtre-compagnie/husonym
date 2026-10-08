@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func Test_Console_WalksFromWhatNeedsAttentionToAReport(t *testing.T) {
 	cptest.StoreReport(t, store, &entry, instanceOne, reportDay, reportDay.Add(26*time.Hour))
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pages, err := console.New(store, time.Now, logger)
+	pages, err := console.New(&console.Config{Reader: store, Writer: store, Now: time.Now, Logger: logger})
 	require.NoError(t, err)
 	handler := access(t).Gate(t, time.Now, logger).Wrap(pages)
 	fetch := func(path string) page {
@@ -95,7 +96,9 @@ func Test_Console_WalksFromWhatNeedsAttentionToAReport(t *testing.T) {
 	require.Contains(t, row(t, customer.body, `href="/licenses/lic-walk"`), ">valid<")
 
 	customers := fetch("/customers")
-	require.Contains(t, row(t, customers.body, "cust-walk"), hrefTo(t, customers.body, `/customers/[^"/]+`))
+	// The page also leads to the form of a new customer: the link looked for is the one of the row.
+	require.Contains(t, customer.body, `<dt>Id</dt><dd class="id">`+
+		strings.TrimPrefix(hrefTo(t, row(t, customers.body, "cust-walk"), `/customers/[^"/]+`), "/customers/")+`</dd>`)
 
 	require.Contains(t, fetch("/pending").body, "Nothing.")
 }

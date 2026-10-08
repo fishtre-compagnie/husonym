@@ -31,6 +31,11 @@ func filesWith(t *testing.T, name, content string) fs.FS {
 	return files
 }
 
+// configOf is a console that only reads, over store.
+func configOf(store Reader, logger *slog.Logger) *Config {
+	return &Config{Reader: store, Now: time.Now, Logger: logger}
+}
+
 // noCustomers is a store that is only asked for the list of the customers, and has none.
 type noCustomers struct{ Reader }
 
@@ -45,7 +50,7 @@ func Test_New_TemplateThatDoesNotParse_Fails(t *testing.T) {
 		"a script left open":      `{{define "content"}}<script>var title = "{{end}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := newConsole(filesWith(t, "templates/customers.html", content), noCustomers{}, time.Now, slog.Default(), true)
+			_, err := newConsole(filesWith(t, "templates/customers.html", content), configOf(noCustomers{}, slog.Default()), true)
 
 			require.ErrorContains(t, err, "customers.html")
 		})
@@ -53,7 +58,7 @@ func Test_New_TemplateThatDoesNotParse_Fails(t *testing.T) {
 }
 
 func Test_New_WithTheFilesOfTheBinary_Succeeds(t *testing.T) {
-	_, err := newConsole(embedded, noCustomers{}, time.Now, slog.Default(), true)
+	_, err := newConsole(embedded, configOf(noCustomers{}, slog.Default()), true)
 
 	require.NoError(t, err)
 }
@@ -63,7 +68,7 @@ func Test_Render_TemplateFailingHalfway_AnswersTheFailurePageAlone(t *testing.T)
 	var logs bytes.Buffer
 	files := filesWith(t, "templates/customers.html",
 		`{{define "content"}}{{with .Body}}<p>BEFORE THE FAILURE</p>{{.NoSuchField}}{{end}}{{end}}`)
-	pages, err := newConsole(files, noCustomers{}, time.Now, slog.New(slog.NewTextHandler(&logs, nil)), true)
+	pages, err := newConsole(files, configOf(noCustomers{}, slog.New(slog.NewTextHandler(&logs, nil))), true)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 
@@ -80,7 +85,7 @@ func Test_Render_TemplateFailingHalfway_AnswersTheFailurePageAlone(t *testing.T)
 // command, say nothing.
 func Test_Panic_AnswersTheFailurePageAndLogsFixedWords(t *testing.T) {
 	var logs bytes.Buffer
-	pages, err := newConsole(embedded, panicking{}, time.Now, slog.New(slog.NewTextHandler(&logs, nil)), true)
+	pages, err := newConsole(embedded, configOf(panicking{}, slog.New(slog.NewTextHandler(&logs, nil))), true)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 

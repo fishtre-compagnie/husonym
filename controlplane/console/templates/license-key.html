@@ -1,0 +1,10 @@
+{{define "content"}}{{with .Body}}<p class="kind">License</p>
+<h1>{{.Heading}}</h1>
+<dl class="facts">
+<dt>License</dt><dd>{{template "id" .License}}</dd>
+</dl>
+<section id="key">
+<h2><label for="license-key">Key</label></h2>
+<p class="definition">The key is installed from the License page of the product, or set as the <code>EE_LICENSE</code> environment variable on its API. This page is not kept: showing the key again is journaled.</p>
+<textarea id="license-key" class="key" rows="8" readonly spellcheck="false">{{.Key}}</textarea>
+</section>{{end}}{{end}}

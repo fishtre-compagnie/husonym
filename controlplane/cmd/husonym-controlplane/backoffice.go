@@ -15,6 +15,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/accessgate"
 	"github.com/fishtre-compagnie/husonym/controlplane/console"
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
+	"github.com/fishtre-compagnie/husonym/controlplane/intake"
+	"github.com/fishtre-compagnie/husonym/controlplane/issuing"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +26,9 @@ const (
 	backofficeHostEnv   = "CONTROLPLANE_BACKOFFICE_HOST"
 	accessTeamDomainEnv = "CONTROLPLANE_ACCESS_TEAM_DOMAIN"
 	accessAudienceEnv   = "CONTROLPLANE_ACCESS_AUD"
+	// signingKeyFileEnv names the file of the private key the console issues licenses with. Only
+	// `serve backoffice` reads it; without it the console issues nothing.
+	signingKeyFileEnv = "CONTROLPLANE_SIGNING_KEY_FILE"
 
 	insecureNoAccessFlag = "insecure-no-access"
 	healthPath           = "/healthz"
@@ -42,6 +48,8 @@ type backofficeConfig struct {
 	host       string
 	teamDomain string
 	audience   string
+	// signingKeyFile is the path of the signing key, empty for a console that issues nothing.
+	signingKeyFile string
 }
 
 // backofficeGates is the two gates in front of the console.
@@ -50,7 +58,9 @@ type backofficeGates struct {
 	access *accessgate.Gate
 }
 
-func newServeBackofficeCmd() *cobra.Command {
+// newServeBackofficeCmd builds `serve backoffice`; keyring gives the public keys a license is
+// verified against, which the signing key must be one of.
+func newServeBackofficeCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 	var insecure bool
 	cmd := &cobra.Command{
 		Use:   "backoffice",
@@ -61,10 +71,15 @@ func newServeBackofficeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Before anything is reached: a key that cannot sign is told at once.
+			signer, err := loadSigner(cfg.signingKeyFile, keyring)
+			if err != nil {
+				return err
+			}
 			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, syscall.SIGINT)
 			defer stop()
-			return runBackoffice(ctx, cfg, logger)
+			return runBackoffice(ctx, cfg, signer, logger)
 		},
 	}
 	cmd.Flags().BoolVar(&insecure, insecureNoAccessFlag, false,
@@ -77,9 +92,10 @@ func newServeBackofficeCmd() *cobra.Command {
 // refused for it: it is no secret, and it is what the operator has to change.
 func readBackofficeConfig(insecure bool) (*backofficeConfig, error) {
 	cfg := &backofficeConfig{
-		databaseURL: os.Getenv(databaseURLEnv),
-		addr:        os.Getenv(listenAddrEnv),
-		insecure:    insecure,
+		databaseURL:    os.Getenv(databaseURLEnv),
+		addr:           os.Getenv(listenAddrEnv),
+		insecure:       insecure,
+		signingKeyFile: os.Getenv(signingKeyFileEnv),
 	}
 	if cfg.databaseURL == "" {
 		return nil, fmt.Errorf("%s is not set", databaseURLEnv)
@@ -115,9 +131,27 @@ func readBackofficeConfig(insecure bool) (*backofficeConfig, error) {
 	return cfg, nil
 }
 
+// loadSigner reads the signing key at path and holds it to the keyring. Without a path there is no
+// signer, and the console issues nothing. Any failure names the variable and says why in the fixed
+// words of the signing package: never the path, and nothing of what the file holds.
+func loadSigner(path string, keyring func() (license.Keyring, error)) (*issuing.Signer, error) {
+	if path == "" {
+		return nil, nil //nolint:nilnil // no signer is a way to run, not a failure
+	}
+	ring, err := keyring()
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to read the keyring licenses are verified against: %w", signingKeyFileEnv, err)
+	}
+	signer, err := issuing.LoadSigner(path, ring)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", signingKeyFileEnv, err)
+	}
+	return signer, nil
+}
+
 // runBackoffice builds what the backoffice needs and serves it until ctx ends. It does not apply
-// the migrations: the public server owns them.
-func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logger) error {
+// the migrations: the public server owns them. signer is nil for a console that issues nothing.
+func runBackoffice(ctx context.Context, cfg *backofficeConfig, signer *issuing.Signer, logger *slog.Logger) error {
 	var gates *backofficeGates
 	if !cfg.insecure {
 		access, err := accessgate.New(ctx, accessgate.Config{
@@ -141,7 +175,17 @@ func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logg
 	if err := pool.Ping(ctx); err != nil {
 		return errors.New("unable to reach the database")
 	}
-	handler, err := newBackofficeHandler(cpstore.New(pool), gates, time.Now, logger)
+	store := cpstore.New(pool)
+	pages := &console.Config{Reader: store, Writer: store, Now: time.Now, Logger: logger}
+	// Left nil without a key: a nil *issuing.Signer in the interface would not be a nil Signer.
+	if signer != nil {
+		pages.Signer = signer
+		pages.Promoter = intake.New(store, time.Now)
+		logger.Info("the backoffice issues licenses", "kid", signer.Kid())
+	} else {
+		logger.Info("the backoffice issues no license: " + signingKeyFileEnv + " is not set")
+	}
+	handler, err := newBackofficeHandler(pages, gates)
 	if err != nil {
 		return err
 	}
@@ -165,24 +209,22 @@ func runBackoffice(ctx context.Context, cfg *backofficeConfig, logger *slog.Logg
 // then the Access gate, and GET /healthz in front of both, since the kubelet that asks for it has
 // neither the host nor a token. It is the only path outside the gates. Without gates, the console
 // is the one that says so on every page, and it answers under the names of this machine only.
-func newBackofficeHandler(
-	store console.Reader, gates *backofficeGates, now func() time.Time, logger *slog.Logger,
-) (http.Handler, error) {
+func newBackofficeHandler(cfg *console.Config, gates *backofficeGates) (http.Handler, error) {
 	var guarded http.Handler
 	if gates == nil {
-		pages, err := console.NewUnguarded(store, now, logger)
+		pages, err := console.NewUnguarded(cfg)
 		if err != nil {
 			return nil, err
 		}
 		guarded = localNames(pages)
 	} else {
-		pages, err := console.New(store, now, logger)
+		pages, err := console.New(cfg)
 		if err != nil {
 			return nil, err
 		}
 		guarded = accessgate.Host(gates.host, gates.access.Wrap(pages))
 	}
-	return outermost(guarded, logger), nil
+	return outermost(guarded, cfg.Logger), nil
 }
 
 // outermost is the first handler a request to the backoffice meets: it answers the health check
