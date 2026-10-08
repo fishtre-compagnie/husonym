@@ -218,10 +218,8 @@ func Test_LicenseDetail_GivesWhatIsStored_NeverTheKey(t *testing.T) {
 			key.Limits = &license.Limits{MaxSources: &maxSources}
 		})
 	s.license("lic-2", "cust-1", "Acme", today.AddDate(1, 0, 0))
-	s.license("lic-3", "cust-1", "Acme", today.AddDate(1, 0, 0))
 	cptest.Succeed(t, s.pool, "lic-1", "lic-0")
 	cptest.Succeed(t, s.pool, "lic-2", "lic-1")
-	cptest.Succeed(t, s.pool, "lic-3", "lic-1")
 	s.exec(`UPDATE controlplane.licenses SET note = 'renewed by hand' WHERE id = 'lic-1'`)
 	s.report(&entry, "inst-1", 2)
 	s.report(&entry, "inst-2", 1)
@@ -257,8 +255,10 @@ func Test_LicenseDetail_GivesWhatIsStored_NeverTheKey(t *testing.T) {
 	require.False(t, detail.CreatedAt.IsZero())
 	require.Equal(t, license.StateGrace, detail.State)
 	require.Equal(t, "lic-0", detail.PredecessorID)
-	require.Equal(t, []string{"lic-2", "lic-3"}, detail.SuccessorIDs)
+	require.Equal(t, []string{"lic-2"}, detail.SuccessorIDs)
 	require.True(t, detail.HasSuccessor)
+	require.Empty(t, detail.IssuedBy, "a license of the registry was issued by no operator of the console")
+	require.True(t, detail.JournaledAt.IsZero())
 
 	require.Len(t, detail.Instances, 2)
 	require.Equal(t, "inst-2", detail.Instances[0].InstanceID, "the instance heard of last comes first")

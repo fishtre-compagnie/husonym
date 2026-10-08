@@ -72,15 +72,27 @@ func (i *Issuer) EntryOf(key *license.Key) license.RegistryEntry {
 		Encoded:        base64.StdEncoding.EncodeToString(signed),
 		Kid:            license.LegacyKid,
 		Telemetry:      key.Telemetry,
-		KeyFingerprint: license.PublicKeyFingerprint(i.pub),
+		KeyFingerprint: i.SigningKeyFingerprint(),
 	}
+}
+
+// Issue mints the license req describes, as the console does.
+func (i *Issuer) Issue(req *license.IssueRequest) *license.IssuedLicense {
+	i.t.Helper()
+	issued, err := license.Issue(req, i.priv, i.Keyring())
+	require.NoError(i.t, err)
+	return issued
+}
+
+// SigningKeyFingerprint is the fingerprint of the public key that verifies what this Issuer mints.
+func (i *Issuer) SigningKeyFingerprint() string {
+	return license.PublicKeyFingerprint(i.pub)
 }
 
 // EntryFor mints the license req describes and returns its registry entry.
 func (i *Issuer) EntryFor(req *license.IssueRequest) license.RegistryEntry {
 	i.t.Helper()
-	issued, err := license.Issue(req, i.priv, i.Keyring())
-	require.NoError(i.t, err)
+	issued := i.Issue(req)
 	return license.RegistryEntry{
 		Id:             issued.Id,
 		IssuedTo:       issued.IssuedTo,
@@ -90,6 +102,6 @@ func (i *Issuer) EntryFor(req *license.IssueRequest) license.RegistryEntry {
 		Encoded:        issued.Encoded,
 		Kid:            issued.Kid,
 		Telemetry:      issued.Telemetry,
-		KeyFingerprint: license.PublicKeyFingerprint(i.pub),
+		KeyFingerprint: i.SigningKeyFingerprint(),
 	}
 }

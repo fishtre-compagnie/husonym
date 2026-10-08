@@ -24,13 +24,23 @@ type Querier interface {
 	CountUsageReportConflict(ctx context.Context, arg CountUsageReportConflictParams) (int64, error)
 	DeletePendingReport(ctx context.Context, arg DeletePendingReportParams) (int64, error)
 	GetCustomer(ctx context.Context, id pgtype.UUID) (ControlplaneCustomer, error)
+	GetCustomerIDByExternalID(ctx context.Context, externalID string) (pgtype.UUID, error)
+	GetCustomerNameForUpdate(ctx context.Context, id pgtype.UUID) (string, error)
 	GetInstance(ctx context.Context, arg GetInstanceParams) (GetInstanceRow, error)
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
+	GetLicenseCustomer(ctx context.Context, id string) (pgtype.UUID, error)
 	// Every column of a license but the encoded key.
 	GetLicenseDetail(ctx context.Context, id string) (GetLicenseDetailRow, error)
+	// Who issued a license from the console, and when. No row for a license that came otherwise.
+	GetLicenseIssuing(ctx context.Context, licenseID pgtype.Text) (GetLicenseIssuingRow, error)
+	// The encoded key of a license: read only to show it again to the operator, which is journaled.
+	GetLicenseKey(ctx context.Context, id string) (GetLicenseKeyRow, error)
 	// A report, with the customer of its license.
 	GetUsageReport(ctx context.Context, arg GetUsageReportParams) (GetUsageReportRow, error)
+	// No row when a customer already has the external id.
+	InsertCustomer(ctx context.Context, arg InsertCustomerParams) (pgtype.UUID, error)
 	InsertLicense(ctx context.Context, arg InsertLicenseParams) (int64, error)
+	InsertOperatorAction(ctx context.Context, arg InsertOperatorActionParams) error
 	InsertPendingReport(ctx context.Context, arg InsertPendingReportParams) error
 	// The first report received for a license, an instance and a day is the one that stays.
 	InsertUsageReport(ctx context.Context, arg InsertUsageReportParams) (int64, error)
@@ -48,6 +58,8 @@ type Querier interface {
 	ListInstancesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListInstancesOfCustomerRow, error)
 	ListInstancesOfLicense(ctx context.Context, licenseID string) ([]ListInstancesOfLicenseRow, error)
 	ListLicensesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListLicensesOfCustomerRow, error)
+	// The newest lines first, with the name the customer bears today.
+	ListOperatorActions(ctx context.Context, atMost int32) ([]ListOperatorActionsRow, error)
 	ListPendingFingerprintsNowKnown(ctx context.Context) ([]string, error)
 	// The pending reports of each fingerprint, and how many of them were received before old_before.
 	ListPendingGroups(ctx context.Context, oldBefore pgtype.Timestamptz) ([]ListPendingGroupsRow, error)
@@ -65,6 +77,8 @@ type Querier interface {
 	PendingReportExists(ctx context.Context, arg PendingReportExistsParams) (bool, error)
 	PurgePendingReports(ctx context.Context, receivedAt pgtype.Timestamptz) (int64, error)
 	SumSealRejectionsOfDay(ctx context.Context, day pgtype.Date) (int64, error)
+	// The external id is not among what changes: the keys issued carry it.
+	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) error
 	// An existing customer is left as it is: a name is never overwritten.
 	UpsertCustomer(ctx context.Context, arg UpsertCustomerParams) (pgtype.UUID, error)
 	// An instance is first seen at the earliest reception of a report of it. What tells its latest

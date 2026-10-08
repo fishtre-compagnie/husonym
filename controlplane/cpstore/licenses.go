@@ -33,17 +33,6 @@ type License struct {
 func (s *Store) AddLicense(
 	ctx context.Context, key *license.Key, entry *license.RegistryEntry, origin string,
 ) (added bool, err error) {
-	var limits []byte
-	if key.Limits != nil {
-		if limits, err = json.Marshal(key.Limits); err != nil {
-			return false, fmt.Errorf("unable to encode the limits of a license: %w", err)
-		}
-	}
-	var graceDays pgtype.Int4
-	if key.GraceDays != nil {
-		graceDays = pgtype.Int4{Int32: int32(*key.GraceDays), Valid: true} //nolint:gosec // a number of days
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return false, fmt.Errorf("unable to begin the recording of a license: %w", err)
@@ -58,12 +47,55 @@ func (s *Store) AddLicense(
 	if err != nil {
 		return false, fmt.Errorf("unable to record the customer of a license: %w", err)
 	}
+	added, err = insertLicense(ctx, queries, customerID, key, &licenseRecord{
+		Encoded:               entry.Encoded,
+		Kid:                   entry.Kid,
+		SigningKeyFingerprint: entry.KeyFingerprint,
+		Note:                  entry.Note,
+		Origin:                origin,
+	})
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("unable to commit the recording of a license: %w", err)
+	}
+	return added, nil
+}
+
+// licenseRecord is what the row of a license holds that its key does not carry.
+type licenseRecord struct {
+	Encoded               string
+	Kid                   string
+	SigningKeyFingerprint string
+	Note                  string
+	Origin                string
+	// Succeeds is the id of the license this one succeeds, empty when it succeeds none.
+	Succeeds string
+}
+
+// insertLicense writes the row of a license under a customer: every column the key carries is
+// filled from key, the others from record. A license id already present is left as it is and
+// added is false.
+func insertLicense(
+	ctx context.Context, queries *cpdb.Queries, customerID pgtype.UUID, key *license.Key, record *licenseRecord,
+) (added bool, err error) {
+	var limits []byte
+	if key.Limits != nil {
+		if limits, err = json.Marshal(key.Limits); err != nil {
+			return false, fmt.Errorf("unable to encode the limits of a license: %w", err)
+		}
+	}
+	var graceDays pgtype.Int4
+	if key.GraceDays != nil {
+		graceDays = pgtype.Int4{Int32: int32(*key.GraceDays), Valid: true} //nolint:gosec // a number of days
+	}
 	inserted, err := queries.InsertLicense(ctx, cpdb.InsertLicenseParams{
 		ID:                    key.Id,
 		CustomerID:            customerID,
-		Encoded:               entry.Encoded,
-		KeyFingerprint:        telemetry.KeyFingerprint(entry.Encoded),
-		Kid:                   entry.Kid,
+		Encoded:               record.Encoded,
+		KeyFingerprint:        telemetry.KeyFingerprint(record.Encoded),
+		Kid:                   record.Kid,
 		Plan:                  key.Plan,
 		Features:              key.Features,
 		Limits:                limits,
@@ -71,15 +103,13 @@ func (s *Store) AddLicense(
 		IssuedAt:              pgtype.Timestamptz{Time: key.IssuedAt, Valid: true},
 		ExpiresAt:             pgtype.Timestamptz{Time: key.ExpiresAt, Valid: true},
 		GraceDays:             graceDays,
-		SigningKeyFingerprint: entry.KeyFingerprint,
-		Note:                  entry.Note,
-		Origin:                origin,
+		SigningKeyFingerprint: record.SigningKeyFingerprint,
+		Note:                  record.Note,
+		Origin:                record.Origin,
+		SucceedsLicenseID:     pgtype.Text{String: record.Succeeds, Valid: record.Succeeds != ""},
 	})
 	if err != nil {
 		return false, fmt.Errorf("unable to record a license: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return false, fmt.Errorf("unable to commit the recording of a license: %w", err)
 	}
 	return inserted > 0, nil
 }

@@ -15,7 +15,7 @@ import (
 )
 
 // What the operator console reads. Nothing here writes, and nothing here reads the encoded key
-// of a license: no type of this file can carry it.
+// of a license: no type of this file can carry it. What the console writes is in operator.go.
 
 // ErrNotFound is returned when the store holds nothing under what was asked for.
 var ErrNotFound = errors.New("not found")
@@ -80,6 +80,10 @@ type LicenseDetail struct {
 	Note                  string
 	Origin                string
 	CreatedAt             time.Time
+	// IssuedBy is the operator who issued the license from the console and JournaledAt the instant
+	// the journal gives to it. Empty and zero for a license that came from the registry.
+	IssuedBy    string
+	JournaledAt time.Time
 	// PredecessorID is the license this one succeeds, empty when it succeeds none.
 	PredecessorID string
 	SuccessorIDs  []string
@@ -263,6 +267,15 @@ func (s *Store) LicenseDetail(ctx context.Context, id string, now time.Time) (*L
 		CreatedAt:             toTime(row.CreatedAt),
 		PredecessorID:         row.SucceedsLicenseID.String,
 		SuccessorIDs:          successors,
+	}
+	issuing, err := queries.GetLicenseIssuing(ctx, pgtype.Text{String: id, Valid: true})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+	case err != nil:
+		return nil, fmt.Errorf("unable to read who issued a license: %w", err)
+	default:
+		detail.IssuedBy = issuing.Operator
+		detail.JournaledAt = toTime(issuing.At)
 	}
 
 	instances, err := queries.ListInstancesOfLicense(ctx, id)

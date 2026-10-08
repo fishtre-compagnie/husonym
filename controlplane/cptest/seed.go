@@ -39,8 +39,8 @@ func StoreReport(
 	require.Equal(t, cpstore.ReportStored, outcome)
 }
 
-// Succeed makes the license successorID the successor of predecessorID. Nothing writes that link
-// yet, so it is set in the table.
+// Succeed makes the license successorID the successor of predecessorID, in the table: for
+// licenses that did not come from the console, which is what writes that link.
 func Succeed(t *testing.T, pool *pgxpool.Pool, successorID, predecessorID string) {
 	t.Helper()
 	tag, err := pool.Exec(t.Context(),
