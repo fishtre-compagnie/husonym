@@ -1,0 +1,8 @@
+{{define "content"}}{{with .Body}}<h1>Pending</h1>
+<p class="definition">Reports kept until their license is known, by key fingerprint. Old: received more than {{.OldPendingHours}} hours ago.</p>
+{{if .Groups}}<div class="table-wrap"><table>
+<thead><tr><th>Key fingerprint</th><th class="number">Pending</th><th class="number">Old</th><th>Oldest received</th><th>Newest received</th><th>Instances</th></tr></thead>
+<tbody>
+{{range .Groups}}<tr id="fp-{{.Fingerprint}}"{{if .OldReports}} class="over"{{end}}><td><code title="{{.Fingerprint}}">{{.Short}}</code></td><td class="number">{{.Reports}}</td><td class="number">{{if .OldReports}}<strong class="mark">{{.OldReports}} old</strong>{{else}}0{{end}}</td><td>{{.Oldest}}</td><td>{{.Newest}}</td><td><ul class="plain">{{range .Instances}}<li><code>{{.}}</code></li>{{end}}</ul></td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}{{end}}{{end}}

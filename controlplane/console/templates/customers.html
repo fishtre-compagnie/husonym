@@ -1,0 +1,7 @@
+{{define "content"}}{{with .Body}}<h1>Customers</h1>
+{{if .Customers}}<div class="table-wrap"><table>
+<thead><tr><th>Customer</th><th>External id</th><th class="number">Licenses</th><th class="number">Instances, last {{.RecentDays}} days</th><th>Nearest expiry</th></tr></thead>
+<tbody>
+{{range .Customers}}<tr><td>{{template "named" .Customer}}</td><td class="id">{{.ExternalID}}</td><td class="number">{{.Licenses}}</td><td class="number">{{.RecentInstances}}</td><td>{{.NearestExpiry}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No customer.</p>{{end}}{{end}}{{end}}

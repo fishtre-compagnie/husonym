@@ -82,15 +82,16 @@ func newServeCmd() *cobra.Command {
 			return servePublic(ctx, pool, listener, metricsListener, logger, maintenanceTick)
 		},
 	})
+	serve.AddCommand(newServeBackofficeCmd())
 	return serve
 }
 
-// newPublicServer is the server of the public API around handler. What net/http logs by itself
-// is dropped: its lines name the remote address of the caller, and the line of a panic carries
-// what was panicked with. The handler says in its own words what there is to say. The lines of
-// a failing accept are dropped with the rest: a listener that no longer accepts shows in the
-// health check.
-func newPublicServer(handler http.Handler) *http.Server {
+// newServer is a server of the control plane around handler, with its timeouts. What net/http
+// logs by itself is dropped: its lines name the remote address of the caller, and the line of a
+// panic carries what was panicked with. The handler says in its own words what there is to say.
+// The lines of a failing accept are dropped with the rest: a listener that no longer accepts
+// shows in the health check.
+func newServer(handler http.Handler) *http.Server {
 	return &http.Server{
 		Handler:           handler,
 		ErrorLog:          log.New(io.Discard, "", 0),
@@ -126,8 +127,8 @@ func servePublic(
 	metrics.WatchAttention(func(ctx context.Context) (cpstore.AttentionCounts, error) {
 		return store.AttentionCounts(ctx, now())
 	}, now)
-	server := newPublicServer(publicapi.NewHandler(receiver, metrics, logger))
-	metricsServer := newPublicServer(metricsHandler(metrics.Handler()))
+	server := newServer(publicapi.NewHandler(receiver, metrics, logger))
+	metricsServer := newServer(metricsHandler(metrics.Handler()))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)
 	defer cancelMaintenance()

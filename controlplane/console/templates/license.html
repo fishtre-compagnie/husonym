@@ -1,0 +1,38 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}}</nav>
+<p class="kind">License</p>
+<h1 class="id">{{.ID}}</h1>
+<dl class="facts">
+<dt>Customer</dt><dd>{{template "named" .Customer}}</dd>
+<dt>State</dt><dd>{{template "state" .State}}</dd>
+<dt>Expires</dt><dd>{{.ExpiresAt}}</dd>
+<dt>Grace days</dt><dd>{{.GraceDays}}</dd>
+<dt>Issued</dt><dd>{{.IssuedAt}}</dd>
+<dt>Plan</dt><dd>{{.Plan}}</dd>
+<dt>Telemetry</dt><dd>{{.Telemetry}}{{if .KeyTelemetry}} <span class="aside">{{.KeyTelemetry}}</span>{{end}}</dd>
+<dt>Features</dt><dd>{{if .AllFeatures}}all{{else if .Features}}<ul class="plain">{{range .Features}}<li><code>{{.}}</code></li>{{end}}</ul>{{else}}none{{end}}</dd>
+<dt>Limits</dt><dd>{{if .Limits}}<ul class="plain">{{range .Limits}}<li><code>{{.Name}}</code> {{.Value}}</li>{{end}}</ul>{{else}}none{{end}}</dd>
+<dt>Succeeds</dt><dd>{{with .Predecessor}}{{template "id" .}}{{else}}—{{end}}</dd>
+<dt>Succeeded by</dt><dd>{{if .Successors}}<ul class="plain">{{range .Successors}}<li>{{template "id" .}}</li>{{end}}</ul>{{else}}—{{end}}</dd>
+<dt>Key fingerprint</dt><dd class="id">{{.KeyFingerprint}}</dd>
+<dt>Kid</dt><dd class="id">{{.Kid}}</dd>
+<dt>Signing key fingerprint</dt><dd class="id">{{.SigningKeyFingerprint}}</dd>
+<dt>Origin</dt><dd>{{.Origin}}</dd>
+<dt>Note</dt><dd>{{.Note}}</dd>
+<dt>Recorded</dt><dd>{{.CreatedAt}}</dd>
+</dl>
+
+<section id="instances">
+<h2>Instances <span class="count">{{len .Instances}}</span></h2>
+{{if .Instances}}{{template "instances" .Instances}}{{else}}<p class="empty">No instance.</p>{{end}}
+</section>
+
+<section id="seal-rejections"{{if .Rejections}} class="some"{{end}}>
+<h2>Seal rejections</h2>
+<p class="definition">Reports refused for their seal in the last {{.RejectionDays}} days, by day.</p>
+{{if .Rejections}}<div class="table-wrap"><table>
+<thead><tr><th>Day</th><th class="number">Refused</th><th>Last refused</th></tr></thead>
+<tbody>
+{{range .Rejections}}<tr><td>{{.Day}}</td><td class="number">{{.Count}}</td><td>{{.LastAt}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">Nothing.</p>{{end}}
+</section>{{end}}{{end}}

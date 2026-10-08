@@ -1,0 +1,24 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a></nav>
+<h1>{{.Name}}</h1>
+<dl class="facts">
+<dt>External id</dt><dd class="id">{{.ExternalID}}</dd>
+<dt>Id</dt><dd class="id">{{.ID}}</dd>
+<dt>Note</dt><dd>{{.Note}}</dd>
+<dt>Recorded</dt><dd>{{.CreatedAt}}</dd>
+<dt>Updated</dt><dd>{{.UpdatedAt}}</dd>
+</dl>
+
+<section id="licenses">
+<h2>Licenses <span class="count">{{len .Licenses}}</span></h2>
+{{if .Licenses}}<div class="table-wrap"><table>
+<thead><tr><th>License</th><th>State</th><th>Expires</th><th>Plan</th><th>Telemetry</th><th>Succeeded</th></tr></thead>
+<tbody>
+{{range .Licenses}}<tr><td>{{template "id" .License}}</td><td>{{template "state" .State}}</td><td>{{.ExpiresAt}}</td><td>{{.Plan}}</td><td>{{.Telemetry}}</td><td>{{.Succeeded}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No license.</p>{{end}}
+</section>
+
+<section id="instances">
+<h2>Instances <span class="count">{{len .Instances}}</span></h2>
+{{if .Instances}}{{template "instances" .Instances}}{{else}}<p class="empty">No instance.</p>{{end}}
+</section>{{end}}{{end}}

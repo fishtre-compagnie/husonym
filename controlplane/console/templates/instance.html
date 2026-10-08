@@ -1,0 +1,24 @@
+{{define "content"}}{{with .Body}}<nav class="crumbs" aria-label="Where this is"><a href="/customers">Customers</a> <span aria-hidden="true">/</span> {{template "named" .Customer}} <span aria-hidden="true">/</span> {{template "id" .License}}</nav>
+<p class="kind">Instance</p>
+<h1 class="id">{{.ID}}</h1>
+<dl class="facts">
+<dt>License</dt><dd>{{template "id" .License}}</dd>
+<dt>Customer</dt><dd>{{template "named" .Customer}}</dd>
+<dt>Version</dt><dd>{{.Version}}</dd>
+<dt>Install kind</dt><dd>{{.InstallKind}}</dd>
+<dt>First seen</dt><dd>{{.FirstSeen}}</dd>
+<dt>Last seen</dt><dd>{{.LastSeen}}</dd>
+<dt>Last report day</dt><dd>{{.LastReportDay}}</dd>
+<dt>Source cap</dt><dd>{{.SourceCap}}</dd>
+</dl>
+
+<section id="reports">
+<h2>Reports <span class="count">{{len .Reports}}</span></h2>
+{{if .Truncated}}<p class="definition">The {{.ReportsCap}} latest days.</p>
+{{end}}{{if .Reports}}<div class="table-wrap"><table>
+<thead><tr><th>Day</th><th>Received</th><th class="number">Sources</th><th class="number">Conflicting re-sends</th></tr></thead>
+<tbody>
+{{range .Reports}}<tr{{if .Over}} class="over"{{end}}><td>{{template "named" .Day}}</td><td>{{.ReceivedAt}}</td><td class="number">{{.Sources}}{{if .Over}} <strong class="mark">over the cap</strong>{{end}}</td><td class="number">{{.Conflicts}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No report.</p>{{end}}
+</section>{{end}}{{end}}

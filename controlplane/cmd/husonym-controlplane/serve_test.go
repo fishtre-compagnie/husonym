@@ -57,7 +57,7 @@ func Test_PublicServer_NetHTTPLogsNothing(t *testing.T) {
 	var standard bytes.Buffer
 	log.SetOutput(&standard)
 	t.Cleanup(func() { log.SetOutput(os.Stderr) })
-	server := newPublicServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("SECRET") }))
+	server := newServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("SECRET") }))
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	served := make(chan struct{})

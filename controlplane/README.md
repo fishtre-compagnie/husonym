@@ -14,6 +14,7 @@ schema of a report and its seal).
 | `husonym-controlplane migrate up`                        | Applies the pending migrations of the database (they are embedded). |
 | `husonym-controlplane import-registry --registry <file>` | Loads the registry of issued licenses and prints three counts.      |
 | `husonym-controlplane serve public`                      | Applies the migrations, then serves the public API.                 |
+| `husonym-controlplane serve backoffice`                  | Serves the operator console. It applies no migration.               |
 
 `import-registry` verifies every entry against the embedded keyring. An entry whose key does not
 verify, whose id is not the one inside its key, or whose key names no customer is skipped and
@@ -29,6 +30,9 @@ within the hour.
 | `CONTROLPLANE_DATABASE_URL` | PostgreSQL connection string (required).          |
 | `CONTROLPLANE_LISTEN_ADDR`  | Listen address of the server, `:8080` by default. |
 | `CONTROLPLANE_METRICS_ADDR` | Listen address of the metrics of `serve public`, `:9090` by default. |
+| `CONTROLPLANE_BACKOFFICE_HOST` | Host name the console answers under, a bare name (`serve backoffice`, required). |
+| `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required). |
+| `CONTROLPLANE_ACCESS_AUD` | Audience tag of the Access application of the console (`serve backoffice`, required). |
 
 The tables live in the `controlplane` schema. The table in which golang-migrate keeps the version
 of the schema, `schema_migrations`, sits in `public`.
@@ -69,6 +73,54 @@ fingerprint and 10000 in all). It is checked once the license is imported, as it
 on the day it was received, then stored or discarded. The first report stored for a license, an
 instance and a day stays; a different one for the same three is counted as a conflict and dropped.
 
+## Operator console
+
+`serve backoffice` serves pages, rendered on the server, that show what the database holds. It
+only reads: every route is a `GET`, and there is no form.
+
+| Path                                                     | What it shows                                                   |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| `/`                                                      | What needs attention: the five lists the gauges below count.     |
+| `/customers`                                             | The customers.                                                  |
+| `/customers/{id}`                                        | A customer, its licenses and its instances.                     |
+| `/licenses/{id}`                                         | A license: what its key carries, its instances, refused seals.  |
+| `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap. |
+| `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                   |
+| `/pending`                                               | The pending reports, by key fingerprint.                        |
+| `/static/console.css`                                    | The stylesheet. The pages load nothing else.                    |
+
+The key of a license is on no page. Instants are shown in UTC.
+
+### The gates
+
+Every request passes two gates, in this order, before a page is rendered:
+
+1. The host. A request whose `Host` is not `CONTROLPLANE_BACKOFFICE_HOST` (its port set aside) is
+   answered 404 with no body, whatever it carries.
+2. Cloudflare Access. The request must carry, in `Cf-Access-Jwt-Assertion`, a token signed with
+   RS256 by a key of the team (`https://<team domain>/cdn-cgi/access/certs`), issued by
+   `https://<team domain>`, naming `CONTROLPLANE_ACCESS_AUD` among its audiences, within its
+   validity, and carrying an email. Any other request is answered 401 with no body. A token issued
+   for another application of the same team does not pass.
+
+`GET /healthz` answers 200 outside both gates, without reading the database, and is the only such
+path. The server serves no report intake, and the public server serves no page of the console.
+
+The command refuses to start when one of its variables is missing, when the host or the team
+domain is not a bare host name, or when the keys of the team cannot be fetched. Request headers
+are capped at 64 KiB.
+
+Every answer carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet and
+nothing else.
+
+### On one's own machine
+
+`serve backoffice --insecure-no-access` skips both gates and does not read their three variables.
+Every page then says so in a banner and shows the operator as `local`. The flag is refused unless
+`CONTROLPLANE_LISTEN_ADDR` is a loopback address (`127.0.0.1:8080`, `[::1]:8080`,
+`localhost:8080`); the default, `:8080`, listens on every interface and is refused.
+
 ## What is stored
 
 - For each license: its encoded key and what the key carries, the customer the key names (id and
@@ -91,6 +143,12 @@ The line of a request is a path, a status and a fixed word for the outcome; a pa
 of the service is written `-`. When the service itself fails, the line carries the text of its own
 error as well. The hourly maintenance writes one line with three counts (stored, discarded,
 purged), or the text of its error. What `net/http` would log by itself is dropped.
+
+The backoffice writes one line per request to the console: the email of the operator, the method,
+the pattern of the route (`GET /licenses/{id}`, never the path as written; `-` when no route
+matched) and the status. A read that fails adds a line with the text of our own error. A request
+refused by the Access gate is one line in fixed words; one refused for its host, and the health
+check, are not logged.
 
 ## Metrics
 
@@ -126,3 +184,4 @@ The generated code in `controlplane/gen/` is produced with sqlc from the queries
 
 `docker build -f docker/Dockerfile.controlplane .` builds the image. Its entrypoint is
 `/husonym-controlplane`, run as the non-root user 65532, and its default command is `serve public`.
+The console is the same image run with `serve backoffice`.
