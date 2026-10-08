@@ -44,9 +44,11 @@ type GetLatestSuccessorRow struct {
 }
 
 // The last license of the chain of successors of a license, no further than max_depth successors
-// away. The index that gives a license one successor at most makes the chain a line; the depth
-// ends the walk of one that would loop. cut_short tells the license returned has a successor of
-// its own, which only happens at the bound.
+// away. The index that gives a license one successor at most makes the chain a line, and nothing
+// keeps that line from closing on itself: two licenses may each name the other. max_depth bounds
+// how far a long chain is followed, and it is also what stops a loop, which the walk would
+// otherwise follow without end. cut_short tells the license returned has a successor of its own,
+// which only happens at the bound.
 func (q *Queries) GetLatestSuccessor(ctx context.Context, arg GetLatestSuccessorParams) (GetLatestSuccessorRow, error) {
 	row := q.db.QueryRow(ctx, getLatestSuccessor, arg.LicenseID, arg.MaxDepth)
 	var i GetLatestSuccessorRow

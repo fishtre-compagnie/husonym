@@ -10,12 +10,12 @@ schema of a report, its seal, and the request and the answer of a renewal).
 
 ## Commands
 
-| Command                                                  | What it does                                                        |
-| -------------------------------------------------------- | ------------------------------------------------------------------- |
-| `husonym-controlplane migrate up`                        | Applies the pending migrations of the database (they are embedded). |
-| `husonym-controlplane import-registry --registry <file>` | Loads the registry of issued licenses and prints three counts.      |
+| Command                                                  | What it does                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `husonym-controlplane migrate up`                        | Applies the pending migrations of the database (they are embedded).       |
+| `husonym-controlplane import-registry --registry <file>` | Loads the registry of issued licenses and prints three counts.            |
 | `husonym-controlplane serve public`                      | Applies the migrations, then serves the public API: reports and renewals. |
-| `husonym-controlplane serve backoffice`                  | Serves the operator console. It applies no migration.               |
+| `husonym-controlplane serve backoffice`                  | Serves the operator console. It applies no migration.                     |
 
 `import-registry` verifies every entry against the embedded keyring. An entry whose key does not
 verify, whose id is not the one inside its key, or whose key names no customer is skipped and
@@ -33,15 +33,15 @@ stop while it waits stops.
 
 ## Environment
 
-| Variable                    | Meaning                                           |
-| --------------------------- | ------------------------------------------------- |
-| `CONTROLPLANE_DATABASE_URL` | PostgreSQL connection string (required).          |
-| `CONTROLPLANE_LISTEN_ADDR`  | Listen address of the server, `:8080` by default. |
-| `CONTROLPLANE_METRICS_ADDR` | Listen address of the metrics of `serve public`, `:9090` by default. |
-| `CONTROLPLANE_BACKOFFICE_HOST` | Host name the console answers under, a bare name (`serve backoffice`, required). |
-| `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required). |
-| `CONTROLPLANE_ACCESS_AUD` | Audience tag of the Access application of the console (`serve backoffice`, required). |
-| `CONTROLPLANE_SIGNING_KEY_FILE` | Path of the PEM Ed25519 private key the console issues licenses with (`serve backoffice` only, optional). |
+| Variable                          | Meaning                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `CONTROLPLANE_DATABASE_URL`       | PostgreSQL connection string (required).                                                                  |
+| `CONTROLPLANE_LISTEN_ADDR`        | Listen address of the server, `:8080` by default.                                                         |
+| `CONTROLPLANE_METRICS_ADDR`       | Listen address of the metrics of `serve public`, `:9090` by default.                                      |
+| `CONTROLPLANE_BACKOFFICE_HOST`    | Host name the console answers under, a bare name (`serve backoffice`, required).                          |
+| `CONTROLPLANE_ACCESS_TEAM_DOMAIN` | Domain of the Cloudflare Access team, a bare name (`serve backoffice`, required).                         |
+| `CONTROLPLANE_ACCESS_AUD`         | Audience tag of the Access application of the console (`serve backoffice`, required).                     |
+| `CONTROLPLANE_SIGNING_KEY_FILE`   | Path of the PEM Ed25519 private key the console issues licenses with (`serve backoffice` only, optional). |
 
 The tables live in the `controlplane` schema. The table in which golang-migrate keeps the version
 of the schema, `schema_migrations`, sits in `public`.
@@ -129,6 +129,12 @@ answered all the same, with its license or with 204 as the chain says; when a re
 be counted, the answer is the 204 of an unknown fingerprint. Each is one line of the log in fixed
 words and one more in `husonym_controlplane_renewal_bookkeeping_failures_total`.
 
+A request proves that whoever sealed it held the key of the license at the instant it states, and
+nothing more. It is not used up by its answer: within the 5 minutes its instant stays fresh,
+whoever captured it whole, the body and its two headers, can send it again and is given the same
+answer. And a key does not stop asking once it is renewed: any past key of a chain fetches the
+last license of that chain, for as long as the chain goes on.
+
 Every answer carries `Cache-Control: no-store`. The 200 is the only answer of this server that
 carries a license key; it is never logged.
 
@@ -137,31 +143,31 @@ carries a license key; it is never logged.
 `serve backoffice` serves pages, rendered on the server, that show what the database holds, and
 the few acts of the operator. A page is a `GET` and changes nothing; an act is a `POST`.
 
-| Path                                                     | What it shows                                                   |
-| -------------------------------------------------------- | --------------------------------------------------------------- |
-| `/`                                                      | What needs attention, in five lists: see below.                 |
-| `/customers`                                             | The customers.                                                  |
-| `/customers/{id}`                                        | A customer, its licenses and its instances.                     |
+| Path                                                     | What it shows                                                                            |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `/`                                                      | What needs attention, in five lists: see below.                                          |
+| `/customers`                                             | The customers.                                                                           |
+| `/customers/{id}`                                        | A customer, its licenses and its instances.                                              |
 | `/licenses/{id}`                                         | A license: what its key carries, its instances, the asks for its renewal, refused seals. |
-| `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap. |
-| `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                   |
-| `/pending`                                               | The pending reports, by key fingerprint.                        |
-| `/journal`                                               | The 200 latest acts of the operators, the newest first.         |
-| `/static/console.css`                                    | The stylesheet. The pages load nothing else.                    |
+| `/licenses/{license}/instances/{instance}`               | An instance and its reports, the sources against the source cap.                         |
+| `/licenses/{license}/instances/{instance}/reports/{day}` | A report: its document as received, indented.                                            |
+| `/pending`                                               | The pending reports, by key fingerprint.                                                 |
+| `/journal`                                               | The 200 latest acts of the operators, the newest first.                                  |
+| `/static/console.css`                                    | The stylesheet. The pages load nothing else.                                             |
 
 Instants are shown in UTC.
 
 ### The acts of the operator
 
-| Request                                | What it does                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /customers/new`, `POST /customers` | Records a customer: a name and a note. The console draws its external id.  |
-| `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it. |
-| `GET /customers/{id}/licenses/new`     | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
-| `GET /licenses/{id}/renew`             | The same form, prefilled from the license it succeeds.                      |
-| `POST /licenses/confirm`               | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm. |
-| `POST /licenses`                       | Signs the license, records it, and shows its key.                           |
-| `POST /licenses/{id}/key`              | Shows the key of a license again.                                           |
+| Request                                            | What it does                                                                                                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /customers/new`, `POST /customers`            | Records a customer: a name and a note. The console draws its external id.                                                                         |
+| `GET /customers/{id}/edit`, `POST /customers/{id}` | Changes the name and the note of a customer. Its external id never changes: the keys issued carry it.                                             |
+| `GET /customers/{id}/licenses/new`                 | The form of a license for the customer; with `?days=30`, prefilled as a license that expires 30 days later. Any other value gives the plain form. |
+| `GET /licenses/{id}/renew`                         | The same form, prefilled from the license it succeeds.                                                                                            |
+| `POST /licenses/confirm`                           | Checks the form. With problems, the form again with them; without, every line of the key to be signed, to confirm.                                |
+| `POST /licenses`                                   | Signs the license, records it, and shows its key.                                                                                                 |
+| `POST /licenses/{id}/key`                          | Shows the key of a license again.                                                                                                                 |
 
 A license cannot be deleted or changed once issued: no route does it. A license has one successor
 at most: the page of a license that has one does not offer to renew it, and a renewal is refused

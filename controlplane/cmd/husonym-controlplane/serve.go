@@ -123,8 +123,9 @@ func metricsHandler(metrics http.Handler) http.Handler {
 }
 
 // servePublic serves the public API, the reports and the renewals, on listener and the metrics on
-// metricsListener, and runs the maintenance of the pending reports, until ctx ends; it then stops both servers gracefully,
-// within shutdownTimeout. Should either server stop by itself, the other is stopped too.
+// metricsListener, and runs the maintenance of the pending reports, until ctx ends; it then stops
+// both servers gracefully, within shutdownTimeout. Should either server stop by itself, the other
+// is stopped too.
 func servePublic(
 	ctx context.Context, pool *pgxpool.Pool, listener, metricsListener net.Listener, logger *slog.Logger,
 	tick time.Duration,
@@ -138,7 +139,8 @@ func servePublic(
 		return store.AttentionCounts(ctx, now())
 	}, now, logger)
 	// The renewal reads the licenses as they were issued and stored: this server signs nothing.
-	server := newServer(publicapi.NewHandler(receiver, renewal.New(store, now, logger, metrics), metrics, logger))
+	renewer := renewal.New(store, now, logger, metrics)
+	server := newServer(publicapi.NewHandler(receiver, renewer, metrics, logger))
 	metricsServer := newServer(metricsHandler(metrics.Handler()))
 
 	maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)

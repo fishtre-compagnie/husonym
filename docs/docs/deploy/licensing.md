@@ -268,7 +268,7 @@ Write to [contact@husonym.com](mailto:contact@husonym.com). Renewing means insta
 new key, which is issued after the one in force: paste it on the License page, or with
 `EE_LICENSE_FILE` replace the content of the file and the API picks it up on its own, or
 with `EE_LICENSE` change the value and restart the API. The worker follows the API on its
-own. Nothing else changes. An online instance receives its renewed license without
-intervention; in offline mode the key is installed by hand as before.
+own. Nothing else changes. An [online](usage-report.md) instance receives its renewed
+license without intervention; in offline mode the key is installed by hand as before.
 
 If you have lost your license value, ask us rather than assuming a new one is needed.
