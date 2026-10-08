@@ -24,6 +24,13 @@ license that has just been imported are checked in the same run. Should that las
 counts are printed all the same, the command exits non-zero, and the server takes it up again
 within the hour.
 
+Both servers wait for a database that cannot be reached yet when they start: they try again every
+2 seconds, for 60 seconds at most, then fail with the error they would have had at once. One line
+of the log, in fixed words, says that a server is waiting. Only a database that cannot be reached
+is waited for, one that is starting up included: an address that cannot be read, a database that
+answers and refuses the connection, and a migration that fails are told at once. A server told to
+stop while it waits stops.
+
 ## Environment
 
 | Variable                    | Meaning                                           |
@@ -239,7 +246,8 @@ the console.
 
 The command refuses to start when one of its variables is missing, when the host or the team
 domain is not a bare host name, when the keys of the team cannot be fetched, or when the database
-cannot be reached. Request headers are capped at 64 KiB.
+still cannot be reached once it has waited for it (see Commands). Request headers are capped at
+64 KiB.
 
 Every answer of the server carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer` and a content security policy that allows the stylesheet, forms

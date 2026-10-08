@@ -51,7 +51,7 @@ var consolePaths = []string{
 // reached by the tests that refuse to start.
 func setBackofficeEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv(databaseURLEnv, "postgres://nobody@127.0.0.1:1/none?connect_timeout=2")
+	t.Setenv(databaseURLEnv, unreachableDatabase)
 	t.Setenv(listenAddrEnv, "127.0.0.1:0")
 	t.Setenv(backofficeHostEnv, backofficeHost)
 	t.Setenv(accessTeamDomainEnv, "team.example.com")

@@ -66,6 +66,11 @@ func newServeCmd(keyring func() (license.Keyring, error)) *cobra.Command {
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, syscall.SIGINT)
 			defer stop()
 
+			// A database that cannot be reached yet is waited for; one that is reached and whose
+			// migrations fail is not tried again.
+			if err := awaitDatabase(ctx, databaseURL, logger); err != nil {
+				return err
+			}
 			if err := migrations.Up(ctx, databaseURL, logger); err != nil {
 				return err
 			}
