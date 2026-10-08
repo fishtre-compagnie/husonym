@@ -38,7 +38,7 @@
 
 <section id="seal-rejections"{{if .Rejections}} class="some"{{end}}>
 <h2>Seal rejections <span class="count">{{.RejectedReports}}</span></h2>
-<p class="definition">Reports refused for their seal in the last {{.RejectionDays}} days, by license and day.</p>
+<p class="definition">Reports and renewal requests refused for their seal in the last {{.RejectionDays}} days, by license and day.</p>
 {{if .Rejections}}{{template "table" "Seal rejections by license and day"}}
 <thead><tr><th scope="col">Day</th><th scope="col">License</th><th scope="col">Customer</th><th scope="col" class="number">Refused</th><th scope="col">Last refused</th></tr></thead>
 <tbody>

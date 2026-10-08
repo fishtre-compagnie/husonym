@@ -50,8 +50,8 @@ type AttentionCounts struct {
 	// OldPending counts the reports pending for more than OldPendingAfter, not their
 	// fingerprints: it is the sum of OldReports over Attention.OldPending.
 	OldPending int
-	// SealRejections counts the reports refused for their seal on the UTC day of the instant
-	// asked for, where Attention.SealRejections lists the last days.
+	// SealRejections counts the reports and the requests for a renewal refused for their seal on
+	// the UTC day of the instant asked for, where Attention.SealRejections lists the last days.
 	SealRejections int
 	SharedLicenses int
 }

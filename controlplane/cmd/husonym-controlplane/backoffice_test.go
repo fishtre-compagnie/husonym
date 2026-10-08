@@ -342,7 +342,7 @@ func Test_Backoffice_UnderAnotherHost_Answers404EvenWithAValidToken(t *testing.T
 
 // Review focus: the public server serves nothing of the console.
 func Test_PublicServer_AnswersNotFoundToEveryConsolePath(t *testing.T) {
-	handler := publicapi.NewHandler(nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	handler := publicapi.NewHandler(nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	for _, path := range consolePaths {
 		got := request(handler, http.MethodGet, backofficeHost, path, "")
@@ -491,6 +491,7 @@ func Test_ServeBackoffice_InsecureNoAccessOnLoopback_ServesTheConsoleOverTheData
 	require.Contains(t, customers.body, "The host and Access gates are off")
 	require.NotContains(t, customers.body, entry.Encoded)
 	require.Equal(t, http.StatusNotFound, get(t, "http://"+addr+"/v1/usage-reports").status, "no report intake")
+	require.Equal(t, http.StatusNotFound, get(t, "http://"+addr+"/v1/license-renewals").status, "no renewal")
 
 	require.NoError(t, stop())
 }

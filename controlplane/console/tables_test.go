@@ -69,6 +69,7 @@ func Test_Tables_AreCaptionedFocusableAndTheirHeaderCellsScoped(t *testing.T) {
 		LicenseSummary: valid,
 		Instances:      []cpstore.InstanceSummary{instanceSummary("lic-1", instanceOne)},
 		SealRejections: []cpstore.SealRejection{rejection},
+		RenewalAsks:    []cpstore.RenewalAsk{{InstanceID: instanceOne, LastAskedAt: today}},
 	}
 	b.store.instance = instanceWithReports(nil)
 	b.store.pending = []cpstore.PendingGroup{pending}
@@ -78,11 +79,13 @@ func Test_Tables_AreCaptionedFocusableAndTheirHeaderCellsScoped(t *testing.T) {
 			"Silent instances", "Expiring licenses", "Old pending reports by key fingerprint",
 			"Seal rejections by license and day", "Shared licenses",
 		},
-		"/customers":                               {"Customers"},
-		"/customers/" + customerID.String():        {"Licenses of the customer", "Instances of the customer"},
-		"/licenses/lic-1":                          {"Instances of the license", "Seal rejections of the license by day"},
+		"/customers":                        {"Customers"},
+		"/customers/" + customerID.String(): {"Licenses of the customer", "Instances of the customer"},
+		"/licenses/lic-1": {
+			"Instances of the license", "Renewal asks of the license by instance", "Seal rejections of the license by day",
+		},
 		"/licenses/lic-1/instances/" + instanceOne: {"Reports of the instance"},
-		"/pending":                                 {"Pending reports by key fingerprint"},
+		"/pending": {"Pending reports by key fingerprint"},
 	} {
 		t.Run(path, func(t *testing.T) {
 			got := b.get(path)

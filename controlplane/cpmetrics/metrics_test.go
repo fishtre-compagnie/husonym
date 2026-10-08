@@ -80,6 +80,37 @@ func Test_ReportReceived_OnNilMetrics_CountsNothing(t *testing.T) {
 	require.NotPanics(t, func() { m.ReportReceived("stored") })
 }
 
+func Test_RenewalAsked_CountsPerOutcome_ApartFromTheReports(t *testing.T) {
+	m := cpmetrics.New("stored", "refused", "failed")
+	m.StartRenewals("served", "nothing", "refused", "failed")
+	m.RenewalAsked("served")
+	m.RenewalAsked("refused")
+	m.RenewalAsked("refused")
+	m.ReportReceived("failed")
+
+	_, body := scrape(t, m)
+
+	for series, value := range map[string]string{
+		`husonym_controlplane_license_renewals_total{outcome="served"}`:  "1",
+		`husonym_controlplane_license_renewals_total{outcome="nothing"}`: "0",
+		`husonym_controlplane_license_renewals_total{outcome="refused"}`: "2",
+		`husonym_controlplane_license_renewals_total{outcome="failed"}`:  "0",
+		`husonym_controlplane_usage_reports_total{outcome="refused"}`:    "0",
+		`husonym_controlplane_usage_reports_total{outcome="failed"}`:     "1",
+	} {
+		require.Contains(t, body, series+" "+value+"\n")
+	}
+	require.Equal(t, 4, strings.Count(body, "husonym_controlplane_license_renewals_total{"), "the four outcomes and no other")
+	require.NotContains(t, body, `husonym_controlplane_usage_reports_total{outcome="served"}`)
+	require.NotContains(t, body, `husonym_controlplane_usage_reports_total{outcome="nothing"}`)
+}
+
+func Test_RenewalAsked_OnNilMetrics_CountsNothing(t *testing.T) {
+	var m *cpmetrics.Metrics
+
+	require.NotPanics(t, func() { m.RenewalAsked("served") })
+}
+
 func Test_WatchAttention_HelpOfThePendingGaugeFollowsTheThreshold(t *testing.T) {
 	m := cpmetrics.New()
 	m.WatchAttention(func(context.Context) (cpstore.AttentionCounts, error) {

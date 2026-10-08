@@ -91,6 +91,8 @@ type LicenseDetail struct {
 	Instances []InstanceSummary
 	// SealRejections are the ones of the last SealRejectionDays days, the latest day first.
 	SealRejections []SealRejection
+	// RenewalAsks are what its instances asked of its renewal, the last ask first.
+	RenewalAsks []RenewalAsk
 }
 
 // InstanceSummary is an instance as seen under a license.
@@ -142,7 +144,8 @@ type StoredReport struct {
 	LastConflictAt time.Time
 }
 
-// SealRejection is how many reports were refused for their seal under a license on a day.
+// SealRejection is how many reports and requests for a renewal were refused for their seal under a
+// license on a day.
 type SealRejection struct {
 	LicenseID    string
 	CustomerID   uuid.UUID
@@ -231,8 +234,8 @@ func (s *Store) Customer(ctx context.Context, id uuid.UUID, now time.Time) (*Cus
 }
 
 // LicenseDetail gives everything stored of a license but its key, with its state at now, the
-// licenses before and after it, its instances and its late seal rejections. ErrNotFound when no
-// license has the id.
+// licenses before and after it, its instances, its late seal rejections and what its instances
+// asked of its renewal. ErrNotFound when no license has the id.
 func (s *Store) LicenseDetail(ctx context.Context, id string, now time.Time) (*LicenseDetail, error) {
 	queries := cpdb.New(s.pool)
 	row, err := queries.GetLicenseDetail(ctx, id)
@@ -288,6 +291,10 @@ func (s *Store) LicenseDetail(ctx context.Context, id string, now time.Time) (*L
 	}
 
 	detail.SealRejections, err = sealRejections(ctx, queries, now, pgtype.Text{String: id, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	detail.RenewalAsks, err = renewalAsks(ctx, queries, id)
 	if err != nil {
 		return nil, err
 	}

@@ -115,9 +115,28 @@ func Test_ServePublic_ReceivesAReportAndStopsWhenItsContextEnds(t *testing.T) {
 	_ = resp.Body.Close()
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
+	// The same server answers the renewals: nothing succeeds this license.
+	ask := cptest.RenewalFor(t, &entry, "123e4567-e89b-12d3-a456-426614174000", time.Now())
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/license-renewals", bytes.NewReader(ask.Document))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Husonym-Seal", ask.Seal)
+	req.Header.Set("Husonym-Key-Fingerprint", ask.Fingerprint)
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
 	metrics := get(t, "http://"+metricsListener.Addr().String()+"/metrics")
 	require.Equal(t, http.StatusOK, metrics.status)
 	require.Contains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="stored"} 1`)
+	require.Contains(t, metrics.body, `husonym_controlplane_license_renewals_total{outcome="nothing"} 1`)
+	for _, never := range []string{"served", "refused", "failed"} {
+		require.Contains(t, metrics.body, `husonym_controlplane_license_renewals_total{outcome="`+never+`"} 0`,
+			"a word never counted has its series")
+	}
+	require.NotContains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="nothing"}`,
+		"a renewal is not counted among the reports")
 	for _, never := range []string{"refused", "failed", "panicked"} {
 		require.Contains(t, metrics.body, `husonym_controlplane_usage_reports_total{outcome="`+never+`"} 0`,
 			"a word never counted has its series")

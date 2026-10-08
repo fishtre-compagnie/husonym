@@ -66,6 +66,14 @@ type ControlplanePendingReport struct {
 	ReceivedAt     pgtype.Timestamptz
 }
 
+type ControlplaneRenewalAsk struct {
+	LicenseID           string
+	InstanceID          string
+	LastAskedAt         pgtype.Timestamptz
+	LastServedLicenseID pgtype.Text
+	LastServedAt        pgtype.Timestamptz
+}
+
 type ControlplaneSealRejection struct {
 	LicenseID string
 	Day       pgtype.Date

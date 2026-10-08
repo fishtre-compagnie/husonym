@@ -476,6 +476,47 @@ func Test_License_ShowsWhatItsKeyCarriesAndWhatWasSeenUnderIt(t *testing.T) {
 	require.Contains(t, row(t, section(t, got.body, "seal-rejections"), "2026-10-07"), `<td class="number">4</td>`)
 }
 
+func Test_License_ShowsWhatItsInstancesAskedOfItsRenewal(t *testing.T) {
+	b := newBench(t)
+	b.store.license = &cpstore.LicenseDetail{
+		LicenseSummary: licenseSummary("lic-1", license.StateExpiring, today.AddDate(0, 0, 10)),
+		SuccessorIDs:   []string{"lic-2"},
+		RenewalAsks: []cpstore.RenewalAsk{
+			{InstanceID: instanceTwo, LastAskedAt: time.Date(2026, 10, 8, 6, 15, 0, 0, time.UTC)},
+			{
+				InstanceID: instanceOne, LastAskedAt: time.Date(2026, 10, 7, 23, 5, 0, 0, time.UTC),
+				ServedLicenseID: "lic/3 a", ServedAt: time.Date(2026, 10, 6, 23, 4, 0, 0, time.UTC),
+			},
+			{InstanceID: "<script>alert(1)</script>", LastAskedAt: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	}
+
+	got := b.get("/licenses/lic-1")
+
+	require.Equal(t, http.StatusOK, got.status)
+	require.Equal(t, 1, b.store.calls, "the asks come with the license: one read")
+	asks := section(t, got.body, "renewal-asks")
+	require.Contains(t, asks, "<h2>Renewal asks</h2>")
+	require.NotContains(t, asks, "No instance has asked.")
+	require.Less(t, strings.Index(asks, instanceTwo), strings.Index(asks, instanceOne), "in the order of the store")
+
+	served := row(t, asks, instanceOne)
+	require.Contains(t, served, "2026-10-07 23:05")
+	require.Contains(t, served, `<a class="id" href="/licenses/lic%2F3%20a">lic/3 a</a>`)
+	require.Contains(t, served, "2026-10-06 23:04")
+	require.NotContains(t, served, `/instances/`, "an instance that asks may never have reported: no link to its page")
+
+	// Nothing was ever served to the other one.
+	waiting := row(t, asks, instanceTwo)
+	require.Contains(t, waiting, "2026-10-08 06:15")
+	require.NotContains(t, waiting, "<a ")
+	require.Equal(t, 2, strings.Count(waiting, "<td>—</td>"), "no license served, at no instant")
+
+	// The id is what the instance says of itself: it is shown as text.
+	require.NotContains(t, asks, "<script")
+	require.Contains(t, asks, "&lt;script&gt;alert(1)&lt;/script&gt;")
+}
+
 func Test_License_ThatSaysLittle_ShowsWhatThatMeans(t *testing.T) {
 	b := newBench(t)
 	b.store.license = &cpstore.LicenseDetail{
@@ -492,6 +533,7 @@ func Test_License_ThatSaysLittle_ShowsWhatThatMeans(t *testing.T) {
 	require.Contains(t, between(t, facts, "<dt>Grace days</dt>", "</dd>"), "not said")
 	require.Contains(t, between(t, facts, "<dt>Telemetry</dt>", "</dd>"), "the key does not say")
 	require.Contains(t, got.body, "No instance.")
+	require.Contains(t, section(t, got.body, "renewal-asks"), "No instance has asked.")
 	require.Contains(t, section(t, got.body, "seal-rejections"), "Nothing.")
 }
 
@@ -707,6 +749,7 @@ func Test_WhatIsNotThere_AnswersTheNotFoundPage(t *testing.T) {
 		"a day that is not one":         "/licenses/lic-1/instances/" + instanceOne + "/reports/yesterday",
 		"a day that does not exist":     "/licenses/lic-1/instances/" + instanceOne + "/reports/2026-02-30",
 		"a path of the public server":   "/v1/usage-reports",
+		"the path of a renewal":         "/v1/license-renewals",
 		"a path under a page":           "/customers/" + customerID.String() + "/licenses",
 		"a path with a trailing slash":  "/customers/",
 		"another static file":           "/static/console.js",

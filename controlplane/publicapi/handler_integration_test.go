@@ -56,7 +56,7 @@ func Test_Handler_OverTheRealIntake(t *testing.T) {
 	added, err := store.AddLicense(t.Context(), issuer.Key(&known), &known, "registry")
 	require.NoError(t, err)
 	require.True(t, added)
-	server := httptest.NewServer(publicapi.NewHandler(intake.New(store, time.Now), nil,
+	server := httptest.NewServer(publicapi.NewHandler(intake.New(store, time.Now), nil, nil,
 		slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(server.Close)
 	today := time.Now()

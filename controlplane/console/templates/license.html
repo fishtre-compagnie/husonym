@@ -34,9 +34,20 @@
 </table></div>{{else}}<p class="empty">No instance.</p>{{end}}
 </section>
 
+<section id="renewal-asks">
+<h2>Renewal asks</h2>
+<p class="definition">The instances that asked for the license that succeeds this one, and the last license each was served.</p>
+{{if .RenewalAsks}}{{template "table" "Renewal asks of the license by instance"}}
+<thead><tr><th scope="col">Instance</th><th scope="col">Last ask</th><th scope="col">License served</th><th scope="col">Served</th></tr></thead>
+<tbody>
+{{range .RenewalAsks}}<tr><td>{{template "id" .Instance}}</td><td>{{.LastAsk}}</td><td>{{with .Served}}{{template "id" .}}{{else}}—{{end}}</td><td>{{.ServedAt}}</td></tr>
+{{end}}</tbody>
+</table></div>{{else}}<p class="empty">No instance has asked.</p>{{end}}
+</section>
+
 <section id="seal-rejections">
 <h2>Seal rejections</h2>
-<p class="definition">Reports refused for their seal in the last {{.RejectionDays}} days, by day.</p>
+<p class="definition">Reports and renewal requests refused for their seal in the last {{.RejectionDays}} days, by day.</p>
 {{if .Rejections}}{{template "table" "Seal rejections of the license by day"}}
 <thead><tr><th scope="col">Day</th><th scope="col" class="number">Refused</th><th scope="col">Last refused</th></tr></thead>
 <tbody>

@@ -38,18 +38,29 @@ func (f *fakeReceiver) Receive(_ context.Context, document []byte, seal, fingerp
 
 type rig struct {
 	receiver *fakeReceiver
+	renewer  *fakeRenewer
 	logs     *bytes.Buffer
 	handler  http.Handler
 	observer *recordingObserver
 }
 
-type recordingObserver struct{ outcomes []string }
+// recordingObserver keeps the outcomes of the report requests, and apart the ones of the requests
+// for a renewal.
+type recordingObserver struct {
+	outcomes []string
+	renewals []string
+}
 
 func (o *recordingObserver) ReportReceived(outcome string) { o.outcomes = append(o.outcomes, outcome) }
 
+func (o *recordingObserver) RenewalAsked(outcome string) { o.renewals = append(o.renewals, outcome) }
+
 func newRig(outcome intake.Outcome, err error) *rig {
-	r := &rig{receiver: &fakeReceiver{outcome: outcome, err: err}, logs: &bytes.Buffer{}, observer: &recordingObserver{}}
-	r.handler = publicapi.NewHandler(r.receiver, r.observer, slog.New(slog.NewTextHandler(r.logs, nil)))
+	r := &rig{
+		receiver: &fakeReceiver{outcome: outcome, err: err}, renewer: &fakeRenewer{},
+		logs: &bytes.Buffer{}, observer: &recordingObserver{},
+	}
+	r.handler = publicapi.NewHandler(r.receiver, r.renewer, r.observer, slog.New(slog.NewTextHandler(r.logs, nil)))
 	return r
 }
 
@@ -256,7 +267,7 @@ func (panickingReceiver) Receive(context.Context, []byte, string, string) (intak
 func Test_Handler_APanic_Answers503IsCountedAndSaysNothingOfIt(t *testing.T) {
 	logs := &bytes.Buffer{}
 	observer := &recordingObserver{}
-	handler := publicapi.NewHandler(panickingReceiver{}, observer, slog.New(slog.NewTextHandler(logs, nil)))
+	handler := publicapi.NewHandler(panickingReceiver{}, &fakeRenewer{}, observer, slog.New(slog.NewTextHandler(logs, nil)))
 	req := post(strings.NewReader("{}"))
 	require.Equal(t, "192.0.2.1:1234", req.RemoteAddr)
 	rec := httptest.NewRecorder()
@@ -266,6 +277,7 @@ func Test_Handler_APanic_Answers503IsCountedAndSaysNothingOfIt(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	require.Empty(t, rec.Body.String())
 	require.Equal(t, []string{"panicked"}, observer.outcomes)
+	require.Empty(t, observer.renewals)
 	logged := logs.String()
 	require.Equal(t, 1, strings.Count(logged, "\n"), "one line")
 	require.Contains(t, logged, "level=ERROR")
@@ -423,4 +435,5 @@ func Test_Handler_DoesNotCountTheOtherPaths(t *testing.T) {
 	r.do(httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	r.do(httptest.NewRequest(http.MethodGet, "/whatever-a-caller-wrote", nil))
 	require.Empty(t, r.observer.outcomes)
+	require.Empty(t, r.observer.renewals)
 }
