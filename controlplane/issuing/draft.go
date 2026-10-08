@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/fishtre-compagnie/husonym/controlplane/cpstore"
@@ -42,8 +43,19 @@ const (
 	// TrialDays is how long after now a trial expires.
 	TrialDays = 30
 
+	// MaxGraceDays is the longest grace period a form can ask for. Far beyond it, the end of the
+	// grace is an instant no timestamp holds.
+	MaxGraceDays = 3650
+	// MaxSourcesCap is the highest cap on sources a form can ask for.
+	MaxSourcesCap = 100000
+	// MaxExpiryYears is how far after now, in years, a form can set the expiry.
+	MaxExpiryYears = 10
+	// MaxCustomerNameLength, MaxPlanLength and MaxNoteLength are counted in characters.
+	MaxCustomerNameLength = 200
+	MaxPlanLength         = 64
+	MaxNoteLength         = 1000
+
 	dateLayout     = "2006-01-02"
-	maxPlanLength  = 64
 	licenseIDBytes = 8
 	// maxQuoted caps how much of a typed value a problem quotes.
 	maxQuoted = 40
@@ -107,6 +119,14 @@ type FormOptions struct {
 	PlanIsFreeText bool
 	// DefaultGraceDays is the grace period of a key that does not say.
 	DefaultGraceDays int
+	// MaxGraceDays, MaxSourcesCap and MaxExpiryYears are the bounds ParseDraft holds a form to.
+	MaxGraceDays   int
+	MaxSourcesCap  int
+	MaxExpiryYears int
+	// MaxCustomerNameLength, MaxPlanLength and MaxNoteLength are counted in characters.
+	MaxCustomerNameLength int
+	MaxPlanLength         int
+	MaxNoteLength         int
 }
 
 // Options gives what a form offers. Every name comes from the product's own declarations.
@@ -123,8 +143,14 @@ func Options() FormOptions {
 			string(license.TelemetryOfflineReport),
 			string(license.TelemetryNone),
 		},
-		PlanIsFreeText:   true,
-		DefaultGraceDays: license.DefaultGraceDays,
+		PlanIsFreeText:        true,
+		DefaultGraceDays:      license.DefaultGraceDays,
+		MaxGraceDays:          MaxGraceDays,
+		MaxSourcesCap:         MaxSourcesCap,
+		MaxExpiryYears:        MaxExpiryYears,
+		MaxCustomerNameLength: MaxCustomerNameLength,
+		MaxPlanLength:         MaxPlanLength,
+		MaxNoteLength:         MaxNoteLength,
 	}
 }
 
@@ -153,15 +179,27 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 	case !validLicenseID(draft.LicenseID):
 		problem("The license id must be 16 lowercase hexadecimal characters.")
 	}
+	// Text a key cannot carry as typed is refused here: the signing would refuse it too, but with
+	// nothing the operator can act on.
+	text := func(subject, typed string, maxLength int, lineBreaks bool) {
+		switch {
+		case !carriable(typed, lineBreaks):
+			problem("%s holds a control character or text that is not valid UTF-8.", subject)
+		case maxLength > 0 && utf8.RuneCountInString(typed) > maxLength:
+			problem("%s must be at most %d characters.", subject, maxLength)
+		}
+	}
 	if draft.CustomerExternalID == "" {
 		problem("The customer is required.")
 	}
+	text("The customer id", draft.CustomerExternalID, 0, false)
 	if draft.CustomerName == "" {
 		problem("The name of the customer is required.")
 	}
-	if utf8.RuneCountInString(draft.Plan) > maxPlanLength {
-		problem("The plan must be at most %d characters.", maxPlanLength)
-	}
+	text("The name of the customer", draft.CustomerName, MaxCustomerNameLength, false)
+	text("The plan", draft.Plan, MaxPlanLength, false)
+	// The note is not in the key and may be of several lines.
+	text("The note", draft.Note, MaxNoteLength, true)
 
 	switch all := field(FieldAllFeatures); all {
 	case "":
@@ -188,12 +226,14 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 		seen[name] = true
 	}
 
-	draft.MaxSources = wholeNumber(field(FieldMaxSources), problem,
+	draft.MaxSources = wholeNumber(field(FieldMaxSources), MaxSourcesCap, problem,
 		"The maximum number of sources must be a whole number.",
-		"The maximum number of sources cannot be negative.")
-	draft.GraceDays = wholeNumber(field(FieldGraceDays), problem,
+		"The maximum number of sources cannot be negative.",
+		fmt.Sprintf("The maximum number of sources cannot be more than %d.", MaxSourcesCap))
+	draft.GraceDays = wholeNumber(field(FieldGraceDays), MaxGraceDays, problem,
 		"The grace period must be a whole number of days.",
-		"The grace period cannot be negative.")
+		"The grace period cannot be negative.",
+		fmt.Sprintf("The grace period cannot be more than %d days.", MaxGraceDays))
 
 	if day := field(FieldExpiresAt); day == "" {
 		problem("The expiry date is required.")
@@ -204,6 +244,8 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 			problem("The expiry date must be written YYYY-MM-DD.")
 		case !endOfDay(parsed).After(now):
 			problem("The expiry date is in the past.")
+		case endOfDay(parsed).After(endOfDay(now.UTC().AddDate(MaxExpiryYears, 0, 0))):
+			problem("The expiry date cannot be more than %d years from now.", MaxExpiryYears)
 		default:
 			draft.ExpiresAt = endOfDay(parsed)
 		}
@@ -219,21 +261,47 @@ func ParseDraft(form url.Values, now time.Time) (draft *Draft, problems []string
 	return draft, nil
 }
 
-// wholeNumber reads a number that cannot be negative; empty is nil, which means not written.
-func wholeNumber(typed string, problem func(string, ...any), unreadable, negative string) *int {
+// wholeNumber reads a number between zero and highest; empty is nil, which means not written.
+func wholeNumber(
+	typed string, highest int, problem func(string, ...any), unreadable, negative, tooHigh string,
+) *int {
 	if typed == "" {
 		return nil
 	}
 	n, err := strconv.Atoi(typed)
 	switch {
+	// A number no int holds is still a number: it is told as too low or too high.
+	case errors.Is(err, strconv.ErrRange) && strings.HasPrefix(typed, "-"):
+		problem("%s", negative)
+	case errors.Is(err, strconv.ErrRange):
+		problem("%s", tooHigh)
 	case err != nil:
-		problem(unreadable)
-		return nil
+		problem("%s", unreadable)
 	case n < 0:
-		problem(negative)
-		return nil
+		problem("%s", negative)
+	case n > highest:
+		problem("%s", tooHigh)
+	default:
+		return &n
 	}
-	return &n
+	return nil
+}
+
+// carriable reports whether typed is text a key carries as it is: valid UTF-8 without a control
+// character. lineBreaks allows the ones a text of several lines has.
+func carriable(typed string, lineBreaks bool) bool {
+	if !utf8.ValidString(typed) {
+		return false
+	}
+	for _, r := range typed {
+		if lineBreaks && (r == '\n' || r == '\r' || r == '\t') {
+			continue
+		}
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
 }
 
 // quoted quotes the beginning of a typed value, for a problem: short, and with nothing in it that
