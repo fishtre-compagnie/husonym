@@ -17,13 +17,18 @@ import (
 
 // isInstanceIdentity reports whether the caller is a person the provider of the deployment
 // vouches for: the only ones the organization of the instance is for. An API key is not one,
-// nor is an identity another provider issued, nor is anybody when authentication is off.
+// nor is an identity another provider issued, nor is anybody when authentication is off. A
+// token the provider issued to an application is not one either: what SetUser refuses to make
+// a user of is no person here.
 func (s *Service) isInstanceIdentity(ctx context.Context) bool {
 	if !s.cfg.IsAuthEnabled {
 		return false
 	}
 	tokenctxResp, err := tokenctx.GetTokenCtx(ctx)
 	if err != nil || tokenctxResp.JwtContextData == nil {
+		return false
+	}
+	if s.refuseApplicationToken(tokenctxResp.JwtContextData) != nil {
 		return false
 	}
 	issuer, _ := tokenctxResp.JwtContextData.Identity()

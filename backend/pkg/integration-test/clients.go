@@ -20,6 +20,8 @@ func newHusonymClients(httpUrl string) *HusonymClients {
 type clientConfig struct {
 	userId string
 	issuer string
+	// identityType is what the token says it was issued to: nothing, for a person.
+	identityType string
 }
 
 type ClientConfigOption func(*clientConfig)
@@ -35,6 +37,14 @@ func WithUserId(userId string) ClientConfigOption {
 func WithIssuer(issuer string) ClientConfigOption {
 	return func(c *clientConfig) {
 		c.issuer = issuer
+	}
+}
+
+// WithApplicationToken has the fake token of the client say it was issued to an application
+// rather than to a person, as the token of a service principal does.
+func WithApplicationToken() ClientConfigOption {
+	return func(c *clientConfig) {
+		c.identityType = "app"
 	}
 }
 
@@ -114,6 +124,9 @@ func getHttpClient(config *clientConfig) *http.Client {
 	}
 	if config.issuer != "" {
 		client = http_client.WithHeaders(client, map[string]string{issuerHeader: config.issuer})
+	}
+	if config.identityType != "" {
+		client = http_client.WithHeaders(client, map[string]string{identityTypeHeader: config.identityType})
 	}
 	return client
 }

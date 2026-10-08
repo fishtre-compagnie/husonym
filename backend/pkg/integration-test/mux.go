@@ -62,6 +62,10 @@ var (
 // TestIssuer. See WithIssuer.
 const issuerHeader = "X-Husonym-Test-Issuer"
 
+// identityTypeHeader carries what a fake token says it was issued to, for a test that needs the
+// token of an application. See WithApplicationToken.
+const identityTypeHeader = "X-Husonym-Test-Identity-Type"
+
 // newAuthInterceptor stands for the authentication of a deployment. A worker key is taken at its
 // word, an account API key is looked up and held to its permissions as a deployment does, and
 // anything else is the subject of a token TestIssuer issued, unless the call names another
@@ -95,6 +99,7 @@ func newAuthInterceptor(pgcontainer *tcpostgres.PostgresTestContainer) connect.I
 				Claims: &auth_jwt.CustomClaims{
 					Email:         &validAuthUser.Email,
 					EmailVerified: utils.LenientBool(validAuthUser.EmailVerified),
+					IdentityType:  header.Get(identityTypeHeader),
 				},
 			}), nil
 		},

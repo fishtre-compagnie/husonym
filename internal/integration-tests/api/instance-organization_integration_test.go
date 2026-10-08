@@ -244,6 +244,53 @@ func (s *IntegrationTestSuite) Test_EnterInstance_AnotherIssuerOrAnApiKey_NeverE
 	require.Equal(t, organization, retainedId)
 }
 
+// A token the provider of the deployment issued to an application is no person, even when a user
+// exists for its subject: it gets what SetPersonalAccount gives, and does not enter.
+func (s *IntegrationTestSuite) Test_EnterInstance_AnApplicationToken_NeverEntersTheOrganization() {
+	t := s.T()
+	organization := s.enterInstance(s.person("application-first"))
+	members := s.membersOf(organization)
+	// The user of the subject exists, as one made before application tokens were refused.
+	s.person("application-principal")
+	application := s.OSSAuthenticatedLicensedClients.Users(
+		integrationtests_test.WithUserId("application-principal"),
+		integrationtests_test.WithApplicationToken(),
+	)
+
+	entered := s.enterInstance(application)
+
+	require.NotEqual(t, organization, entered)
+	set, err := application.SetPersonalAccount(s.ctx, connect.NewRequest(&mgmtv1alpha1.SetPersonalAccountRequest{}))
+	requireNoErrResp(t, set, err)
+	require.Equal(t, set.Msg.GetAccountId(), entered)
+	accounts := s.accountsOf(application)
+	require.Len(t, accounts, 1)
+	require.Equal(t, mgmtv1alpha1.UserAccountType_USER_ACCOUNT_TYPE_PERSONAL, accounts[entered].GetType())
+	require.Equal(t, members, s.membersOf(organization), "the organization gained a member")
+}
+
+// Nor does it designate the organization, although the user of its subject administers the
+// account: the same subject, signed in as a person, does.
+func (s *IntegrationTestSuite) Test_SetInstanceOrganization_AnApplicationTokenIsRefused() {
+	t := s.T()
+	person := s.person("application-designation")
+	personal := s.createPersonalAccount(s.ctx, person)
+	application := s.OSSAuthenticatedLicensedClients.Users(
+		integrationtests_test.WithUserId("application-designation"),
+		integrationtests_test.WithApplicationToken(),
+	)
+
+	resp, err := s.setInstanceOrganization(application, personal, "acme")
+
+	requireErrResp(t, resp, err)
+	requireConnectError(t, err, connect.CodePermissionDenied)
+	_, retained := s.retainedOrganization()
+	require.False(t, retained)
+
+	designated, err := s.setInstanceOrganization(person, personal, "acme")
+	requireNoErrResp(t, designated, err)
+}
+
 // The schema holds the retained account, so it only goes missing once the constraint is gone:
 // it is dropped here, in a schema this test alone uses. Nobody is then let in anywhere: neither
 // a second organization nor a personal account is made.
