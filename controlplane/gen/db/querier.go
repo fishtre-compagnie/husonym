@@ -23,15 +23,41 @@ type Querier interface {
 	// No row is touched when the document is the same: that is a repeat.
 	CountUsageReportConflict(ctx context.Context, arg CountUsageReportConflictParams) (int64, error)
 	DeletePendingReport(ctx context.Context, arg DeletePendingReportParams) (int64, error)
+	GetCustomer(ctx context.Context, id pgtype.UUID) (ControlplaneCustomer, error)
+	GetInstance(ctx context.Context, arg GetInstanceParams) (GetInstanceRow, error)
 	GetLicenseByFingerprint(ctx context.Context, keyFingerprint string) (GetLicenseByFingerprintRow, error)
+	// Every column of a license but the encoded key.
+	GetLicenseDetail(ctx context.Context, id string) (GetLicenseDetailRow, error)
+	GetUsageReport(ctx context.Context, arg GetUsageReportParams) (ControlplaneUsageReport, error)
 	InsertLicense(ctx context.Context, arg InsertLicenseParams) (int64, error)
 	InsertPendingReport(ctx context.Context, arg InsertPendingReportParams) error
 	// The first report received for a license, an instance and a day is the one that stays.
 	InsertUsageReport(ctx context.Context, arg InsertUsageReportParams) (int64, error)
+	// The nearest expiry is the next one to come; when every license has expired, the last one.
+	ListCustomerSummaries(ctx context.Context, arg ListCustomerSummariesParams) ([]ListCustomerSummariesRow, error)
+	// The licenses no other one succeeds that expire before expires_before. However long ago: the
+	// grace period of each decides whether it still counts, and that is judged by the caller.
+	ListExpiringCandidates(ctx context.Context, expiresBefore pgtype.Timestamptz) ([]ListExpiringCandidatesRow, error)
+	ListInstancesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListInstancesOfCustomerRow, error)
+	ListInstancesOfLicense(ctx context.Context, licenseID string) ([]ListInstancesOfLicenseRow, error)
+	ListLicensesOfCustomer(ctx context.Context, customerID pgtype.UUID) ([]ListLicensesOfCustomerRow, error)
 	ListPendingFingerprintsNowKnown(ctx context.Context) ([]string, error)
+	// The pending reports of each fingerprint, and how many of them were received before old_before.
+	ListPendingGroups(ctx context.Context, oldBefore pgtype.Timestamptz) ([]ListPendingGroupsRow, error)
 	ListPendingReports(ctx context.Context, keyFingerprint string) ([]ControlplanePendingReport, error)
+	// The newest days first, no further than the cap of the list.
+	ListReportsOfInstance(ctx context.Context, arg ListReportsOfInstanceParams) ([]ListReportsOfInstanceRow, error)
+	// The refused seals counted since a day, of one license or of all of them.
+	ListSealRejections(ctx context.Context, arg ListSealRejectionsParams) ([]ListSealRejectionsRow, error)
+	// The licenses seen on more than one instance since a day.
+	ListSharedLicenses(ctx context.Context, seenSince pgtype.Date) ([]ListSharedLicensesRow, error)
+	// The instances whose last report is of a day in [from_day, before_day), with what tells whether
+	// their license is in force and asks for reports: that is judged by the caller.
+	ListSilentCandidates(ctx context.Context, arg ListSilentCandidatesParams) ([]ListSilentCandidatesRow, error)
+	ListSuccessorsOfLicense(ctx context.Context, licenseID string) ([]string, error)
 	PendingReportExists(ctx context.Context, arg PendingReportExistsParams) (bool, error)
 	PurgePendingReports(ctx context.Context, receivedAt pgtype.Timestamptz) (int64, error)
+	SumSealRejectionsOfDay(ctx context.Context, day pgtype.Date) (int64, error)
 	// An existing customer is left as it is: a name is never overwritten.
 	UpsertCustomer(ctx context.Context, arg UpsertCustomerParams) (pgtype.UUID, error)
 	// An instance is first seen at the earliest reception of a report of it. What tells its latest
