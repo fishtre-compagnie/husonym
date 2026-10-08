@@ -35,6 +35,16 @@ class UserAccountServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountResponse.FromString,
                 _registered_method=True)
+        self.EnterInstance = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/EnterInstance',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceResponse.FromString,
+                _registered_method=True)
+        self.SetInstanceOrganization = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/SetInstanceOrganization',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationResponse.FromString,
+                _registered_method=True)
         self.ConvertPersonalToTeamAccount = channel.unary_unary(
                 '/mgmt.v1alpha1.UserAccountService/ConvertPersonalToTeamAccount',
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.ConvertPersonalToTeamAccountRequest.SerializeToString,
@@ -194,6 +204,20 @@ class UserAccountServiceServicer:
 
     def SetPersonalAccount(self, request, context):
         """Sets the current personal account.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def EnterInstance(self, request, context):
+        """Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetInstanceOrganization(self, request, context):
+        """Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -403,6 +427,16 @@ def add_UserAccountServiceServicer_to_server(servicer, server):
                     servicer.SetPersonalAccount,
                     request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountResponse.SerializeToString,
+            ),
+            'EnterInstance': grpc.unary_unary_rpc_method_handler(
+                    servicer.EnterInstance,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceResponse.SerializeToString,
+            ),
+            'SetInstanceOrganization': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetInstanceOrganization,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationResponse.SerializeToString,
             ),
             'ConvertPersonalToTeamAccount': grpc.unary_unary_rpc_method_handler(
                     servicer.ConvertPersonalToTeamAccount,
@@ -644,6 +678,60 @@ class UserAccountService:
             '/mgmt.v1alpha1.UserAccountService/SetPersonalAccount',
             mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_user__account__pb2.SetPersonalAccountResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def EnterInstance(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/EnterInstance',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.EnterInstanceResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetInstanceOrganization(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/SetInstanceOrganization',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetInstanceOrganizationResponse.FromString,
             options,
             channel_credentials,
             insecure,

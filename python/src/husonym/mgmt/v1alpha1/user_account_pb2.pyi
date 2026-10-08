@@ -130,6 +130,30 @@ class SetPersonalAccountResponse(_message.Message):
     account_id: str
     def __init__(self, account_id: _Optional[str] = ...) -> None: ...
 
+class EnterInstanceRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class EnterInstanceResponse(_message.Message):
+    __slots__ = ("account_id",)
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    def __init__(self, account_id: _Optional[str] = ...) -> None: ...
+
+class SetInstanceOrganizationRequest(_message.Message):
+    __slots__ = ("account_id", "name")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    name: str
+    def __init__(self, account_id: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
+
+class SetInstanceOrganizationResponse(_message.Message):
+    __slots__ = ("account_id",)
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    def __init__(self, account_id: _Optional[str] = ...) -> None: ...
+
 class IsUserInAccountRequest(_message.Message):
     __slots__ = ("account_id",)
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
@@ -309,20 +333,22 @@ class GetSystemInformationRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class GetSystemInformationResponse(_message.Message):
-    __slots__ = ("version", "commit", "compiler", "platform", "build_date", "license")
+    __slots__ = ("version", "commit", "compiler", "platform", "build_date", "license", "instance_organization_account_id")
     VERSION_FIELD_NUMBER: _ClassVar[int]
     COMMIT_FIELD_NUMBER: _ClassVar[int]
     COMPILER_FIELD_NUMBER: _ClassVar[int]
     PLATFORM_FIELD_NUMBER: _ClassVar[int]
     BUILD_DATE_FIELD_NUMBER: _ClassVar[int]
     LICENSE_FIELD_NUMBER: _ClassVar[int]
+    INSTANCE_ORGANIZATION_ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     version: str
     commit: str
     compiler: str
     platform: str
     build_date: _timestamp_pb2.Timestamp
     license: SystemLicense
-    def __init__(self, version: _Optional[str] = ..., commit: _Optional[str] = ..., compiler: _Optional[str] = ..., platform: _Optional[str] = ..., build_date: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., license: _Optional[_Union[SystemLicense, _Mapping]] = ...) -> None: ...
+    instance_organization_account_id: str
+    def __init__(self, version: _Optional[str] = ..., commit: _Optional[str] = ..., compiler: _Optional[str] = ..., platform: _Optional[str] = ..., build_date: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., license: _Optional[_Union[SystemLicense, _Mapping]] = ..., instance_organization_account_id: _Optional[str] = ...) -> None: ...
 
 class SystemLicense(_message.Message):
     __slots__ = ("is_valid", "expires_at", "is_husonym_cloud", "state", "plan", "all_features", "features", "limits", "telemetry", "origin", "installed_at", "grace_ends_at", "issued_to", "problem")
