@@ -323,8 +323,9 @@ func Test_AskIfDue_AKeyTheRuleRefusesIsAWarningInFixedWordsAndNothingElse(t *tes
 	for word, outcome := range map[string]licensestore.Outcome{
 		"invalid":        licensestore.RefusedInvalid,
 		"older":          licensestore.RefusedOlder,
-		"other_customer": licensestore.RefusedOtherCustomer,
-		"none":           0,
+		"other_customer":   licensestore.RefusedOtherCustomer,
+		"nothing_to_renew": licensestore.RefusedNothingToRenew,
+		"none":             0,
 	} {
 		t.Run(word, func(t *testing.T) {
 			r := newRenewal(t, keyExpiring(testExpiry), "")

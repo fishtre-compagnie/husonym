@@ -11,10 +11,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 )
 
-// DefaultRenewalURL is the address the license that succeeds the one of the instance is asked
-// at: the origin the usage report is sent to, at the path of a renewal.
-const DefaultRenewalURL = "https://license.husonym.com" + telemetry.RenewalPath
-
 // RenewalAsk is a request for the license that succeeds the one of the instance, with its seal.
 type RenewalAsk struct {
 	// Document is the exact JSON the seal is of, byte for byte.
@@ -36,18 +32,14 @@ type HTTPRenewalTransport struct {
 	sealed *sealedClient
 }
 
-// RenewalURL gives the address a license is asked at by an instance that sends its report to the
-// given one: the same scheme, host and credentials, at the path of a renewal. The query and the
-// fragment of the report address are for the report and are not kept. Its errors never quote the
-// address, which may hold credentials.
-func RenewalURL(reportAddress string) (string, error) {
-	target, err := renewalTarget(reportAddress)
-	if err != nil {
-		return "", err
-	}
-	return target.String(), nil
-}
-
+// renewalTarget gives the address a license is asked at by an instance that sends its report to
+// the given one: the same scheme, host and credentials, at the path of a renewal. With the address
+// a report is sent to by default, it is https://license.husonym.com/v1/license-renewals.
+//
+// The whole path is replaced, not its last element: a receiver that an operator reaches behind a
+// path prefix is asked at the root of its host, /v1/license-renewals, and not under that prefix.
+// The query and the fragment of the report address are for the report and are not kept. Its
+// errors never quote the address, which may hold credentials.
 func renewalTarget(reportAddress string) (*url.URL, error) {
 	report, err := checkReportURL(reportAddress)
 	if err != nil {

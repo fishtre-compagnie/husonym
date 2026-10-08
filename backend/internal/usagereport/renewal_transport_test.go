@@ -39,28 +39,78 @@ func renewalTransportTo(t *testing.T, reportAddress string) RenewalTransport {
 	return transport
 }
 
-func Test_RenewalURL_TheDefaultOnesAreThoseOfTheSameOrigin(t *testing.T) {
-	require.Equal(t, "https://license.husonym.com/v1/license-renewals", DefaultRenewalURL)
-
-	derived, err := RenewalURL(DefaultReportURL)
+// renewalURL is the address renewalTarget derives, as it is written.
+func renewalURL(t *testing.T, reportAddress string) string {
+	t.Helper()
+	target, err := renewalTarget(reportAddress)
 	require.NoError(t, err)
-	require.Equal(t, DefaultRenewalURL, derived)
+	return target.String()
 }
 
-func Test_RenewalURL_IsTheOriginOfTheReportAddressWithTheRenewalPath(t *testing.T) {
+func Test_RenewalTarget_OfTheDefaultReportAddress_IsTheDefaultRenewalAddress(t *testing.T) {
+	require.Equal(t, "https://license.husonym.com/v1/license-renewals", renewalURL(t, DefaultReportURL))
+}
+
+func Test_RenewalTarget_IsTheOriginOfTheReportAddressWithTheRenewalPath(t *testing.T) {
 	for name, tc := range map[string]struct{ report, want string }{
 		"a path replaced":             {"http://127.0.0.1:9999/v1/usage-reports", "http://127.0.0.1:9999/v1/license-renewals"},
 		"no path":                     {"https://reports.example.com", "https://reports.example.com/v1/license-renewals"},
 		"a deeper path":               {"https://reports.example.com/a/b/c/", "https://reports.example.com/v1/license-renewals"},
 		"credentials kept":            {"http://someone:hunter2@127.0.0.1:9999/in", "http://someone:hunter2@127.0.0.1:9999/v1/license-renewals"},
 		"a query and a fragment gone": {"https://reports.example.com/in?token=hunter3#top", "https://reports.example.com/v1/license-renewals"},
+		// The whole path is replaced: a receiver behind a prefix is asked at the root of its host.
+		"a path prefix is not kept": {"https://gateway.example.com/husonym/v1/usage-reports", "https://gateway.example.com/v1/license-renewals"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got, err := RenewalURL(tc.report)
-			require.NoError(t, err)
-			require.Equal(t, tc.want, got)
+			require.Equal(t, tc.want, renewalURL(t, tc.report))
 		})
 	}
+}
+
+// The headers of an ask are these and no other: nothing of the instance leaves in a header that
+// nobody chose to send.
+func Test_Ask_SendsTheseHeadersAndNoOther(t *testing.T) {
+	names := func(header http.Header) []string {
+		got := make([]string, 0, len(header))
+		for name := range header {
+			got = append(got, name)
+		}
+		return got
+	}
+	// The four the transport sets, and the three net/http adds to a request with a body that has a
+	// connection of its own.
+	set := []string{"Content-Type", "User-Agent", "Husonym-Seal", "Husonym-Key-Fingerprint"}
+	added := []string{"Content-Length", "Accept-Encoding", "Connection"}
+
+	t.Run("an address without credentials", func(t *testing.T) {
+		destination := newReceiver(t, http.StatusNoContent, nil)
+
+		_, err := renewalTransportTo(t, destination.URL).Ask(t.Context(), sealedAsk)
+		require.NoError(t, err)
+
+		requests := destination.got()
+		require.Len(t, requests, 1)
+		require.ElementsMatch(t, append(set, added...), names(requests[0].header))
+		require.Equal(t, []string{"gzip"}, requests[0].header.Values("Accept-Encoding"))
+		require.Equal(t, []string{"close"}, requests[0].header.Values("Connection"))
+		require.Equal(t, []string{strconv.Itoa(len(sealedAsk.Document))}, requests[0].header.Values("Content-Length"))
+	})
+
+	t.Run("an address with credentials", func(t *testing.T) {
+		destination := newReceiver(t, http.StatusNoContent, nil)
+		address := strings.Replace(destination.URL, "http://", "http://someone:hunter2@", 1)
+
+		_, err := renewalTransportTo(t, address).Ask(t.Context(), sealedAsk)
+		require.NoError(t, err)
+
+		requests := destination.got()
+		require.Len(t, requests, 1)
+		require.ElementsMatch(t, append(append(set, added...), "Authorization"), names(requests[0].header))
+		user, password, ok := (&http.Request{Header: requests[0].header}).BasicAuth()
+		require.True(t, ok)
+		require.Equal(t, "someone", user)
+		require.Equal(t, "hunter2", password)
+	})
 }
 
 func Test_NewHTTPRenewalTransport_RefusesAnAddressAReportCannotBeSentTo(t *testing.T) {
