@@ -40,6 +40,16 @@ class UsageServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.FromString,
                 _registered_method=True)
+        self.GetAccountUsage = channel.unary_unary(
+                '/mgmt.v1alpha1.UsageService/GetAccountUsage',
+                request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageResponse.FromString,
+                _registered_method=True)
+        self.GetJobUsage = channel.unary_unary(
+                '/mgmt.v1alpha1.UsageService/GetJobUsage',
+                request_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageResponse.FromString,
+                _registered_method=True)
 
 
 class UsageServiceServicer:
@@ -81,6 +91,20 @@ class UsageServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetAccountUsage(self, request, context):
+        """Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJobUsage(self, request, context):
+        """Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_UsageServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -108,6 +132,16 @@ def add_UsageServiceServicer_to_server(servicer, server):
                     servicer.GetUsagePeriodReport,
                     request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.SerializeToString,
+            ),
+            'GetAccountUsage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAccountUsage,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageResponse.SerializeToString,
+            ),
+            'GetJobUsage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJobUsage,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -246,6 +280,60 @@ class UsageService:
             '/mgmt.v1alpha1.UsageService/GetUsagePeriodReport',
             mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_usage__pb2.GetUsagePeriodReportResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetAccountUsage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UsageService/GetAccountUsage',
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetAccountUsageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetJobUsage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UsageService/GetJobUsage',
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_usage__pb2.GetJobUsageResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -4,9 +4,10 @@ import SubPageHeader from '@/components/headers/SubPageHeader';
 import { useAccount } from '@/components/providers/account-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUsageReporting } from '@/libs/hooks/useUsageReporting';
 import { getErrorMessage } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
-import { UsageService, UserAccountService } from '@husonym/sdk';
+import { UserAccountService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import LicenseFeaturesCard from './components/LicenseFeaturesCard';
 import LicenseKeyCard from './components/LicenseKeyCard';
@@ -24,11 +25,7 @@ export default function Page(): ReactElement {
     { enabled: !!accountId, retry: false }
   );
 
-  const reporting = useQuery(
-    UsageService.method.getUsageReporting,
-    { accountId },
-    { enabled: !!accountId, retry: false }
-  );
+  const reporting = useUsageReporting(accountId);
 
   if (!accountId) {
     return <Skeleton className="w-full h-12" />;

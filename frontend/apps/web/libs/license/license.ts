@@ -60,6 +60,26 @@ export function featureLabel(name: LicenseFeature): string {
   return FEATURE_LABELS[name];
 }
 
+// The gates of the license that are not features, by the names the API counts its
+// refusals under (internal/license/refusal.go).
+const LIMIT_GATE_LABELS: ReadonlyMap<string, string> = new Map([
+  ['license_not_in_force', 'No license in force'],
+  ['source_cap', 'Source limit'],
+  ['job_cap', 'Job limit'],
+  ['connection_cap', 'Connection limit'],
+  ['connection_type', 'Connection type'],
+]);
+
+// What the license refused at a gate: a feature, by its label, or one of the limits.
+// A gate this page does not know (an API newer than the page) reads as Other.
+export function gateLabel(gate: string): string {
+  const feature = LICENSE_FEATURES.find((name) => name === gate);
+  if (feature) {
+    return featureLabel(feature);
+  }
+  return LIMIT_GATE_LABELS.get(gate) ?? 'Other';
+}
+
 // Whether the license in force allows a feature. A key that is not valid allows
 // nothing, whatever it lists.
 function isFeatureAllowed(

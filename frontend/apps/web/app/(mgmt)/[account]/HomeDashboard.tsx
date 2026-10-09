@@ -1,4 +1,5 @@
 'use client';
+import StatTile from '@/components/StatTile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/libs/utils';
@@ -190,30 +191,6 @@ export default function HomeDashboard({ accountId }: Props): ReactElement {
         />
       </div>
     </div>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number | string;
-  accent?: string;
-}): ReactElement {
-  return (
-    <Card className="transition-shadow hover:shadow-md">
-      <CardContent className="flex flex-col gap-1 pt-6">
-        <span
-          className="text-3xl font-semibold tabular-nums"
-          style={accent ? { color: accent } : undefined}
-        >
-          {value}
-        </span>
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </CardContent>
-    </Card>
   );
 }
 

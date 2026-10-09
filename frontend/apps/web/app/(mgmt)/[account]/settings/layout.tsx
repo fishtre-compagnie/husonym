@@ -98,11 +98,6 @@ function useGetNavSettings(): Item[] {
     !isSystemConfigLoading && systemAppConfigData?.isHusonymCloud
       ? items.filter((item) => item.ref !== 'temporal')
       : items;
-  // filter usage page if metrics service is not enabled
-  items =
-    !isSystemConfigLoading && !systemAppConfigData?.isMetricsServiceEnabled
-      ? items.filter((item) => item.ref !== 'usage')
-      : items;
   // filter out billing for local
   items =
     !isSystemConfigLoading && systemAppConfigData?.isHusonymCloud

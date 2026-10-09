@@ -151,7 +151,6 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | app.otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | app.podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
-| app.protometrics.enabled | bool | `false` |  |
 | app.resources.limits.cpu | string | `"500m"` | Sets the max CPU amount |
 | app.resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | app.resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |

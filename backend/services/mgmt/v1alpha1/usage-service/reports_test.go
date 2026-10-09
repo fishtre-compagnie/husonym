@@ -76,7 +76,7 @@ func reporting(t *testing.T, key fakeKey, setting string, mayView bool) *reporti
 	reports := &fakeReports{stored: map[time.Time]*usagestore.StoredReport{}}
 	periods := &fakePeriods{}
 	svc := newService(
-		&Config{ModeSetting: setting, Diagnostics: true}, nil, users, nil, reports, key, periods,
+		&Config{ModeSetting: setting, Diagnostics: true}, nil, users, nil, reports, nil, key, periods,
 		func() time.Time { return now },
 	)
 	return &reportingFixture{svc: svc, reports: reports, periods: periods}

@@ -222,3 +222,178 @@ ORDER BY day DESC;
 -- name: GetLastUsageReportSentAt :one
 SELECT max(sent_at)::timestamptz AS sent_at
 FROM husonym_api.usage_reports;
+
+-- The usage pages. Every read below is the one of an account, and of one of its jobs where a
+-- job is given: a job of another account matches no row. A run counts, as everywhere, for the
+-- day on which the API recorded its end, but the days are the ones of the zone given, from the
+-- first day to the day before the second.
+--
+-- The day of a run is the date the clocks of the zone showed when its end was recorded:
+--   (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date
+-- It is what the series of the days group by, and it decides whether a run is of the period
+-- wherever a change of clocks could make a moment and a day disagree, so that every read counts
+-- the same runs for the same days: where clocks go back to midnight, that midnight comes twice
+-- and no moment starts the day.
+--
+-- The first two conditions on recorded_at only let the index find the rows: they reach one day
+-- further on each side, more than any change of clocks moves a midnight. Of those rows, the ones
+-- recorded between the midnight that ends the first day and the one that starts the last day are
+-- of the period without their day being computed: no change of clocks is a day long, so a moment
+-- a whole day inside the period on each side is of one of its days. The two moments are computed
+-- once for the read. The day decides for the other rows only, the ones of the two days at each
+-- end, which is what makes the long periods cheap. The six lines are the same, character for
+-- character, in each of the seven reads of the runs: a test of the store fails when they differ.
+--
+-- None of these reads decides which runs count as an error: the ones that tell of errors give the
+-- status and what the row holds, and the one rule of the store reads them.
+
+-- Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
+-- negative: an end told before its start counts for nothing. Each read computes the one duration
+-- its page shows: an account is told the time its runs lasted in all, a job the median of its
+-- runs. A median sorts every run it is of, which an account has no use for.
+-- name: SumAccountRunUsageBetween :one
+SELECT
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(sum(
+    GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
+
+-- The same counts as SumAccountRunUsageBetween, for one job of the account, and the median of
+-- the durations of its runs.
+-- name: SumJobRunUsageBetween :one
+SELECT
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND job_id = sqlc.arg(job_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
+
+-- The same counts and the same median as SumJobRunUsageBetween, for each job of the account that
+-- has a run in the period. The kind of a job is the one of its run recorded last.
+-- name: SumAccountRunUsageByJobBetween :many
+SELECT
+  job_id,
+  (array_agg(job_kind ORDER BY recorded_at DESC, run_id))[1]::text AS job_kind,
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
+GROUP BY job_id
+ORDER BY rows_read DESC, runs DESC, job_id;
+
+-- Only the days that have a run are given.
+-- name: SumAccountRunUsageByDayBetween :many
+SELECT
+  (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date AS day,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
+GROUP BY day
+ORDER BY day;
+
+-- The same days as SumAccountRunUsageByDayBetween, for one job of the account.
+-- name: SumJobRunUsageByDayBetween :many
+SELECT
+  (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date AS day,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND job_id = sqlc.arg(job_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
+GROUP BY day
+ORDER BY day;
+
+-- Every run of the account in the period, by what its row holds of its error, as
+-- CountRunUsageErrorsOfDay gives the runs of a day.
+-- name: CountAccountRunUsageErrorsBetween :many
+SELECT status, error_category, error_step, count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
+GROUP BY status, error_category, error_step
+ORDER BY status, error_category, error_step;
+
+-- The runs of a job of the account in the period, the most recently recorded first.
+-- name: ListJobRunUsageBetween :many
+SELECT run_id, status, started_at, ended_at, rows_read, tables_uncounted, error_category, error_step
+FROM husonym_api.run_usage
+WHERE account_id = sqlc.arg(account_id)
+  AND job_id = sqlc.arg(job_id)
+  AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
+ORDER BY recorded_at DESC, run_id
+LIMIT sqlc.arg(run_limit);
+
+-- The refusals of an account. They are counted by UTC day, and the days run from the first given
+-- to the day before the second, as in SumGateRefusalsBetween.
+-- name: SumAccountGateRefusalsBetween :many
+SELECT gate, sum(count)::bigint AS refusals
+FROM husonym_api.gate_refusals_daily
+WHERE account_id = sqlc.arg(account_id)
+  AND day >= sqlc.arg(from_day)::date AND day < sqlc.arg(before_day)::date
+GROUP BY gate
+ORDER BY gate;

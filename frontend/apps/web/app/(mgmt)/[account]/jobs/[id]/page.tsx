@@ -7,9 +7,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import JobNotFoundAlert from '@/components/jobs/JobNotFoundAlert';
 import PreflightCard from '@/components/jobs/preflight/PreflightCard';
 import { hasPreflight } from '@/components/jobs/preflight/report';
-import { Alert, AlertTitle } from '@/components/ui/alert';
 import { create } from '@bufbuild/protobuf';
 import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
 import { GetJobResponseSchema, JobService } from '@husonym/sdk';
@@ -48,9 +48,7 @@ export default function Page(props: PageProps): ReactElement {
   if (!data?.job) {
     return (
       <div className="mt-10">
-        <Alert variant="destructive">
-          <AlertTitle>{`Error: Unable to retrieve job`}</AlertTitle>
-        </Alert>
+        <JobNotFoundAlert />
       </div>
     );
   }

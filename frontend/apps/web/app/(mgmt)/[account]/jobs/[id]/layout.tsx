@@ -5,12 +5,12 @@ import ResourceId from '@/components/ResourceId';
 import { SubNav } from '@/components/SubNav';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
+import JobNotFoundAlert from '@/components/jobs/JobNotFoundAlert';
 import { hasPreflight } from '@/components/jobs/preflight/report';
 import { usePreflightThenRun } from '@/components/jobs/preflight/usePreflightThenRun';
 import { isJobSubsettable } from '@/components/jobs/subsets/utils';
 import { useAccount } from '@/components/providers/account-provider';
 import { LayoutProps } from '@/components/types';
-import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { getErrorMessage } from '@/util/util';
@@ -133,9 +133,7 @@ export default function JobIdLayout(props: LayoutProps) {
   if (!data?.job) {
     return (
       <div className="mt-8">
-        <Alert variant="destructive">
-          <AlertTitle>{`Error: Unable to retrieve job`}</AlertTitle>
-        </Alert>
+        <JobNotFoundAlert />
       </div>
     );
   }
@@ -251,8 +249,8 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
   }
   const badgeText = getLabeledJobType(job.jobType, job.source?.options);
   const basePath = `/${account.name}/jobs/${job.id}`;
-  const isMetricsServiceEnabled =
-    !isSystemConfigLoading && systemAppConfigData?.isMetricsServiceEnabled;
+  // Every kind of job has its usage: it is read from the counters of the instance.
+  const usage = { title: 'Usage', href: `${basePath}/usage` };
   const isJobHooksEnabled =
     !isSystemConfigLoading && systemAppConfigData?.isJobHooksEnabled;
 
@@ -274,12 +272,7 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
           href: `${basePath}/subsets`,
         });
       }
-      if (isMetricsServiceEnabled) {
-        nav.push({
-          title: 'Usage',
-          href: `${basePath}/usage`,
-        });
-      }
+      nav.push(usage);
       if (isJobHooksEnabled) {
         nav.push({
           title: 'Hooks',
@@ -295,13 +288,8 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
         { title: 'Overview', href: basePath },
         { title: 'Source', href: `${basePath}/source` },
         { title: 'Destinations', href: `${basePath}/destinations` },
+        usage,
       ];
-      if (isMetricsServiceEnabled) {
-        nav.push({
-          title: 'Usage',
-          href: `${basePath}/usage`,
-        });
-      }
       if (isJobHooksEnabled) {
         nav.push({
           title: 'Hooks',
@@ -316,13 +304,8 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
         { title: 'Overview', href: basePath },
         { title: 'Source', href: `${basePath}/source` },
         { title: 'Destinations', href: `${basePath}/destinations` },
+        usage,
       ];
-      if (isMetricsServiceEnabled) {
-        nav.push({
-          title: 'Usage',
-          href: `${basePath}/usage`,
-        });
-      }
       if (isJobHooksEnabled) {
         nav.push({
           title: 'Hooks',
@@ -332,17 +315,11 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
       return nav;
     }
     case 'PII Detect Job': {
-      const nav = [
+      return [
         { title: 'Overview', href: basePath },
         { title: 'Source', href: `${basePath}/source` },
+        usage,
       ];
-      if (isMetricsServiceEnabled) {
-        nav.push({
-          title: 'Usage',
-          href: `${basePath}/usage`,
-        });
-      }
-      return nav;
     }
     default: {
       return [{ title: 'Overview', href: basePath }];

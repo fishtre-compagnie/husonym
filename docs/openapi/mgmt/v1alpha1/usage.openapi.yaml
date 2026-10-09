@@ -142,6 +142,164 @@ components:
 
          Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
          `google.protobuf.Timestamp`.
+    mgmt.v1alpha1.GateRefusalCount:
+      type: object
+      properties:
+        gate:
+          type: string
+          title: gate
+          description: |-
+            The gate: a feature of the license, or one of its limits. A member of the closed list of the
+             gates, or "other" for the refusals of every gate this instance does not know, counted
+             together.
+        refusals:
+          type: string
+          title: refusals
+          format: int64
+      title: GateRefusalCount
+      additionalProperties: false
+      description: The times the license refused something at a gate.
+    mgmt.v1alpha1.GetAccountUsageRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account.
+        fromDay:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: from_day
+          description: The first day of the period.
+        toDay:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: to_day
+          description: 'The last day of the period, included: not before the first, and at most 366 days in all.'
+        timeZone:
+          type: string
+          title: time_zone
+          description: The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+      title: GetAccountUsageRequest
+      required:
+        - fromDay
+        - toDay
+      additionalProperties: false
+    mgmt.v1alpha1.GetAccountUsageResponse:
+      type: object
+      properties:
+        totals:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageTotals'
+          title: totals
+          description: Every run of the account counted in the period, those of jobs deleted since among them.
+        durationTotalSeconds:
+          type:
+            - string
+            - "null"
+          title: duration_total_seconds
+          format: int64
+          description: The sum of the durations of the runs that have a known end. Absent when none has.
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.UsageDay'
+          title: days
+          description: Every day of the period, the oldest first; a day without a run is there, at zero.
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobUsage'
+          title: jobs
+          description: The jobs that have a run counted in the period and still exist, the one that read the most rows first.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.UsageErrorCount'
+          title: errors
+          description: The runs that did not complete, by category, the category with the most runs first.
+        refusals:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.GateRefusalCount'
+          title: refusals
+          description: What the license refused the account, by gate. Refusals are counted by UTC day, whatever the time zone.
+        timeZone:
+          type: string
+          title: time_zone
+          description: 'The time zone the days were counted in: the one asked, or "UTC" when it is not known.'
+      title: GetAccountUsageResponse
+      additionalProperties: false
+    mgmt.v1alpha1.GetJobUsageRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account.
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The unique identifier of the job. A job that is not of the account has no usage.
+        fromDay:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: from_day
+          description: The first day of the period.
+        toDay:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: to_day
+          description: 'The last day of the period, included: not before the first, and at most 366 days in all.'
+        timeZone:
+          type: string
+          title: time_zone
+          description: The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+      title: GetJobUsageRequest
+      required:
+        - fromDay
+        - toDay
+      additionalProperties: false
+    mgmt.v1alpha1.GetJobUsageResponse:
+      type: object
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobKind'
+          title: kind
+          description: What the job does. Unspecified when the account has no such job.
+        totals:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageTotals'
+          title: totals
+        durationMedianSeconds:
+          type:
+            - string
+            - "null"
+          title: duration_median_seconds
+          format: int64
+          description: The median duration of the runs that have a known end. Absent when none has.
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.UsageDay'
+          title: days
+          description: Every day of the period, the oldest first; a day without a run is there, at zero.
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.RunUsage'
+          title: runs
+          description: The runs counted in the period, the most recently recorded first, 20 at most.
+        timeZone:
+          type: string
+          title: time_zone
+          description: 'The time zone the days were counted in: the one asked, or "UTC" when it is not known.'
+      title: GetJobUsageResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetUsagePeriodReportRequest:
       type: object
       properties:
@@ -271,6 +429,57 @@ components:
           description: What became of the reports of the last 30 days, the newest first.
       title: GetUsageReportingResponse
       additionalProperties: false
+    mgmt.v1alpha1.JobKind:
+      type: string
+      title: JobKind
+      enum:
+        - JOB_KIND_UNSPECIFIED
+        - JOB_KIND_SYNC
+        - JOB_KIND_GENERATE
+        - JOB_KIND_AI_GENERATE
+        - JOB_KIND_PII_DETECT
+      description: What a job does, as its runs are counted.
+    mgmt.v1alpha1.JobRunStatus:
+      type: string
+      title: JobRunStatus
+      enum:
+        - JOB_RUN_STATUS_UNSPECIFIED
+        - JOB_RUN_STATUS_PENDING
+        - JOB_RUN_STATUS_RUNNING
+        - JOB_RUN_STATUS_COMPLETE
+        - JOB_RUN_STATUS_ERROR
+        - JOB_RUN_STATUS_CANCELED
+        - JOB_RUN_STATUS_TERMINATED
+        - JOB_RUN_STATUS_FAILED
+        - JOB_RUN_STATUS_TIMED_OUT
+      description: An enumeration of job run statuses.
+    mgmt.v1alpha1.JobUsage:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+        jobName:
+          type: string
+          title: job_name
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobKind'
+          title: kind
+        totals:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.UsageTotals'
+          title: totals
+        durationMedianSeconds:
+          type:
+            - string
+            - "null"
+          title: duration_median_seconds
+          format: int64
+          description: The median duration of the runs that have a known end. Absent when none has.
+      title: JobUsage
+      additionalProperties: false
+      description: What the runs of a job add up to in the period.
     mgmt.v1alpha1.RecordRunEndedRequest:
       type: object
       properties:
@@ -414,6 +623,82 @@ components:
         - RUN_OUTCOME_FAILED
         - RUN_OUTCOME_CANCELED
       description: How a run ended.
+    mgmt.v1alpha1.RunUsage:
+      type: object
+      properties:
+        runId:
+          type: string
+          title: run_id
+          description: The identifier of the run, as the orchestrator gives it.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobRunStatus'
+          title: status
+        startedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: started_at
+        endedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: ended_at
+          description: Absent for a run that was settled without a known end.
+        rowsRead:
+          type: string
+          title: rows_read
+          format: int64
+          description: The rows the run read from its source.
+        tablesUncounted:
+          type: string
+          title: tables_uncounted
+          format: int64
+          description: The tables of the run whose rows were not counted.
+        errorCategory:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.RunErrorCategory'
+          title: error_category
+          description: What kept the run from completing. Unspecified for a run that completed.
+        errorStep:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.RunErrorStep'
+          title: error_step
+          description: The step the run was at when it stopped. Unspecified for a run that completed.
+      title: RunUsage
+      additionalProperties: false
+      description: A run as the counters hold it.
+    mgmt.v1alpha1.UsageDay:
+      type: object
+      properties:
+        day:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
+          title: day
+          description: The day, in the time zone of the answer.
+        rowsRead:
+          type: string
+          title: rows_read
+          format: int64
+        runs:
+          type: string
+          title: runs
+          format: int64
+      title: UsageDay
+      additionalProperties: false
+      description: The runs counted on a day of the period.
+    mgmt.v1alpha1.UsageErrorCount:
+      type: object
+      properties:
+        category:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.RunErrorCategory'
+          title: category
+        runs:
+          type: string
+          title: runs
+          format: int64
+      title: UsageErrorCount
+      additionalProperties: false
+      description: The runs that did not complete for a category of error.
     mgmt.v1alpha1.UsageReportStatus:
       type: string
       title: UsageReportStatus
@@ -457,9 +742,125 @@ components:
         - USAGE_REPORTING_MODE_OFFLINE_REPORT
         - USAGE_REPORTING_MODE_NONE
       description: What the instance does with its usage report.
+    mgmt.v1alpha1.UsageTotals:
+      type: object
+      properties:
+        runs:
+          type: string
+          title: runs
+          format: int64
+          description: The runs whose end was recorded in the period, whatever their status.
+        runsCompleted:
+          type: string
+          title: runs_completed
+          format: int64
+          description: Those that completed. The success rate is this number over the runs less the canceled ones.
+        runsCanceled:
+          type: string
+          title: runs_canceled
+          format: int64
+          description: 'Those that were canceled: they neither succeeded nor failed.'
+        rowsRead:
+          type: string
+          title: rows_read
+          format: int64
+          description: The rows the runs read from their sources.
+        rowsDiscarded:
+          type: string
+          title: rows_discarded
+          format: int64
+          description: The rows the runs set aside instead of writing them.
+        runsWithUncountedRows:
+          type: string
+          title: runs_with_uncounted_rows
+          format: int64
+          description: 'The runs with a table that reported no row count: their rows are not all counted.'
+      title: UsageTotals
+      additionalProperties: false
+      description: What the runs counted in a period add up to. A run counts on the day the instance learned of its end; a run still running counts nowhere.
 security:
   - BearerAuth: []
 paths:
+  /mgmt.v1alpha1.UsageService/GetAccountUsage:
+    post:
+      tags:
+        - mgmt.v1alpha1.UsageService
+      summary: GetAccountUsage
+      description: 'Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.'
+      operationId: mgmt.v1alpha1.UsageService.GetAccountUsage
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountUsageRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountUsageResponse'
+  /mgmt.v1alpha1.UsageService/GetJobUsage:
+    post:
+      tags:
+        - mgmt.v1alpha1.UsageService
+      summary: GetJobUsage
+      description: Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+      operationId: mgmt.v1alpha1.UsageService.GetJobUsage
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetJobUsageRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetJobUsageResponse'
   /mgmt.v1alpha1.UsageService/GetUsagePeriodReport:
     post:
       tags:

@@ -5,7 +5,6 @@ export interface SystemAppConfig {
   isStripeEnabled: boolean;
   enableRunLogs: boolean;
   signInProviderId?: string;
-  isMetricsServiceEnabled: boolean;
   isJobHooksEnabled: boolean;
   isAccountHooksEnabled: boolean;
 

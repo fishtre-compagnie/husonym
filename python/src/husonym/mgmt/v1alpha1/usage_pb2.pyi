@@ -2,6 +2,7 @@ import datetime
 
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from mgmt.v1alpha1 import job_pb2 as _job_pb2
 from mgmt.v1alpha1 import metrics_pb2 as _metrics_pb2
 from mgmt.v1alpha1 import permission_pb2 as _permission_pb2
 from google.protobuf.internal import containers as _containers
@@ -59,6 +60,14 @@ class UsageReportStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     USAGE_REPORT_STATUS_TO_BE_SENT: _ClassVar[UsageReportStatus]
     USAGE_REPORT_STATUS_SENT: _ClassVar[UsageReportStatus]
     USAGE_REPORT_STATUS_NOT_SENT: _ClassVar[UsageReportStatus]
+
+class JobKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JOB_KIND_UNSPECIFIED: _ClassVar[JobKind]
+    JOB_KIND_SYNC: _ClassVar[JobKind]
+    JOB_KIND_GENERATE: _ClassVar[JobKind]
+    JOB_KIND_AI_GENERATE: _ClassVar[JobKind]
+    JOB_KIND_PII_DETECT: _ClassVar[JobKind]
 RUN_OUTCOME_UNSPECIFIED: RunOutcome
 RUN_OUTCOME_COMPLETED: RunOutcome
 RUN_OUTCOME_FAILED: RunOutcome
@@ -91,6 +100,11 @@ USAGE_REPORT_STATUS_KEPT: UsageReportStatus
 USAGE_REPORT_STATUS_TO_BE_SENT: UsageReportStatus
 USAGE_REPORT_STATUS_SENT: UsageReportStatus
 USAGE_REPORT_STATUS_NOT_SENT: UsageReportStatus
+JOB_KIND_UNSPECIFIED: JobKind
+JOB_KIND_SYNC: JobKind
+JOB_KIND_GENERATE: JobKind
+JOB_KIND_AI_GENERATE: JobKind
+JOB_KIND_PII_DETECT: JobKind
 
 class RecordRunStartedRequest(_message.Message):
     __slots__ = ("job_id", "run_id", "started_at")
@@ -215,3 +229,139 @@ class GetUsagePeriodReportResponse(_message.Message):
     seal: str
     key_fingerprint: str
     def __init__(self, document: _Optional[str] = ..., seal: _Optional[str] = ..., key_fingerprint: _Optional[str] = ...) -> None: ...
+
+class UsageTotals(_message.Message):
+    __slots__ = ("runs", "runs_completed", "runs_canceled", "rows_read", "rows_discarded", "runs_with_uncounted_rows")
+    RUNS_FIELD_NUMBER: _ClassVar[int]
+    RUNS_COMPLETED_FIELD_NUMBER: _ClassVar[int]
+    RUNS_CANCELED_FIELD_NUMBER: _ClassVar[int]
+    ROWS_READ_FIELD_NUMBER: _ClassVar[int]
+    ROWS_DISCARDED_FIELD_NUMBER: _ClassVar[int]
+    RUNS_WITH_UNCOUNTED_ROWS_FIELD_NUMBER: _ClassVar[int]
+    runs: int
+    runs_completed: int
+    runs_canceled: int
+    rows_read: int
+    rows_discarded: int
+    runs_with_uncounted_rows: int
+    def __init__(self, runs: _Optional[int] = ..., runs_completed: _Optional[int] = ..., runs_canceled: _Optional[int] = ..., rows_read: _Optional[int] = ..., rows_discarded: _Optional[int] = ..., runs_with_uncounted_rows: _Optional[int] = ...) -> None: ...
+
+class UsageDay(_message.Message):
+    __slots__ = ("day", "rows_read", "runs")
+    DAY_FIELD_NUMBER: _ClassVar[int]
+    ROWS_READ_FIELD_NUMBER: _ClassVar[int]
+    RUNS_FIELD_NUMBER: _ClassVar[int]
+    day: _metrics_pb2.Date
+    rows_read: int
+    runs: int
+    def __init__(self, day: _Optional[_Union[_metrics_pb2.Date, _Mapping]] = ..., rows_read: _Optional[int] = ..., runs: _Optional[int] = ...) -> None: ...
+
+class JobUsage(_message.Message):
+    __slots__ = ("job_id", "job_name", "kind", "totals", "duration_median_seconds")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_NAME_FIELD_NUMBER: _ClassVar[int]
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    TOTALS_FIELD_NUMBER: _ClassVar[int]
+    DURATION_MEDIAN_SECONDS_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    job_name: str
+    kind: JobKind
+    totals: UsageTotals
+    duration_median_seconds: int
+    def __init__(self, job_id: _Optional[str] = ..., job_name: _Optional[str] = ..., kind: _Optional[_Union[JobKind, str]] = ..., totals: _Optional[_Union[UsageTotals, _Mapping]] = ..., duration_median_seconds: _Optional[int] = ...) -> None: ...
+
+class UsageErrorCount(_message.Message):
+    __slots__ = ("category", "runs")
+    CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    RUNS_FIELD_NUMBER: _ClassVar[int]
+    category: RunErrorCategory
+    runs: int
+    def __init__(self, category: _Optional[_Union[RunErrorCategory, str]] = ..., runs: _Optional[int] = ...) -> None: ...
+
+class GateRefusalCount(_message.Message):
+    __slots__ = ("gate", "refusals")
+    GATE_FIELD_NUMBER: _ClassVar[int]
+    REFUSALS_FIELD_NUMBER: _ClassVar[int]
+    gate: str
+    refusals: int
+    def __init__(self, gate: _Optional[str] = ..., refusals: _Optional[int] = ...) -> None: ...
+
+class RunUsage(_message.Message):
+    __slots__ = ("run_id", "status", "started_at", "ended_at", "rows_read", "tables_uncounted", "error_category", "error_step")
+    RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    STARTED_AT_FIELD_NUMBER: _ClassVar[int]
+    ENDED_AT_FIELD_NUMBER: _ClassVar[int]
+    ROWS_READ_FIELD_NUMBER: _ClassVar[int]
+    TABLES_UNCOUNTED_FIELD_NUMBER: _ClassVar[int]
+    ERROR_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    ERROR_STEP_FIELD_NUMBER: _ClassVar[int]
+    run_id: str
+    status: _job_pb2.JobRunStatus
+    started_at: _timestamp_pb2.Timestamp
+    ended_at: _timestamp_pb2.Timestamp
+    rows_read: int
+    tables_uncounted: int
+    error_category: RunErrorCategory
+    error_step: RunErrorStep
+    def __init__(self, run_id: _Optional[str] = ..., status: _Optional[_Union[_job_pb2.JobRunStatus, str]] = ..., started_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., ended_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., rows_read: _Optional[int] = ..., tables_uncounted: _Optional[int] = ..., error_category: _Optional[_Union[RunErrorCategory, str]] = ..., error_step: _Optional[_Union[RunErrorStep, str]] = ...) -> None: ...
+
+class GetAccountUsageRequest(_message.Message):
+    __slots__ = ("account_id", "from_day", "to_day", "time_zone")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    FROM_DAY_FIELD_NUMBER: _ClassVar[int]
+    TO_DAY_FIELD_NUMBER: _ClassVar[int]
+    TIME_ZONE_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    from_day: _metrics_pb2.Date
+    to_day: _metrics_pb2.Date
+    time_zone: str
+    def __init__(self, account_id: _Optional[str] = ..., from_day: _Optional[_Union[_metrics_pb2.Date, _Mapping]] = ..., to_day: _Optional[_Union[_metrics_pb2.Date, _Mapping]] = ..., time_zone: _Optional[str] = ...) -> None: ...
+
+class GetAccountUsageResponse(_message.Message):
+    __slots__ = ("totals", "duration_total_seconds", "days", "jobs", "errors", "refusals", "time_zone")
+    TOTALS_FIELD_NUMBER: _ClassVar[int]
+    DURATION_TOTAL_SECONDS_FIELD_NUMBER: _ClassVar[int]
+    DAYS_FIELD_NUMBER: _ClassVar[int]
+    JOBS_FIELD_NUMBER: _ClassVar[int]
+    ERRORS_FIELD_NUMBER: _ClassVar[int]
+    REFUSALS_FIELD_NUMBER: _ClassVar[int]
+    TIME_ZONE_FIELD_NUMBER: _ClassVar[int]
+    totals: UsageTotals
+    duration_total_seconds: int
+    days: _containers.RepeatedCompositeFieldContainer[UsageDay]
+    jobs: _containers.RepeatedCompositeFieldContainer[JobUsage]
+    errors: _containers.RepeatedCompositeFieldContainer[UsageErrorCount]
+    refusals: _containers.RepeatedCompositeFieldContainer[GateRefusalCount]
+    time_zone: str
+    def __init__(self, totals: _Optional[_Union[UsageTotals, _Mapping]] = ..., duration_total_seconds: _Optional[int] = ..., days: _Optional[_Iterable[_Union[UsageDay, _Mapping]]] = ..., jobs: _Optional[_Iterable[_Union[JobUsage, _Mapping]]] = ..., errors: _Optional[_Iterable[_Union[UsageErrorCount, _Mapping]]] = ..., refusals: _Optional[_Iterable[_Union[GateRefusalCount, _Mapping]]] = ..., time_zone: _Optional[str] = ...) -> None: ...
+
+class GetJobUsageRequest(_message.Message):
+    __slots__ = ("account_id", "job_id", "from_day", "to_day", "time_zone")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    FROM_DAY_FIELD_NUMBER: _ClassVar[int]
+    TO_DAY_FIELD_NUMBER: _ClassVar[int]
+    TIME_ZONE_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    job_id: str
+    from_day: _metrics_pb2.Date
+    to_day: _metrics_pb2.Date
+    time_zone: str
+    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ..., from_day: _Optional[_Union[_metrics_pb2.Date, _Mapping]] = ..., to_day: _Optional[_Union[_metrics_pb2.Date, _Mapping]] = ..., time_zone: _Optional[str] = ...) -> None: ...
+
+class GetJobUsageResponse(_message.Message):
+    __slots__ = ("kind", "totals", "duration_median_seconds", "days", "runs", "time_zone")
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    TOTALS_FIELD_NUMBER: _ClassVar[int]
+    DURATION_MEDIAN_SECONDS_FIELD_NUMBER: _ClassVar[int]
+    DAYS_FIELD_NUMBER: _ClassVar[int]
+    RUNS_FIELD_NUMBER: _ClassVar[int]
+    TIME_ZONE_FIELD_NUMBER: _ClassVar[int]
+    kind: JobKind
+    totals: UsageTotals
+    duration_median_seconds: int
+    days: _containers.RepeatedCompositeFieldContainer[UsageDay]
+    runs: _containers.RepeatedCompositeFieldContainer[RunUsage]
+    time_zone: str
+    def __init__(self, kind: _Optional[_Union[JobKind, str]] = ..., totals: _Optional[_Union[UsageTotals, _Mapping]] = ..., duration_median_seconds: _Optional[int] = ..., days: _Optional[_Iterable[_Union[UsageDay, _Mapping]]] = ..., runs: _Optional[_Iterable[_Union[RunUsage, _Mapping]]] = ..., time_zone: _Optional[str] = ...) -> None: ...

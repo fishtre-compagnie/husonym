@@ -136,14 +136,21 @@ func toldError(msg *mgmtv1alpha1.RecordRunEndedRequest) usagestore.RunError {
 	// An unknown number prints as its digits, which no list holds.
 	if category := msg.GetErrorCategory(); category != mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED {
 		told.Category = usagestore.ErrorCategory(
-			telemetry.ErrorCategory(strings.TrimPrefix(category.String(), "RUN_ERROR_CATEGORY_")),
+			telemetry.ErrorCategory(strings.TrimPrefix(category.String(), errorCategoryPrefix)),
 		)
 	}
 	if step := msg.GetErrorStep(); step != mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED {
-		told.Step = usagestore.ErrorStep(telemetry.ErrorStep(strings.TrimPrefix(step.String(), "RUN_ERROR_STEP_")))
+		told.Step = usagestore.ErrorStep(telemetry.ErrorStep(strings.TrimPrefix(step.String(), errorStepPrefix)))
 	}
 	return told
 }
+
+// What the names of the two enums of an error start with: the rest is the name the usage store
+// holds, in upper case. toldError reads a member by it, toldCategory and toldStep give it back.
+const (
+	errorCategoryPrefix = "RUN_ERROR_CATEGORY_"
+	errorStepPrefix     = "RUN_ERROR_STEP_"
+)
 
 func statusOf(outcome mgmtv1alpha1.RunOutcome) (usagestore.Status, bool) {
 	switch outcome {

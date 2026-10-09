@@ -102,19 +102,27 @@ func (s *IntegrationTestSuite) apiKeyOf(
 	permissions ...string,
 ) mgmtv1alpha1connect.UserAccountServiceClient {
 	s.T().Helper()
+	return s.OSSAuthenticatedLicensedClients.Users(integrationtests_test.WithUserId(s.accountKey(accountId, creatorId, permissions...)))
+}
+
+// accountKey stores an API key of the account, holding the permissions, and gives the key to
+// call with.
+func (s *IntegrationTestSuite) accountKey(accountId, creatorId string, permissions ...string) string {
+	s.T().Helper()
 	accountUuid, err := husonymdb.ToUuid(accountId)
 	require.NoError(s.T(), err)
 	creatorUuid, err := husonymdb.ToUuid(creatorId)
 	require.NoError(s.T(), err)
 	key := apikey.NewV1AccountKey()
 	_, err = husonymdb.New(s.Pgcontainer.DB, s.HusonymQuerier).CreateAccountApikey(s.ctx, &husonymdb.CreateAccountApiKeyRequest{
-		KeyName: "instance-organization", KeyValue: pkg_utils.ToSha256(key),
+		// An account holds one key of a name.
+		KeyName: "key-" + uuid.NewString(), KeyValue: pkg_utils.ToSha256(key),
 		AccountUuid: accountUuid, CreatedByUserUuid: creatorUuid,
 		ExpiresAt:   pgtype.Timestamp{Time: time.Now().Add(time.Hour), Valid: true},
 		Permissions: permissions,
 	})
 	require.NoError(s.T(), err)
-	return s.OSSAuthenticatedLicensedClients.Users(integrationtests_test.WithUserId(key))
+	return key
 }
 
 func (s *IntegrationTestSuite) setInstanceOrganization(
