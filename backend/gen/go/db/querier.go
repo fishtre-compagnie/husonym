@@ -350,7 +350,8 @@ type Querier interface {
 	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
 	// Creates the row when the start was never recorded; a row already finished keeps what it
 	// holds, so that the first end told wins. The moment the end is recorded is the clock of the
-	// database, and a second end does not move it.
+	// database, and a second end does not move it. The category and the step of the error go with
+	// the status: null for a run that completed, both set for any other.
 	UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error
 	// Only a later day moves the date.
 	UpsertUserActivity(ctx context.Context, db DBTX, arg UpsertUserActivityParams) error

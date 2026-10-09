@@ -23,6 +23,7 @@ type runStore interface {
 	CloseRun(
 		ctx context.Context, runId string, status usagestore.Status, endedAt time.Time,
 		rowsRead, rowsDiscarded, retries, tablesUncounted int64, sourceVersionMajor string,
+		told usagestore.RunError,
 	) error
 }
 

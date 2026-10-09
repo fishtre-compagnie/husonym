@@ -223,6 +223,8 @@ type HusonymApiRunUsage struct {
 	RecordedAt         pgtype.Timestamptz
 	TablesUncounted    int64
 	SourceVersionMajor pgtype.Text
+	ErrorCategory      pgtype.Text
+	ErrorStep          pgtype.Text
 }
 
 type HusonymApiRuncontext struct {

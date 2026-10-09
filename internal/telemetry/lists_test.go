@@ -209,6 +209,19 @@ func Test_Roles_AreTheAccountRolesOfTheProto(t *testing.T) {
 	require.Equal(t, "other", Roles[len(Roles)-1])
 }
 
+// The categories and the steps of an error are declared once, in the proto: the lists are its
+// names, in the order of its numbers, which is the order the schema was published in.
+func Test_ErrorLists_AreTheEnumsOfTheProto(t *testing.T) {
+	require.Equal(t, []string{
+		"connection_refused", "authentication_refused", "timeout", "constraint_violated",
+		"insufficient_privileges", "object_missing", "type_mismatch", "resources_exhausted",
+		"canceled", "license", "other",
+	}, ErrorCategories)
+	require.Equal(t, []string{"preflight", "schema_init", "table_sync", "hooks", "integrity_check", "other"}, ErrorSteps)
+	require.Len(t, ErrorCategories, len(mgmtv1alpha1.RunErrorCategory_name)-1)
+	require.Len(t, ErrorSteps, len(mgmtv1alpha1.RunErrorStep_name)-1)
+}
+
 func Test_Role(t *testing.T) {
 	for role, want := range map[mgmtv1alpha1.AccountRole]string{
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN:         "admin",
@@ -341,6 +354,9 @@ func Test_ListMappings_SendWhatIsUnknownToOther(t *testing.T) {
 	require.Equal(t, "other", RunStatus("exploded"))
 	require.Equal(t, "frozen", LicenseState("frozen"))
 	require.Equal(t, "other", LicenseState("lifetime"))
+	require.Equal(t, "other", ErrorCategory("Deadlock"))
+	require.Equal(t, "other", ErrorStep(""))
+	require.Equal(t, "timeout", ErrorCategory(" Timeout "))
 }
 
 // A release, or a build stamped with a short suffix of two parts at most: a longer tail could

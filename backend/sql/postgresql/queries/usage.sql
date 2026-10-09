@@ -16,19 +16,23 @@ ON CONFLICT (run_id) DO NOTHING;
 
 -- Creates the row when the start was never recorded; a row already finished keeps what it
 -- holds, so that the first end told wins. The moment the end is recorded is the clock of the
--- database, and a second end does not move it.
+-- database, and a second end does not move it. The category and the step of the error go with
+-- the status: null for a run that completed, both set for any other.
 -- name: UpsertRunUsageEnded :exec
 INSERT INTO husonym_api.run_usage (
-  run_id, account_id, job_id, job_kind, status, started_at, ended_at,
+  run_id, account_id, job_id, job_kind, status, error_category, error_step, started_at, ended_at,
   rows_read, rows_discarded, retries, tables_uncounted, source_version_major, recorded_at
 ) VALUES (
   sqlc.arg(run_id), sqlc.arg(account_id), sqlc.arg(job_id), sqlc.arg(job_kind), sqlc.arg(status),
+  sqlc.narg(error_category), sqlc.narg(error_step),
   sqlc.arg(started_at), sqlc.arg(ended_at), sqlc.arg(rows_read), sqlc.arg(rows_discarded),
   sqlc.arg(retries), sqlc.arg(tables_uncounted), NULLIF(sqlc.arg(source_version_major)::text, ''),
   CURRENT_TIMESTAMP
 )
 ON CONFLICT (run_id) DO UPDATE SET
   status = EXCLUDED.status,
+  error_category = EXCLUDED.error_category,
+  error_step = EXCLUDED.error_step,
   ended_at = EXCLUDED.ended_at,
   rows_read = EXCLUDED.rows_read,
   rows_discarded = EXCLUDED.rows_discarded,
@@ -41,7 +45,8 @@ WHERE husonym_api.run_usage.status = 'running';
 -- Closes the row of a run still running, and creates nothing.
 -- name: CloseRunUsage :exec
 UPDATE husonym_api.run_usage
-SET status = sqlc.arg(status), ended_at = sqlc.arg(ended_at), rows_read = sqlc.arg(rows_read),
+SET status = sqlc.arg(status), error_category = sqlc.narg(error_category),
+  error_step = sqlc.narg(error_step), ended_at = sqlc.arg(ended_at), rows_read = sqlc.arg(rows_read),
   rows_discarded = sqlc.arg(rows_discarded), retries = sqlc.arg(retries),
   tables_uncounted = sqlc.arg(tables_uncounted),
   source_version_major = NULLIF(sqlc.arg(source_version_major)::text, ''),
@@ -57,8 +62,9 @@ ORDER BY started_at, run_id;
 -- Only a run still open is settled.
 -- name: SettleRunUsage :exec
 UPDATE husonym_api.run_usage
-SET status = $2, ended_at = $3, recorded_at = CURRENT_TIMESTAMP
-WHERE run_id = $1 AND status = 'running';
+SET status = sqlc.arg(status), error_category = sqlc.narg(error_category),
+  error_step = sqlc.narg(error_step), ended_at = sqlc.arg(ended_at), recorded_at = CURRENT_TIMESTAMP
+WHERE run_id = sqlc.arg(run_id) AND status = 'running';
 
 -- name: IncrementGateRefusal :exec
 INSERT INTO husonym_api.gate_refusals_daily (day, account_id, gate, count)

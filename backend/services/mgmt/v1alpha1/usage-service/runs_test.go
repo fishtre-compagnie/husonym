@@ -17,6 +17,7 @@ import (
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -43,6 +44,7 @@ type fakeStore struct {
 func (f *fakeStore) CloseRun(
 	_ context.Context, runId string, status usagestore.Status, endedAt time.Time,
 	rowsRead, rowsDiscarded, retries, tablesUncounted int64, sourceVersionMajor string,
+	told usagestore.RunError,
 ) error {
 	if !f.running[runId] {
 		return nil
@@ -53,6 +55,7 @@ func (f *fakeStore) CloseRun(
 		RunId: runId, Status: status, EndedAt: endedAt,
 		RowsRead: rowsRead, RowsDiscarded: rowsDiscarded, Retries: retries,
 		TablesUncounted: tablesUncounted, SourceVersionMajor: sourceVersionMajor,
+		Error: told,
 	}
 	return nil
 }
@@ -243,6 +246,131 @@ func TestRecordRunEndedRequestValidatesWhatTheWorkerAdds(t *testing.T) {
 		req.TablesUncounted = -1
 		require.Error(t, validator.Validate(req))
 	})
+}
+
+// goneJob makes the database hold no job for the test, and the store a running row for its run.
+func (f *fixture) goneJob(t *testing.T) {
+	t.Helper()
+	f.store.running = map[string]bool{"run-1": true}
+	jobUuid, err := husonymdb.ToUuid(aJobId)
+	require.NoError(t, err)
+	f.querier.On("GetJobById", mock.Anything, mock.Anything, jobUuid).
+		Return(db_queries.HusonymApiJob{}, pgx.ErrNoRows)
+}
+
+// The category and the step the worker tells reach the store under the names the table holds,
+// whether the row is made or only closed.
+func TestRecordRunEndedCarriesTheErrorOfTheRun(t *testing.T) {
+	failed := func() *connect.Request[mgmtv1alpha1.RecordRunEndedRequest] {
+		req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED)
+		req.Msg.ErrorCategory = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED
+		req.Msg.ErrorStep = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC
+		return req
+	}
+	want := usagestore.RunError{Category: "constraint_violated", Step: "table_sync"}
+
+	t.Run("for a job that is there", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.storesJob(t, syncOptions(), nil)
+		_, err := f.svc.RecordRunEnded(context.Background(), failed())
+		require.NoError(t, err)
+		require.Len(t, f.store.ended, 1)
+		require.Equal(t, want, f.store.ended[0].Error)
+	})
+
+	t.Run("for a job that is gone", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.goneJob(t)
+		_, err := f.svc.RecordRunEnded(context.Background(), failed())
+		require.NoError(t, err)
+		require.Equal(t, []string{"run-1"}, f.store.closed)
+		require.Equal(t, want, f.store.closure.Error)
+	})
+}
+
+// A worker newer than the service may tell a category or a step the service does not know, and an
+// older one tells none: neither is refused, for a refused report would lose the end of the run.
+func TestRecordRunEndedKeepsWhatItDoesNotKnowAsOther(t *testing.T) {
+	unknown := func() *connect.Request[mgmtv1alpha1.RecordRunEndedRequest] {
+		req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED)
+		req.Msg.ErrorCategory = mgmtv1alpha1.RunErrorCategory(42)
+		req.Msg.ErrorStep = mgmtv1alpha1.RunErrorStep(99)
+		return req
+	}
+	other := usagestore.RunError{Category: "other", Step: "other"}
+
+	t.Run("numbers the service does not know are other", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.storesJob(t, syncOptions(), nil)
+		_, err := f.svc.RecordRunEnded(context.Background(), unknown())
+		require.NoError(t, err)
+		require.Len(t, f.store.ended, 1)
+		require.Equal(t, other, f.store.ended[0].Error)
+	})
+
+	t.Run("the same for a job that is gone", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.goneJob(t)
+		_, err := f.svc.RecordRunEnded(context.Background(), unknown())
+		require.NoError(t, err)
+		require.Equal(t, other, f.store.closure.Error)
+	})
+
+	t.Run("a category told alone leaves the step untold", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.storesJob(t, syncOptions(), nil)
+		req := finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED)
+		req.Msg.ErrorCategory = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT
+		_, err := f.svc.RecordRunEnded(context.Background(), req)
+		require.NoError(t, err)
+		require.Equal(t, usagestore.RunError{Category: "timeout"}, f.store.ended[0].Error)
+	})
+
+	t.Run("nothing told is nothing kept", func(t *testing.T) {
+		f := newFixture(t, userdata.WorkerOnly{})
+		f.storesJob(t, syncOptions(), nil)
+		_, err := f.svc.RecordRunEnded(context.Background(), finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED))
+		require.NoError(t, err)
+		require.Equal(t, usagestore.RunError{}, f.store.ended[0].Error)
+	})
+
+	t.Run("the message is valid with them, and without", func(t *testing.T) {
+		validator, err := protovalidate.New()
+		require.NoError(t, err)
+		require.NoError(t, validator.Validate(unknown().Msg))
+		require.NoError(t, validator.Validate(finished(mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED).Msg))
+	})
+}
+
+// Every category and every step of the proto has a name the table allows, and none becomes other
+// but other itself.
+func TestToldErrorNamesEveryCategoryAndStepOfTheProto(t *testing.T) {
+	for number := range mgmtv1alpha1.RunErrorCategory_name {
+		category := mgmtv1alpha1.RunErrorCategory(number)
+		told := toldError(&mgmtv1alpha1.RecordRunEndedRequest{ErrorCategory: category})
+		switch category {
+		case mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED:
+			require.Empty(t, told.Category)
+		case mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OTHER:
+			require.Equal(t, usagestore.ErrorCategoryOther, told.Category)
+		default:
+			require.NotEqual(t, usagestore.ErrorCategoryOther, told.Category, category)
+			require.Contains(t, telemetry.ErrorCategories, string(told.Category))
+		}
+	}
+	for number := range mgmtv1alpha1.RunErrorStep_name {
+		step := mgmtv1alpha1.RunErrorStep(number)
+		told := toldError(&mgmtv1alpha1.RecordRunEndedRequest{ErrorStep: step})
+		switch step {
+		case mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED:
+			require.Empty(t, told.Step)
+		case mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER:
+			require.Equal(t, usagestore.ErrorStepOther, told.Step)
+		default:
+			require.NotEqual(t, usagestore.ErrorStepOther, told.Step, step)
+			require.Contains(t, telemetry.ErrorSteps, string(told.Step))
+		}
+	}
 }
 
 // A job deleted since the run began leaves nothing to count, and is no error for the worker.

@@ -38,7 +38,7 @@ func Test_RunEnded_RefusesAStatusThatIsNotAnEnd(t *testing.T) {
 func Test_CloseRun_RefusesAStatusThatIsNotAnEnd(t *testing.T) {
 	s := New(nil)
 	for _, status := range []Status{StatusRunning, StatusTerminated, StatusTimedOut, "", "bogus"} {
-		err := s.CloseRun(t.Context(), "r", status, time.Now(), 0, 0, 0, 0, "")
+		err := s.CloseRun(t.Context(), "r", status, time.Now(), 0, 0, 0, 0, "", RunError{})
 		require.ErrorContains(t, err, "cannot end", "status %q", status)
 	}
 }

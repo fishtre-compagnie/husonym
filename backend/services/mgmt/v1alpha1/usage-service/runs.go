@@ -3,6 +3,7 @@ package v1alpha1_usageservice
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -11,6 +12,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 )
 
 // RecordRunStarted keeps a run that has begun, with the account and the kind of its job. The
@@ -65,7 +67,7 @@ func (s *Service) RecordRunEnded(
 		err = s.store.CloseRun(
 			ctx, req.Msg.GetRunId(), status, req.Msg.GetEndedAt().AsTime(),
 			req.Msg.GetRowsRead(), req.Msg.GetRowsDiscarded(), req.Msg.GetRetries(),
-			req.Msg.GetTablesUncounted(), req.Msg.GetSourceVersionMajor(),
+			req.Msg.GetTablesUncounted(), req.Msg.GetSourceVersionMajor(), toldError(req.Msg),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to close the run of a job that is gone: %w", err)
@@ -87,6 +89,8 @@ func (s *Service) RecordRunEnded(
 
 		TablesUncounted:    req.Msg.GetTablesUncounted(),
 		SourceVersionMajor: req.Msg.GetSourceVersionMajor(),
+
+		Error: toldError(req.Msg),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to keep the end of the run: %w", err)
@@ -122,6 +126,23 @@ func (s *Service) jobOf(ctx context.Context, jobId string) (db_queries.HusonymAp
 		return db_queries.HusonymApiJob{}, false, fmt.Errorf("unable to read the job of the run: %w", err)
 	}
 	return job, true, nil
+}
+
+// toldError is what the worker told of the error of the run, under the names the usage store
+// holds. What is unspecified is not told: an older worker tells nothing. A number this service
+// does not know is other, never a refusal: a refused report would lose the end of the run.
+func toldError(msg *mgmtv1alpha1.RecordRunEndedRequest) usagestore.RunError {
+	var told usagestore.RunError
+	// An unknown number prints as its digits, which no list holds.
+	if category := msg.GetErrorCategory(); category != mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED {
+		told.Category = usagestore.ErrorCategory(
+			telemetry.ErrorCategory(strings.TrimPrefix(category.String(), "RUN_ERROR_CATEGORY_")),
+		)
+	}
+	if step := msg.GetErrorStep(); step != mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED {
+		told.Step = usagestore.ErrorStep(telemetry.ErrorStep(strings.TrimPrefix(step.String(), "RUN_ERROR_STEP_")))
+	}
+	return told
 }
 
 func statusOf(outcome mgmtv1alpha1.RunOutcome) (usagestore.Status, bool) {

@@ -40,15 +40,29 @@ type runRow struct {
 	status                           string
 	endedAt                          *time.Time
 	rowsRead, rowsDiscarded, retries int64
+	errorCategory, errorStep         *string
+}
+
+// pairOf is the category and the step a row holds, "" for the one it does not hold.
+func (r runRow) pairOf() [2]string {
+	var pair [2]string
+	if r.errorCategory != nil {
+		pair[0] = *r.errorCategory
+	}
+	if r.errorStep != nil {
+		pair[1] = *r.errorStep
+	}
+	return pair
 }
 
 func readRun(ctx context.Context, t *testing.T, container *tcpostgres.PostgresTestContainer, runId string) runRow {
 	t.Helper()
 	var row runRow
 	require.NoError(t, container.DB.QueryRow(ctx,
-		`SELECT status, ended_at, rows_read, rows_discarded, retries
+		`SELECT status, ended_at, rows_read, rows_discarded, retries, error_category, error_step
 		 FROM husonym_api.run_usage WHERE run_id = $1`, runId).
-		Scan(&row.status, &row.endedAt, &row.rowsRead, &row.rowsDiscarded, &row.retries))
+		Scan(&row.status, &row.endedAt, &row.rowsRead, &row.rowsDiscarded, &row.retries,
+			&row.errorCategory, &row.errorStep))
 	return row
 }
 
@@ -209,9 +223,9 @@ func Test_CloseRun_ClosesOnlyARunningRowThatExists(t *testing.T) {
 	}))
 
 	ended := now.Add(time.Minute)
-	require.NoError(t, store.CloseRun(ctx, "open", StatusFailed, ended, 120, 3, 2, 0, ""))
-	require.NoError(t, store.CloseRun(ctx, "done", StatusFailed, ended, 999, 9, 9, 0, ""))
-	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 1, 1, 1, 0, ""))
+	require.NoError(t, store.CloseRun(ctx, "open", StatusFailed, ended, 120, 3, 2, 0, "", RunError{}))
+	require.NoError(t, store.CloseRun(ctx, "done", StatusFailed, ended, 999, 9, 9, 0, "", RunError{}))
+	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 1, 1, 1, 0, "", RunError{}))
 
 	open := readRun(ctx, t, container, "open")
 	require.Equal(t, "failed", open.status)
@@ -320,4 +334,186 @@ func Test_MigrationDown_RemovesTheThreeTablesOnly(t *testing.T) {
 
 	require.Zero(t, tables(usage...))
 	require.Equal(t, 1, tables("license_keys"), "an earlier migration is untouched")
+}
+
+// Every run that did not complete holds one category and one step, whichever way the API
+// learned of its end; a run that completed holds none, whatever is told with it.
+func Test_RunEnded_KeepsOnePairForEveryRunThatDidNotComplete(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	end := func(runId string, status Status, told RunError) {
+		t.Helper()
+		require.NoError(t, store.RunEnded(ctx, RunEnd{
+			RunId: runId, AccountId: accountA, JobId: jobA, Kind: JobKindSync,
+			StartedAt: now, EndedAt: now.Add(time.Second), Status: status, Error: told,
+		}))
+	}
+	start := func(runId string) {
+		t.Helper()
+		require.NoError(t, store.RunStarted(ctx, RunStart{
+			RunId: runId, AccountId: accountA, JobId: jobA, Kind: JobKindSync, StartedAt: now,
+		}))
+	}
+
+	end("failed-told", StatusFailed, RunError{Category: "constraint_violated", Step: "table_sync"})
+	end("failed-untold", StatusFailed, RunError{})
+	end("canceled", StatusCanceled, RunError{})
+	end("completed", StatusCompleted, RunError{Category: "timeout", Step: "hooks"})
+	for _, runId := range []string{"timed-out", "terminated", "closed", "running"} {
+		start(runId)
+	}
+	ended := now.Add(time.Minute)
+	require.NoError(t, store.Settle(ctx, "timed-out", StatusTimedOut, &ended))
+	require.NoError(t, store.Settle(ctx, "terminated", StatusTerminated, nil))
+	require.NoError(t, store.CloseRun(
+		ctx, "closed", StatusFailed, ended, 0, 0, 0, 0, "", RunError{Category: "object_missing", Step: "schema_init"},
+	))
+
+	for runId, want := range map[string][2]string{
+		"failed-told":   {"constraint_violated", "table_sync"},
+		"failed-untold": {"other", "other"},
+		"canceled":      {"canceled", "other"},
+		"timed-out":     {"timeout", "other"},
+		"terminated":    {"other", "other"},
+		"closed":        {"object_missing", "schema_init"},
+	} {
+		require.Equal(t, want, readRun(ctx, t, container, runId).pairOf(), runId)
+	}
+	for _, runId := range []string{"completed", "running"} {
+		row := readRun(ctx, t, container, runId)
+		require.Nil(t, row.errorCategory, runId)
+		require.Nil(t, row.errorStep, runId)
+	}
+}
+
+// The first end told wins for the error as for the rest: neither a second end nor a settlement
+// moves the category or the step.
+func Test_RunEnded_TwiceTheFirstErrorWins(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+
+	now := time.Now().UTC()
+	end := RunEnd{
+		RunId: "run-1", AccountId: accountA, JobId: jobA, Kind: JobKindSync,
+		StartedAt: now, EndedAt: now.Add(time.Second), Status: StatusFailed,
+		Error: RunError{Category: "timeout", Step: "preflight"},
+	}
+	require.NoError(t, store.RunEnded(ctx, end))
+	end.Error = RunError{Category: "license", Step: "hooks"}
+	require.NoError(t, store.RunEnded(ctx, end))
+	require.Equal(t, [2]string{"timeout", "preflight"}, readRun(ctx, t, container, "run-1").pairOf())
+
+	require.NoError(t, store.CloseRun(
+		ctx, "run-1", StatusCanceled, now, 0, 0, 0, 0, "", RunError{Category: "license", Step: "hooks"},
+	))
+	require.NoError(t, store.Settle(ctx, "run-1", StatusTimedOut, nil))
+	row := readRun(ctx, t, container, "run-1")
+	require.Equal(t, "failed", row.status)
+	require.Equal(t, [2]string{"timeout", "preflight"}, row.pairOf())
+}
+
+const errorsMigration = schemaDir + "/20261011100000_adds-run-usage-errors"
+
+// execMigrationFile runs one file of a migration alone, not the whole chain of them.
+func execMigrationFile(ctx context.Context, t *testing.T, container *tcpostgres.PostgresTestContainer, path string) {
+	t.Helper()
+	statements, err := os.ReadFile(path)
+	require.NoError(t, err)
+	_, err = container.DB.Exec(ctx, string(statements))
+	require.NoError(t, err)
+}
+
+// The runs that did not complete before the migration get the pair their status alone gives;
+// a run that completed or still runs gets none. Run again, the migration changes nothing.
+func Test_ErrorsMigration_GivesTheRunsAlreadyEndedTheirPair(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, _ := migratedDatabase(ctx, t)
+	execMigrationFile(ctx, t, container, errorsMigration+".down.sql")
+
+	for _, status := range Statuses() {
+		_, err := container.DB.Exec(ctx,
+			`INSERT INTO husonym_api.run_usage (run_id, account_id, job_id, job_kind, status, started_at)
+			 VALUES ($1, $2, $3, 'sync', $1, CURRENT_TIMESTAMP)`,
+			string(status), accountA, jobA)
+		require.NoError(t, err)
+	}
+
+	for range 2 {
+		execMigrationFile(ctx, t, container, errorsMigration+".up.sql")
+
+		for status, want := range map[Status][2]string{
+			StatusFailed:     {"other", "other"},
+			StatusCanceled:   {"canceled", "other"},
+			StatusTerminated: {"other", "other"},
+			StatusTimedOut:   {"timeout", "other"},
+		} {
+			require.Equal(t, want, readRun(ctx, t, container, string(status)).pairOf(), status)
+		}
+		for _, status := range []Status{StatusRunning, StatusCompleted} {
+			row := readRun(ctx, t, container, string(status))
+			require.Nil(t, row.errorCategory, status)
+			require.Nil(t, row.errorStep, status)
+		}
+	}
+
+	// The table refuses what is outside the lists, and a category without its step.
+	for name, set := range map[string]string{
+		"a category outside the list": `error_category = 'deadlock', error_step = 'other'`,
+		"a step outside the list":     `error_category = 'other', error_step = 'somewhere'`,
+		"a category without its step": `error_category = 'other', error_step = NULL`,
+		"a step without its category": `error_category = NULL, error_step = 'other'`,
+	} {
+		_, err := container.DB.Exec(ctx, `UPDATE husonym_api.run_usage SET `+set+` WHERE run_id = 'failed'`)
+		require.Error(t, err, name)
+	}
+}
+
+func Test_ErrorsMigrationDown_LeavesTheUsageTables(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, _ := migratedDatabase(ctx, t)
+
+	count := func(query string, names ...string) int {
+		var n int
+		require.NoError(t, container.DB.QueryRow(ctx, query, names).Scan(&n))
+		return n
+	}
+	tables := func(names ...string) int {
+		return count(`SELECT count(*) FROM information_schema.tables
+			WHERE table_schema = 'husonym_api' AND table_name = ANY($1)`, names...)
+	}
+	columns := func(names ...string) int {
+		return count(`SELECT count(*) FROM information_schema.columns
+			WHERE table_schema = 'husonym_api' AND table_name = 'run_usage' AND column_name = ANY($1)`, names...)
+	}
+	constraints := func(names ...string) int {
+		return count(`SELECT count(*) FROM information_schema.table_constraints
+			WHERE table_schema = 'husonym_api' AND table_name = 'run_usage' AND constraint_name = ANY($1)`, names...)
+	}
+	added := []string{"error_category", "error_step"}
+	checks := []string{"run_usage_error_category_known", "run_usage_error_step_known", "run_usage_error_whole"}
+	kept := []string{"run_id", "status", "retries", "recorded_at", "tables_uncounted", "source_version_major"}
+	require.Equal(t, 2, columns(added...))
+	require.Equal(t, 3, constraints(checks...))
+
+	execMigrationFile(ctx, t, container, errorsMigration+".down.sql")
+
+	require.Zero(t, columns(added...))
+	require.Zero(t, constraints(checks...))
+	require.Equal(t, len(kept), columns(kept...), "the columns of the earlier migrations stay")
+	require.Equal(t, 2, constraints("run_usage_job_kind_known", "run_usage_status_known"))
+	require.Equal(t, 5, tables("instance", "run_usage", "gate_refusals_daily", "user_activity", "usage_reports"))
 }
