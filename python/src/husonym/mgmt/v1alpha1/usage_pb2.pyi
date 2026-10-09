@@ -20,6 +20,31 @@ class RunOutcome(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     RUN_OUTCOME_FAILED: _ClassVar[RunOutcome]
     RUN_OUTCOME_CANCELED: _ClassVar[RunOutcome]
 
+class RunErrorCategory(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    RUN_ERROR_CATEGORY_UNSPECIFIED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_CONNECTION_REFUSED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_TIMEOUT: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_OBJECT_MISSING: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_TYPE_MISMATCH: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_CANCELED: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_LICENSE: _ClassVar[RunErrorCategory]
+    RUN_ERROR_CATEGORY_OTHER: _ClassVar[RunErrorCategory]
+
+class RunErrorStep(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    RUN_ERROR_STEP_UNSPECIFIED: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_PREFLIGHT: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_SCHEMA_INIT: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_TABLE_SYNC: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_HOOKS: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_INTEGRITY_CHECK: _ClassVar[RunErrorStep]
+    RUN_ERROR_STEP_OTHER: _ClassVar[RunErrorStep]
+
 class UsageReportingMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     USAGE_REPORTING_MODE_UNSPECIFIED: _ClassVar[UsageReportingMode]
@@ -38,6 +63,25 @@ RUN_OUTCOME_UNSPECIFIED: RunOutcome
 RUN_OUTCOME_COMPLETED: RunOutcome
 RUN_OUTCOME_FAILED: RunOutcome
 RUN_OUTCOME_CANCELED: RunOutcome
+RUN_ERROR_CATEGORY_UNSPECIFIED: RunErrorCategory
+RUN_ERROR_CATEGORY_CONNECTION_REFUSED: RunErrorCategory
+RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED: RunErrorCategory
+RUN_ERROR_CATEGORY_TIMEOUT: RunErrorCategory
+RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED: RunErrorCategory
+RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES: RunErrorCategory
+RUN_ERROR_CATEGORY_OBJECT_MISSING: RunErrorCategory
+RUN_ERROR_CATEGORY_TYPE_MISMATCH: RunErrorCategory
+RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED: RunErrorCategory
+RUN_ERROR_CATEGORY_CANCELED: RunErrorCategory
+RUN_ERROR_CATEGORY_LICENSE: RunErrorCategory
+RUN_ERROR_CATEGORY_OTHER: RunErrorCategory
+RUN_ERROR_STEP_UNSPECIFIED: RunErrorStep
+RUN_ERROR_STEP_PREFLIGHT: RunErrorStep
+RUN_ERROR_STEP_SCHEMA_INIT: RunErrorStep
+RUN_ERROR_STEP_TABLE_SYNC: RunErrorStep
+RUN_ERROR_STEP_HOOKS: RunErrorStep
+RUN_ERROR_STEP_INTEGRITY_CHECK: RunErrorStep
+RUN_ERROR_STEP_OTHER: RunErrorStep
 USAGE_REPORTING_MODE_UNSPECIFIED: UsageReportingMode
 USAGE_REPORTING_MODE_ONLINE: UsageReportingMode
 USAGE_REPORTING_MODE_OFFLINE_REPORT: UsageReportingMode
@@ -63,7 +107,7 @@ class RecordRunStartedResponse(_message.Message):
     def __init__(self) -> None: ...
 
 class RecordRunEndedRequest(_message.Message):
-    __slots__ = ("job_id", "run_id", "started_at", "ended_at", "outcome", "rows_read", "rows_discarded", "retries", "tables_uncounted", "source_version_major")
+    __slots__ = ("job_id", "run_id", "started_at", "ended_at", "outcome", "rows_read", "rows_discarded", "retries", "tables_uncounted", "source_version_major", "error_category", "error_step")
     JOB_ID_FIELD_NUMBER: _ClassVar[int]
     RUN_ID_FIELD_NUMBER: _ClassVar[int]
     STARTED_AT_FIELD_NUMBER: _ClassVar[int]
@@ -74,6 +118,8 @@ class RecordRunEndedRequest(_message.Message):
     RETRIES_FIELD_NUMBER: _ClassVar[int]
     TABLES_UNCOUNTED_FIELD_NUMBER: _ClassVar[int]
     SOURCE_VERSION_MAJOR_FIELD_NUMBER: _ClassVar[int]
+    ERROR_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    ERROR_STEP_FIELD_NUMBER: _ClassVar[int]
     job_id: str
     run_id: str
     started_at: _timestamp_pb2.Timestamp
@@ -84,7 +130,9 @@ class RecordRunEndedRequest(_message.Message):
     retries: int
     tables_uncounted: int
     source_version_major: str
-    def __init__(self, job_id: _Optional[str] = ..., run_id: _Optional[str] = ..., started_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., ended_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., outcome: _Optional[_Union[RunOutcome, str]] = ..., rows_read: _Optional[int] = ..., rows_discarded: _Optional[int] = ..., retries: _Optional[int] = ..., tables_uncounted: _Optional[int] = ..., source_version_major: _Optional[str] = ...) -> None: ...
+    error_category: RunErrorCategory
+    error_step: RunErrorStep
+    def __init__(self, job_id: _Optional[str] = ..., run_id: _Optional[str] = ..., started_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., ended_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., outcome: _Optional[_Union[RunOutcome, str]] = ..., rows_read: _Optional[int] = ..., rows_discarded: _Optional[int] = ..., retries: _Optional[int] = ..., tables_uncounted: _Optional[int] = ..., source_version_major: _Optional[str] = ..., error_category: _Optional[_Union[RunErrorCategory, str]] = ..., error_step: _Optional[_Union[RunErrorStep, str]] = ...) -> None: ...
 
 class RecordRunEndedResponse(_message.Message):
     __slots__ = ()

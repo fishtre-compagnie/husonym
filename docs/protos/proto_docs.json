@@ -22635,6 +22635,117 @@
       "hasServices": true,
       "enums": [
         {
+          "name": "RunErrorCategory",
+          "longName": "RunErrorCategory",
+          "fullName": "mgmt.v1alpha1.RunErrorCategory",
+          "description": "What kept a run from completing, read from the type of its error and from the code of the database, never from a message.",
+          "values": [
+            {
+              "name": "RUN_ERROR_CATEGORY_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_CONNECTION_REFUSED",
+              "number": "1",
+              "description": "The database or the network refused the connection, or closed it."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED",
+              "number": "2",
+              "description": "The database refused who connects."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_TIMEOUT",
+              "number": "3",
+              "description": "Something took longer than it is allowed to."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED",
+              "number": "4",
+              "description": "A row broke a constraint of the database."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES",
+              "number": "5",
+              "description": "The database refused what the run is not allowed to do."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_OBJECT_MISSING",
+              "number": "6",
+              "description": "A table, a column or another object is not there."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_TYPE_MISMATCH",
+              "number": "7",
+              "description": "A value does not fit the type it goes into."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED",
+              "number": "8",
+              "description": "Memory, disk space or another resource ran out."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_CANCELED",
+              "number": "9",
+              "description": "The run was told to stop."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_LICENSE",
+              "number": "10",
+              "description": "The license refused the run."
+            },
+            {
+              "name": "RUN_ERROR_CATEGORY_OTHER",
+              "number": "11",
+              "description": "Anything that is none of the above."
+            }
+          ]
+        },
+        {
+          "name": "RunErrorStep",
+          "longName": "RunErrorStep",
+          "fullName": "mgmt.v1alpha1.RunErrorStep",
+          "description": "The step a run was at when it stopped.",
+          "values": [
+            {
+              "name": "RUN_ERROR_STEP_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "RUN_ERROR_STEP_PREFLIGHT",
+              "number": "1",
+              "description": "The checks made before anything is written."
+            },
+            {
+              "name": "RUN_ERROR_STEP_SCHEMA_INIT",
+              "number": "2",
+              "description": "The making of the schema of a destination."
+            },
+            {
+              "name": "RUN_ERROR_STEP_TABLE_SYNC",
+              "number": "3",
+              "description": "The synchronization of a table."
+            },
+            {
+              "name": "RUN_ERROR_STEP_HOOKS",
+              "number": "4",
+              "description": "The hooks run before or after the synchronization."
+            },
+            {
+              "name": "RUN_ERROR_STEP_INTEGRITY_CHECK",
+              "number": "5",
+              "description": "The check of referential integrity."
+            },
+            {
+              "name": "RUN_ERROR_STEP_OTHER",
+              "number": "6",
+              "description": "Any step that is none of the above."
+            }
+          ]
+        },
+        {
           "name": "RunOutcome",
           "longName": "RunOutcome",
           "fullName": "mgmt.v1alpha1.RunOutcome",
@@ -23175,6 +23286,30 @@
               "type": "string",
               "longType": "string",
               "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "error_category",
+              "description": "What kept the run from completing. Unspecified when it is not told; a value the service does not know counts as other.",
+              "label": "",
+              "type": "RunErrorCategory",
+              "longType": "RunErrorCategory",
+              "fullType": "mgmt.v1alpha1.RunErrorCategory",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "error_step",
+              "description": "The step the run was at when it stopped. Unspecified when it is not told; a value the service does not know counts as other.",
+              "label": "",
+              "type": "RunErrorStep",
+              "longType": "RunErrorStep",
+              "fullType": "mgmt.v1alpha1.RunErrorStep",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
