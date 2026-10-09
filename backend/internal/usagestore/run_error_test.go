@@ -36,6 +36,18 @@ func Test_ErrorOf(t *testing.T) {
 			StatusTimedOut, RunError{}, RunError{Category: ErrorCategoryTimeout, Step: ErrorStepOther},
 		},
 		"a run that was terminated": {StatusTerminated, RunError{}, other},
+		"a category outside the list is other": {
+			StatusFailed, RunError{Category: "deadlock", Step: "table_sync"}, RunError{Category: ErrorCategoryOther, Step: "table_sync"},
+		},
+		"a step outside the list is other": {
+			StatusFailed, RunError{Category: "timeout", Step: "somewhere"}, RunError{Category: "timeout", Step: ErrorStepOther},
+		},
+		"a canceled run at a step outside the list": {
+			StatusCanceled, RunError{Step: "somewhere"}, RunError{Category: ErrorCategoryCanceled, Step: ErrorStepOther},
+		},
+		"a member spelled another way is the member": {
+			StatusFailed, RunError{Category: " Timeout ", Step: "HOOKS"}, RunError{Category: "timeout", Step: "hooks"},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, c.want, errorOf(c.status, c.told))

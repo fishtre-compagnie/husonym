@@ -420,6 +420,45 @@ func Test_RunEnded_TwiceTheFirstErrorWins(t *testing.T) {
 	require.Equal(t, [2]string{"timeout", "preflight"}, row.pairOf())
 }
 
+// A category or a step outside the lists never costs the end of a run: the table would refuse the
+// whole row, so the store keeps it as other, on each path that takes what a caller tells.
+func Test_RunEnded_KeepsWhatIsOutsideTheListsAsOther(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	ended := now.Add(time.Second)
+	for runId, c := range map[string]struct {
+		status Status
+		told   RunError
+		want   [2]string
+	}{
+		"category": {StatusFailed, RunError{Category: "deadlock", Step: "table_sync"}, [2]string{"other", "table_sync"}},
+		"step":     {StatusFailed, RunError{Category: "timeout", Step: "somewhere"}, [2]string{"timeout", "other"}},
+		"both":     {StatusFailed, RunError{Category: "Deadlock", Step: " "}, [2]string{"other", "other"}},
+		"canceled": {StatusCanceled, RunError{Category: "deadlock", Step: "somewhere"}, [2]string{"canceled", "other"}},
+	} {
+		require.NoError(t, store.RunEnded(ctx, RunEnd{
+			RunId: "ended-" + runId, AccountId: accountA, JobId: jobA, Kind: JobKindSync,
+			StartedAt: now, EndedAt: ended, Status: c.status, Error: c.told, RowsRead: 5,
+		}), runId)
+		require.NoError(t, store.RunStarted(ctx, RunStart{
+			RunId: "closed-" + runId, AccountId: accountA, JobId: jobA, Kind: JobKindSync, StartedAt: now,
+		}))
+		require.NoError(t, store.CloseRun(ctx, "closed-"+runId, c.status, ended, 5, 0, 0, 0, "", c.told), runId)
+
+		for _, path := range []string{"ended-", "closed-"} {
+			row := readRun(ctx, t, container, path+runId)
+			require.Equal(t, string(c.status), row.status, path+runId)
+			require.Equal(t, int64(5), row.rowsRead, path+runId)
+			require.Equal(t, c.want, row.pairOf(), path+runId)
+		}
+	}
+}
+
 const errorsMigration = schemaDir + "/20261011100000_adds-run-usage-errors"
 
 // execMigrationFile runs one file of a migration alone, not the whole chain of them.
