@@ -57,6 +57,10 @@ func Test_PostgresCategory(t *testing.T) {
 		"3F000": objectMissing,
 		"42804": typeMismatch,
 		"42846": typeMismatch,
+		"25006": insufficientPrivileges,
+		"57P04": connectionRefused,
+		"44000": constraintViolated,
+		"42P18": typeMismatch,
 		// the classes
 		"08000": connectionRefused,
 		"08006": connectionRefused,
@@ -78,7 +82,6 @@ func Test_PostgresCategory(t *testing.T) {
 		"53300": resourcesExhausted,
 		// an exact code wins over nothing: its class is not listed
 		"57000": other,
-		"57P04": other,
 		"55006": other,
 		"25000": other,
 		"3D001": other,
@@ -112,6 +115,16 @@ func Test_MySQLCategory(t *testing.T) {
 		1205:  timeout,
 		1114:  resourcesExhausted,
 		1130:  connectionRefused,
+		1290:  insufficientPrivileges,
+		1836:  insufficientPrivileges,
+		4031:  timeout,
+		1159:  timeout,
+		1161:  timeout,
+		1690:  typeMismatch,
+		1022:  constraintViolated,
+		1761:  constraintViolated,
+		1762:  constraintViolated,
+		1206:  resourcesExhausted,
 		1064:  other,
 		1213:  other,
 		0:     other,
@@ -130,10 +143,11 @@ func Test_MySQLCategory(t *testing.T) {
 func Test_EveryListedCodeHasItsCategory(t *testing.T) {
 	postgres := map[mgmtv1alpha1.RunErrorCategory][]string{
 		timeout:                {"57014", "55P03", "25P03", "57P05"},
-		connectionRefused:      {"57P01", "57P02", "57P03"},
-		insufficientPrivileges: {"42501"},
+		connectionRefused:      {"57P01", "57P02", "57P03", "57P04"},
+		insufficientPrivileges: {"42501", "25006"},
 		objectMissing:          {"42P01", "42703", "42704", "42883", "3D000", "3F000"},
-		typeMismatch:           {"42804", "42846"},
+		typeMismatch:           {"42804", "42846", "42P18"},
+		constraintViolated:     {"44000"},
 	}
 	listed := 0
 	for expected, codes := range postgres {
@@ -160,12 +174,12 @@ func Test_EveryListedCodeHasItsCategory(t *testing.T) {
 	numbersOfMySQL := map[mgmtv1alpha1.RunErrorCategory][]uint16{
 		connectionRefused:      {1053, 1129, 1130},
 		authenticationRefused:  {1045, 1698, 1862, 3118},
-		insufficientPrivileges: {1044, 1142, 1143, 1227, 1370},
-		timeout:                {1205, 3024},
-		constraintViolated:     {1048, 1062, 1169, 1216, 1217, 1364, 1451, 1452, 1586, 3819},
+		insufficientPrivileges: {1044, 1142, 1143, 1227, 1370, 1290, 1836},
+		timeout:                {1205, 3024, 4031, 1159, 1161},
+		constraintViolated:     {1048, 1062, 1169, 1216, 1217, 1364, 1451, 1452, 1586, 3819, 1022, 1761, 1762},
 		objectMissing:          {1049, 1051, 1054, 1146, 1305},
-		typeMismatch:           {1264, 1265, 1292, 1366, 1406, 3140},
-		resourcesExhausted:     {1021, 1037, 1038, 1040, 1041, 1114, 1203, 1226},
+		typeMismatch:           {1264, 1265, 1292, 1366, 1406, 3140, 1690},
+		resourcesExhausted:     {1021, 1037, 1038, 1040, 1041, 1114, 1203, 1226, 1206},
 	}
 	listed = 0
 	for expected, numbers := range numbersOfMySQL {

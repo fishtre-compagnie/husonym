@@ -19,12 +19,16 @@ var postgresCodes = map[string]mgmtv1alpha1.RunErrorCategory{
 	"55P03": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
 	"25P03": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
 	"57P05": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
-	// admin_shutdown, crash_shutdown, cannot_connect_now
+	// admin_shutdown, crash_shutdown, cannot_connect_now, database_dropped
 	"57P01": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONNECTION_REFUSED,
 	"57P02": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONNECTION_REFUSED,
 	"57P03": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONNECTION_REFUSED,
-	// insufficient_privilege
+	"57P04": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONNECTION_REFUSED,
+	// insufficient_privilege, read_only_sql_transaction (the destination is a replica)
 	"42501": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
+	"25006": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
+	// with_check_option_violation (a view, or the security of the rows)
+	"44000": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
 	// undefined_table, undefined_column, undefined_object, undefined_function,
 	// invalid_catalog_name, invalid_schema_name
 	"42P01": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
@@ -33,9 +37,10 @@ var postgresCodes = map[string]mgmtv1alpha1.RunErrorCategory{
 	"42883": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
 	"3D000": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
 	"3F000": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
-	// datatype_mismatch, cannot_coerce
+	// datatype_mismatch, cannot_coerce, indeterminate_datatype
 	"42804": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	"42846": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
+	"42P18": mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 }
 
 // postgresClasses gives the category of the SQLSTATE classes that have one, for the codes

@@ -16,17 +16,27 @@ var mysqlNumbers = map[uint16]mgmtv1alpha1.RunErrorCategory{
 	1698: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED,
 	1862: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED,
 	3118: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED,
-	// access denied to a database, a table, a column, a privileged statement, a routine
+	// access denied to a database, a table, a column, a privileged statement, a routine; a
+	// server that only reads (two forms)
 	1044: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
 	1142: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
 	1143: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
 	1227: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
 	1370: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
-	// lock wait timeout, maximum statement execution time
+	1290: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
+	1836: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES,
+	// lock wait timeout, maximum statement execution time, client disconnected for its
+	// inactivity, network read and write timeouts
 	1205: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
 	3024: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
+	4031: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
+	1159: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
+	1161: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT,
 	// column cannot be null, duplicate entry (three forms), foreign key (four forms), no
-	// default value, check constraint
+	// default value, check constraint, duplicate key (three forms)
+	1022: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
+	1761: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
+	1762: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
 	1048: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
 	1062: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
 	1169: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
@@ -43,7 +53,8 @@ var mysqlNumbers = map[uint16]mgmtv1alpha1.RunErrorCategory{
 	1054: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
 	1146: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
 	1305: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING,
-	// value out of range, truncated, incorrect for its type, too long, invalid JSON
+	// value out of range (two forms), truncated, incorrect for its type, too long, invalid JSON
+	1690: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	1264: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	1265: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	1292: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
@@ -51,7 +62,8 @@ var mysqlNumbers = map[uint16]mgmtv1alpha1.RunErrorCategory{
 	1406: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	3140: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH,
 	// disk full, out of memory (two forms), too many connections, out of resources, table
-	// full, too many connections of the user, resource limit of the user
+	// full, too many connections of the user, resource limit of the user, lock table full
+	1206: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED,
 	1021: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED,
 	1037: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED,
 	1038: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED,
