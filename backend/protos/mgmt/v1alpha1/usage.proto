@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/job.proto";
 import "mgmt/v1alpha1/metrics.proto";
 import "mgmt/v1alpha1/permission.proto";
 
@@ -193,6 +194,137 @@ message GetUsagePeriodReportResponse {
   string key_fingerprint = 3;
 }
 
+// What a job does, as its runs are counted.
+enum JobKind {
+  JOB_KIND_UNSPECIFIED = 0;
+  // The job copies the rows of a source to its destinations.
+  JOB_KIND_SYNC = 1;
+  // The job generates rows.
+  JOB_KIND_GENERATE = 2;
+  // The job generates rows with a model.
+  JOB_KIND_AI_GENERATE = 3;
+  // The job looks for personal data in a source. Its runs count no rows.
+  JOB_KIND_PII_DETECT = 4;
+}
+
+// What the runs counted in a period add up to. A run counts on the day the instance learned of its end; a run still running counts nowhere.
+message UsageTotals {
+  // The runs whose end was recorded in the period, whatever their status.
+  int64 runs = 1;
+  // Those that completed. The success rate is this number over the runs less the canceled ones.
+  int64 runs_completed = 2;
+  // Those that were canceled: they neither succeeded nor failed.
+  int64 runs_canceled = 3;
+  // The rows the runs read from their sources.
+  int64 rows_read = 4;
+  // The rows the runs set aside instead of writing them.
+  int64 rows_discarded = 5;
+  // The runs with a table that reported no row count: their rows are not all counted.
+  int64 runs_with_uncounted_rows = 6;
+}
+
+// The runs counted on a day of the period.
+message UsageDay {
+  // The day, in the time zone of the answer.
+  mgmt.v1alpha1.Date day = 1;
+  int64 rows_read = 2;
+  int64 runs = 3;
+}
+
+// What the runs of a job add up to in the period.
+message JobUsage {
+  string job_id = 1;
+  string job_name = 2;
+  JobKind kind = 3;
+  UsageTotals totals = 4;
+  // The median duration of the runs that have a known end. Absent when none has.
+  optional int64 duration_median_seconds = 5;
+}
+
+// The runs that did not complete for a category of error.
+message UsageErrorCount {
+  RunErrorCategory category = 1;
+  int64 runs = 2;
+}
+
+// The times the license refused something at a gate.
+message GateRefusalCount {
+  // The gate: a feature of the license, or one of its limits. A member of a closed list.
+  string gate = 1;
+  int64 refusals = 2;
+}
+
+// A run as the counters hold it.
+message RunUsage {
+  // The identifier of the run, as the orchestrator gives it.
+  string run_id = 1;
+  JobRunStatus status = 2;
+  google.protobuf.Timestamp started_at = 3;
+  // Absent for a run that was settled without a known end.
+  google.protobuf.Timestamp ended_at = 4;
+  // The rows the run read from its source.
+  int64 rows_read = 5;
+  // The tables of the run whose rows were not counted.
+  int64 tables_uncounted = 6;
+  // What kept the run from completing. Unspecified for a run that completed.
+  RunErrorCategory error_category = 7;
+  // The step the run was at when it stopped. Unspecified for a run that completed.
+  RunErrorStep error_step = 8;
+}
+
+message GetAccountUsageRequest {
+  // The unique identifier of the account.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The first day of the period.
+  mgmt.v1alpha1.Date from_day = 2 [(buf.validate.field).required = true];
+  // The last day of the period, included: not before the first, and at most 366 days in all.
+  mgmt.v1alpha1.Date to_day = 3 [(buf.validate.field).required = true];
+  // The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+  string time_zone = 4;
+}
+message GetAccountUsageResponse {
+  // Every run of the account counted in the period, those of jobs deleted since among them.
+  UsageTotals totals = 1;
+  // The sum of the durations of the runs that have a known end. Absent when none has.
+  optional int64 duration_total_seconds = 2;
+  // Every day of the period, the oldest first; a day without a run is there, at zero.
+  repeated UsageDay days = 3;
+  // The jobs that have a run counted in the period and still exist, the one that read the most rows first.
+  repeated JobUsage jobs = 4;
+  // The runs that did not complete, by category, the category with the most runs first.
+  repeated UsageErrorCount errors = 5;
+  // What the license refused the account, by gate. Refusals are counted by UTC day, whatever the time zone.
+  repeated GateRefusalCount refusals = 6;
+  // The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+  string time_zone = 7;
+}
+
+message GetJobUsageRequest {
+  // The unique identifier of the account.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the job. A job that is not of the account has no usage.
+  string job_id = 2 [(buf.validate.field).string.uuid = true];
+  // The first day of the period.
+  mgmt.v1alpha1.Date from_day = 3 [(buf.validate.field).required = true];
+  // The last day of the period, included: not before the first, and at most 366 days in all.
+  mgmt.v1alpha1.Date to_day = 4 [(buf.validate.field).required = true];
+  // The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+  string time_zone = 5;
+}
+message GetJobUsageResponse {
+  // What the job does. Unspecified when the account has no such job.
+  JobKind kind = 1;
+  UsageTotals totals = 2;
+  // The median duration of the runs that have a known end. Absent when none has.
+  optional int64 duration_median_seconds = 3;
+  // Every day of the period, the oldest first; a day without a run is there, at zero.
+  repeated UsageDay days = 4;
+  // The runs counted in the period, the most recently recorded first, 20 at most.
+  repeated RunUsage runs = 5;
+  // The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+  string time_zone = 6;
+}
+
 // Holds the counters of what the instance runs.
 service UsageService {
   // Tells that a run has begun. Only the worker calls this, with its key.
@@ -223,6 +355,22 @@ service UsageService {
 
   // Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
   rpc GetUsagePeriodReport(GetUsagePeriodReportRequest) returns (GetUsagePeriodReportResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.
+  rpc GetAccountUsage(GetAccountUsageRequest) returns (GetAccountUsageResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+  rpc GetJobUsage(GetJobUsageRequest) returns (GetJobUsageResponse) {
     option (mgmt.v1alpha1.requires) = {
       all_of: [PERMISSION_ACCOUNT_VIEW]
     };

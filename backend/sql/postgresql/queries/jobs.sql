@@ -229,3 +229,10 @@ SELECT
   END AS schemas
 FROM husonym_api.jobs j
 ORDER BY j.id;
+
+-- The jobs of an account as the usage pages name them: the name of each, and the two values its
+-- kind is read from. The mappings, the heavy part of a job, are not returned.
+-- name: ListJobNamesByAccount :many
+SELECT id, name, connection_options, jobtype_config
+FROM husonym_api.jobs
+WHERE account_id = sqlc.arg(account_id);
