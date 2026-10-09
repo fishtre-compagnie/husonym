@@ -183,7 +183,8 @@ jobs:
           INTEGRATION_TESTS_ENABLED: 1
 
   # The tests of the control plane that need a database return early without the variable: the
-  # unit job does not run them.
+  # unit job does not run them. So do the ones of the usage report and of the usage store of the
+  # API, which are outside the tree the integration job runs.
   controlplane-integration-tests:
     name: Control Plane Integration Tests
     runs-on: ubuntu-latest
@@ -199,7 +200,7 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          go test -race -count=1 -timeout 1800s ./controlplane/... ./backend/internal/usagereport/...
+          go test -race -count=1 -timeout 1800s ./controlplane/... ./backend/internal/usagereport/... ./backend/internal/usagestore/...
         env:
           INTEGRATION_TESTS_ENABLED: 1
 
