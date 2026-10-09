@@ -67,6 +67,26 @@ message SetPersonalAccountResponse {
   string account_id = 1;
 }
 
+message EnterInstanceRequest {}
+message EnterInstanceResponse {
+  // The unique identifier of the account the user lands in: the organization of the instance, or the user's personal account where no organization applies.
+  string account_id = 1;
+}
+
+message SetInstanceOrganizationRequest {
+  // The unique identifier of the account that becomes the organization of the instance.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The name a personal account takes as it becomes a team account. Not read for an account that is already a team account.
+  string name = 2 [
+    (buf.validate.field).string.pattern = "^[a-z0-9-]{3,100}$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+}
+message SetInstanceOrganizationResponse {
+  // The unique identifier of the account the instance now retains as its organization.
+  string account_id = 1;
+}
+
 message IsUserInAccountRequest {
   // The unique identifier of the account to check if the user is in.
   string account_id = 1 [(buf.validate.field).string.uuid = true];
@@ -220,6 +240,8 @@ message GetSystemInformationResponse {
   google.protobuf.Timestamp build_date = 5;
   // The license information for the system
   SystemLicense license = 6;
+  // The unique identifier of the account the system retains as its organization. Unset when it retains none
+  optional string instance_organization_account_id = 7;
 }
 
 message SystemLicense {
@@ -546,6 +568,19 @@ service UserAccountService {
   rpc SetPersonalAccount(SetPersonalAccountRequest) returns (SetPersonalAccountResponse) {
     option (mgmt.v1alpha1.requires) = {
       all_of: [PERMISSION_ACCOUNT_CREATE]
+    };
+  }
+
+  // Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.
+  rpc EnterInstance(EnterInstanceRequest) returns (EnterInstanceResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_CREATE]
+    };
+  }
+  // Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.
+  rpc SetInstanceOrganization(SetInstanceOrganizationRequest) returns (SetInstanceOrganizationResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
     };
   }
 

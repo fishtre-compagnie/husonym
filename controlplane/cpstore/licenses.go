@@ -90,6 +90,11 @@ func insertLicense(
 	if key.GraceDays != nil {
 		graceDays = pgtype.Int4{Int32: int32(*key.GraceDays), Valid: true} //nolint:gosec // a number of days
 	}
+	// A license already recorded is left alone on its id only: the same license written twice at
+	// once would otherwise be refused on its key, which is unique too.
+	if err := queries.LockLicenseID(ctx, key.Id); err != nil {
+		return false, fmt.Errorf("unable to hold the id of a license: %w", err)
+	}
 	inserted, err := queries.InsertLicense(ctx, cpdb.InsertLicenseParams{
 		ID:                    key.Id,
 		CustomerID:            customerID,

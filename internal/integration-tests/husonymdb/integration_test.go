@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
@@ -706,6 +707,137 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 		require.ErrorAs(t, err, &badrequest)
 		t.Log(err.Error())
 	})
+}
+
+// An invitation is checked before it is honored, whoever presents it: one that is no longer
+// acceptable is refused to somebody already in the account exactly as it is to a newcomer, and
+// leaves both as they were.
+func (s *IntegrationTestSuite) Test_ValidateInvite_CheckedBeforeItIsHonored() {
+	t := s.T()
+	const email = "guest@example.com"
+	adminRole := pgtype.Int4{Int32: int32(mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN), Valid: true}
+
+	sender := s.setUser(t, s.ctx, "checked-sender")
+	account, err := s.db.CreateTeamAccount(s.ctx, sender.ID, "checked-team", testutil.GetTestLogger(t))
+	requireNoErrResp(t, account, err)
+	newcomer := s.setUser(t, s.ctx, "checked-newcomer")
+	member := s.setUser(t, s.ctx, "checked-member")
+	require.NoError(t, s.db.Q.CreateAccountUserAssociation(s.ctx, s.db.Db, db_queries.CreateAccountUserAssociationParams{
+		AccountID: account.ID,
+		UserID:    member.ID,
+	}))
+
+	// Each invitation is new, as creating one expires the earlier ones of the address.
+	newInvite := func(t *testing.T, expiresIn time.Duration, issuer string) *db_queries.HusonymApiAccountInvite {
+		t.Helper()
+		invite, err := s.db.CreateTeamAccountInvite(
+			s.ctx, account.ID, sender.ID, email, getFutureTs(t, expiresIn), adminRole, issuer,
+		)
+		requireNoErrResp(t, invite, err)
+		return invite
+	}
+	stored := func(t *testing.T, invite *db_queries.HusonymApiAccountInvite) db_queries.HusonymApiAccountInvite {
+		t.Helper()
+		got, err := s.db.Q.GetAccountInvite(s.ctx, s.db.Db, invite.ID)
+		require.NoError(t, err)
+		return got
+	}
+	deployment := husonymdb.Identity{Issuer: testIssuer, Subject: "checked", MayAdoptLegacy: true}
+
+	refusals := []struct {
+		name     string
+		invite   func(t *testing.T) *db_queries.HusonymApiAccountInvite
+		email    string
+		identity husonymdb.Identity
+		code     connect.Code
+		message  string
+	}{
+		{
+			name:     "expired",
+			invite:   func(t *testing.T) *db_queries.HusonymApiAccountInvite { return newInvite(t, -time.Hour, testIssuer) },
+			email:    email,
+			identity: deployment,
+			code:     connect.CodePermissionDenied,
+			message:  "account invitation expired",
+		},
+		{
+			name: "superseded by a later one",
+			invite: func(t *testing.T) *db_queries.HusonymApiAccountInvite {
+				earlier := newInvite(t, 24*time.Hour, testIssuer)
+				newInvite(t, 24*time.Hour, testIssuer)
+				// The earlier one is expired at the time of the database, to the microsecond.
+				time.Sleep(10 * time.Millisecond)
+				return earlier
+			},
+			email:    email,
+			identity: deployment,
+			code:     connect.CodePermissionDenied,
+			message:  "account invitation expired",
+		},
+		{
+			name: "already accepted",
+			invite: func(t *testing.T) *db_queries.HusonymApiAccountInvite {
+				invite := newInvite(t, 24*time.Hour, testIssuer)
+				_, err := s.db.Q.UpdateAccountInviteToAccepted(s.ctx, s.db.Db, invite.ID)
+				require.NoError(t, err)
+				return invite
+			},
+			email:    email,
+			identity: deployment,
+			code:     connect.CodeInvalidArgument,
+			message:  "account invitation already accepted",
+		},
+		{
+			name:     "for another address",
+			invite:   func(t *testing.T) *db_queries.HusonymApiAccountInvite { return newInvite(t, 24*time.Hour, testIssuer) },
+			email:    "somebody-else@example.com",
+			identity: deployment,
+			code:     connect.CodeInvalidArgument,
+			message:  "invalid invite email",
+		},
+		{
+			name:     "from another issuer",
+			invite:   func(t *testing.T) *db_queries.HusonymApiAccountInvite { return newInvite(t, 24*time.Hour, testIssuer) },
+			email:    email,
+			identity: husonymdb.Identity{Issuer: "https://hostile.example.com/", Subject: "checked"},
+			code:     connect.CodePermissionDenied,
+			message:  "identity provider it was issued for",
+		},
+	}
+	for _, refused := range refusals {
+		t.Run(refused.name, func(t *testing.T) {
+			invite := refused.invite(t)
+			before := stored(t, invite)
+
+			var messages []string
+			for _, caller := range []*db_queries.HusonymApiUser{newcomer, member} {
+				resp, err := s.db.ValidateInviteAddUserToAccount(s.ctx, caller.ID, invite.Token, refused.email, refused.identity)
+				requireErrResp(t, resp, err)
+				require.Equal(t, refused.code, connect.CodeOf(err), "refused for another reason: %v", err)
+				require.Contains(t, err.Error(), refused.message)
+				messages = append(messages, err.Error())
+			}
+			require.Equal(t, messages[0], messages[1], "a member is refused as a newcomer is")
+
+			require.Equal(t, before.Accepted, stored(t, invite).Accepted, "a refusal leaves the invitation as it was")
+			require.False(t, s.isMember(t, newcomer.ID, account.ID))
+			require.True(t, s.isMember(t, member.ID, account.ID))
+		})
+	}
+
+	// One that is acceptable is honored for both, with the role it names.
+	for name, caller := range map[string]*db_queries.HusonymApiUser{"a newcomer": newcomer, "a member": member} {
+		t.Run("acceptable, presented by "+name, func(t *testing.T) {
+			invite := newInvite(t, 24*time.Hour, testIssuer)
+
+			resp, err := s.db.ValidateInviteAddUserToAccount(s.ctx, caller.ID, invite.Token, email, deployment)
+			requireNoErrResp(t, resp, err)
+			require.Equal(t, husonymdb.UUIDString(account.ID), husonymdb.UUIDString(resp.AccountId))
+			require.Equal(t, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN, resp.Role)
+			require.True(t, stored(t, invite).Accepted.Bool)
+			require.True(t, s.isMember(t, caller.ID, account.ID))
+		})
+	}
 }
 
 func (s *IntegrationTestSuite) Test_CreateAccountApiKey() {

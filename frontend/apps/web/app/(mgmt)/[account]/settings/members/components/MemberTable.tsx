@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
+import { useRoleControls } from '@/libs/hooks/useRoleControls';
 import { getAccountRoleString, getErrorMessage } from '@/util/util';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { AccountRole, AccountUser, UserAccountService } from '@husonym/sdk';
@@ -52,7 +52,7 @@ interface MemberRow {
   role: AccountRole;
 }
 
-function getColumns(isRbacEnabled: boolean) {
+function getColumns(showRoles: boolean) {
   const columnHelper = createColumnHelper<AppTableFeatures, MemberRow>();
   const nameColumn = columnHelper.accessor('name', {
     header: 'Name',
@@ -107,7 +107,7 @@ function getColumns(isRbacEnabled: boolean) {
     },
   });
 
-  if (isRbacEnabled) {
+  if (showRoles) {
     return columnHelper.columns([
       nameColumn,
       emailColumn,
@@ -160,11 +160,10 @@ export default function MembersTable(props: Props): ReactElement {
 }
 
 function useGetColumns(): ColumnDef<AppTableFeatures, MemberRow>[] {
-  const { data: config } = useGetSystemAppConfig();
-  const isRbacEnabled = config?.isRbacEnabled ?? false;
+  const showRoles = useRoleControls();
   return useMemo(() => {
-    return getColumns(isRbacEnabled);
-  }, [isRbacEnabled]);
+    return getColumns(showRoles);
+  }, [showRoles]);
 }
 
 declare module '@tanstack/react-table' {
@@ -310,8 +309,7 @@ function DataTableRowActions({
   const { mutateAsync } = useMutation(
     UserAccountService.method.removeTeamAccountMember
   );
-  const { data: config } = useGetSystemAppConfig();
-  const isRbacEnabled = config?.isRbacEnabled ?? false;
+  const showRoles = useRoleControls();
 
   async function onRemove(): Promise<void> {
     if (!account?.id) {
@@ -343,7 +341,7 @@ function DataTableRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {isRbacEnabled && (
+        {showRoles && (
           <UpdateMemberRoleDialog
             member={member}
             onUpdated={() => onUpdated()}

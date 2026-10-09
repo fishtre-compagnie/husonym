@@ -252,6 +252,74 @@ func (_c *MockUserAccountServiceClient_CreateTeamAccount_Call) RunAndReturn(run 
 	return _c
 }
 
+// EnterInstance provides a mock function for the type MockUserAccountServiceClient
+func (_mock *MockUserAccountServiceClient) EnterInstance(context1 context.Context, request *connect.Request[mgmtv1alpha1.EnterInstanceRequest]) (*connect.Response[mgmtv1alpha1.EnterInstanceResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnterInstance")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.EnterInstanceResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.EnterInstanceRequest]) (*connect.Response[mgmtv1alpha1.EnterInstanceResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.EnterInstanceRequest]) *connect.Response[mgmtv1alpha1.EnterInstanceResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.EnterInstanceResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.EnterInstanceRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserAccountServiceClient_EnterInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnterInstance'
+type MockUserAccountServiceClient_EnterInstance_Call struct {
+	*mock.Call
+}
+
+// EnterInstance is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.EnterInstanceRequest]
+func (_e *MockUserAccountServiceClient_Expecter) EnterInstance(context1 any, request any) *MockUserAccountServiceClient_EnterInstance_Call {
+	return &MockUserAccountServiceClient_EnterInstance_Call{Call: _e.mock.On("EnterInstance", context1, request)}
+}
+
+func (_c *MockUserAccountServiceClient_EnterInstance_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.EnterInstanceRequest])) *MockUserAccountServiceClient_EnterInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.EnterInstanceRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.EnterInstanceRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_EnterInstance_Call) Return(response *connect.Response[mgmtv1alpha1.EnterInstanceResponse], err error) *MockUserAccountServiceClient_EnterInstance_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_EnterInstance_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.EnterInstanceRequest]) (*connect.Response[mgmtv1alpha1.EnterInstanceResponse], error)) *MockUserAccountServiceClient_EnterInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAccountBillingCheckoutSession provides a mock function for the type MockUserAccountServiceClient
 func (_mock *MockUserAccountServiceClient) GetAccountBillingCheckoutSession(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetAccountBillingCheckoutSessionRequest]) (*connect.Response[mgmtv1alpha1.GetAccountBillingCheckoutSessionResponse], error) {
 	ret := _mock.Called(context1, request)
@@ -1812,6 +1880,74 @@ func (_c *MockUserAccountServiceClient_SetBillingMeterEvent_Call) Return(respons
 }
 
 func (_c *MockUserAccountServiceClient_SetBillingMeterEvent_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetBillingMeterEventRequest]) (*connect.Response[mgmtv1alpha1.SetBillingMeterEventResponse], error)) *MockUserAccountServiceClient_SetBillingMeterEvent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetInstanceOrganization provides a mock function for the type MockUserAccountServiceClient
+func (_mock *MockUserAccountServiceClient) SetInstanceOrganization(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetInstanceOrganization")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]) *connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserAccountServiceClient_SetInstanceOrganization_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInstanceOrganization'
+type MockUserAccountServiceClient_SetInstanceOrganization_Call struct {
+	*mock.Call
+}
+
+// SetInstanceOrganization is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]
+func (_e *MockUserAccountServiceClient_Expecter) SetInstanceOrganization(context1 any, request any) *MockUserAccountServiceClient_SetInstanceOrganization_Call {
+	return &MockUserAccountServiceClient_SetInstanceOrganization_Call{Call: _e.mock.On("SetInstanceOrganization", context1, request)}
+}
+
+func (_c *MockUserAccountServiceClient_SetInstanceOrganization_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest])) *MockUserAccountServiceClient_SetInstanceOrganization_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_SetInstanceOrganization_Call) Return(response *connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse], err error) *MockUserAccountServiceClient_SetInstanceOrganization_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_SetInstanceOrganization_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetInstanceOrganizationRequest]) (*connect.Response[mgmtv1alpha1.SetInstanceOrganizationResponse], error)) *MockUserAccountServiceClient_SetInstanceOrganization_Call {
 	_c.Call.Return(run)
 	return _c
 }

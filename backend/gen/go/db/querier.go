@@ -12,6 +12,11 @@ import (
 )
 
 type Querier interface {
+	// Gives the member that role in the account when the member holds none there, and changes
+	// nothing otherwise. It says how many rows it wrote. After LockAccountRole, in a transaction
+	// that reads what was committed before each of its statements, no role can be given to the
+	// member between its look and its write.
+	AddAccountRoleIfNone(ctx context.Context, db DBTX, arg AddAccountRoleIfNoneParams) (int64, error)
 	// Adopts a row recorded before issuers were, and only such a row: the WHERE clause on the
 	// empty string is what stops one issuer from claiming another's identity. No row updated
 	// means somebody got there first, which the caller reads as "look again".
@@ -67,6 +72,9 @@ type Querier interface {
 	CreatePersonalAccount(ctx context.Context, db DBTX, arg CreatePersonalAccountParams) (HusonymApiAccount, error)
 	CreateSlackOAuthConnection(ctx context.Context, db DBTX, arg CreateSlackOAuthConnectionParams) (HusonymApiSlackOauthConnection, error)
 	CreateTeamAccount(ctx context.Context, db DBTX, accountSlug string) (HusonymApiAccount, error)
+	// Creates a team account under an id chosen by the caller, who needed the id before the account
+	// existed.
+	CreateTeamAccountWithId(ctx context.Context, db DBTX, arg CreateTeamAccountWithIdParams) (HusonymApiAccount, error)
 	CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error)
 	DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DeleteJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) error
@@ -126,6 +134,8 @@ type Querier interface {
 	// The usage counters belong to the instance. They hold counts and identifiers, never a name or
 	// a message a customer entered.
 	GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, error)
+	// Null while no organization is retained.
+	GetInstanceOrganization(ctx context.Context, db DBTX) (pgtype.UUID, error)
 	GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error)
 	GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (HusonymApiJob, error)
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
@@ -165,6 +175,12 @@ type Querier interface {
 	GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
+	// Tells whether the member holds a role in the account, whichever.
+	HasAccountRole(ctx context.Context, db DBTX, arg HasAccountRoleParams) (bool, error)
+	// Tells whether an account has a person among its members. A person is a user an identity
+	// provider vouches for: neither the anonymous user nor the user of an API key is one, so the
+	// account of either alone does not tell. Nor does a person who is in no account yet.
+	HasAccountWithPersonMember(ctx context.Context, db DBTX) (bool, error)
 	IncrementGateRefusal(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
@@ -179,6 +195,10 @@ type Querier interface {
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
 	IsJobHookNameAvailable(ctx context.Context, db DBTX, arg IsJobHookNameAvailableParams) (bool, error)
 	IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobNameAvailableParams) (int64, error)
+	// Tells whether the member holds that role in the account and nobody else does there: taking
+	// it from the member would leave it held by nobody. After LockAccountRoles, in a transaction
+	// that reads what was committed before each of its statements.
+	IsOnlyHolderOfAccountRole(ctx context.Context, db DBTX, arg IsOnlyHolderOfAccountRoleParams) (bool, error)
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
@@ -215,6 +235,10 @@ type Querier interface {
 	// account, wherever they are asked, are made one after the other: the second sees what the
 	// first wrote.
 	LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error
+	// Held until the transaction ends, so that the changes that must leave a role held by somebody
+	// in an account are made one after the other in that account: the second sees who the first
+	// left holding it. It is taken before LockAccountRole, never after.
+	LockAccountRoles(ctx context.Context, db DBTX, account string) error
 	// Holds a subject for the rest of the transaction: a second transaction asking for the
 	// same one waits here until the first is done. It is what stands for the row to hold when
 	// an identity is seen for the first time and has no row yet.
@@ -222,6 +246,11 @@ type Querier interface {
 	// The subject alone is the key, without its issuer, because a row recorded before issuers
 	// were is found by its subject under any of them.
 	LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error
+	// The organization of the instance is the one account the instance retains as its own.
+	// Holds the row of the instance for the rest of the transaction, so that what is decided once
+	// per instance is decided by one transaction at a time: a second one waits here until the first
+	// is done.
+	LockInstance(ctx context.Context, db DBTX) (pgtype.UUID, error)
 	// The license keys belong to the instance: there is no account here.
 	// Held until the transaction ends, so that two keys given at the same moment, wherever they
 	// are asked, are looked at one after the other: the second sees what the first wrote.
@@ -240,6 +269,8 @@ type Querier interface {
 	RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error
+	// Takes every role of the member in the account away.
+	RemoveAccountRoles(ctx context.Context, db DBTX, arg RemoveAccountRolesParams) error
 	RemoveAccountUser(ctx context.Context, db DBTX, arg RemoveAccountUserParams) error
 	RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveConnectionByNameAndAccount(ctx context.Context, db DBTX, arg RemoveConnectionByNameAndAccountParams) error
@@ -275,6 +306,9 @@ type Querier interface {
 	// a row-level conflict between two tabs of the same user. No row updated returns no row,
 	// which the caller reads as "nothing to do".
 	SetIdentityProviderProfile(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error)
+	// Only an instance that retains none retains one: the first stays. The count of rows tells
+	// whether this call retained it.
+	SetInstanceOrganization(ctx context.Context, db DBTX, accountid pgtype.UUID) (int64, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
 	// The run's write: no user to record in updated_by_id (the worker's key has none), and the
 	// journal of the run says who changed what.

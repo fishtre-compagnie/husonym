@@ -303,7 +303,7 @@ func (x ResourcePermission_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ResourcePermission_Type.Descriptor instead.
 func (ResourcePermission_Type) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{65, 0}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{69, 0}
 }
 
 type ResourcePermission_Action int32
@@ -358,7 +358,7 @@ func (x ResourcePermission_Action) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ResourcePermission_Action.Descriptor instead.
 func (ResourcePermission_Action) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{65, 1}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{69, 1}
 }
 
 type GetUserRequest struct {
@@ -875,6 +875,186 @@ func (x *SetPersonalAccountResponse) GetAccountId() string {
 	return ""
 }
 
+type EnterInstanceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnterInstanceRequest) Reset() {
+	*x = EnterInstanceRequest{}
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnterInstanceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnterInstanceRequest) ProtoMessage() {}
+
+func (x *EnterInstanceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnterInstanceRequest.ProtoReflect.Descriptor instead.
+func (*EnterInstanceRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{11}
+}
+
+type EnterInstanceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account the user lands in: the organization of the instance, or the user's personal account where no organization applies.
+	AccountId     string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnterInstanceResponse) Reset() {
+	*x = EnterInstanceResponse{}
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnterInstanceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnterInstanceResponse) ProtoMessage() {}
+
+func (x *EnterInstanceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnterInstanceResponse.ProtoReflect.Descriptor instead.
+func (*EnterInstanceResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *EnterInstanceResponse) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type SetInstanceOrganizationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account that becomes the organization of the instance.
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The name a personal account takes as it becomes a team account. Not read for an account that is already a team account.
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetInstanceOrganizationRequest) Reset() {
+	*x = SetInstanceOrganizationRequest{}
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetInstanceOrganizationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetInstanceOrganizationRequest) ProtoMessage() {}
+
+func (x *SetInstanceOrganizationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetInstanceOrganizationRequest.ProtoReflect.Descriptor instead.
+func (*SetInstanceOrganizationRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SetInstanceOrganizationRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *SetInstanceOrganizationRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type SetInstanceOrganizationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account the instance now retains as its organization.
+	AccountId     string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetInstanceOrganizationResponse) Reset() {
+	*x = SetInstanceOrganizationResponse{}
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetInstanceOrganizationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetInstanceOrganizationResponse) ProtoMessage() {}
+
+func (x *SetInstanceOrganizationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetInstanceOrganizationResponse.ProtoReflect.Descriptor instead.
+func (*SetInstanceOrganizationResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SetInstanceOrganizationResponse) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
 type IsUserInAccountRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier of the account to check if the user is in.
@@ -885,7 +1065,7 @@ type IsUserInAccountRequest struct {
 
 func (x *IsUserInAccountRequest) Reset() {
 	*x = IsUserInAccountRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[11]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -897,7 +1077,7 @@ func (x *IsUserInAccountRequest) String() string {
 func (*IsUserInAccountRequest) ProtoMessage() {}
 
 func (x *IsUserInAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[11]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -910,7 +1090,7 @@ func (x *IsUserInAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsUserInAccountRequest.ProtoReflect.Descriptor instead.
 func (*IsUserInAccountRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{11}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *IsUserInAccountRequest) GetAccountId() string {
@@ -930,7 +1110,7 @@ type IsUserInAccountResponse struct {
 
 func (x *IsUserInAccountResponse) Reset() {
 	*x = IsUserInAccountResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[12]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -942,7 +1122,7 @@ func (x *IsUserInAccountResponse) String() string {
 func (*IsUserInAccountResponse) ProtoMessage() {}
 
 func (x *IsUserInAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[12]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -955,7 +1135,7 @@ func (x *IsUserInAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsUserInAccountResponse.ProtoReflect.Descriptor instead.
 func (*IsUserInAccountResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{12}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *IsUserInAccountResponse) GetOk() bool {
@@ -975,7 +1155,7 @@ type GetAccountTemporalConfigRequest struct {
 
 func (x *GetAccountTemporalConfigRequest) Reset() {
 	*x = GetAccountTemporalConfigRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[13]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -987,7 +1167,7 @@ func (x *GetAccountTemporalConfigRequest) String() string {
 func (*GetAccountTemporalConfigRequest) ProtoMessage() {}
 
 func (x *GetAccountTemporalConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[13]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1000,7 +1180,7 @@ func (x *GetAccountTemporalConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountTemporalConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountTemporalConfigRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{13}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetAccountTemporalConfigRequest) GetAccountId() string {
@@ -1020,7 +1200,7 @@ type GetAccountTemporalConfigResponse struct {
 
 func (x *GetAccountTemporalConfigResponse) Reset() {
 	*x = GetAccountTemporalConfigResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[14]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1212,7 @@ func (x *GetAccountTemporalConfigResponse) String() string {
 func (*GetAccountTemporalConfigResponse) ProtoMessage() {}
 
 func (x *GetAccountTemporalConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[14]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1045,7 +1225,7 @@ func (x *GetAccountTemporalConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountTemporalConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountTemporalConfigResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{14}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetAccountTemporalConfigResponse) GetConfig() *AccountTemporalConfig {
@@ -1067,7 +1247,7 @@ type SetAccountTemporalConfigRequest struct {
 
 func (x *SetAccountTemporalConfigRequest) Reset() {
 	*x = SetAccountTemporalConfigRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[15]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1079,7 +1259,7 @@ func (x *SetAccountTemporalConfigRequest) String() string {
 func (*SetAccountTemporalConfigRequest) ProtoMessage() {}
 
 func (x *SetAccountTemporalConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[15]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1092,7 +1272,7 @@ func (x *SetAccountTemporalConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAccountTemporalConfigRequest.ProtoReflect.Descriptor instead.
 func (*SetAccountTemporalConfigRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{15}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SetAccountTemporalConfigRequest) GetAccountId() string {
@@ -1119,7 +1299,7 @@ type SetAccountTemporalConfigResponse struct {
 
 func (x *SetAccountTemporalConfigResponse) Reset() {
 	*x = SetAccountTemporalConfigResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[16]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1131,7 +1311,7 @@ func (x *SetAccountTemporalConfigResponse) String() string {
 func (*SetAccountTemporalConfigResponse) ProtoMessage() {}
 
 func (x *SetAccountTemporalConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[16]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1144,7 +1324,7 @@ func (x *SetAccountTemporalConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAccountTemporalConfigResponse.ProtoReflect.Descriptor instead.
 func (*SetAccountTemporalConfigResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{16}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SetAccountTemporalConfigResponse) GetConfig() *AccountTemporalConfig {
@@ -1168,7 +1348,7 @@ type AccountTemporalConfig struct {
 
 func (x *AccountTemporalConfig) Reset() {
 	*x = AccountTemporalConfig{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[17]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1360,7 @@ func (x *AccountTemporalConfig) String() string {
 func (*AccountTemporalConfig) ProtoMessage() {}
 
 func (x *AccountTemporalConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[17]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1373,7 @@ func (x *AccountTemporalConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountTemporalConfig.ProtoReflect.Descriptor instead.
 func (*AccountTemporalConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{17}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AccountTemporalConfig) GetUrl() string {
@@ -1227,7 +1407,7 @@ type CreateTeamAccountRequest struct {
 
 func (x *CreateTeamAccountRequest) Reset() {
 	*x = CreateTeamAccountRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[18]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1239,7 +1419,7 @@ func (x *CreateTeamAccountRequest) String() string {
 func (*CreateTeamAccountRequest) ProtoMessage() {}
 
 func (x *CreateTeamAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[18]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1252,7 +1432,7 @@ func (x *CreateTeamAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTeamAccountRequest.ProtoReflect.Descriptor instead.
 func (*CreateTeamAccountRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{18}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateTeamAccountRequest) GetName() string {
@@ -1274,7 +1454,7 @@ type CreateTeamAccountResponse struct {
 
 func (x *CreateTeamAccountResponse) Reset() {
 	*x = CreateTeamAccountResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[19]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1286,7 +1466,7 @@ func (x *CreateTeamAccountResponse) String() string {
 func (*CreateTeamAccountResponse) ProtoMessage() {}
 
 func (x *CreateTeamAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[19]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1299,7 +1479,7 @@ func (x *CreateTeamAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTeamAccountResponse.ProtoReflect.Descriptor instead.
 func (*CreateTeamAccountResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{19}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CreateTeamAccountResponse) GetAccountId() string {
@@ -1334,7 +1514,7 @@ type AccountUser struct {
 
 func (x *AccountUser) Reset() {
 	*x = AccountUser{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[20]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1346,7 +1526,7 @@ func (x *AccountUser) String() string {
 func (*AccountUser) ProtoMessage() {}
 
 func (x *AccountUser) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[20]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1359,7 +1539,7 @@ func (x *AccountUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountUser.ProtoReflect.Descriptor instead.
 func (*AccountUser) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{20}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AccountUser) GetId() string {
@@ -1407,7 +1587,7 @@ type GetTeamAccountMembersRequest struct {
 
 func (x *GetTeamAccountMembersRequest) Reset() {
 	*x = GetTeamAccountMembersRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[21]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1419,7 +1599,7 @@ func (x *GetTeamAccountMembersRequest) String() string {
 func (*GetTeamAccountMembersRequest) ProtoMessage() {}
 
 func (x *GetTeamAccountMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[21]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1432,7 +1612,7 @@ func (x *GetTeamAccountMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamAccountMembersRequest.ProtoReflect.Descriptor instead.
 func (*GetTeamAccountMembersRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{21}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetTeamAccountMembersRequest) GetAccountId() string {
@@ -1451,7 +1631,7 @@ type GetTeamAccountMembersResponse struct {
 
 func (x *GetTeamAccountMembersResponse) Reset() {
 	*x = GetTeamAccountMembersResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[22]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1463,7 +1643,7 @@ func (x *GetTeamAccountMembersResponse) String() string {
 func (*GetTeamAccountMembersResponse) ProtoMessage() {}
 
 func (x *GetTeamAccountMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[22]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1476,7 +1656,7 @@ func (x *GetTeamAccountMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamAccountMembersResponse.ProtoReflect.Descriptor instead.
 func (*GetTeamAccountMembersResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{22}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTeamAccountMembersResponse) GetUsers() []*AccountUser {
@@ -1498,7 +1678,7 @@ type RemoveTeamAccountMemberRequest struct {
 
 func (x *RemoveTeamAccountMemberRequest) Reset() {
 	*x = RemoveTeamAccountMemberRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[23]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1510,7 +1690,7 @@ func (x *RemoveTeamAccountMemberRequest) String() string {
 func (*RemoveTeamAccountMemberRequest) ProtoMessage() {}
 
 func (x *RemoveTeamAccountMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[23]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1523,7 +1703,7 @@ func (x *RemoveTeamAccountMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveTeamAccountMemberRequest.ProtoReflect.Descriptor instead.
 func (*RemoveTeamAccountMemberRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{23}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RemoveTeamAccountMemberRequest) GetUserId() string {
@@ -1548,7 +1728,7 @@ type RemoveTeamAccountMemberResponse struct {
 
 func (x *RemoveTeamAccountMemberResponse) Reset() {
 	*x = RemoveTeamAccountMemberResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[24]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1560,7 +1740,7 @@ func (x *RemoveTeamAccountMemberResponse) String() string {
 func (*RemoveTeamAccountMemberResponse) ProtoMessage() {}
 
 func (x *RemoveTeamAccountMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[24]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1573,7 +1753,7 @@ func (x *RemoveTeamAccountMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveTeamAccountMemberResponse.ProtoReflect.Descriptor instead.
 func (*RemoveTeamAccountMemberResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{24}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{28}
 }
 
 type InviteUserToTeamAccountRequest struct {
@@ -1590,7 +1770,7 @@ type InviteUserToTeamAccountRequest struct {
 
 func (x *InviteUserToTeamAccountRequest) Reset() {
 	*x = InviteUserToTeamAccountRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[25]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1602,7 +1782,7 @@ func (x *InviteUserToTeamAccountRequest) String() string {
 func (*InviteUserToTeamAccountRequest) ProtoMessage() {}
 
 func (x *InviteUserToTeamAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[25]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1615,7 +1795,7 @@ func (x *InviteUserToTeamAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteUserToTeamAccountRequest.ProtoReflect.Descriptor instead.
 func (*InviteUserToTeamAccountRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{25}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *InviteUserToTeamAccountRequest) GetAccountId() string {
@@ -1667,7 +1847,7 @@ type AccountInvite struct {
 
 func (x *AccountInvite) Reset() {
 	*x = AccountInvite{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[26]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1679,7 +1859,7 @@ func (x *AccountInvite) String() string {
 func (*AccountInvite) ProtoMessage() {}
 
 func (x *AccountInvite) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[26]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1692,7 +1872,7 @@ func (x *AccountInvite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountInvite.ProtoReflect.Descriptor instead.
 func (*AccountInvite) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{26}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *AccountInvite) GetId() string {
@@ -1775,7 +1955,7 @@ type InviteUserToTeamAccountResponse struct {
 
 func (x *InviteUserToTeamAccountResponse) Reset() {
 	*x = InviteUserToTeamAccountResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[27]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1787,7 +1967,7 @@ func (x *InviteUserToTeamAccountResponse) String() string {
 func (*InviteUserToTeamAccountResponse) ProtoMessage() {}
 
 func (x *InviteUserToTeamAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[27]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1800,7 +1980,7 @@ func (x *InviteUserToTeamAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteUserToTeamAccountResponse.ProtoReflect.Descriptor instead.
 func (*InviteUserToTeamAccountResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{27}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *InviteUserToTeamAccountResponse) GetInvite() *AccountInvite {
@@ -1820,7 +2000,7 @@ type GetTeamAccountInvitesRequest struct {
 
 func (x *GetTeamAccountInvitesRequest) Reset() {
 	*x = GetTeamAccountInvitesRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[28]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1832,7 +2012,7 @@ func (x *GetTeamAccountInvitesRequest) String() string {
 func (*GetTeamAccountInvitesRequest) ProtoMessage() {}
 
 func (x *GetTeamAccountInvitesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[28]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1845,7 +2025,7 @@ func (x *GetTeamAccountInvitesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamAccountInvitesRequest.ProtoReflect.Descriptor instead.
 func (*GetTeamAccountInvitesRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{28}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetTeamAccountInvitesRequest) GetAccountId() string {
@@ -1865,7 +2045,7 @@ type GetTeamAccountInvitesResponse struct {
 
 func (x *GetTeamAccountInvitesResponse) Reset() {
 	*x = GetTeamAccountInvitesResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[29]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1877,7 +2057,7 @@ func (x *GetTeamAccountInvitesResponse) String() string {
 func (*GetTeamAccountInvitesResponse) ProtoMessage() {}
 
 func (x *GetTeamAccountInvitesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[29]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1890,7 +2070,7 @@ func (x *GetTeamAccountInvitesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamAccountInvitesResponse.ProtoReflect.Descriptor instead.
 func (*GetTeamAccountInvitesResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{29}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetTeamAccountInvitesResponse) GetInvites() []*AccountInvite {
@@ -1910,7 +2090,7 @@ type RemoveTeamAccountInviteRequest struct {
 
 func (x *RemoveTeamAccountInviteRequest) Reset() {
 	*x = RemoveTeamAccountInviteRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[30]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1922,7 +2102,7 @@ func (x *RemoveTeamAccountInviteRequest) String() string {
 func (*RemoveTeamAccountInviteRequest) ProtoMessage() {}
 
 func (x *RemoveTeamAccountInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[30]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1935,7 +2115,7 @@ func (x *RemoveTeamAccountInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveTeamAccountInviteRequest.ProtoReflect.Descriptor instead.
 func (*RemoveTeamAccountInviteRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{30}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RemoveTeamAccountInviteRequest) GetId() string {
@@ -1953,7 +2133,7 @@ type RemoveTeamAccountInviteResponse struct {
 
 func (x *RemoveTeamAccountInviteResponse) Reset() {
 	*x = RemoveTeamAccountInviteResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[31]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2145,7 @@ func (x *RemoveTeamAccountInviteResponse) String() string {
 func (*RemoveTeamAccountInviteResponse) ProtoMessage() {}
 
 func (x *RemoveTeamAccountInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[31]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2158,7 @@ func (x *RemoveTeamAccountInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveTeamAccountInviteResponse.ProtoReflect.Descriptor instead.
 func (*RemoveTeamAccountInviteResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{31}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{35}
 }
 
 type AcceptTeamAccountInviteRequest struct {
@@ -1991,7 +2171,7 @@ type AcceptTeamAccountInviteRequest struct {
 
 func (x *AcceptTeamAccountInviteRequest) Reset() {
 	*x = AcceptTeamAccountInviteRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[32]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2003,7 +2183,7 @@ func (x *AcceptTeamAccountInviteRequest) String() string {
 func (*AcceptTeamAccountInviteRequest) ProtoMessage() {}
 
 func (x *AcceptTeamAccountInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[32]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2016,7 +2196,7 @@ func (x *AcceptTeamAccountInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptTeamAccountInviteRequest.ProtoReflect.Descriptor instead.
 func (*AcceptTeamAccountInviteRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{32}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AcceptTeamAccountInviteRequest) GetToken() string {
@@ -2036,7 +2216,7 @@ type AcceptTeamAccountInviteResponse struct {
 
 func (x *AcceptTeamAccountInviteResponse) Reset() {
 	*x = AcceptTeamAccountInviteResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[33]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2048,7 +2228,7 @@ func (x *AcceptTeamAccountInviteResponse) String() string {
 func (*AcceptTeamAccountInviteResponse) ProtoMessage() {}
 
 func (x *AcceptTeamAccountInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[33]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2061,7 +2241,7 @@ func (x *AcceptTeamAccountInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptTeamAccountInviteResponse.ProtoReflect.Descriptor instead.
 func (*AcceptTeamAccountInviteResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{33}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *AcceptTeamAccountInviteResponse) GetAccount() *UserAccount {
@@ -2079,7 +2259,7 @@ type GetSystemInformationRequest struct {
 
 func (x *GetSystemInformationRequest) Reset() {
 	*x = GetSystemInformationRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[34]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2091,7 +2271,7 @@ func (x *GetSystemInformationRequest) String() string {
 func (*GetSystemInformationRequest) ProtoMessage() {}
 
 func (x *GetSystemInformationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[34]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2104,7 +2284,7 @@ func (x *GetSystemInformationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemInformationRequest.ProtoReflect.Descriptor instead.
 func (*GetSystemInformationRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{34}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{38}
 }
 
 type GetSystemInformationResponse struct {
@@ -2120,14 +2300,16 @@ type GetSystemInformationResponse struct {
 	// The time when the build was created
 	BuildDate *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=build_date,json=buildDate,proto3" json:"build_date,omitempty"`
 	// The license information for the system
-	License       *SystemLicense `protobuf:"bytes,6,opt,name=license,proto3" json:"license,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	License *SystemLicense `protobuf:"bytes,6,opt,name=license,proto3" json:"license,omitempty"`
+	// The unique identifier of the account the system retains as its organization. Unset when it retains none
+	InstanceOrganizationAccountId *string `protobuf:"bytes,7,opt,name=instance_organization_account_id,json=instanceOrganizationAccountId,proto3,oneof" json:"instance_organization_account_id,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *GetSystemInformationResponse) Reset() {
 	*x = GetSystemInformationResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[35]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2139,7 +2321,7 @@ func (x *GetSystemInformationResponse) String() string {
 func (*GetSystemInformationResponse) ProtoMessage() {}
 
 func (x *GetSystemInformationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[35]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2152,7 +2334,7 @@ func (x *GetSystemInformationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemInformationResponse.ProtoReflect.Descriptor instead.
 func (*GetSystemInformationResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{35}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *GetSystemInformationResponse) GetVersion() string {
@@ -2197,6 +2379,13 @@ func (x *GetSystemInformationResponse) GetLicense() *SystemLicense {
 	return nil
 }
 
+func (x *GetSystemInformationResponse) GetInstanceOrganizationAccountId() string {
+	if x != nil && x.InstanceOrganizationAccountId != nil {
+		return *x.InstanceOrganizationAccountId
+	}
+	return ""
+}
+
 type SystemLicense struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether or not a valid license was found
@@ -2233,7 +2422,7 @@ type SystemLicense struct {
 
 func (x *SystemLicense) Reset() {
 	*x = SystemLicense{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[36]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2245,7 +2434,7 @@ func (x *SystemLicense) String() string {
 func (*SystemLicense) ProtoMessage() {}
 
 func (x *SystemLicense) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[36]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2258,7 +2447,7 @@ func (x *SystemLicense) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemLicense.ProtoReflect.Descriptor instead.
 func (*SystemLicense) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{36}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SystemLicense) GetIsValid() bool {
@@ -2376,7 +2565,7 @@ type LicenseLimits struct {
 
 func (x *LicenseLimits) Reset() {
 	*x = LicenseLimits{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[37]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2388,7 +2577,7 @@ func (x *LicenseLimits) String() string {
 func (*LicenseLimits) ProtoMessage() {}
 
 func (x *LicenseLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[37]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2401,7 +2590,7 @@ func (x *LicenseLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LicenseLimits.ProtoReflect.Descriptor instead.
 func (*LicenseLimits) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{37}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *LicenseLimits) GetMaxSources() int32 {
@@ -2444,7 +2633,7 @@ type SetSystemLicenseRequest struct {
 
 func (x *SetSystemLicenseRequest) Reset() {
 	*x = SetSystemLicenseRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[38]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2456,7 +2645,7 @@ func (x *SetSystemLicenseRequest) String() string {
 func (*SetSystemLicenseRequest) ProtoMessage() {}
 
 func (x *SetSystemLicenseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[38]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2469,7 +2658,7 @@ func (x *SetSystemLicenseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSystemLicenseRequest.ProtoReflect.Descriptor instead.
 func (*SetSystemLicenseRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{38}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SetSystemLicenseRequest) GetAccountId() string {
@@ -2496,7 +2685,7 @@ type SetSystemLicenseResponse struct {
 
 func (x *SetSystemLicenseResponse) Reset() {
 	*x = SetSystemLicenseResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[39]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2508,7 +2697,7 @@ func (x *SetSystemLicenseResponse) String() string {
 func (*SetSystemLicenseResponse) ProtoMessage() {}
 
 func (x *SetSystemLicenseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[39]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2521,7 +2710,7 @@ func (x *SetSystemLicenseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSystemLicenseResponse.ProtoReflect.Descriptor instead.
 func (*SetSystemLicenseResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{39}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SetSystemLicenseResponse) GetLicense() *SystemLicense {
@@ -2539,7 +2728,7 @@ type GetSystemLicenseKeyRequest struct {
 
 func (x *GetSystemLicenseKeyRequest) Reset() {
 	*x = GetSystemLicenseKeyRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[40]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2551,7 +2740,7 @@ func (x *GetSystemLicenseKeyRequest) String() string {
 func (*GetSystemLicenseKeyRequest) ProtoMessage() {}
 
 func (x *GetSystemLicenseKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[40]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2564,7 +2753,7 @@ func (x *GetSystemLicenseKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemLicenseKeyRequest.ProtoReflect.Descriptor instead.
 func (*GetSystemLicenseKeyRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{40}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{44}
 }
 
 type GetSystemLicenseKeyResponse struct {
@@ -2577,7 +2766,7 @@ type GetSystemLicenseKeyResponse struct {
 
 func (x *GetSystemLicenseKeyResponse) Reset() {
 	*x = GetSystemLicenseKeyResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[41]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2589,7 +2778,7 @@ func (x *GetSystemLicenseKeyResponse) String() string {
 func (*GetSystemLicenseKeyResponse) ProtoMessage() {}
 
 func (x *GetSystemLicenseKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[41]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2602,7 +2791,7 @@ func (x *GetSystemLicenseKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemLicenseKeyResponse.ProtoReflect.Descriptor instead.
 func (*GetSystemLicenseKeyResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{41}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *GetSystemLicenseKeyResponse) GetKey() string {
@@ -2622,7 +2811,7 @@ type GetLicenseUsageRequest struct {
 
 func (x *GetLicenseUsageRequest) Reset() {
 	*x = GetLicenseUsageRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[42]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2634,7 +2823,7 @@ func (x *GetLicenseUsageRequest) String() string {
 func (*GetLicenseUsageRequest) ProtoMessage() {}
 
 func (x *GetLicenseUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[42]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2647,7 +2836,7 @@ func (x *GetLicenseUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLicenseUsageRequest.ProtoReflect.Descriptor instead.
 func (*GetLicenseUsageRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{42}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *GetLicenseUsageRequest) GetAccountId() string {
@@ -2671,7 +2860,7 @@ type GetLicenseUsageResponse struct {
 
 func (x *GetLicenseUsageResponse) Reset() {
 	*x = GetLicenseUsageResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[43]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2683,7 +2872,7 @@ func (x *GetLicenseUsageResponse) String() string {
 func (*GetLicenseUsageResponse) ProtoMessage() {}
 
 func (x *GetLicenseUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[43]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2696,7 +2885,7 @@ func (x *GetLicenseUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLicenseUsageResponse.ProtoReflect.Descriptor instead.
 func (*GetLicenseUsageResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{43}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GetLicenseUsageResponse) GetSourcesInInstance() int32 {
@@ -2735,7 +2924,7 @@ type LicenseSource struct {
 
 func (x *LicenseSource) Reset() {
 	*x = LicenseSource{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[44]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2747,7 +2936,7 @@ func (x *LicenseSource) String() string {
 func (*LicenseSource) ProtoMessage() {}
 
 func (x *LicenseSource) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[44]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2760,7 +2949,7 @@ func (x *LicenseSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LicenseSource.ProtoReflect.Descriptor instead.
 func (*LicenseSource) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{44}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *LicenseSource) GetConnectionId() string {
@@ -2794,7 +2983,7 @@ type GetAccountOnboardingConfigRequest struct {
 
 func (x *GetAccountOnboardingConfigRequest) Reset() {
 	*x = GetAccountOnboardingConfigRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[45]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2806,7 +2995,7 @@ func (x *GetAccountOnboardingConfigRequest) String() string {
 func (*GetAccountOnboardingConfigRequest) ProtoMessage() {}
 
 func (x *GetAccountOnboardingConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[45]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2819,7 +3008,7 @@ func (x *GetAccountOnboardingConfigRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetAccountOnboardingConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountOnboardingConfigRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{45}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetAccountOnboardingConfigRequest) GetAccountId() string {
@@ -2839,7 +3028,7 @@ type GetAccountOnboardingConfigResponse struct {
 
 func (x *GetAccountOnboardingConfigResponse) Reset() {
 	*x = GetAccountOnboardingConfigResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[46]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2851,7 +3040,7 @@ func (x *GetAccountOnboardingConfigResponse) String() string {
 func (*GetAccountOnboardingConfigResponse) ProtoMessage() {}
 
 func (x *GetAccountOnboardingConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[46]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2864,7 +3053,7 @@ func (x *GetAccountOnboardingConfigResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetAccountOnboardingConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountOnboardingConfigResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{46}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *GetAccountOnboardingConfigResponse) GetConfig() *AccountOnboardingConfig {
@@ -2886,7 +3075,7 @@ type SetAccountOnboardingConfigRequest struct {
 
 func (x *SetAccountOnboardingConfigRequest) Reset() {
 	*x = SetAccountOnboardingConfigRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[47]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2898,7 +3087,7 @@ func (x *SetAccountOnboardingConfigRequest) String() string {
 func (*SetAccountOnboardingConfigRequest) ProtoMessage() {}
 
 func (x *SetAccountOnboardingConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[47]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2911,7 +3100,7 @@ func (x *SetAccountOnboardingConfigRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SetAccountOnboardingConfigRequest.ProtoReflect.Descriptor instead.
 func (*SetAccountOnboardingConfigRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{47}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *SetAccountOnboardingConfigRequest) GetAccountId() string {
@@ -2938,7 +3127,7 @@ type SetAccountOnboardingConfigResponse struct {
 
 func (x *SetAccountOnboardingConfigResponse) Reset() {
 	*x = SetAccountOnboardingConfigResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[48]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2950,7 +3139,7 @@ func (x *SetAccountOnboardingConfigResponse) String() string {
 func (*SetAccountOnboardingConfigResponse) ProtoMessage() {}
 
 func (x *SetAccountOnboardingConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[48]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2963,7 +3152,7 @@ func (x *SetAccountOnboardingConfigResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SetAccountOnboardingConfigResponse.ProtoReflect.Descriptor instead.
 func (*SetAccountOnboardingConfigResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{48}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SetAccountOnboardingConfigResponse) GetConfig() *AccountOnboardingConfig {
@@ -2983,7 +3172,7 @@ type AccountOnboardingConfig struct {
 
 func (x *AccountOnboardingConfig) Reset() {
 	*x = AccountOnboardingConfig{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[49]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2995,7 +3184,7 @@ func (x *AccountOnboardingConfig) String() string {
 func (*AccountOnboardingConfig) ProtoMessage() {}
 
 func (x *AccountOnboardingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[49]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3008,7 +3197,7 @@ func (x *AccountOnboardingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountOnboardingConfig.ProtoReflect.Descriptor instead.
 func (*AccountOnboardingConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{49}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *AccountOnboardingConfig) GetHasCompletedOnboarding() bool {
@@ -3028,7 +3217,7 @@ type GetAccountStatusRequest struct {
 
 func (x *GetAccountStatusRequest) Reset() {
 	*x = GetAccountStatusRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[50]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3040,7 +3229,7 @@ func (x *GetAccountStatusRequest) String() string {
 func (*GetAccountStatusRequest) ProtoMessage() {}
 
 func (x *GetAccountStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[50]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3053,7 +3242,7 @@ func (x *GetAccountStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountStatusRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{50}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *GetAccountStatusRequest) GetAccountId() string {
@@ -3078,7 +3267,7 @@ type GetAccountStatusResponse struct {
 
 func (x *GetAccountStatusResponse) Reset() {
 	*x = GetAccountStatusResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[51]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3090,7 +3279,7 @@ func (x *GetAccountStatusResponse) String() string {
 func (*GetAccountStatusResponse) ProtoMessage() {}
 
 func (x *GetAccountStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[51]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3103,7 +3292,7 @@ func (x *GetAccountStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountStatusResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{51}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetAccountStatusResponse) GetUsedRecordCount() uint64 {
@@ -3142,7 +3331,7 @@ type IsAccountStatusValidRequest struct {
 
 func (x *IsAccountStatusValidRequest) Reset() {
 	*x = IsAccountStatusValidRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[52]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3154,7 +3343,7 @@ func (x *IsAccountStatusValidRequest) String() string {
 func (*IsAccountStatusValidRequest) ProtoMessage() {}
 
 func (x *IsAccountStatusValidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[52]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3167,7 +3356,7 @@ func (x *IsAccountStatusValidRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsAccountStatusValidRequest.ProtoReflect.Descriptor instead.
 func (*IsAccountStatusValidRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{52}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *IsAccountStatusValidRequest) GetAccountId() string {
@@ -3209,7 +3398,7 @@ type IsAccountStatusValidResponse struct {
 
 func (x *IsAccountStatusValidResponse) Reset() {
 	*x = IsAccountStatusValidResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[53]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3221,7 +3410,7 @@ func (x *IsAccountStatusValidResponse) String() string {
 func (*IsAccountStatusValidResponse) ProtoMessage() {}
 
 func (x *IsAccountStatusValidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[53]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3234,7 +3423,7 @@ func (x *IsAccountStatusValidResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsAccountStatusValidResponse.ProtoReflect.Descriptor instead.
 func (*IsAccountStatusValidResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{53}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *IsAccountStatusValidResponse) GetIsValid() bool {
@@ -3282,7 +3471,7 @@ type GetAccountBillingCheckoutSessionRequest struct {
 
 func (x *GetAccountBillingCheckoutSessionRequest) Reset() {
 	*x = GetAccountBillingCheckoutSessionRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[54]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3294,7 +3483,7 @@ func (x *GetAccountBillingCheckoutSessionRequest) String() string {
 func (*GetAccountBillingCheckoutSessionRequest) ProtoMessage() {}
 
 func (x *GetAccountBillingCheckoutSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[54]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3307,7 +3496,7 @@ func (x *GetAccountBillingCheckoutSessionRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use GetAccountBillingCheckoutSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountBillingCheckoutSessionRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{54}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetAccountBillingCheckoutSessionRequest) GetAccountId() string {
@@ -3327,7 +3516,7 @@ type GetAccountBillingCheckoutSessionResponse struct {
 
 func (x *GetAccountBillingCheckoutSessionResponse) Reset() {
 	*x = GetAccountBillingCheckoutSessionResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[55]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3339,7 +3528,7 @@ func (x *GetAccountBillingCheckoutSessionResponse) String() string {
 func (*GetAccountBillingCheckoutSessionResponse) ProtoMessage() {}
 
 func (x *GetAccountBillingCheckoutSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[55]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3352,7 +3541,7 @@ func (x *GetAccountBillingCheckoutSessionResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use GetAccountBillingCheckoutSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountBillingCheckoutSessionResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{55}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetAccountBillingCheckoutSessionResponse) GetCheckoutSessionUrl() string {
@@ -3372,7 +3561,7 @@ type GetAccountBillingPortalSessionRequest struct {
 
 func (x *GetAccountBillingPortalSessionRequest) Reset() {
 	*x = GetAccountBillingPortalSessionRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[56]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3384,7 +3573,7 @@ func (x *GetAccountBillingPortalSessionRequest) String() string {
 func (*GetAccountBillingPortalSessionRequest) ProtoMessage() {}
 
 func (x *GetAccountBillingPortalSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[56]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3397,7 +3586,7 @@ func (x *GetAccountBillingPortalSessionRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetAccountBillingPortalSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountBillingPortalSessionRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{56}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GetAccountBillingPortalSessionRequest) GetAccountId() string {
@@ -3417,7 +3606,7 @@ type GetAccountBillingPortalSessionResponse struct {
 
 func (x *GetAccountBillingPortalSessionResponse) Reset() {
 	*x = GetAccountBillingPortalSessionResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[57]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3429,7 +3618,7 @@ func (x *GetAccountBillingPortalSessionResponse) String() string {
 func (*GetAccountBillingPortalSessionResponse) ProtoMessage() {}
 
 func (x *GetAccountBillingPortalSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[57]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3442,7 +3631,7 @@ func (x *GetAccountBillingPortalSessionResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetAccountBillingPortalSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountBillingPortalSessionResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{57}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *GetAccountBillingPortalSessionResponse) GetPortalSessionUrl() string {
@@ -3462,7 +3651,7 @@ type GetBillingAccountsRequest struct {
 
 func (x *GetBillingAccountsRequest) Reset() {
 	*x = GetBillingAccountsRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[58]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3474,7 +3663,7 @@ func (x *GetBillingAccountsRequest) String() string {
 func (*GetBillingAccountsRequest) ProtoMessage() {}
 
 func (x *GetBillingAccountsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[58]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3487,7 +3676,7 @@ func (x *GetBillingAccountsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBillingAccountsRequest.ProtoReflect.Descriptor instead.
 func (*GetBillingAccountsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{58}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *GetBillingAccountsRequest) GetAccountIds() []string {
@@ -3507,7 +3696,7 @@ type GetBillingAccountsResponse struct {
 
 func (x *GetBillingAccountsResponse) Reset() {
 	*x = GetBillingAccountsResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[59]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3519,7 +3708,7 @@ func (x *GetBillingAccountsResponse) String() string {
 func (*GetBillingAccountsResponse) ProtoMessage() {}
 
 func (x *GetBillingAccountsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[59]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3532,7 +3721,7 @@ func (x *GetBillingAccountsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBillingAccountsResponse.ProtoReflect.Descriptor instead.
 func (*GetBillingAccountsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{59}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *GetBillingAccountsResponse) GetAccounts() []*UserAccount {
@@ -3560,7 +3749,7 @@ type SetBillingMeterEventRequest struct {
 
 func (x *SetBillingMeterEventRequest) Reset() {
 	*x = SetBillingMeterEventRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[60]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3572,7 +3761,7 @@ func (x *SetBillingMeterEventRequest) String() string {
 func (*SetBillingMeterEventRequest) ProtoMessage() {}
 
 func (x *SetBillingMeterEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[60]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3585,7 +3774,7 @@ func (x *SetBillingMeterEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBillingMeterEventRequest.ProtoReflect.Descriptor instead.
 func (*SetBillingMeterEventRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{60}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SetBillingMeterEventRequest) GetAccountId() string {
@@ -3631,7 +3820,7 @@ type SetBillingMeterEventResponse struct {
 
 func (x *SetBillingMeterEventResponse) Reset() {
 	*x = SetBillingMeterEventResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[61]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3643,7 +3832,7 @@ func (x *SetBillingMeterEventResponse) String() string {
 func (*SetBillingMeterEventResponse) ProtoMessage() {}
 
 func (x *SetBillingMeterEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[61]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3656,7 +3845,7 @@ func (x *SetBillingMeterEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBillingMeterEventResponse.ProtoReflect.Descriptor instead.
 func (*SetBillingMeterEventResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{61}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{65}
 }
 
 type SetUserRoleRequest struct {
@@ -3673,7 +3862,7 @@ type SetUserRoleRequest struct {
 
 func (x *SetUserRoleRequest) Reset() {
 	*x = SetUserRoleRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[62]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3685,7 +3874,7 @@ func (x *SetUserRoleRequest) String() string {
 func (*SetUserRoleRequest) ProtoMessage() {}
 
 func (x *SetUserRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[62]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3698,7 +3887,7 @@ func (x *SetUserRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUserRoleRequest.ProtoReflect.Descriptor instead.
 func (*SetUserRoleRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{62}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SetUserRoleRequest) GetAccountId() string {
@@ -3730,7 +3919,7 @@ type SetUserRoleResponse struct {
 
 func (x *SetUserRoleResponse) Reset() {
 	*x = SetUserRoleResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[63]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3742,7 +3931,7 @@ func (x *SetUserRoleResponse) String() string {
 func (*SetUserRoleResponse) ProtoMessage() {}
 
 func (x *SetUserRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[63]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3755,7 +3944,7 @@ func (x *SetUserRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUserRoleResponse.ProtoReflect.Descriptor instead.
 func (*SetUserRoleResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{63}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{67}
 }
 
 type HasPermissionRequest struct {
@@ -3770,7 +3959,7 @@ type HasPermissionRequest struct {
 
 func (x *HasPermissionRequest) Reset() {
 	*x = HasPermissionRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[64]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3782,7 +3971,7 @@ func (x *HasPermissionRequest) String() string {
 func (*HasPermissionRequest) ProtoMessage() {}
 
 func (x *HasPermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[64]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3795,7 +3984,7 @@ func (x *HasPermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasPermissionRequest.ProtoReflect.Descriptor instead.
 func (*HasPermissionRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{64}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *HasPermissionRequest) GetAccountId() string {
@@ -3826,7 +4015,7 @@ type ResourcePermission struct {
 
 func (x *ResourcePermission) Reset() {
 	*x = ResourcePermission{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[65]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3838,7 +4027,7 @@ func (x *ResourcePermission) String() string {
 func (*ResourcePermission) ProtoMessage() {}
 
 func (x *ResourcePermission) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[65]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3851,7 +4040,7 @@ func (x *ResourcePermission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourcePermission.ProtoReflect.Descriptor instead.
 func (*ResourcePermission) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{65}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ResourcePermission) GetType() ResourcePermission_Type {
@@ -3885,7 +4074,7 @@ type HasPermissionResponse struct {
 
 func (x *HasPermissionResponse) Reset() {
 	*x = HasPermissionResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[66]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3897,7 +4086,7 @@ func (x *HasPermissionResponse) String() string {
 func (*HasPermissionResponse) ProtoMessage() {}
 
 func (x *HasPermissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[66]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3910,7 +4099,7 @@ func (x *HasPermissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasPermissionResponse.ProtoReflect.Descriptor instead.
 func (*HasPermissionResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{66}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *HasPermissionResponse) GetHasPermission() bool {
@@ -3932,7 +4121,7 @@ type HasPermissionsRequest struct {
 
 func (x *HasPermissionsRequest) Reset() {
 	*x = HasPermissionsRequest{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[67]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3944,7 +4133,7 @@ func (x *HasPermissionsRequest) String() string {
 func (*HasPermissionsRequest) ProtoMessage() {}
 
 func (x *HasPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[67]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3957,7 +4146,7 @@ func (x *HasPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*HasPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{67}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *HasPermissionsRequest) GetAccountId() string {
@@ -3984,7 +4173,7 @@ type HasPermissionsResponse struct {
 
 func (x *HasPermissionsResponse) Reset() {
 	*x = HasPermissionsResponse{}
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[68]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3996,7 +4185,7 @@ func (x *HasPermissionsResponse) String() string {
 func (*HasPermissionsResponse) ProtoMessage() {}
 
 func (x *HasPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[68]
+	mi := &file_mgmt_v1alpha1_user_account_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4009,7 +4198,7 @@ func (x *HasPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*HasPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{68}
+	return file_mgmt_v1alpha1_user_account_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *HasPermissionsResponse) GetAssertions() []bool {
@@ -4051,6 +4240,17 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x15_checkout_session_url\"\x1b\n" +
 	"\x19SetPersonalAccountRequest\";\n" +
 	"\x1aSetPersonalAccountResponse\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"\x16\n" +
+	"\x14EnterInstanceRequest\"6\n" +
+	"\x15EnterInstanceResponse\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"{\n" +
+	"\x1eSetInstanceOrganizationRequest\x12'\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x120\n" +
+	"\x04name\x18\x02 \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x142\x12^[a-z0-9-]{3,100}$R\x04name\"@\n" +
+	"\x1fSetInstanceOrganizationResponse\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"A\n" +
 	"\x16IsUserInAccountRequest\x12'\n" +
@@ -4132,7 +4332,7 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05token\"W\n" +
 	"\x1fAcceptTeamAccountInviteResponse\x124\n" +
 	"\aaccount\x18\x01 \x01(\v2\x1a.mgmt.v1alpha1.UserAccountR\aaccount\"\x1d\n" +
-	"\x1bGetSystemInformationRequest\"\xfb\x01\n" +
+	"\x1bGetSystemInformationRequest\"\xee\x02\n" +
 	"\x1cGetSystemInformationResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\tR\x06commit\x12\x1a\n" +
@@ -4140,7 +4340,9 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\bplatform\x18\x04 \x01(\tR\bplatform\x129\n" +
 	"\n" +
 	"build_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tbuildDate\x126\n" +
-	"\alicense\x18\x06 \x01(\v2\x1c.mgmt.v1alpha1.SystemLicenseR\alicense\"\xab\x04\n" +
+	"\alicense\x18\x06 \x01(\v2\x1c.mgmt.v1alpha1.SystemLicenseR\alicense\x12L\n" +
+	" instance_organization_account_id\x18\a \x01(\tH\x00R\x1dinstanceOrganizationAccountId\x88\x01\x01B#\n" +
+	"!_instance_organization_account_id\"\xab\x04\n" +
 	"\rSystemLicense\x12\x19\n" +
 	"\bis_valid\x18\x01 \x01(\bR\aisValid\x129\n" +
 	"\n" +
@@ -4308,14 +4510,18 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x12ACCOUNT_ROLE_ADMIN\x10\x01\x12\x1e\n" +
 	"\x1aACCOUNT_ROLE_JOB_DEVELOPER\x10\x02\x12\x1b\n" +
 	"\x17ACCOUNT_ROLE_JOB_VIEWER\x10\x03\x12\x1d\n" +
-	"\x19ACCOUNT_ROLE_JOB_EXECUTOR\x10\x042\xe3\x1c\n" +
+	"\x19ACCOUNT_ROLE_JOB_EXECUTOR\x10\x042\xcc\x1e\n" +
 	"\x12UserAccountService\x12S\n" +
 	"\aGetUser\x12\x1d.mgmt.v1alpha1.GetUserRequest\x1a\x1e.mgmt.v1alpha1.GetUserResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12Q\n" +
 	"\aSetUser\x12\x1d.mgmt.v1alpha1.SetUserRequest\x1a\x1e.mgmt.v1alpha1.SetUserResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\x02\x12k\n" +
 	"\x0fGetUserAccounts\x12%.mgmt.v1alpha1.GetUserAccountsRequest\x1a&.mgmt.v1alpha1.GetUserAccountsResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12r\n" +
 	"\x12SetPersonalAccount\x12(.mgmt.v1alpha1.SetPersonalAccountRequest\x1a).mgmt.v1alpha1.SetPersonalAccountResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x03\x12\x90\x01\n" +
+	"\x01\x03\x12c\n" +
+	"\rEnterInstance\x12#.mgmt.v1alpha1.EnterInstanceRequest\x1a$.mgmt.v1alpha1.EnterInstanceResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x03\x12\x81\x01\n" +
+	"\x17SetInstanceOrganization\x12-.mgmt.v1alpha1.SetInstanceOrganizationRequest\x1a..mgmt.v1alpha1.SetInstanceOrganizationResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12\x90\x01\n" +
 	"\x1cConvertPersonalToTeamAccount\x122.mgmt.v1alpha1.ConvertPersonalToTeamAccountRequest\x1a3.mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\x02\x12o\n" +
 	"\x11CreateTeamAccount\x12'.mgmt.v1alpha1.CreateTeamAccountRequest\x1a(.mgmt.v1alpha1.CreateTeamAccountResponse\"\a\x92\xb5\x18\x03\n" +
@@ -4390,7 +4596,7 @@ func file_mgmt_v1alpha1_user_account_proto_rawDescGZIP() []byte {
 }
 
 var file_mgmt_v1alpha1_user_account_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_mgmt_v1alpha1_user_account_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_mgmt_v1alpha1_user_account_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
 var file_mgmt_v1alpha1_user_account_proto_goTypes = []any{
 	(UserAccountType)(0),                             // 0: mgmt.v1alpha1.UserAccountType
 	(BillingStatus)(0),                               // 1: mgmt.v1alpha1.BillingStatus
@@ -4409,164 +4615,172 @@ var file_mgmt_v1alpha1_user_account_proto_goTypes = []any{
 	(*ConvertPersonalToTeamAccountResponse)(nil),     // 14: mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse
 	(*SetPersonalAccountRequest)(nil),                // 15: mgmt.v1alpha1.SetPersonalAccountRequest
 	(*SetPersonalAccountResponse)(nil),               // 16: mgmt.v1alpha1.SetPersonalAccountResponse
-	(*IsUserInAccountRequest)(nil),                   // 17: mgmt.v1alpha1.IsUserInAccountRequest
-	(*IsUserInAccountResponse)(nil),                  // 18: mgmt.v1alpha1.IsUserInAccountResponse
-	(*GetAccountTemporalConfigRequest)(nil),          // 19: mgmt.v1alpha1.GetAccountTemporalConfigRequest
-	(*GetAccountTemporalConfigResponse)(nil),         // 20: mgmt.v1alpha1.GetAccountTemporalConfigResponse
-	(*SetAccountTemporalConfigRequest)(nil),          // 21: mgmt.v1alpha1.SetAccountTemporalConfigRequest
-	(*SetAccountTemporalConfigResponse)(nil),         // 22: mgmt.v1alpha1.SetAccountTemporalConfigResponse
-	(*AccountTemporalConfig)(nil),                    // 23: mgmt.v1alpha1.AccountTemporalConfig
-	(*CreateTeamAccountRequest)(nil),                 // 24: mgmt.v1alpha1.CreateTeamAccountRequest
-	(*CreateTeamAccountResponse)(nil),                // 25: mgmt.v1alpha1.CreateTeamAccountResponse
-	(*AccountUser)(nil),                              // 26: mgmt.v1alpha1.AccountUser
-	(*GetTeamAccountMembersRequest)(nil),             // 27: mgmt.v1alpha1.GetTeamAccountMembersRequest
-	(*GetTeamAccountMembersResponse)(nil),            // 28: mgmt.v1alpha1.GetTeamAccountMembersResponse
-	(*RemoveTeamAccountMemberRequest)(nil),           // 29: mgmt.v1alpha1.RemoveTeamAccountMemberRequest
-	(*RemoveTeamAccountMemberResponse)(nil),          // 30: mgmt.v1alpha1.RemoveTeamAccountMemberResponse
-	(*InviteUserToTeamAccountRequest)(nil),           // 31: mgmt.v1alpha1.InviteUserToTeamAccountRequest
-	(*AccountInvite)(nil),                            // 32: mgmt.v1alpha1.AccountInvite
-	(*InviteUserToTeamAccountResponse)(nil),          // 33: mgmt.v1alpha1.InviteUserToTeamAccountResponse
-	(*GetTeamAccountInvitesRequest)(nil),             // 34: mgmt.v1alpha1.GetTeamAccountInvitesRequest
-	(*GetTeamAccountInvitesResponse)(nil),            // 35: mgmt.v1alpha1.GetTeamAccountInvitesResponse
-	(*RemoveTeamAccountInviteRequest)(nil),           // 36: mgmt.v1alpha1.RemoveTeamAccountInviteRequest
-	(*RemoveTeamAccountInviteResponse)(nil),          // 37: mgmt.v1alpha1.RemoveTeamAccountInviteResponse
-	(*AcceptTeamAccountInviteRequest)(nil),           // 38: mgmt.v1alpha1.AcceptTeamAccountInviteRequest
-	(*AcceptTeamAccountInviteResponse)(nil),          // 39: mgmt.v1alpha1.AcceptTeamAccountInviteResponse
-	(*GetSystemInformationRequest)(nil),              // 40: mgmt.v1alpha1.GetSystemInformationRequest
-	(*GetSystemInformationResponse)(nil),             // 41: mgmt.v1alpha1.GetSystemInformationResponse
-	(*SystemLicense)(nil),                            // 42: mgmt.v1alpha1.SystemLicense
-	(*LicenseLimits)(nil),                            // 43: mgmt.v1alpha1.LicenseLimits
-	(*SetSystemLicenseRequest)(nil),                  // 44: mgmt.v1alpha1.SetSystemLicenseRequest
-	(*SetSystemLicenseResponse)(nil),                 // 45: mgmt.v1alpha1.SetSystemLicenseResponse
-	(*GetSystemLicenseKeyRequest)(nil),               // 46: mgmt.v1alpha1.GetSystemLicenseKeyRequest
-	(*GetSystemLicenseKeyResponse)(nil),              // 47: mgmt.v1alpha1.GetSystemLicenseKeyResponse
-	(*GetLicenseUsageRequest)(nil),                   // 48: mgmt.v1alpha1.GetLicenseUsageRequest
-	(*GetLicenseUsageResponse)(nil),                  // 49: mgmt.v1alpha1.GetLicenseUsageResponse
-	(*LicenseSource)(nil),                            // 50: mgmt.v1alpha1.LicenseSource
-	(*GetAccountOnboardingConfigRequest)(nil),        // 51: mgmt.v1alpha1.GetAccountOnboardingConfigRequest
-	(*GetAccountOnboardingConfigResponse)(nil),       // 52: mgmt.v1alpha1.GetAccountOnboardingConfigResponse
-	(*SetAccountOnboardingConfigRequest)(nil),        // 53: mgmt.v1alpha1.SetAccountOnboardingConfigRequest
-	(*SetAccountOnboardingConfigResponse)(nil),       // 54: mgmt.v1alpha1.SetAccountOnboardingConfigResponse
-	(*AccountOnboardingConfig)(nil),                  // 55: mgmt.v1alpha1.AccountOnboardingConfig
-	(*GetAccountStatusRequest)(nil),                  // 56: mgmt.v1alpha1.GetAccountStatusRequest
-	(*GetAccountStatusResponse)(nil),                 // 57: mgmt.v1alpha1.GetAccountStatusResponse
-	(*IsAccountStatusValidRequest)(nil),              // 58: mgmt.v1alpha1.IsAccountStatusValidRequest
-	(*IsAccountStatusValidResponse)(nil),             // 59: mgmt.v1alpha1.IsAccountStatusValidResponse
-	(*GetAccountBillingCheckoutSessionRequest)(nil),  // 60: mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest
-	(*GetAccountBillingCheckoutSessionResponse)(nil), // 61: mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse
-	(*GetAccountBillingPortalSessionRequest)(nil),    // 62: mgmt.v1alpha1.GetAccountBillingPortalSessionRequest
-	(*GetAccountBillingPortalSessionResponse)(nil),   // 63: mgmt.v1alpha1.GetAccountBillingPortalSessionResponse
-	(*GetBillingAccountsRequest)(nil),                // 64: mgmt.v1alpha1.GetBillingAccountsRequest
-	(*GetBillingAccountsResponse)(nil),               // 65: mgmt.v1alpha1.GetBillingAccountsResponse
-	(*SetBillingMeterEventRequest)(nil),              // 66: mgmt.v1alpha1.SetBillingMeterEventRequest
-	(*SetBillingMeterEventResponse)(nil),             // 67: mgmt.v1alpha1.SetBillingMeterEventResponse
-	(*SetUserRoleRequest)(nil),                       // 68: mgmt.v1alpha1.SetUserRoleRequest
-	(*SetUserRoleResponse)(nil),                      // 69: mgmt.v1alpha1.SetUserRoleResponse
-	(*HasPermissionRequest)(nil),                     // 70: mgmt.v1alpha1.HasPermissionRequest
-	(*ResourcePermission)(nil),                       // 71: mgmt.v1alpha1.ResourcePermission
-	(*HasPermissionResponse)(nil),                    // 72: mgmt.v1alpha1.HasPermissionResponse
-	(*HasPermissionsRequest)(nil),                    // 73: mgmt.v1alpha1.HasPermissionsRequest
-	(*HasPermissionsResponse)(nil),                   // 74: mgmt.v1alpha1.HasPermissionsResponse
-	(*timestamppb.Timestamp)(nil),                    // 75: google.protobuf.Timestamp
+	(*EnterInstanceRequest)(nil),                     // 17: mgmt.v1alpha1.EnterInstanceRequest
+	(*EnterInstanceResponse)(nil),                    // 18: mgmt.v1alpha1.EnterInstanceResponse
+	(*SetInstanceOrganizationRequest)(nil),           // 19: mgmt.v1alpha1.SetInstanceOrganizationRequest
+	(*SetInstanceOrganizationResponse)(nil),          // 20: mgmt.v1alpha1.SetInstanceOrganizationResponse
+	(*IsUserInAccountRequest)(nil),                   // 21: mgmt.v1alpha1.IsUserInAccountRequest
+	(*IsUserInAccountResponse)(nil),                  // 22: mgmt.v1alpha1.IsUserInAccountResponse
+	(*GetAccountTemporalConfigRequest)(nil),          // 23: mgmt.v1alpha1.GetAccountTemporalConfigRequest
+	(*GetAccountTemporalConfigResponse)(nil),         // 24: mgmt.v1alpha1.GetAccountTemporalConfigResponse
+	(*SetAccountTemporalConfigRequest)(nil),          // 25: mgmt.v1alpha1.SetAccountTemporalConfigRequest
+	(*SetAccountTemporalConfigResponse)(nil),         // 26: mgmt.v1alpha1.SetAccountTemporalConfigResponse
+	(*AccountTemporalConfig)(nil),                    // 27: mgmt.v1alpha1.AccountTemporalConfig
+	(*CreateTeamAccountRequest)(nil),                 // 28: mgmt.v1alpha1.CreateTeamAccountRequest
+	(*CreateTeamAccountResponse)(nil),                // 29: mgmt.v1alpha1.CreateTeamAccountResponse
+	(*AccountUser)(nil),                              // 30: mgmt.v1alpha1.AccountUser
+	(*GetTeamAccountMembersRequest)(nil),             // 31: mgmt.v1alpha1.GetTeamAccountMembersRequest
+	(*GetTeamAccountMembersResponse)(nil),            // 32: mgmt.v1alpha1.GetTeamAccountMembersResponse
+	(*RemoveTeamAccountMemberRequest)(nil),           // 33: mgmt.v1alpha1.RemoveTeamAccountMemberRequest
+	(*RemoveTeamAccountMemberResponse)(nil),          // 34: mgmt.v1alpha1.RemoveTeamAccountMemberResponse
+	(*InviteUserToTeamAccountRequest)(nil),           // 35: mgmt.v1alpha1.InviteUserToTeamAccountRequest
+	(*AccountInvite)(nil),                            // 36: mgmt.v1alpha1.AccountInvite
+	(*InviteUserToTeamAccountResponse)(nil),          // 37: mgmt.v1alpha1.InviteUserToTeamAccountResponse
+	(*GetTeamAccountInvitesRequest)(nil),             // 38: mgmt.v1alpha1.GetTeamAccountInvitesRequest
+	(*GetTeamAccountInvitesResponse)(nil),            // 39: mgmt.v1alpha1.GetTeamAccountInvitesResponse
+	(*RemoveTeamAccountInviteRequest)(nil),           // 40: mgmt.v1alpha1.RemoveTeamAccountInviteRequest
+	(*RemoveTeamAccountInviteResponse)(nil),          // 41: mgmt.v1alpha1.RemoveTeamAccountInviteResponse
+	(*AcceptTeamAccountInviteRequest)(nil),           // 42: mgmt.v1alpha1.AcceptTeamAccountInviteRequest
+	(*AcceptTeamAccountInviteResponse)(nil),          // 43: mgmt.v1alpha1.AcceptTeamAccountInviteResponse
+	(*GetSystemInformationRequest)(nil),              // 44: mgmt.v1alpha1.GetSystemInformationRequest
+	(*GetSystemInformationResponse)(nil),             // 45: mgmt.v1alpha1.GetSystemInformationResponse
+	(*SystemLicense)(nil),                            // 46: mgmt.v1alpha1.SystemLicense
+	(*LicenseLimits)(nil),                            // 47: mgmt.v1alpha1.LicenseLimits
+	(*SetSystemLicenseRequest)(nil),                  // 48: mgmt.v1alpha1.SetSystemLicenseRequest
+	(*SetSystemLicenseResponse)(nil),                 // 49: mgmt.v1alpha1.SetSystemLicenseResponse
+	(*GetSystemLicenseKeyRequest)(nil),               // 50: mgmt.v1alpha1.GetSystemLicenseKeyRequest
+	(*GetSystemLicenseKeyResponse)(nil),              // 51: mgmt.v1alpha1.GetSystemLicenseKeyResponse
+	(*GetLicenseUsageRequest)(nil),                   // 52: mgmt.v1alpha1.GetLicenseUsageRequest
+	(*GetLicenseUsageResponse)(nil),                  // 53: mgmt.v1alpha1.GetLicenseUsageResponse
+	(*LicenseSource)(nil),                            // 54: mgmt.v1alpha1.LicenseSource
+	(*GetAccountOnboardingConfigRequest)(nil),        // 55: mgmt.v1alpha1.GetAccountOnboardingConfigRequest
+	(*GetAccountOnboardingConfigResponse)(nil),       // 56: mgmt.v1alpha1.GetAccountOnboardingConfigResponse
+	(*SetAccountOnboardingConfigRequest)(nil),        // 57: mgmt.v1alpha1.SetAccountOnboardingConfigRequest
+	(*SetAccountOnboardingConfigResponse)(nil),       // 58: mgmt.v1alpha1.SetAccountOnboardingConfigResponse
+	(*AccountOnboardingConfig)(nil),                  // 59: mgmt.v1alpha1.AccountOnboardingConfig
+	(*GetAccountStatusRequest)(nil),                  // 60: mgmt.v1alpha1.GetAccountStatusRequest
+	(*GetAccountStatusResponse)(nil),                 // 61: mgmt.v1alpha1.GetAccountStatusResponse
+	(*IsAccountStatusValidRequest)(nil),              // 62: mgmt.v1alpha1.IsAccountStatusValidRequest
+	(*IsAccountStatusValidResponse)(nil),             // 63: mgmt.v1alpha1.IsAccountStatusValidResponse
+	(*GetAccountBillingCheckoutSessionRequest)(nil),  // 64: mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest
+	(*GetAccountBillingCheckoutSessionResponse)(nil), // 65: mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse
+	(*GetAccountBillingPortalSessionRequest)(nil),    // 66: mgmt.v1alpha1.GetAccountBillingPortalSessionRequest
+	(*GetAccountBillingPortalSessionResponse)(nil),   // 67: mgmt.v1alpha1.GetAccountBillingPortalSessionResponse
+	(*GetBillingAccountsRequest)(nil),                // 68: mgmt.v1alpha1.GetBillingAccountsRequest
+	(*GetBillingAccountsResponse)(nil),               // 69: mgmt.v1alpha1.GetBillingAccountsResponse
+	(*SetBillingMeterEventRequest)(nil),              // 70: mgmt.v1alpha1.SetBillingMeterEventRequest
+	(*SetBillingMeterEventResponse)(nil),             // 71: mgmt.v1alpha1.SetBillingMeterEventResponse
+	(*SetUserRoleRequest)(nil),                       // 72: mgmt.v1alpha1.SetUserRoleRequest
+	(*SetUserRoleResponse)(nil),                      // 73: mgmt.v1alpha1.SetUserRoleResponse
+	(*HasPermissionRequest)(nil),                     // 74: mgmt.v1alpha1.HasPermissionRequest
+	(*ResourcePermission)(nil),                       // 75: mgmt.v1alpha1.ResourcePermission
+	(*HasPermissionResponse)(nil),                    // 76: mgmt.v1alpha1.HasPermissionResponse
+	(*HasPermissionsRequest)(nil),                    // 77: mgmt.v1alpha1.HasPermissionsRequest
+	(*HasPermissionsResponse)(nil),                   // 78: mgmt.v1alpha1.HasPermissionsResponse
+	(*timestamppb.Timestamp)(nil),                    // 79: google.protobuf.Timestamp
 }
 var file_mgmt_v1alpha1_user_account_proto_depIdxs = []int32{
 	12, // 0: mgmt.v1alpha1.GetUserAccountsResponse.accounts:type_name -> mgmt.v1alpha1.UserAccount
 	0,  // 1: mgmt.v1alpha1.UserAccount.type:type_name -> mgmt.v1alpha1.UserAccountType
-	23, // 2: mgmt.v1alpha1.GetAccountTemporalConfigResponse.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
-	23, // 3: mgmt.v1alpha1.SetAccountTemporalConfigRequest.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
-	23, // 4: mgmt.v1alpha1.SetAccountTemporalConfigResponse.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
+	27, // 2: mgmt.v1alpha1.GetAccountTemporalConfigResponse.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
+	27, // 3: mgmt.v1alpha1.SetAccountTemporalConfigRequest.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
+	27, // 4: mgmt.v1alpha1.SetAccountTemporalConfigResponse.config:type_name -> mgmt.v1alpha1.AccountTemporalConfig
 	3,  // 5: mgmt.v1alpha1.AccountUser.role:type_name -> mgmt.v1alpha1.AccountRole
-	26, // 6: mgmt.v1alpha1.GetTeamAccountMembersResponse.users:type_name -> mgmt.v1alpha1.AccountUser
+	30, // 6: mgmt.v1alpha1.GetTeamAccountMembersResponse.users:type_name -> mgmt.v1alpha1.AccountUser
 	3,  // 7: mgmt.v1alpha1.InviteUserToTeamAccountRequest.role:type_name -> mgmt.v1alpha1.AccountRole
-	75, // 8: mgmt.v1alpha1.AccountInvite.created_at:type_name -> google.protobuf.Timestamp
-	75, // 9: mgmt.v1alpha1.AccountInvite.updated_at:type_name -> google.protobuf.Timestamp
-	75, // 10: mgmt.v1alpha1.AccountInvite.expires_at:type_name -> google.protobuf.Timestamp
+	79, // 8: mgmt.v1alpha1.AccountInvite.created_at:type_name -> google.protobuf.Timestamp
+	79, // 9: mgmt.v1alpha1.AccountInvite.updated_at:type_name -> google.protobuf.Timestamp
+	79, // 10: mgmt.v1alpha1.AccountInvite.expires_at:type_name -> google.protobuf.Timestamp
 	3,  // 11: mgmt.v1alpha1.AccountInvite.role:type_name -> mgmt.v1alpha1.AccountRole
-	32, // 12: mgmt.v1alpha1.InviteUserToTeamAccountResponse.invite:type_name -> mgmt.v1alpha1.AccountInvite
-	32, // 13: mgmt.v1alpha1.GetTeamAccountInvitesResponse.invites:type_name -> mgmt.v1alpha1.AccountInvite
+	36, // 12: mgmt.v1alpha1.InviteUserToTeamAccountResponse.invite:type_name -> mgmt.v1alpha1.AccountInvite
+	36, // 13: mgmt.v1alpha1.GetTeamAccountInvitesResponse.invites:type_name -> mgmt.v1alpha1.AccountInvite
 	12, // 14: mgmt.v1alpha1.AcceptTeamAccountInviteResponse.account:type_name -> mgmt.v1alpha1.UserAccount
-	75, // 15: mgmt.v1alpha1.GetSystemInformationResponse.build_date:type_name -> google.protobuf.Timestamp
-	42, // 16: mgmt.v1alpha1.GetSystemInformationResponse.license:type_name -> mgmt.v1alpha1.SystemLicense
-	75, // 17: mgmt.v1alpha1.SystemLicense.expires_at:type_name -> google.protobuf.Timestamp
-	43, // 18: mgmt.v1alpha1.SystemLicense.limits:type_name -> mgmt.v1alpha1.LicenseLimits
-	75, // 19: mgmt.v1alpha1.SystemLicense.installed_at:type_name -> google.protobuf.Timestamp
-	75, // 20: mgmt.v1alpha1.SystemLicense.grace_ends_at:type_name -> google.protobuf.Timestamp
-	42, // 21: mgmt.v1alpha1.SetSystemLicenseResponse.license:type_name -> mgmt.v1alpha1.SystemLicense
-	50, // 22: mgmt.v1alpha1.GetLicenseUsageResponse.sources_in_account:type_name -> mgmt.v1alpha1.LicenseSource
-	55, // 23: mgmt.v1alpha1.GetAccountOnboardingConfigResponse.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
-	55, // 24: mgmt.v1alpha1.SetAccountOnboardingConfigRequest.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
-	55, // 25: mgmt.v1alpha1.SetAccountOnboardingConfigResponse.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
+	79, // 15: mgmt.v1alpha1.GetSystemInformationResponse.build_date:type_name -> google.protobuf.Timestamp
+	46, // 16: mgmt.v1alpha1.GetSystemInformationResponse.license:type_name -> mgmt.v1alpha1.SystemLicense
+	79, // 17: mgmt.v1alpha1.SystemLicense.expires_at:type_name -> google.protobuf.Timestamp
+	47, // 18: mgmt.v1alpha1.SystemLicense.limits:type_name -> mgmt.v1alpha1.LicenseLimits
+	79, // 19: mgmt.v1alpha1.SystemLicense.installed_at:type_name -> google.protobuf.Timestamp
+	79, // 20: mgmt.v1alpha1.SystemLicense.grace_ends_at:type_name -> google.protobuf.Timestamp
+	46, // 21: mgmt.v1alpha1.SetSystemLicenseResponse.license:type_name -> mgmt.v1alpha1.SystemLicense
+	54, // 22: mgmt.v1alpha1.GetLicenseUsageResponse.sources_in_account:type_name -> mgmt.v1alpha1.LicenseSource
+	59, // 23: mgmt.v1alpha1.GetAccountOnboardingConfigResponse.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
+	59, // 24: mgmt.v1alpha1.SetAccountOnboardingConfigRequest.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
+	59, // 25: mgmt.v1alpha1.SetAccountOnboardingConfigResponse.config:type_name -> mgmt.v1alpha1.AccountOnboardingConfig
 	1,  // 26: mgmt.v1alpha1.GetAccountStatusResponse.subscription_status:type_name -> mgmt.v1alpha1.BillingStatus
 	2,  // 27: mgmt.v1alpha1.IsAccountStatusValidResponse.account_status:type_name -> mgmt.v1alpha1.AccountStatus
-	75, // 28: mgmt.v1alpha1.IsAccountStatusValidResponse.trial_expires_at:type_name -> google.protobuf.Timestamp
+	79, // 28: mgmt.v1alpha1.IsAccountStatusValidResponse.trial_expires_at:type_name -> google.protobuf.Timestamp
 	12, // 29: mgmt.v1alpha1.GetBillingAccountsResponse.accounts:type_name -> mgmt.v1alpha1.UserAccount
 	3,  // 30: mgmt.v1alpha1.SetUserRoleRequest.role:type_name -> mgmt.v1alpha1.AccountRole
-	71, // 31: mgmt.v1alpha1.HasPermissionRequest.resource:type_name -> mgmt.v1alpha1.ResourcePermission
+	75, // 31: mgmt.v1alpha1.HasPermissionRequest.resource:type_name -> mgmt.v1alpha1.ResourcePermission
 	4,  // 32: mgmt.v1alpha1.ResourcePermission.type:type_name -> mgmt.v1alpha1.ResourcePermission.Type
 	5,  // 33: mgmt.v1alpha1.ResourcePermission.action:type_name -> mgmt.v1alpha1.ResourcePermission.Action
-	71, // 34: mgmt.v1alpha1.HasPermissionsRequest.resources:type_name -> mgmt.v1alpha1.ResourcePermission
+	75, // 34: mgmt.v1alpha1.HasPermissionsRequest.resources:type_name -> mgmt.v1alpha1.ResourcePermission
 	6,  // 35: mgmt.v1alpha1.UserAccountService.GetUser:input_type -> mgmt.v1alpha1.GetUserRequest
 	8,  // 36: mgmt.v1alpha1.UserAccountService.SetUser:input_type -> mgmt.v1alpha1.SetUserRequest
 	10, // 37: mgmt.v1alpha1.UserAccountService.GetUserAccounts:input_type -> mgmt.v1alpha1.GetUserAccountsRequest
 	15, // 38: mgmt.v1alpha1.UserAccountService.SetPersonalAccount:input_type -> mgmt.v1alpha1.SetPersonalAccountRequest
-	13, // 39: mgmt.v1alpha1.UserAccountService.ConvertPersonalToTeamAccount:input_type -> mgmt.v1alpha1.ConvertPersonalToTeamAccountRequest
-	24, // 40: mgmt.v1alpha1.UserAccountService.CreateTeamAccount:input_type -> mgmt.v1alpha1.CreateTeamAccountRequest
-	17, // 41: mgmt.v1alpha1.UserAccountService.IsUserInAccount:input_type -> mgmt.v1alpha1.IsUserInAccountRequest
-	19, // 42: mgmt.v1alpha1.UserAccountService.GetAccountTemporalConfig:input_type -> mgmt.v1alpha1.GetAccountTemporalConfigRequest
-	21, // 43: mgmt.v1alpha1.UserAccountService.SetAccountTemporalConfig:input_type -> mgmt.v1alpha1.SetAccountTemporalConfigRequest
-	27, // 44: mgmt.v1alpha1.UserAccountService.GetTeamAccountMembers:input_type -> mgmt.v1alpha1.GetTeamAccountMembersRequest
-	29, // 45: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountMember:input_type -> mgmt.v1alpha1.RemoveTeamAccountMemberRequest
-	31, // 46: mgmt.v1alpha1.UserAccountService.InviteUserToTeamAccount:input_type -> mgmt.v1alpha1.InviteUserToTeamAccountRequest
-	34, // 47: mgmt.v1alpha1.UserAccountService.GetTeamAccountInvites:input_type -> mgmt.v1alpha1.GetTeamAccountInvitesRequest
-	36, // 48: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountInvite:input_type -> mgmt.v1alpha1.RemoveTeamAccountInviteRequest
-	38, // 49: mgmt.v1alpha1.UserAccountService.AcceptTeamAccountInvite:input_type -> mgmt.v1alpha1.AcceptTeamAccountInviteRequest
-	40, // 50: mgmt.v1alpha1.UserAccountService.GetSystemInformation:input_type -> mgmt.v1alpha1.GetSystemInformationRequest
-	44, // 51: mgmt.v1alpha1.UserAccountService.SetSystemLicense:input_type -> mgmt.v1alpha1.SetSystemLicenseRequest
-	46, // 52: mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey:input_type -> mgmt.v1alpha1.GetSystemLicenseKeyRequest
-	48, // 53: mgmt.v1alpha1.UserAccountService.GetLicenseUsage:input_type -> mgmt.v1alpha1.GetLicenseUsageRequest
-	51, // 54: mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig:input_type -> mgmt.v1alpha1.GetAccountOnboardingConfigRequest
-	53, // 55: mgmt.v1alpha1.UserAccountService.SetAccountOnboardingConfig:input_type -> mgmt.v1alpha1.SetAccountOnboardingConfigRequest
-	56, // 56: mgmt.v1alpha1.UserAccountService.GetAccountStatus:input_type -> mgmt.v1alpha1.GetAccountStatusRequest
-	58, // 57: mgmt.v1alpha1.UserAccountService.IsAccountStatusValid:input_type -> mgmt.v1alpha1.IsAccountStatusValidRequest
-	60, // 58: mgmt.v1alpha1.UserAccountService.GetAccountBillingCheckoutSession:input_type -> mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest
-	62, // 59: mgmt.v1alpha1.UserAccountService.GetAccountBillingPortalSession:input_type -> mgmt.v1alpha1.GetAccountBillingPortalSessionRequest
-	64, // 60: mgmt.v1alpha1.UserAccountService.GetBillingAccounts:input_type -> mgmt.v1alpha1.GetBillingAccountsRequest
-	66, // 61: mgmt.v1alpha1.UserAccountService.SetBillingMeterEvent:input_type -> mgmt.v1alpha1.SetBillingMeterEventRequest
-	68, // 62: mgmt.v1alpha1.UserAccountService.SetUserRole:input_type -> mgmt.v1alpha1.SetUserRoleRequest
-	70, // 63: mgmt.v1alpha1.UserAccountService.HasPermission:input_type -> mgmt.v1alpha1.HasPermissionRequest
-	73, // 64: mgmt.v1alpha1.UserAccountService.HasPermissions:input_type -> mgmt.v1alpha1.HasPermissionsRequest
-	7,  // 65: mgmt.v1alpha1.UserAccountService.GetUser:output_type -> mgmt.v1alpha1.GetUserResponse
-	9,  // 66: mgmt.v1alpha1.UserAccountService.SetUser:output_type -> mgmt.v1alpha1.SetUserResponse
-	11, // 67: mgmt.v1alpha1.UserAccountService.GetUserAccounts:output_type -> mgmt.v1alpha1.GetUserAccountsResponse
-	16, // 68: mgmt.v1alpha1.UserAccountService.SetPersonalAccount:output_type -> mgmt.v1alpha1.SetPersonalAccountResponse
-	14, // 69: mgmt.v1alpha1.UserAccountService.ConvertPersonalToTeamAccount:output_type -> mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse
-	25, // 70: mgmt.v1alpha1.UserAccountService.CreateTeamAccount:output_type -> mgmt.v1alpha1.CreateTeamAccountResponse
-	18, // 71: mgmt.v1alpha1.UserAccountService.IsUserInAccount:output_type -> mgmt.v1alpha1.IsUserInAccountResponse
-	20, // 72: mgmt.v1alpha1.UserAccountService.GetAccountTemporalConfig:output_type -> mgmt.v1alpha1.GetAccountTemporalConfigResponse
-	22, // 73: mgmt.v1alpha1.UserAccountService.SetAccountTemporalConfig:output_type -> mgmt.v1alpha1.SetAccountTemporalConfigResponse
-	28, // 74: mgmt.v1alpha1.UserAccountService.GetTeamAccountMembers:output_type -> mgmt.v1alpha1.GetTeamAccountMembersResponse
-	30, // 75: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountMember:output_type -> mgmt.v1alpha1.RemoveTeamAccountMemberResponse
-	33, // 76: mgmt.v1alpha1.UserAccountService.InviteUserToTeamAccount:output_type -> mgmt.v1alpha1.InviteUserToTeamAccountResponse
-	35, // 77: mgmt.v1alpha1.UserAccountService.GetTeamAccountInvites:output_type -> mgmt.v1alpha1.GetTeamAccountInvitesResponse
-	37, // 78: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountInvite:output_type -> mgmt.v1alpha1.RemoveTeamAccountInviteResponse
-	39, // 79: mgmt.v1alpha1.UserAccountService.AcceptTeamAccountInvite:output_type -> mgmt.v1alpha1.AcceptTeamAccountInviteResponse
-	41, // 80: mgmt.v1alpha1.UserAccountService.GetSystemInformation:output_type -> mgmt.v1alpha1.GetSystemInformationResponse
-	45, // 81: mgmt.v1alpha1.UserAccountService.SetSystemLicense:output_type -> mgmt.v1alpha1.SetSystemLicenseResponse
-	47, // 82: mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey:output_type -> mgmt.v1alpha1.GetSystemLicenseKeyResponse
-	49, // 83: mgmt.v1alpha1.UserAccountService.GetLicenseUsage:output_type -> mgmt.v1alpha1.GetLicenseUsageResponse
-	52, // 84: mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig:output_type -> mgmt.v1alpha1.GetAccountOnboardingConfigResponse
-	54, // 85: mgmt.v1alpha1.UserAccountService.SetAccountOnboardingConfig:output_type -> mgmt.v1alpha1.SetAccountOnboardingConfigResponse
-	57, // 86: mgmt.v1alpha1.UserAccountService.GetAccountStatus:output_type -> mgmt.v1alpha1.GetAccountStatusResponse
-	59, // 87: mgmt.v1alpha1.UserAccountService.IsAccountStatusValid:output_type -> mgmt.v1alpha1.IsAccountStatusValidResponse
-	61, // 88: mgmt.v1alpha1.UserAccountService.GetAccountBillingCheckoutSession:output_type -> mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse
-	63, // 89: mgmt.v1alpha1.UserAccountService.GetAccountBillingPortalSession:output_type -> mgmt.v1alpha1.GetAccountBillingPortalSessionResponse
-	65, // 90: mgmt.v1alpha1.UserAccountService.GetBillingAccounts:output_type -> mgmt.v1alpha1.GetBillingAccountsResponse
-	67, // 91: mgmt.v1alpha1.UserAccountService.SetBillingMeterEvent:output_type -> mgmt.v1alpha1.SetBillingMeterEventResponse
-	69, // 92: mgmt.v1alpha1.UserAccountService.SetUserRole:output_type -> mgmt.v1alpha1.SetUserRoleResponse
-	72, // 93: mgmt.v1alpha1.UserAccountService.HasPermission:output_type -> mgmt.v1alpha1.HasPermissionResponse
-	74, // 94: mgmt.v1alpha1.UserAccountService.HasPermissions:output_type -> mgmt.v1alpha1.HasPermissionsResponse
-	65, // [65:95] is the sub-list for method output_type
-	35, // [35:65] is the sub-list for method input_type
+	17, // 39: mgmt.v1alpha1.UserAccountService.EnterInstance:input_type -> mgmt.v1alpha1.EnterInstanceRequest
+	19, // 40: mgmt.v1alpha1.UserAccountService.SetInstanceOrganization:input_type -> mgmt.v1alpha1.SetInstanceOrganizationRequest
+	13, // 41: mgmt.v1alpha1.UserAccountService.ConvertPersonalToTeamAccount:input_type -> mgmt.v1alpha1.ConvertPersonalToTeamAccountRequest
+	28, // 42: mgmt.v1alpha1.UserAccountService.CreateTeamAccount:input_type -> mgmt.v1alpha1.CreateTeamAccountRequest
+	21, // 43: mgmt.v1alpha1.UserAccountService.IsUserInAccount:input_type -> mgmt.v1alpha1.IsUserInAccountRequest
+	23, // 44: mgmt.v1alpha1.UserAccountService.GetAccountTemporalConfig:input_type -> mgmt.v1alpha1.GetAccountTemporalConfigRequest
+	25, // 45: mgmt.v1alpha1.UserAccountService.SetAccountTemporalConfig:input_type -> mgmt.v1alpha1.SetAccountTemporalConfigRequest
+	31, // 46: mgmt.v1alpha1.UserAccountService.GetTeamAccountMembers:input_type -> mgmt.v1alpha1.GetTeamAccountMembersRequest
+	33, // 47: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountMember:input_type -> mgmt.v1alpha1.RemoveTeamAccountMemberRequest
+	35, // 48: mgmt.v1alpha1.UserAccountService.InviteUserToTeamAccount:input_type -> mgmt.v1alpha1.InviteUserToTeamAccountRequest
+	38, // 49: mgmt.v1alpha1.UserAccountService.GetTeamAccountInvites:input_type -> mgmt.v1alpha1.GetTeamAccountInvitesRequest
+	40, // 50: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountInvite:input_type -> mgmt.v1alpha1.RemoveTeamAccountInviteRequest
+	42, // 51: mgmt.v1alpha1.UserAccountService.AcceptTeamAccountInvite:input_type -> mgmt.v1alpha1.AcceptTeamAccountInviteRequest
+	44, // 52: mgmt.v1alpha1.UserAccountService.GetSystemInformation:input_type -> mgmt.v1alpha1.GetSystemInformationRequest
+	48, // 53: mgmt.v1alpha1.UserAccountService.SetSystemLicense:input_type -> mgmt.v1alpha1.SetSystemLicenseRequest
+	50, // 54: mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey:input_type -> mgmt.v1alpha1.GetSystemLicenseKeyRequest
+	52, // 55: mgmt.v1alpha1.UserAccountService.GetLicenseUsage:input_type -> mgmt.v1alpha1.GetLicenseUsageRequest
+	55, // 56: mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig:input_type -> mgmt.v1alpha1.GetAccountOnboardingConfigRequest
+	57, // 57: mgmt.v1alpha1.UserAccountService.SetAccountOnboardingConfig:input_type -> mgmt.v1alpha1.SetAccountOnboardingConfigRequest
+	60, // 58: mgmt.v1alpha1.UserAccountService.GetAccountStatus:input_type -> mgmt.v1alpha1.GetAccountStatusRequest
+	62, // 59: mgmt.v1alpha1.UserAccountService.IsAccountStatusValid:input_type -> mgmt.v1alpha1.IsAccountStatusValidRequest
+	64, // 60: mgmt.v1alpha1.UserAccountService.GetAccountBillingCheckoutSession:input_type -> mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest
+	66, // 61: mgmt.v1alpha1.UserAccountService.GetAccountBillingPortalSession:input_type -> mgmt.v1alpha1.GetAccountBillingPortalSessionRequest
+	68, // 62: mgmt.v1alpha1.UserAccountService.GetBillingAccounts:input_type -> mgmt.v1alpha1.GetBillingAccountsRequest
+	70, // 63: mgmt.v1alpha1.UserAccountService.SetBillingMeterEvent:input_type -> mgmt.v1alpha1.SetBillingMeterEventRequest
+	72, // 64: mgmt.v1alpha1.UserAccountService.SetUserRole:input_type -> mgmt.v1alpha1.SetUserRoleRequest
+	74, // 65: mgmt.v1alpha1.UserAccountService.HasPermission:input_type -> mgmt.v1alpha1.HasPermissionRequest
+	77, // 66: mgmt.v1alpha1.UserAccountService.HasPermissions:input_type -> mgmt.v1alpha1.HasPermissionsRequest
+	7,  // 67: mgmt.v1alpha1.UserAccountService.GetUser:output_type -> mgmt.v1alpha1.GetUserResponse
+	9,  // 68: mgmt.v1alpha1.UserAccountService.SetUser:output_type -> mgmt.v1alpha1.SetUserResponse
+	11, // 69: mgmt.v1alpha1.UserAccountService.GetUserAccounts:output_type -> mgmt.v1alpha1.GetUserAccountsResponse
+	16, // 70: mgmt.v1alpha1.UserAccountService.SetPersonalAccount:output_type -> mgmt.v1alpha1.SetPersonalAccountResponse
+	18, // 71: mgmt.v1alpha1.UserAccountService.EnterInstance:output_type -> mgmt.v1alpha1.EnterInstanceResponse
+	20, // 72: mgmt.v1alpha1.UserAccountService.SetInstanceOrganization:output_type -> mgmt.v1alpha1.SetInstanceOrganizationResponse
+	14, // 73: mgmt.v1alpha1.UserAccountService.ConvertPersonalToTeamAccount:output_type -> mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse
+	29, // 74: mgmt.v1alpha1.UserAccountService.CreateTeamAccount:output_type -> mgmt.v1alpha1.CreateTeamAccountResponse
+	22, // 75: mgmt.v1alpha1.UserAccountService.IsUserInAccount:output_type -> mgmt.v1alpha1.IsUserInAccountResponse
+	24, // 76: mgmt.v1alpha1.UserAccountService.GetAccountTemporalConfig:output_type -> mgmt.v1alpha1.GetAccountTemporalConfigResponse
+	26, // 77: mgmt.v1alpha1.UserAccountService.SetAccountTemporalConfig:output_type -> mgmt.v1alpha1.SetAccountTemporalConfigResponse
+	32, // 78: mgmt.v1alpha1.UserAccountService.GetTeamAccountMembers:output_type -> mgmt.v1alpha1.GetTeamAccountMembersResponse
+	34, // 79: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountMember:output_type -> mgmt.v1alpha1.RemoveTeamAccountMemberResponse
+	37, // 80: mgmt.v1alpha1.UserAccountService.InviteUserToTeamAccount:output_type -> mgmt.v1alpha1.InviteUserToTeamAccountResponse
+	39, // 81: mgmt.v1alpha1.UserAccountService.GetTeamAccountInvites:output_type -> mgmt.v1alpha1.GetTeamAccountInvitesResponse
+	41, // 82: mgmt.v1alpha1.UserAccountService.RemoveTeamAccountInvite:output_type -> mgmt.v1alpha1.RemoveTeamAccountInviteResponse
+	43, // 83: mgmt.v1alpha1.UserAccountService.AcceptTeamAccountInvite:output_type -> mgmt.v1alpha1.AcceptTeamAccountInviteResponse
+	45, // 84: mgmt.v1alpha1.UserAccountService.GetSystemInformation:output_type -> mgmt.v1alpha1.GetSystemInformationResponse
+	49, // 85: mgmt.v1alpha1.UserAccountService.SetSystemLicense:output_type -> mgmt.v1alpha1.SetSystemLicenseResponse
+	51, // 86: mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey:output_type -> mgmt.v1alpha1.GetSystemLicenseKeyResponse
+	53, // 87: mgmt.v1alpha1.UserAccountService.GetLicenseUsage:output_type -> mgmt.v1alpha1.GetLicenseUsageResponse
+	56, // 88: mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig:output_type -> mgmt.v1alpha1.GetAccountOnboardingConfigResponse
+	58, // 89: mgmt.v1alpha1.UserAccountService.SetAccountOnboardingConfig:output_type -> mgmt.v1alpha1.SetAccountOnboardingConfigResponse
+	61, // 90: mgmt.v1alpha1.UserAccountService.GetAccountStatus:output_type -> mgmt.v1alpha1.GetAccountStatusResponse
+	63, // 91: mgmt.v1alpha1.UserAccountService.IsAccountStatusValid:output_type -> mgmt.v1alpha1.IsAccountStatusValidResponse
+	65, // 92: mgmt.v1alpha1.UserAccountService.GetAccountBillingCheckoutSession:output_type -> mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse
+	67, // 93: mgmt.v1alpha1.UserAccountService.GetAccountBillingPortalSession:output_type -> mgmt.v1alpha1.GetAccountBillingPortalSessionResponse
+	69, // 94: mgmt.v1alpha1.UserAccountService.GetBillingAccounts:output_type -> mgmt.v1alpha1.GetBillingAccountsResponse
+	71, // 95: mgmt.v1alpha1.UserAccountService.SetBillingMeterEvent:output_type -> mgmt.v1alpha1.SetBillingMeterEventResponse
+	73, // 96: mgmt.v1alpha1.UserAccountService.SetUserRole:output_type -> mgmt.v1alpha1.SetUserRoleResponse
+	76, // 97: mgmt.v1alpha1.UserAccountService.HasPermission:output_type -> mgmt.v1alpha1.HasPermissionResponse
+	78, // 98: mgmt.v1alpha1.UserAccountService.HasPermissions:output_type -> mgmt.v1alpha1.HasPermissionsResponse
+	67, // [67:99] is the sub-list for method output_type
+	35, // [35:67] is the sub-list for method input_type
 	35, // [35:35] is the sub-list for extension type_name
 	35, // [35:35] is the sub-list for extension extendee
 	0,  // [0:35] is the sub-list for field type_name
@@ -4580,21 +4794,22 @@ func file_mgmt_v1alpha1_user_account_proto_init() {
 	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_user_account_proto_msgTypes[7].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_user_account_proto_msgTypes[8].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[19].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[25].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[36].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[37].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[51].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[52].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[53].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_user_account_proto_msgTypes[60].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[23].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[29].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[39].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[40].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[41].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[55].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[56].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[57].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_user_account_proto_msgTypes[64].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_user_account_proto_rawDesc), len(file_mgmt_v1alpha1_user_account_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   69,
+			NumMessages:   73,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

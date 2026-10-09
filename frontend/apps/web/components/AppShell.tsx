@@ -1,4 +1,5 @@
 'use client';
+import AccountEntryGate from '@/components/providers/AccountEntryGate';
 import AccountProvider from '@/components/providers/account-provider';
 import { usePathname } from 'next/navigation';
 import { ReactElement, ReactNode } from 'react';
@@ -38,7 +39,7 @@ export default function AppShell(props: Props): ReactElement {
       <div className="relative flex min-h-screen flex-col">
         {header}
         <div className="flex-1 container" id="top-level-layout">
-          {children}
+          <AccountEntryGate>{children}</AccountEntryGate>
         </div>
         {footer}
         {extras}

@@ -60,6 +60,24 @@ type Enforcer struct {
 	// replaceAssignment leaves a person one role in an account, in the table, within the time
 	// a write is given.
 	replaceAssignment func(user, role, account string) error
+	// firstAssignments asks the table for the role of a person that holds none, within the time
+	// a write is given. It is nil on a table that does not answer that.
+	firstAssignments *boundedFirstAssignments
+	// keptAssignments asks the table for the changes that keep a role held in an account, within
+	// the time a write is given. It is nil on a table that does not answer that.
+	keptAssignments *boundedKeptAssignments
+}
+
+// boundedKeptAssignments asks the table what KeptAssignments names, each within a time limit.
+type boundedKeptAssignments struct {
+	replace func(user, role, account, kept string) error
+	remove  func(user, account, kept string) error
+}
+
+// boundedFirstAssignments asks the table what FirstAssignments names, each within a time limit.
+type boundedFirstAssignments struct {
+	has func(user, account string) (bool, error)
+	add func(user, role, account string) (bool, error)
 }
 
 // New builds the enforcer on the rows of the rule table and on the rules that are the same in
@@ -81,6 +99,38 @@ func New(ctx context.Context, rows Rows, fixedRules [][]string, logger *slog.Log
 		return store.within(store.writeTimeout, func(ctx context.Context) error {
 			return rows.ReplaceAssignmentCtx(ctx, user, role, account)
 		})
+	}
+	if first, ok := rows.(FirstAssignments); ok {
+		e.firstAssignments = &boundedFirstAssignments{
+			has: func(user, account string) (held bool, err error) {
+				err = store.within(store.writeTimeout, func(ctx context.Context) error {
+					held, err = first.HasAssignmentCtx(ctx, user, account)
+					return err
+				})
+				return held, err
+			},
+			add: func(user, role, account string) (given bool, err error) {
+				err = store.within(store.writeTimeout, func(ctx context.Context) error {
+					given, err = first.AddAssignmentIfNoneCtx(ctx, user, role, account)
+					return err
+				})
+				return given, err
+			},
+		}
+	}
+	if kept, ok := rows.(KeptAssignments); ok {
+		e.keptAssignments = &boundedKeptAssignments{
+			replace: func(user, role, account, keptRole string) error {
+				return store.within(store.writeTimeout, func(ctx context.Context) error {
+					return kept.ReplaceAssignmentKeepingCtx(ctx, user, role, account, keptRole)
+				})
+			},
+			remove: func(user, account, keptRole string) error {
+				return store.within(store.writeTimeout, func(ctx context.Context) error {
+					return kept.RemoveAssignmentsKeepingCtx(ctx, user, account, keptRole)
+				})
+			},
+		}
 	}
 	go e.reloadEvery(ctx, reloadPeriod)
 	return e, nil
@@ -125,6 +175,98 @@ func (e *Enforcer) SetRoleForUserInDomain(user, role, domain string) error {
 	defer e.reloading.Unlock()
 	if err := e.replaceAssignment(user, role, domain); err != nil {
 		return err
+	}
+	if err := e.inner.LoadPolicy(); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotReadBack, err)
+	}
+	return nil
+}
+
+// ErrLastHolder tells that a change was refused, and nothing changed, because it would have left
+// a role that must stay held in an account held by nobody there.
+var ErrLastHolder = errors.New("the person is the only one that holds the role in the account")
+
+// ErrNoKeptAssignments tells that the table the enforcer was built on cannot keep a role held in
+// an account.
+var ErrNoKeptAssignments = errors.New("the table of the access rules does not keep a role held in an account")
+
+// SetRoleForUserInDomainKeeping is SetRoleForUserInDomain, refused with ErrLastHolder when the
+// table holds the person as the only one with the role kept in the account and the role asked
+// for is another. The table decides, in the transaction that makes the change, and never what
+// this instance holds in memory; two such changes in one account, wherever they are asked, are
+// made one after the other, so that two people who hold the role cannot each lose it to a change
+// that counted the other.
+func (e *Enforcer) SetRoleForUserInDomainKeeping(user, role, domain, kept string) error {
+	if e.keptAssignments == nil {
+		return ErrNoKeptAssignments
+	}
+	return e.changeKeeping(func() error { return e.keptAssignments.replace(user, role, domain, kept) })
+}
+
+// DeleteRolesForUserInDomainKeeping takes away every role of a person in an account, in the
+// table then in memory, refused as SetRoleForUserInDomainKeeping is and decided the same way.
+func (e *Enforcer) DeleteRolesForUserInDomainKeeping(user, domain, kept string) error {
+	if e.keptAssignments == nil {
+		return ErrNoKeptAssignments
+	}
+	return e.changeKeeping(func() error { return e.keptAssignments.remove(user, domain, kept) })
+}
+
+// changeKeeping makes in the table a change that keeps a role held, then reads the roles again
+// from it, as SetRoleForUserInDomain does and for the same reason. ErrNotReadBack means here what
+// it means there.
+func (e *Enforcer) changeKeeping(change func() error) error {
+	e.reloading.Lock()
+	defer e.reloading.Unlock()
+	if err := change(); err != nil {
+		return err
+	}
+	if err := e.inner.LoadPolicy(); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotReadBack, err)
+	}
+	return nil
+}
+
+// ErrNoFirstAssignments tells that the table the enforcer was built on cannot give a role to who
+// holds none.
+var ErrNoFirstAssignments = errors.New("the table of the access rules does not give a role to who holds none")
+
+// SetRoleForUserInDomainIfNone gives a person that role in an account when the table holds none
+// for them there, and leaves the role they hold otherwise. The table decides, never what this
+// instance holds in memory: a role another instance gave since the last reload is kept.
+//
+// It is made to be asked often. Where a role is held, in the table and on this instance, it is
+// one read of the table: nothing is written, the roles are not read again, and neither a reload
+// nor a change of the rules waits for it. When the read finds no role it takes its turn as
+// SetRoleForUserInDomain does, and asks the table to write unless a role was given meanwhile.
+//
+// Once it returns nil, this instance holds a role for the person in the account: the roles are
+// read again from the table when this call wrote one, and also when the table holds one this
+// instance holds none of -- another instance gave it since the last reload, or it was stored
+// here and not read back. ErrNotReadBack means here what it means for SetRoleForUserInDomain.
+func (e *Enforcer) SetRoleForUserInDomainIfNone(user, role, domain string) error {
+	if e.firstAssignments == nil {
+		return ErrNoFirstAssignments
+	}
+	held, err := e.firstAssignments.has(user, domain)
+	if err != nil {
+		return err
+	}
+	if held && len(e.inner.GetRolesForUserInDomain(user, domain)) > 0 {
+		return nil
+	}
+
+	e.reloading.Lock()
+	defer e.reloading.Unlock()
+	if !held {
+		given, err := e.firstAssignments.add(user, role, domain)
+		if err != nil {
+			return err
+		}
+		// A role given meanwhile on this instance was read by who gave it, under this lock.
+		if !given && len(e.inner.GetRolesForUserInDomain(user, domain)) > 0 {
+			return nil
+		}
 	}
 	if err := e.inner.LoadPolicy(); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotReadBack, err)

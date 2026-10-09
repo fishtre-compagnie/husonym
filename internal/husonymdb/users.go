@@ -537,6 +537,13 @@ func invitationAcceptableFrom(inviteIssuer string, identity Identity) error {
 	return nil
 }
 
+// ValidateInviteAddUserToAccount honors an invitation: it marks it accepted, adds the user to
+// the account unless they are in it already, and gives the role the invitation names.
+//
+// An invitation is checked before it is honored, for whoever presents it: that it exists, that
+// it is for this address, from this provider, not accepted yet and not expired. Being in the
+// account already spares none of these. With one organization per instance everybody is in the
+// account before they follow the link of an invitation, so that is the ordinary case.
 func (d *HusonymDb) ValidateInviteAddUserToAccount(
 	ctx context.Context,
 	userId pgtype.UUID,
@@ -559,11 +566,17 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 		if err := invitationAcceptableFrom(invite.ProviderIss, identity); err != nil {
 			return err
 		}
-		if !invite.Accepted.Bool {
-			_, err = d.Q.UpdateAccountInviteToAccepted(ctx, dbtx, invite.ID)
-			if err != nil {
-				return err
-			}
+		if invite.Accepted.Bool {
+			return husonymerrors.NewBadRequest("account invitation already accepted")
+		}
+		if invite.ExpiresAt.Time.Before(time.Now().UTC()) {
+			return husonymerrors.NewForbidden("account invitation expired")
+		}
+
+		// The invitation is acceptable. Only from here on does it matter whether the user is in
+		// the account already: they are then not added again, and nothing else differs.
+		if _, err := d.Q.UpdateAccountInviteToAccepted(ctx, dbtx, invite.ID); err != nil {
+			return err
 		}
 		resp.AccountId = invite.AccountID
 		if invite.Role.Valid {
@@ -576,28 +589,16 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 			AccountId: invite.AccountID,
 			UserId:    userId,
 		})
-		if err != nil && !IsNoRows(err) {
-			return err
-		} else if err != nil && IsNoRows(err) {
-			if invite.Accepted.Bool {
-				return husonymerrors.NewBadRequest("account invitation already accepted")
-			}
-
-			if invite.ExpiresAt.Time.Before(time.Now().UTC()) {
-				return husonymerrors.NewForbidden("account invitation expired")
-			}
-
-			err = d.Q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{
-				AccountID: invite.AccountID,
-				UserID:    userId,
-			})
-			if err != nil {
-				return err
-			}
-		} else {
+		if err == nil {
 			return nil
 		}
-		return nil
+		if !IsNoRows(err) {
+			return err
+		}
+		return d.Q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{
+			AccountID: invite.AccountID,
+			UserID:    userId,
+		})
 	}); err != nil {
 		return nil, err
 	}

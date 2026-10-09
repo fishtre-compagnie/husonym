@@ -311,6 +311,19 @@ components:
           description: If HusonymCloud, will respond with a checkout session url so they can setup billing
       title: CreateTeamAccountResponse
       additionalProperties: false
+    mgmt.v1alpha1.EnterInstanceRequest:
+      type: object
+      title: EnterInstanceRequest
+      additionalProperties: false
+    mgmt.v1alpha1.EnterInstanceResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: 'The unique identifier of the account the user lands in: the organization of the instance, or the user''s personal account where no organization applies.'
+      title: EnterInstanceResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest:
       type: object
       properties:
@@ -510,6 +523,12 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.SystemLicense'
           title: license
           description: The license information for the system
+        instanceOrganizationAccountId:
+          type:
+            - string
+            - "null"
+          title: instance_organization_account_id
+          description: The unique identifier of the account the system retains as its organization. Unset when it retains none
       title: GetSystemInformationResponse
       additionalProperties: false
     mgmt.v1alpha1.GetSystemLicenseKeyRequest:
@@ -958,6 +977,30 @@ components:
       type: object
       title: SetBillingMeterEventResponse
       additionalProperties: false
+    mgmt.v1alpha1.SetInstanceOrganizationRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account that becomes the organization of the instance.
+        name:
+          type: string
+          title: name
+          pattern: ^[a-z0-9-]{3,100}$
+          description: The name a personal account takes as it becomes a team account. Not read for an account that is already a team account.
+      title: SetInstanceOrganizationRequest
+      additionalProperties: false
+    mgmt.v1alpha1.SetInstanceOrganizationResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: The unique identifier of the account the instance now retains as its organization.
+      title: SetInstanceOrganizationResponse
+      additionalProperties: false
     mgmt.v1alpha1.SetPersonalAccountRequest:
       type: object
       title: SetPersonalAccountRequest
@@ -1255,6 +1298,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.CreateTeamAccountResponse'
+  /mgmt.v1alpha1.UserAccountService/EnterInstance:
+    post:
+      tags:
+        - mgmt.v1alpha1.UserAccountService
+      summary: EnterInstance
+      description: Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.
+      operationId: mgmt.v1alpha1.UserAccountService.EnterInstance
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.EnterInstanceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.EnterInstanceResponse'
   /mgmt.v1alpha1.UserAccountService/GetAccountBillingCheckoutSession:
     post:
       tags:
@@ -2175,6 +2258,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SetBillingMeterEventResponse'
+  /mgmt.v1alpha1.UserAccountService/SetInstanceOrganization:
+    post:
+      tags:
+        - mgmt.v1alpha1.UserAccountService
+      summary: SetInstanceOrganization
+      description: 'Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.'
+      operationId: mgmt.v1alpha1.UserAccountService.SetInstanceOrganization
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetInstanceOrganizationRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetInstanceOrganizationResponse'
   /mgmt.v1alpha1.UserAccountService/SetPersonalAccount:
     post:
       tags:

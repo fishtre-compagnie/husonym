@@ -24057,6 +24057,41 @@
           ]
         },
         {
+          "name": "EnterInstanceRequest",
+          "longName": "EnterInstanceRequest",
+          "fullName": "mgmt.v1alpha1.EnterInstanceRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "EnterInstanceResponse",
+          "longName": "EnterInstanceResponse",
+          "fullName": "mgmt.v1alpha1.EnterInstanceResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account the user lands in: the organization of the instance, or the user's personal account where no organization applies.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetAccountBillingCheckoutSessionRequest",
           "longName": "GetAccountBillingCheckoutSessionRequest",
           "fullName": "mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest",
@@ -24458,7 +24493,7 @@
           "description": "",
           "hasExtensions": false,
           "hasFields": true,
-          "hasOneofs": false,
+          "hasOneofs": true,
           "extensions": [],
           "fields": [
             {
@@ -24531,6 +24566,18 @@
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "instance_organization_account_id",
+              "description": "The unique identifier of the account the system retains as its organization. Unset when it retains none",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_instance_organization_account_id",
               "defaultValue": ""
             }
           ]
@@ -25538,6 +25585,66 @@
           "fields": []
         },
         {
+          "name": "SetInstanceOrganizationRequest",
+          "longName": "SetInstanceOrganizationRequest",
+          "fullName": "mgmt.v1alpha1.SetInstanceOrganizationRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account that becomes the organization of the instance.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "name",
+              "description": "The name a personal account takes as it becomes a team account. Not read for an account that is already a team account.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SetInstanceOrganizationResponse",
+          "longName": "SetInstanceOrganizationResponse",
+          "fullName": "mgmt.v1alpha1.SetInstanceOrganizationResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account the instance now retains as its organization.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "SetPersonalAccountRequest",
           "longName": "SetPersonalAccountRequest",
           "fullName": "mgmt.v1alpha1.SetPersonalAccountRequest",
@@ -26026,6 +26133,30 @@
               "responseType": "SetPersonalAccountResponse",
               "responseLongType": "SetPersonalAccountResponse",
               "responseFullType": "mgmt.v1alpha1.SetPersonalAccountResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "EnterInstance",
+              "description": "Brings the current user into the organization of the instance, and says which account the user lands in. Where no organization applies, it does what SetPersonalAccount does. Calling it again changes nothing.",
+              "requestType": "EnterInstanceRequest",
+              "requestLongType": "EnterInstanceRequest",
+              "requestFullType": "mgmt.v1alpha1.EnterInstanceRequest",
+              "requestStreaming": false,
+              "responseType": "EnterInstanceResponse",
+              "responseLongType": "EnterInstanceResponse",
+              "responseFullType": "mgmt.v1alpha1.EnterInstanceResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "SetInstanceOrganization",
+              "description": "Has the instance retain an account as its organization. It is done once: an instance that retains an organization keeps it.",
+              "requestType": "SetInstanceOrganizationRequest",
+              "requestLongType": "SetInstanceOrganizationRequest",
+              "requestFullType": "mgmt.v1alpha1.SetInstanceOrganizationRequest",
+              "requestStreaming": false,
+              "responseType": "SetInstanceOrganizationResponse",
+              "responseLongType": "SetInstanceOrganizationResponse",
+              "responseFullType": "mgmt.v1alpha1.SetInstanceOrganizationResponse",
               "responseStreaming": false
             },
             {

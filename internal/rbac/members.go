@@ -6,6 +6,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/rbac/enforcer"
 )
 
 // SetRole replaces the role in the table all at once, whatever this instance believed the
@@ -24,8 +25,50 @@ func (s *Service) SetRole(_ context.Context, user User, account Account, role mg
 	return nil
 }
 
+// GrantViewerIfNone decides from the table, not from what this instance believes the person
+// holds, and in one step the table makes alone: a role another instance gave is never replaced,
+// and of two asked at once one writes. Where a role is held it costs one read of the table and
+// writes nothing; the roles are read again only when this instance holds none of what the table
+// holds for that person, so that they are let in here at once.
+func (s *Service) GrantViewerIfNone(_ context.Context, user User, account Account) error {
+	if err := s.enforcer.SetRoleForUserInDomainIfNone(user.stored(), roleViewer, account.stored()); err != nil {
+		return fmt.Errorf("unable to give the role %s to who holds none: %w", roleViewer, err)
+	}
+	return nil
+}
+
 func (s *Service) RemoveMember(_ context.Context, user User, account Account) error {
 	if _, err := s.enforcer.DeleteRolesForUserInDomain(user.stored(), account.stored()); err != nil {
+		return fmt.Errorf("unable to take the roles of the member away: %w", err)
+	}
+	return nil
+}
+
+// ErrLastAdmin is what SetRoleKeepingAnAdmin and RemoveMemberKeepingAnAdmin return when the
+// change would leave the account with no administrator. Nothing has changed then.
+var ErrLastAdmin = enforcer.ErrLastHolder
+
+// SetRoleKeepingAnAdmin is SetRole, refused with ErrLastAdmin when the member is the only
+// administrator the table holds for the account and the role is another. The table decides, in
+// the transaction that changes the role: of two administrators who demote each other at once, on
+// this instance or on two, one is refused.
+func (s *Service) SetRoleKeepingAnAdmin(_ context.Context, user User, account Account, role mgmtv1alpha1.AccountRole) error {
+	word, ok := roleWord(role)
+	if !ok {
+		return husonymerrors.NewBadRequest(fmt.Sprintf("%d is not a role a member can be given", role))
+	}
+	if err := s.enforcer.SetRoleForUserInDomainKeeping(user.stored(), word, account.stored(), roleAdmin); err != nil {
+		return fmt.Errorf("unable to give the role %s: %w", word, err)
+	}
+	return nil
+}
+
+// RemoveMemberKeepingAnAdmin is RemoveMember, refused with ErrLastAdmin when the member is the
+// only administrator the table holds for the account, and decided as SetRoleKeepingAnAdmin is.
+// ErrRoleNotReadBack tells roles that are taken away in the table and still held on this
+// instance until the roles are read again.
+func (s *Service) RemoveMemberKeepingAnAdmin(_ context.Context, user User, account Account) error {
+	if err := s.enforcer.DeleteRolesForUserInDomainKeeping(user.stored(), account.stored(), roleAdmin); err != nil {
 		return fmt.Errorf("unable to take the roles of the member away: %w", err)
 	}
 	return nil

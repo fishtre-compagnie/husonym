@@ -538,6 +538,22 @@ func (s *Service) RemoveTeamAccountMember(
 	if err != nil {
 		return nil, err
 	}
+	organization, err := s.isInstanceOrganization(ctx, accountUuid)
+	if err != nil {
+		return nil, err
+	}
+	if organization {
+		// The roles go first here, in the step that refuses to take the last administrator
+		// away: a member left without a role by a removal that stopped halfway is given the
+		// viewer one at their next entry, and administers nothing meanwhile.
+		if err := s.removeRolesKeepingAnAdmin(
+			ctx,
+			rbac.NewPgUser(memberUserId),
+			rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
+		); err != nil {
+			return nil, err
+		}
+	}
 	err = s.db.Q.RemoveAccountUser(ctx, s.db.Db, db_queries.RemoveAccountUserParams{
 		AccountId: accountUuid,
 		UserId:    memberUserId,
@@ -749,7 +765,22 @@ func (s *Service) AcceptTeamAccountInvite(
 		return nil, err
 	}
 
-	if err := s.setRole(
+	// In the organization of the instance an invitation is a change of role like another: the
+	// only administrator who accepts one that names a lower role is refused, and stays one.
+	organization, err := s.isInstanceOrganization(ctx, validateResp.AccountId)
+	if err != nil {
+		return nil, err
+	}
+	if organization {
+		if err := s.setRoleKeepingAnAdmin(
+			ctx,
+			rbac.NewUser(user.Msg.GetUserId()),
+			rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
+			validateResp.Role,
+		); err != nil {
+			return nil, err
+		}
+	} else if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
@@ -814,7 +845,15 @@ func (s *Service) SetUserRole(
 		return nil, husonymerrors.NewBadRequest("provided user id is not in account")
 	}
 
-	err = s.setRole(
+	organization, err := s.isInstanceOrganization(ctx, accountUuid)
+	if err != nil {
+		return nil, err
+	}
+	change := s.setRole
+	if organization {
+		change = s.setRoleKeepingAnAdmin
+	}
+	err = change(
 		ctx,
 		rbac.NewPgUser(requestingUserUuid),
 		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
@@ -855,6 +894,8 @@ func (s *Service) GetSystemInformation(
 		Platform:  versionInfo.Platform,
 		BuildDate: timestamppb.New(builtDate),
 		License:   s.systemLicense(ctx),
+
+		InstanceOrganizationAccountId: s.instanceOrganizationId(ctx),
 	}), nil
 }
 

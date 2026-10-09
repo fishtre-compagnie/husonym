@@ -6,15 +6,20 @@ import { useRouter } from 'next/navigation';
 import { ReactElement, useEffect } from 'react';
 
 export default function Settings(): ReactElement {
-  const { account, isLoading: isAccountLoading } = useAccount();
+  const {
+    account,
+    isLoading: isAccountLoading,
+    defaultAccountName,
+  } = useAccount();
   const router = useRouter();
+  const accountName = account?.name ?? defaultAccountName;
   useEffect(() => {
-    if (isAccountLoading) {
+    // Without an account there is nowhere to go yet.
+    if (isAccountLoading || !accountName) {
       return;
     }
-    const accountName = account?.name ?? 'personal';
     return router.push(`/${accountName}/settings/api-keys`);
-  }, [account?.name, isAccountLoading]);
+  }, [accountName, isAccountLoading]);
 
   return (
     <OverviewContainer

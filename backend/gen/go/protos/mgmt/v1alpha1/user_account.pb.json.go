@@ -118,6 +118,46 @@ func (msg *SetPersonalAccountResponse) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler
+func (msg *EnterInstanceRequest) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *EnterInstanceRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *EnterInstanceResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *EnterInstanceResponse) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *SetInstanceOrganizationRequest) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *SetInstanceOrganizationRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *SetInstanceOrganizationResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *SetInstanceOrganizationResponse) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
 func (msg *IsUserInAccountRequest) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }

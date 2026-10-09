@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -86,16 +85,14 @@ func login(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	for _, a := range accountsResp.Msg.Accounts {
-		if strings.EqualFold(a.Name, "personal") {
-			// set account to personal
-			err = userconfig.SetAccountId(a.Id)
-			if err != nil {
-				return fmt.Errorf("unable to set account id in context: %w", err)
-			}
-			logger.Info(fmt.Sprintf("  Account set to %q", a.Name))
-		}
+	account := defaultAccount(accountsResp.Msg.GetAccounts(), instanceOrganizationId(ctx, userclient, logger))
+	if account == nil {
+		return nil
 	}
+	if err := userconfig.SetAccountId(account.GetId()); err != nil {
+		return fmt.Errorf("unable to set account id in context: %w", err)
+	}
+	logger.Info(fmt.Sprintf("  Account set to %q", account.GetName()))
 	return nil
 }
 
