@@ -86,6 +86,60 @@ describe('jobsTable', () => {
     expect(table.note).toBe('PII detection jobs count no rows.');
   });
 
+  describe('the rows of a job whose runs did not count them all', () => {
+    const rowsOf = (
+      kind: JobKind,
+      rowsRead: number,
+      runsWithUncountedRows: number
+    ): string =>
+      jobsTable(
+        [
+          create(JobUsageSchema, {
+            jobId: ORDERS_ID,
+            jobName: 'orders',
+            kind,
+            totals: create(UsageTotalsSchema, {
+              runs: BigInt(4),
+              rowsRead: BigInt(rowsRead),
+              runsWithUncountedRows: BigInt(runsWithUncountedRows),
+            }),
+          }),
+        ],
+        'acme'
+      ).rows[0].rowsRead;
+
+    it('shows the count alone when every run counted its rows', () => {
+      expect(rowsOf(JobKind.SYNC, 1140, 0)).toBe('1,140');
+      expect(rowsOf(JobKind.GENERATE, 0, 0)).toBe('0');
+    });
+
+    it('marks the count when some runs did not count all their rows', () => {
+      expect(rowsOf(JobKind.SYNC, 1140, 1)).toBe('1,140 (incomplete)');
+      expect(rowsOf(JobKind.GENERATE, 0, 4)).toBe('0 (incomplete)');
+    });
+
+    it('still shows no count for a kind that counts none', () => {
+      expect(rowsOf(JobKind.PII_DETECT, 0, 4)).toBe('—');
+    });
+
+    it('marks it as the latest runs of the job do', () => {
+      const [run] = runsTable(
+        create(GetJobUsageResponseSchema, {
+          kind: JobKind.SYNC,
+          runs: [
+            create(RunUsageSchema, {
+              runId: 'r1',
+              rowsRead: BigInt(1140),
+              tablesUncounted: BigInt(1),
+            }),
+          ],
+        }),
+        'acme'
+      ).rows;
+      expect(rowsOf(JobKind.SYNC, 1140, 1)).toBe(run.rowsRead);
+    });
+  });
+
   it('has nothing to say of a median that no run gives', () => {
     expect(jobsTable([scan], 'acme').rows[0].duration).toBe('—');
   });

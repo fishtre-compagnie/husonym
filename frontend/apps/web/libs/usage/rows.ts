@@ -4,7 +4,6 @@ import { JobRunStatus, RunErrorStep } from '@husonym/sdk';
 import type {
   GateRefusalCount,
   GetJobUsageResponse,
-  JobKind,
   JobUsage,
   RunUsage,
   UsageErrorCount,
@@ -35,7 +34,9 @@ interface JobRow {
 }
 
 // The table of the jobs of an account, in the order the API gives them (the job that
-// read the most rows first). The note says, once, why some jobs show no row count.
+// read the most rows first). The rows of a job are marked when some of its runs did not
+// count them all, as the rows of a run are in the latest runs of a job. The note says,
+// once, why some jobs show no row count.
 export function jobsTable(
   jobs: readonly JobUsage[],
   accountName: string
@@ -45,7 +46,11 @@ export function jobsTable(
       id: job.jobId,
       name: job.jobName,
       href: `/${accountName}/jobs/${job.jobId}/usage`,
-      rowsRead: rowsLabel(job.kind, job.totals?.rowsRead ?? ZERO),
+      rowsRead: rowsLabel(
+        job.kind,
+        job.totals?.rowsRead ?? ZERO,
+        job.totals?.runsWithUncountedRows
+      ),
       runs: formatCount(job.totals?.runs ?? ZERO),
       success: successRateLabel(job.totals),
       duration: durationLabel(job.durationMedianSeconds),
@@ -113,7 +118,7 @@ export function runsTable(
       startedAt: run.startedAt ? timestampDate(run.startedAt) : undefined,
       status: run.status,
       duration: durationLabel(runSeconds(run)),
-      rowsRead: runRowsLabel(kind, run),
+      rowsRead: rowsLabel(kind, run.rowsRead, run.tablesUncounted),
       error: runErrorLabel(run),
     })),
     caption:
@@ -135,17 +140,6 @@ function runSeconds(
     timestampDate(run.endedAt).getTime() -
     timestampDate(run.startedAt).getTime();
   return BigInt(Math.max(0, Math.floor(milliseconds / 1000)));
-}
-
-// The rows a run read, marked when some of its tables told no count.
-function runRowsLabel(
-  kind: JobKind,
-  run: Pick<RunUsage, 'rowsRead' | 'tablesUncounted'>
-): string {
-  const rows = rowsLabel(kind, run.rowsRead);
-  return rowsHint(kind) === undefined && run.tablesUncounted > ZERO
-    ? `${rows} (incomplete)`
-    : rows;
 }
 
 // What kept a run from completing and, when it says something, the step it was at.

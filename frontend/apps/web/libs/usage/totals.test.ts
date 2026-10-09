@@ -131,6 +131,20 @@ describe('rowsLabel', () => {
   it('is never a zero for a job that counts none', () => {
     expect(rowsLabel(JobKind.PII_DETECT, BigInt(0))).toBe('—');
   });
+
+  it('is marked when not every row was counted', () => {
+    expect(rowsLabel(JobKind.SYNC, BigInt(1140), BigInt(2))).toBe(
+      '1,140 (incomplete)'
+    );
+    expect(rowsLabel(JobKind.SYNC, BigInt(0), BigInt(1))).toBe(
+      '0 (incomplete)'
+    );
+    expect(rowsLabel(JobKind.SYNC, BigInt(1140), BigInt(0))).toBe('1,140');
+  });
+
+  it('is not marked for a job that counts none', () => {
+    expect(rowsLabel(JobKind.PII_DETECT, BigInt(0), BigInt(3))).toBe('—');
+  });
 });
 
 describe('usageTiles', () => {

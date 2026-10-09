@@ -65,9 +65,20 @@ function countsRows(kind: JobKind | undefined): boolean {
   return kind !== JobKind.PII_DETECT;
 }
 
-// The rows a job read, or nothing to say for a job that counts none: never a zero.
-export function rowsLabel(kind: JobKind | undefined, rowsRead: bigint): string {
-  return countsRows(kind) ? formatCount(rowsRead) : NO_VALUE;
+// The rows a job or a run read, or nothing to say for a job that counts none: never a
+// zero. `uncounted` is how many of what the count adds up (the runs of a job, the
+// tables of a run) told no count of their own: the count is then less than what was
+// read, and is marked so that it is not taken for the whole.
+export function rowsLabel(
+  kind: JobKind | undefined,
+  rowsRead: bigint,
+  uncounted: bigint = ZERO
+): string {
+  if (!countsRows(kind)) {
+    return NO_VALUE;
+  }
+  const rows = formatCount(rowsRead);
+  return uncounted > ZERO ? `${rows} (incomplete)` : rows;
 }
 
 // What to say next to a row count that is not shown.
