@@ -29,12 +29,16 @@ const testActivityName = "an-activity"
 // runsTheActivity is a workflow that runs the activity of the test, as a local activity or
 // not, and ends on what it gave.
 func runsTheActivity(attempts int32, local bool) func(ctx workflow.Context) (string, error) {
+	return runsTheActivityUnder(&temporal.RetryPolicy{
+		MaximumAttempts:    attempts,
+		InitialInterval:    time.Millisecond,
+		BackoffCoefficient: 1,
+	}, local)
+}
+
+// runsTheActivityUnder is runsTheActivity under a retry policy of the test's own.
+func runsTheActivityUnder(retries *temporal.RetryPolicy, local bool) func(ctx workflow.Context) (string, error) {
 	return func(ctx workflow.Context) (string, error) {
-		retries := &temporal.RetryPolicy{
-			MaximumAttempts:    attempts,
-			InitialInterval:    time.Millisecond,
-			BackoffCoefficient: 1,
-		}
 		var result string
 		if local {
 			ctx = workflow.WithLocalActivityOptions(ctx, workflow.LocalActivityOptions{
@@ -297,6 +301,67 @@ func Test_Interceptor_RetriesWhatWasRetriedAndNothingElse(t *testing.T) {
 				}
 				assert.Equal(t, failures[false].Error(), failures[true].Error())
 			})
+		}
+	}
+}
+
+// A retry policy may name the types of the errors it does not retry. The type Temporal names
+// an error by is the same with the interceptor as without: an error whose type is listed is
+// tried once, one whose type is not is tried again, as a local activity too.
+func Test_Interceptor_KeepsTheTypesARetryPolicyNames(t *testing.T) {
+	database := &pgconn.PgError{Code: "23505"}
+	cases := []struct {
+		name string
+		err  error
+		// errorType is the type Temporal names the error by.
+		errorType string
+		category  mgmtv1alpha1.RunErrorCategory
+	}{
+		{"a typed error of the worker", &typedError{cause: &mysql.MySQLError{Number: 1062}}, "typedError", constraintViolated},
+		{"a database error", database, "PgError", constraintViolated},
+		{"a wrapped database error", fmt.Errorf("x: %w", database), "wrapError", constraintViolated},
+		{"an application error", temporal.NewApplicationErrorWithCause("stopped", "Stopped", database), "Stopped", constraintViolated},
+		{"a refusal of the license", License(&typedError{}), "typedError", license},
+	}
+	for _, tc := range cases {
+		for _, local := range []bool{false, true} {
+			for _, listed := range []bool{true, false} {
+				t.Run(fmt.Sprintf("%s/local=%t/listed=%t", tc.name, local, listed), func(t *testing.T) {
+					retries := &temporal.RetryPolicy{
+						MaximumAttempts:        3,
+						InitialInterval:        time.Millisecond,
+						BackoffCoefficient:     1,
+						NonRetryableErrorTypes: []string{"AnotherType"},
+					}
+					expected := 3
+					if listed {
+						retries.NonRetryableErrorTypes = append(retries.NonRetryableErrorTypes, tc.errorType)
+						expected = 1
+					}
+
+					attempts := map[bool]int{}
+					failures := map[bool]error{}
+					for _, intercepted := range []bool{false, true} {
+						env := testEnvironment(intercepted)
+						var calls atomic.Int32
+						env.RegisterActivityWithOptions(func(context.Context) (string, error) {
+							calls.Add(1)
+							return "", tc.err
+						}, activity.RegisterOptions{Name: testActivityName})
+
+						env.ExecuteWorkflow(runsTheActivityUnder(retries, local))
+
+						require.True(t, env.IsWorkflowCompleted())
+						failures[intercepted] = env.GetWorkflowError()
+						require.Error(t, failures[intercepted])
+						attempts[intercepted] = int(calls.Load())
+					}
+					assert.Equal(t, expected, attempts[false], "attempts without the interceptor")
+					assert.Equal(t, expected, attempts[true], "attempts with the interceptor")
+					assert.Equal(t, failures[false].Error(), failures[true].Error())
+					assert.Equal(t, tc.category, CategoryOf(failures[true]), "the category is carried all the same")
+				})
+			}
 		}
 	}
 }
