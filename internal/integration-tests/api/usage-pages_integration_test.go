@@ -500,3 +500,56 @@ func (s *IntegrationTestSuite) Test_UsagePages_RefuseAPeriodThatIsNotOne() {
 	require.Len(t, year.GetDays(), 366)
 	require.Len(t, g.jobUsage(s, jobId, usageDay(2028, 1, 1), usageDay(2028, 12, 31), "Europe/Paris").GetDays(), 366)
 }
+
+// A year the database cannot place a moment in is a period that is refused, in plain words, and
+// no failure of the API.
+func (s *IntegrationTestSuite) Test_UsagePages_RefuseAYearOutOfReach() {
+	t := s.T()
+	g := s.newPagesGround("usage-pages-years")
+	jobId := s.mustCreateJob(g.capGround, g.jobRequest("orders")).GetId()
+	const sentence = "the period cannot be read: its days are not of the years 1 to 9999"
+
+	for _, year := range []uint32{10000, 300000, 4294967295} {
+		for _, zone := range []string{"", "Europe/Paris"} {
+			_, err := g.usage.GetAccountUsage(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetAccountUsageRequest{
+				AccountId: g.accountId, FromDay: usageDay(year, 1, 1), ToDay: usageDay(year, 1, 2), TimeZone: zone,
+			}))
+			requireConnectError(t, err, connect.CodeInvalidArgument)
+			var refusal *connect.Error
+			require.ErrorAs(t, err, &refusal)
+			require.Equal(t, sentence, refusal.Message(), "the year %d, in the zone %q", year, zone)
+
+			_, err = g.usage.GetJobUsage(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetJobUsageRequest{
+				AccountId: g.accountId, JobId: jobId, FromDay: usageDay(year, 1, 1), ToDay: usageDay(year, 1, 2), TimeZone: zone,
+			}))
+			requireConnectError(t, err, connect.CodeInvalidArgument)
+			require.ErrorAs(t, err, &refusal)
+			require.Equal(t, sentence, refusal.Message(), "the year %d, in the zone %q", year, zone)
+		}
+	}
+
+	// The last year is read.
+	require.Len(t, g.accountUsage(s, usageDay(9999, 12, 30), usageDay(9999, 12, 31), "Europe/Paris").GetDays(), 2)
+}
+
+// A gate the license does not define, left in the table by a later version, is told as "other":
+// what the table holds under a name nobody chose here reaches no answer.
+func (s *IntegrationTestSuite) Test_UsagePages_TellAGateTheLicenseDoesNotDefineAsOther() {
+	t := s.T()
+	g := s.newPagesGround("usage-pages-gates")
+	at := time.Date(2026, 10, 6, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, s.CountUsageRefusal(s.ctx, g.accountId, license.GateJobCap, at))
+	for gate, count := range map[string]int{"of a later version": 3, "<b>whatever</b>": 2} {
+		_, err := s.Pgcontainer.DB.Exec(s.ctx,
+			`INSERT INTO husonym_api.gate_refusals_daily (day, account_id, gate, count) VALUES ($1, $2, $3, $4)`,
+			at, g.accountId, gate, count)
+		require.NoError(t, err)
+	}
+
+	refusals := g.accountUsage(s, usageDay(2026, 10, 6), usageDay(2026, 10, 6), "").GetRefusals()
+	require.Len(t, refusals, 2)
+	require.Equal(t, "job_cap", refusals[0].GetGate())
+	require.Equal(t, int64(1), refusals[0].GetRefusals())
+	require.Equal(t, "other", refusals[1].GetGate())
+	require.Equal(t, int64(5), refusals[1].GetRefusals())
+}

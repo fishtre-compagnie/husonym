@@ -232,14 +232,23 @@ func (s *Service) kindOfJob(ctx context.Context, accountId, jobId string) (usage
 	}), nil
 }
 
+// longestZoneName is the longest name a time zone is looked for by: no zone has a longer one.
+const longestZoneName = 64
+
 // periodOf is the period a request asks for: its two days as they are written, in its time
 // zone. A zone that is not named, or whose name is not one, is UTC: the page of a browser whose
-// zone is not known here is not refused for it. Days that make no period are refused by the
-// store, which is the one to know what a period is.
+// zone is not known here is not refused for it. A name too long to be one is not looked for.
+// Days that make no period are refused by the store, which is the one to know what a period is.
+//
+// The zone is loaded to know that its name is one, and for nothing else: no moment is computed
+// from it here or in the store. The database places the runs in the days, by that name as it
+// reads it, and the name is what the answer tells.
 func periodOf(from, to *mgmtv1alpha1.Date, zone string) usagestore.Period {
-	location, err := time.LoadLocation(zone)
-	if err != nil {
-		location = time.UTC
+	location := time.UTC
+	if len(zone) <= longestZoneName {
+		if named, err := time.LoadLocation(zone); err == nil {
+			location = named
+		}
 	}
 	return usagestore.Period{From: calendarDayOf(from), To: calendarDayOf(to), Zone: location}
 }

@@ -19,8 +19,9 @@ import (
 // never purged, so a period has to end somewhere for a page to stay a page.
 const MaxPeriodDays = 366
 
-// ErrPeriod is the refusal of a period that cannot be read: a day that does not exist, a last
-// day before the first, or more than MaxPeriodDays days. Nothing is read of such a period.
+// ErrPeriod is the refusal of a period that cannot be read: a day of a year out of reach, a day
+// that does not exist, a last day before the first, or more than MaxPeriodDays days. Nothing is
+// read of such a period.
 var ErrPeriod = errors.New("the period cannot be read")
 
 // CalendarDay is a day of a calendar: a date, with no time and no zone of its own.
@@ -226,8 +227,15 @@ func (s *Store) UsageErrors(ctx context.Context, accountId string, period Period
 	return counts, nil
 }
 
+// GateOther is what the refusals of a gate the license does not define are told under. No gate of
+// the license has this name, and nothing is ever counted under it: CountRefusal writes the gates
+// the license defines only, so that such a row is one a later version left.
+const GateOther license.Gate = "other"
+
 // AccountRefusals adds up the refusals of each gate for the account, on the UTC days of the
-// period: a refusal keeps the UTC day it happened on and no time, so the zone does not move it.
+// period, by the name of the gate: a refusal keeps the UTC day it happened on and no time, so the
+// zone does not move it. Every gate given is one the license defines, or GateOther for all the
+// others together: a name the table holds and the license does not define is told to nobody.
 func (s *Store) AccountRefusals(ctx context.Context, accountId string, period Period) ([]GateCount, error) {
 	read, err := readOf(Scope{AccountId: accountId}, period)
 	if err != nil {
@@ -239,9 +247,24 @@ func (s *Store) AccountRefusals(ctx context.Context, accountId string, period Pe
 	if err != nil {
 		return nil, fmt.Errorf("unable to add up the refusals of the period: %w", err)
 	}
+	defined := license.AllGates()
 	counts := make([]GateCount, 0, len(rows))
+	var others int64
 	for _, row := range rows {
-		counts = append(counts, GateCount{Gate: license.Gate(row.Gate), Count: row.Refusals})
+		gate := license.Gate(row.Gate)
+		if !slices.Contains(defined, gate) {
+			others += row.Refusals
+			continue
+		}
+		counts = append(counts, GateCount{Gate: gate, Count: row.Refusals})
+	}
+	if others > 0 {
+		// The database gave the gates by their names: the others take the place of theirs.
+		at := slices.IndexFunc(counts, func(count GateCount) bool { return count.Gate > GateOther })
+		if at < 0 {
+			at = len(counts)
+		}
+		counts = slices.Insert(counts, at, GateCount{Gate: GateOther, Count: others})
 	}
 	return counts, nil
 }
@@ -337,6 +360,9 @@ func (p Period) days() ([]CalendarDay, error) {
 	if !p.From.exists() || !p.To.exists() {
 		return nil, fmt.Errorf("%w: one of its days does not exist", ErrPeriod)
 	}
+	if !p.From.inReach() || !p.To.inReach() {
+		return nil, fmt.Errorf("%w: its days are not of the years %d to %d", ErrPeriod, firstYear, lastYear)
+	}
 	from, to := p.From.date().Time, p.To.date().Time
 	if to.Before(from) {
 		return nil, fmt.Errorf("%w: its last day is before its first", ErrPeriod)
@@ -382,6 +408,19 @@ func (p Period) ZoneName() string {
 		return time.UTC.String()
 	}
 	return p.Zone.String()
+}
+
+// The years a period can be of. A request may write any year, and the database places a moment
+// in a narrower span than the dates it holds: the reads reach a day before the period and a day
+// after it, and all of it stays far inside what the database knows.
+const (
+	firstYear = 1
+	lastYear  = 9999
+)
+
+// inReach tells a day the store can ask the database about.
+func (d CalendarDay) inReach() bool {
+	return d.Year >= firstYear && d.Year <= lastYear
 }
 
 // exists tells a day of the calendar from numbers that make none, like February 30.

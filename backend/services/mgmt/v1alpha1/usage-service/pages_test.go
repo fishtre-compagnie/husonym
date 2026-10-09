@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -324,6 +325,74 @@ func Test_GetAccountUsage_RefusesAPeriodThatIsNotOne(t *testing.T) {
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), name)
 		require.Equal(t, c.sentence, connectMessage(t, err), name)
 	}
+}
+
+// A year the database cannot hold is the fault of the request, told in plain words, and no
+// failure of the service: the store refuses it before it asks anything of the database.
+func Test_GetAccountUsage_RefusesAPeriodOfAYearOutOfReach(t *testing.T) {
+	for name, year := range map[string]uint32{
+		"long after the calendar of the database": 300000,
+		"the largest year a request can write":    4294967295,
+		"the year after the last":                 10000,
+	} {
+		svc, _ := usagePagesOver(t, true, usagestore.New(nil))
+		_, err := svc.GetAccountUsage(t.Context(), connect.NewRequest(&mgmtv1alpha1.GetAccountUsageRequest{
+			AccountId: anAccountId, FromDay: dateOn(year, 1, 1), ToDay: dateOn(year, 1, 2), TimeZone: "Europe/Paris",
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), name)
+		require.Equal(t, "the period cannot be read: its days are not of the years 1 to 9999", connectMessage(t, err), name)
+
+		svc, _ = usagePagesOver(t, true, usagestore.New(nil))
+		_, err = svc.GetJobUsage(t.Context(), connect.NewRequest(&mgmtv1alpha1.GetJobUsageRequest{
+			AccountId: anAccountId, JobId: aJobId, FromDay: dateOn(year, 1, 1), ToDay: dateOn(year, 1, 2),
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), name)
+		require.Equal(t, "the period cannot be read: its days are not of the years 1 to 9999", connectMessage(t, err), name)
+	}
+}
+
+// parisBy is a name of the length given under which this process loads the zone of Paris: where
+// the zones are files, a name is a path among them, and a path can be written at any length.
+func parisBy(t *testing.T, length int) string {
+	t.Helper()
+	name := "Europe/" + strings.Repeat("./", (length-len("Europe/Paris"))/2) + "Paris"
+	require.Len(t, name, length)
+	if _, err := time.LoadLocation(name); err != nil {
+		t.Skipf("this machine does not load a zone by a path: %v", err)
+	}
+	return name
+}
+
+// No zone has a name of more than 64 characters: a longer one is not looked for among the zones,
+// even when it would be found there, and reads as UTC like any name that is none.
+func Test_GetAccountUsage_AZoneNameTooLongReadsAsUtc(t *testing.T) {
+	tooLong := parisBy(t, 66)
+
+	f := usagePages(t, true)
+	f.holdsJobs(t)
+	res, err := f.svc.GetAccountUsage(t.Context(), thirtyDays(tooLong))
+	require.NoError(t, err)
+	require.Equal(t, "UTC", res.Msg.GetTimeZone())
+	for _, call := range f.pages.calls {
+		require.Equal(t, time.UTC, call.period.Zone, call.read)
+	}
+
+	job := usagePages(t, true)
+	job.holdsNoSuchJob(t)
+	ofJob, err := job.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(tooLong))
+	require.NoError(t, err)
+	require.Equal(t, "UTC", ofJob.Msg.GetTimeZone())
+}
+
+// A name of 64 characters is still looked for.
+func Test_GetAccountUsage_AZoneNameOfTheLongestLengthIsRead(t *testing.T) {
+	longest := parisBy(t, 64)
+
+	f := usagePages(t, true)
+	f.holdsJobs(t)
+	res, err := f.svc.GetAccountUsage(t.Context(), thirtyDays(longest))
+	require.NoError(t, err)
+	require.Equal(t, longest, res.Msg.GetTimeZone())
 }
 
 func connectMessage(t *testing.T, err error) string {

@@ -48,6 +48,33 @@ func Test_UsagePages_RefuseAPeriodThatIsNotOne(t *testing.T) {
 	}
 }
 
+// A year the database cannot place a moment in is refused as any period that is not one, before
+// anything is asked of the database: the store of this test has none.
+func Test_UsagePages_RefuseAPeriodOfAYearOutOfReach(t *testing.T) {
+	for name, period := range map[string]Period{
+		"long after the calendar of the database": {From: day(300000, 1, 1), To: day(300000, 1, 2)},
+		"the largest year a request can write":    {From: day(4294967295, 1, 1), To: day(4294967295, 1, 2)},
+		"the year after the last":                 {From: day(10000, 1, 1), To: day(10000, 1, 1)},
+		"into the year after the last":            {From: day(9999, 12, 31), To: day(10000, 1, 1)},
+		"the year before the first":               {From: day(0, 6, 1), To: day(0, 6, 2)},
+		"before our era":                          {From: day(-44, 3, 15), To: day(-44, 3, 15)},
+	} {
+		for read, call := range pageReads(New(nil), Scope{AccountId: accountA, JobId: jobA}, period) {
+			err := call(t.Context())
+			require.ErrorIs(t, err, ErrPeriod, "%s of a period %s", read, name)
+			require.EqualError(t, err, "the period cannot be read: its days are not of the years 1 to 9999", "%s of a period %s", read, name)
+		}
+	}
+
+	for name, period := range map[string]Period{
+		"the first days": {From: day(1, 1, 1), To: day(1, 1, 2)},
+		"the last days":  {From: day(9999, 12, 30), To: day(9999, 12, 31)},
+	} {
+		_, err := period.days()
+		require.NoError(t, err, name)
+	}
+}
+
 func Test_Period_TakesUpToTheLongestYear(t *testing.T) {
 	for name, c := range map[string]struct {
 		period Period

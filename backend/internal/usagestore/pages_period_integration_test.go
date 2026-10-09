@@ -176,6 +176,109 @@ func Test_AccountRefusals_AreOfUtcDaysWhateverTheZone(t *testing.T) {
 	require.Empty(t, seventh)
 }
 
+// A gate the license does not define can only be in the table after a later version wrote it:
+// its refusals are told under "other", all of them together, and its name is told to nobody.
+func Test_AccountRefusals_TellAGateTheLicenseDoesNotDefineAsOther(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+
+	require.NoError(t, store.CountRefusal(ctx, accountA, []license.Gate{license.GateSourceCap, license.GateJobCap}, october6))
+	for gate, count := range map[string]int{"of a later version": 3, "<b>whatever</b>": 2} {
+		_, err := container.DB.Exec(ctx,
+			`INSERT INTO husonym_api.gate_refusals_daily (day, account_id, gate, count) VALUES ($1, $2, $3, $4)`,
+			october6, accountA, gate, count)
+		require.NoError(t, err)
+	}
+
+	refusals, err := store.AccountRefusals(ctx, accountA, utcDays(oct6, oct6))
+	require.NoError(t, err)
+	// By the name of the gate, as when every gate is known.
+	require.Equal(t, []GateCount{
+		{Gate: license.GateJobCap, Count: 1}, {Gate: GateOther, Count: 5}, {Gate: license.GateSourceCap, Count: 1},
+	}, refusals)
+	require.NotContains(t, license.AllGates(), GateOther, "no gate of the license is told as another")
+}
+
+// The first and the last days a period can be of are read: the bounds the queries reach for, a
+// day before and a day after, are still moments the database knows.
+func Test_UsagePages_ReadTheFirstAndTheLastYears(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	_, store := migratedDatabase(ctx, t)
+
+	for name, period := range map[string]Period{
+		"the first days": {From: CalendarDay{Year: 1, Month: time.January, Day: 1}, To: CalendarDay{Year: 1, Month: time.January, Day: 2}, Zone: paris(t)},
+		"the last days":  {From: CalendarDay{Year: 9999, Month: time.December, Day: 30}, To: CalendarDay{Year: 9999, Month: time.December, Day: 31}, Zone: paris(t)},
+	} {
+		for read, call := range pageReads(store, Scope{AccountId: accountA, JobId: jobA}, period) {
+			require.NoError(t, call(ctx), "%s of %s", read, name)
+		}
+	}
+}
+
+// Go and the database do not read every name the same way: CET is a zone with a summer time for
+// one and may be a fixed hour for the other, so that a summer evening is of one day here and of
+// the next there. Nothing of a read is computed here from the zone: the day of a run is the one
+// the database gives it, in every read, whatever day Go would have given it.
+func Test_UsagePages_TheDayOfARunIsTheOneOfTheDatabase(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+	zone, err := time.LoadLocation("CET")
+	require.NoError(t, err)
+
+	at := time.Date(2026, 7, 1, 22, 30, 0, 0, time.UTC)
+	recordRuns(t, container, store, at)
+
+	var ofDatabase time.Time
+	require.NoError(t, container.DB.QueryRow(ctx, `SELECT ($1::timestamptz AT TIME ZONE 'CET')::date`, at).Scan(&ofDatabase))
+	year, month, dayOfMonth := at.In(zone).Date()
+	t.Logf("the database places the run on %s, and Go on %04d-%02d-%02d", ofDatabase.Format(time.DateOnly), year, month, dayOfMonth)
+
+	july1 := CalendarDay{Year: 2026, Month: time.July, Day: 1}
+	july2 := CalendarDay{Year: 2026, Month: time.July, Day: 2}
+	account, job := Scope{AccountId: accountA}, Scope{AccountId: accountA, JobId: jobA}
+	for _, day := range []CalendarDay{july1, july2} {
+		var want int64
+		if day.date().Time.Equal(ofDatabase) {
+			want = 1
+		}
+		period := Period{From: day, To: day, Zone: zone}
+		require.Equal(t, "CET", period.ZoneName())
+		for _, scope := range []Scope{account, job} {
+			totals, err := store.UsageTotals(ctx, scope, period)
+			require.NoError(t, err)
+			require.Equal(t, want, totals.Runs, "the totals of %v", day)
+			days, err := store.UsageDays(ctx, scope, period)
+			require.NoError(t, err)
+			require.Equal(t, []UsageDay{{Day: day, Runs: want, RowsRead: want}}, days)
+		}
+		jobs, err := store.UsageJobs(ctx, accountA, period)
+		require.NoError(t, err)
+		require.Len(t, jobs, int(want), "the jobs of %v", day)
+		runs, err := store.LatestRuns(ctx, job, period, 20)
+		require.NoError(t, err)
+		require.Len(t, runs, int(want), "the runs of %v", day)
+	}
+
+	both, err := store.UsageDays(ctx, account, Period{From: july1, To: july2, Zone: zone})
+	require.NoError(t, err)
+	require.Len(t, both, 2)
+	require.Equal(t, int64(1), both[0].Runs+both[1].Runs)
+	for _, day := range both {
+		if day.Runs == 1 {
+			require.True(t, day.Day.date().Time.Equal(ofDatabase), "the run is on the day of the database")
+		}
+	}
+}
+
 // A zone the database does not know fails the read: it is never read as another zone.
 func Test_UsagePages_AZoneTheDatabaseDoesNotKnowIsAnError(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
