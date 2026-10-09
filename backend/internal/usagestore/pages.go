@@ -31,9 +31,11 @@ type CalendarDay struct {
 }
 
 // Period is the days the pages read, from the first to the last, both included, as the zone
-// counts them: a day starts and ends at the midnights of the zone, and lasts 23 or 25 hours when
-// its clocks change. Zone is a location loaded by its name; nil reads as UTC. The database
-// places the runs in the days, with its own knowledge of the zones: a zone it does not know
+// counts them: a run is of the date the clocks of the zone showed, and a day lasts 23 or 25 hours
+// when they change. Every read places a run in its day by that date alone, so that a period
+// holds exactly the runs of its days. Zone is a location loaded by its name, and only its name
+// is used; nil reads as UTC. The database places the runs in the days, with its own knowledge of
+// the zones, and nothing here computes a moment in the zone: a zone the database does not know
 // fails the read, and ReadInZone then reads the same days as UTC days.
 //
 // A run is of the day on which the API recorded its end, as in the daily report, which counts

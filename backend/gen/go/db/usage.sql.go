@@ -117,8 +117,10 @@ const countAccountRunUsageErrorsBetween = `-- name: CountAccountRunUsageErrorsBe
 SELECT status, error_category, error_step, count(*)::bigint AS runs
 FROM husonym_api.run_usage
 WHERE account_id = $1
-  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
-  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at >= ($3::date - 1)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date + 1)::timestamp AT TIME ZONE $2::text
+  AND (recorded_at AT TIME ZONE $2::text)::date >= $3::date
+  AND (recorded_at AT TIME ZONE $2::text)::date < $4::date
 GROUP BY status, error_category, error_step
 ORDER BY status, error_category, error_step
 `
@@ -466,8 +468,10 @@ SELECT run_id, job_kind, status, started_at, ended_at, rows_read, rows_discarded
 FROM husonym_api.run_usage
 WHERE account_id = $1
   AND job_id = $2
-  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $3::text
-  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $3::text
+  AND recorded_at >= ($4::date - 1)::timestamp AT TIME ZONE $3::text
+  AND recorded_at < ($5::date + 1)::timestamp AT TIME ZONE $3::text
+  AND (recorded_at AT TIME ZONE $3::text)::date >= $4::date
+  AND (recorded_at AT TIME ZONE $3::text)::date < $5::date
 ORDER BY recorded_at DESC, run_id
 LIMIT $6
 `
@@ -789,8 +793,10 @@ SELECT
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
 FROM husonym_api.run_usage
 WHERE account_id = $1
-  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
-  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at >= ($3::date - 1)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date + 1)::timestamp AT TIME ZONE $2::text
+  AND (recorded_at AT TIME ZONE $2::text)::date >= $3::date
+  AND (recorded_at AT TIME ZONE $2::text)::date < $4::date
 `
 
 type SumAccountRunUsageBetweenParams struct {
@@ -815,10 +821,21 @@ type SumAccountRunUsageBetweenRow struct {
 // The usage pages. Every read below is the one of an account, and of one of its jobs where a
 // job is given: a job of another account matches no row. A run counts, as everywhere, for the
 // day on which the API recorded its end, but the days are the ones of the zone given, from the
-// first day to the day before the second: a day of that zone starts and ends at its own
-// midnights, whatever its length. None of these reads decides which runs count as an error: the
-// ones that tell of errors give the status and what the row holds, and the one rule of the store
-// reads them.
+// first day to the day before the second.
+//
+// The day of a run is the date the clocks of the zone showed when its end was recorded:
+//
+//	(recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date
+//
+// It is what the series of the days group by, and it alone decides whether a run is of the
+// period, so that every read counts the same runs for the same days: where clocks go back to
+// midnight, that midnight comes twice and no moment starts the day. The two conditions on
+// recorded_at itself only let the index find the rows: they reach one day further on each side,
+// more than any change of clocks moves a midnight. The four lines are the same, character for
+// character, in each of the seven reads of the runs: a test of the store fails when they differ.
+//
+// None of these reads decides which runs count as an error: the ones that tell of errors give the
+// status and what the row holds, and the one rule of the store reads them.
 // Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
 // negative: an end told before its start counts for nothing.
 func (q *Queries) SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageBetweenParams) (SumAccountRunUsageBetweenRow, error) {
@@ -850,8 +867,10 @@ SELECT
   count(*)::bigint AS runs
 FROM husonym_api.run_usage
 WHERE account_id = $2
-  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $1::text
-  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $1::text
+  AND recorded_at >= ($3::date - 1)::timestamp AT TIME ZONE $1::text
+  AND recorded_at < ($4::date + 1)::timestamp AT TIME ZONE $1::text
+  AND (recorded_at AT TIME ZONE $1::text)::date >= $3::date
+  AND (recorded_at AT TIME ZONE $1::text)::date < $4::date
 GROUP BY day
 ORDER BY day
 `
@@ -914,8 +933,10 @@ SELECT
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
 FROM husonym_api.run_usage
 WHERE account_id = $1
-  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
-  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at >= ($3::date - 1)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date + 1)::timestamp AT TIME ZONE $2::text
+  AND (recorded_at AT TIME ZONE $2::text)::date >= $3::date
+  AND (recorded_at AT TIME ZONE $2::text)::date < $4::date
 GROUP BY job_id
 ORDER BY rows_read DESC, runs DESC, job_id
 `
@@ -1037,8 +1058,10 @@ SELECT
 FROM husonym_api.run_usage
 WHERE account_id = $1
   AND job_id = $2
-  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $3::text
-  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $3::text
+  AND recorded_at >= ($4::date - 1)::timestamp AT TIME ZONE $3::text
+  AND recorded_at < ($5::date + 1)::timestamp AT TIME ZONE $3::text
+  AND (recorded_at AT TIME ZONE $3::text)::date >= $4::date
+  AND (recorded_at AT TIME ZONE $3::text)::date < $5::date
 `
 
 type SumJobRunUsageBetweenParams struct {
@@ -1093,8 +1116,10 @@ SELECT
 FROM husonym_api.run_usage
 WHERE account_id = $2
   AND job_id = $3
-  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $1::text
-  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $1::text
+  AND recorded_at >= ($4::date - 1)::timestamp AT TIME ZONE $1::text
+  AND recorded_at < ($5::date + 1)::timestamp AT TIME ZONE $1::text
+  AND (recorded_at AT TIME ZONE $1::text)::date >= $4::date
+  AND (recorded_at AT TIME ZONE $1::text)::date < $5::date
 GROUP BY day
 ORDER BY day
 `

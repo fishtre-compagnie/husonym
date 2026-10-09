@@ -344,10 +344,19 @@ type Querier interface {
 	// The usage pages. Every read below is the one of an account, and of one of its jobs where a
 	// job is given: a job of another account matches no row. A run counts, as everywhere, for the
 	// day on which the API recorded its end, but the days are the ones of the zone given, from the
-	// first day to the day before the second: a day of that zone starts and ends at its own
-	// midnights, whatever its length. None of these reads decides which runs count as an error: the
-	// ones that tell of errors give the status and what the row holds, and the one rule of the store
-	// reads them.
+	// first day to the day before the second.
+	//
+	// The day of a run is the date the clocks of the zone showed when its end was recorded:
+	//   (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date
+	// It is what the series of the days group by, and it alone decides whether a run is of the
+	// period, so that every read counts the same runs for the same days: where clocks go back to
+	// midnight, that midnight comes twice and no moment starts the day. The two conditions on
+	// recorded_at itself only let the index find the rows: they reach one day further on each side,
+	// more than any change of clocks moves a midnight. The four lines are the same, character for
+	// character, in each of the seven reads of the runs: a test of the store fails when they differ.
+	//
+	// None of these reads decides which runs count as an error: the ones that tell of errors give the
+	// status and what the row holds, and the one rule of the store reads them.
 	// Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
 	// negative: an end told before its start counts for nothing.
 	SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageBetweenParams) (SumAccountRunUsageBetweenRow, error)

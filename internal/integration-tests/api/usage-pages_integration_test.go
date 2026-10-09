@@ -324,6 +324,67 @@ func (s *IntegrationTestSuite) Test_UsagePages_GiveTheUsageOfTheAccountAndOfItsJ
 	})
 }
 
+// In Havana the clocks go back from 01:00 to 00:00 on November 1, 2026: midnight comes twice, and
+// the hour between the two is of November 1. Every part of an answer counts the same runs for the
+// same days: the totals, the days, the jobs of the table with the runs of the job deleted since,
+// and the runs of a job.
+func (s *IntegrationTestSuite) Test_UsagePages_CountTheSameRunsWhereMidnightComesTwice() {
+	t := s.T()
+	g := s.newPagesGround("usage-pages-havana")
+	orders := s.mustCreateJob(g.capGround, g.jobRequest("orders")).GetId()
+	gone := s.mustCreateJob(g.capGround, g.jobRequest("gone")).GetId()
+
+	for run, at := range map[string]time.Time{
+		"before":  time.Date(2026, 11, 1, 3, 30, 0, 0, time.UTC), // October 31, 23:30
+		"between": time.Date(2026, 11, 1, 4, 30, 0, 0, time.UTC), // November 1, 00:30, before the clocks go back
+		"after":   time.Date(2026, 11, 1, 5, 30, 0, 0, time.UTC), // November 1, 00:30 again
+	} {
+		s.ranOnce(g, orders, "orders-"+run, at, time.Minute, nil)
+		s.ranOnce(g, gone, "gone-"+run, at, time.Minute, nil)
+	}
+	_, err := s.Pgcontainer.DB.Exec(s.ctx, `DELETE FROM husonym_api.jobs WHERE id = $1`, gone)
+	require.NoError(t, err)
+
+	oct31, nov1 := usageDay(2026, 10, 31), usageDay(2026, 11, 1)
+	for name, c := range map[string]struct {
+		from, to *mgmtv1alpha1.Date
+		// The runs of each day, counted by hand, for the two jobs together.
+		days []int64
+	}{
+		"the day before the change": {oct31, oct31, []int64{2}},
+		"the day of the change":     {nov1, nov1, []int64{4}},
+		"both days":                 {oct31, nov1, []int64{2, 4}},
+	} {
+		var want int64
+		for _, runs := range c.days {
+			want += runs
+		}
+		usage := g.accountUsage(s, c.from, c.to, "America/Havana")
+		require.Equal(t, "America/Havana", usage.GetTimeZone(), name)
+		require.Equal(t, want, usage.GetTotals().GetRuns(), "%s: the totals", name)
+		require.Len(t, usage.GetDays(), len(c.days), name)
+		for i, day := range usage.GetDays() {
+			require.Equal(t, c.days[i], day.GetRuns(), "%s: day %d", name, i)
+		}
+
+		// The table holds the job that still exists; the deleted one is read through its own usage.
+		require.Len(t, usage.GetJobs(), 1, name)
+		require.Equal(t, orders, usage.GetJobs()[0].GetJobId(), name)
+		ofGone := g.jobUsage(s, gone, c.from, c.to, "America/Havana")
+		require.Equal(t, want, usage.GetJobs()[0].GetTotals().GetRuns()+ofGone.GetTotals().GetRuns(),
+			"%s: the table and the deleted job add up to the totals", name)
+
+		ofOrders := g.jobUsage(s, orders, c.from, c.to, "America/Havana")
+		require.Equal(t, want/2, ofOrders.GetTotals().GetRuns(), "%s: the totals of the job", name)
+		require.Len(t, ofOrders.GetRuns(), int(want/2), "%s: the runs of the job", name)
+		var inDays int64
+		for _, day := range ofOrders.GetDays() {
+			inDays += day.GetRuns()
+		}
+		require.Equal(t, want/2, inDays, "%s: the days of the job", name)
+	}
+}
+
 // The usage of an account is told to who may view the account, and to nobody else: not to a
 // member of another account, and not to an API key that does not hold the view of the account,
 // whatever else it holds.
