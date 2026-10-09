@@ -325,7 +325,7 @@ func Test_Classify_NeverReadsTheMessage(t *testing.T) {
 
 // The guard of the rule "never the text", on the source itself: nothing of the package asks
 // an error for its text, and nothing of it can search a text. The one text the package
-// handles is the message Temporal computed for the failure, which Carry hands back to
+// handles is the message Temporal computed for the failure, which Tell hands back to
 // Temporal untouched (carry.go).
 func Test_ThePackage_NeverAsksAnErrorForItsText(t *testing.T) {
 	files, err := filepath.Glob("*.go")
@@ -336,11 +336,15 @@ func Test_ThePackage_NeverAsksAnErrorForItsText(t *testing.T) {
 		"fmt": true, "strings": true, "regexp": true, "bytes": true, "log": true, "log/slog": true,
 	}
 	// The methods and members that give the text of an error, of a failure or of a database
-	// error.
+	// error: its message, and the names and the statement a database error holds.
 	forbiddenSelectors := map[string]bool{
 		"Error": true, "Message": true, "String": true, "Detail": true, "Hint": true,
 		"Where": true, "GoString": true, "StackTrace": true,
+		"ConstraintName": true, "InternalQuery": true, "SchemaName": true, "TableName": true,
+		"ColumnName": true, "DataTypeName": true, "Routine": true,
 	}
+	// The message of a failure of Temporal is read in one place, which is counted below.
+	const failureMessage = "GetMessage"
 
 	sources := 0
 	messageReads := []string{}
@@ -376,13 +380,16 @@ func Test_ThePackage_NeverAsksAnErrorForItsText(t *testing.T) {
 			position := fset.Position(selector.Sel.Pos()).String()
 			assert.False(t, forbiddenSelectors[selector.Sel.Name],
 				"%s reads .%s: the text of an error decides nothing here", position, selector.Sel.Name)
-			if selector.Sel.Name == "GetMessage" {
-				messageReads = append(messageReads, filepath.Base(fset.Position(selector.Sel.Pos()).Filename))
+			if selector.Sel.Name == failureMessage {
+				source := filepath.Base(fset.Position(selector.Sel.Pos()).Filename)
+				assert.Equal(t, "carry.go", source,
+					"%s reads .%s: the message of a failure is read by Tell alone", position, failureMessage)
+				messageReads = append(messageReads, source)
 			}
 			return true
 		})
 	}
 	require.Positive(t, sources, "no source was read")
 	assert.Equal(t, []string{"carry.go"}, messageReads,
-		"the message of a failure is read once, by Carry, to give it back to Temporal as it is")
+		"the message of a failure is read once, by Tell, to give it back to Temporal as it is")
 }
