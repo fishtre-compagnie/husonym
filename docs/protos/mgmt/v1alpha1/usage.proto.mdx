@@ -18,7 +18,7 @@ _**package** mgmt.v1alpha1_
 
 
 ### `GateRefusalCount`
-<ProtoMessage key={0} message={{"name":"GateRefusalCount","longName":"GateRefusalCount","fullName":"mgmt.v1alpha1.GateRefusalCount","description":"The times the license refused something at a gate.","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"gate","description":"The gate: a feature of the license, or one of its limits. A member of a closed list.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"refusals","description":"","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+<ProtoMessage key={0} message={{"name":"GateRefusalCount","longName":"GateRefusalCount","fullName":"mgmt.v1alpha1.GateRefusalCount","description":"The times the license refused something at a gate.","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"gate","description":"The gate: a feature of the license, or one of its limits. A member of the closed list of the\ngates, or \"other\" for the refusals of every gate this instance does not know, counted\ntogether.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"refusals","description":"","label":"","type":"int64","longType":"int64","fullType":"int64","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
 
 
 ### `GetAccountUsageRequest`

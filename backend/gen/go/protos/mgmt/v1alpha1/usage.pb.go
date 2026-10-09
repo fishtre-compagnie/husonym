@@ -1453,7 +1453,9 @@ func (x *UsageErrorCount) GetRuns() int64 {
 // The times the license refused something at a gate.
 type GateRefusalCount struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The gate: a feature of the license, or one of its limits. A member of a closed list.
+	// The gate: a feature of the license, or one of its limits. A member of the closed list of the
+	// gates, or "other" for the refusals of every gate this instance does not know, counted
+	// together.
 	Gate          string `protobuf:"bytes,1,opt,name=gate,proto3" json:"gate,omitempty"`
 	Refusals      int64  `protobuf:"varint,2,opt,name=refusals,proto3" json:"refusals,omitempty"`
 	unknownFields protoimpl.UnknownFields

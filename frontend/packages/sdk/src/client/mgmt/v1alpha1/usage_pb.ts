@@ -591,7 +591,9 @@ export const UsageErrorCountSchema: GenMessage<UsageErrorCount> = /*@__PURE__*/
  */
 export type GateRefusalCount = Message<"mgmt.v1alpha1.GateRefusalCount"> & {
   /**
-   * The gate: a feature of the license, or one of its limits. A member of a closed list.
+   * The gate: a feature of the license, or one of its limits. A member of the closed list of the
+   * gates, or "other" for the refusals of every gate this instance does not know, counted
+   * together.
    *
    * @generated from field: string gate = 1;
    */

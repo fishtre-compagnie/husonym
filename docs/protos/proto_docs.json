@@ -22882,7 +22882,7 @@
           "fields": [
             {
               "name": "gate",
-              "description": "The gate: a feature of the license, or one of its limits. A member of a closed list.",
+              "description": "The gate: a feature of the license, or one of its limits. A member of the closed list of the\ngates, or \"other\" for the refusals of every gate this instance does not know, counted\ntogether.",
               "label": "",
               "type": "string",
               "longType": "string",
