@@ -44,6 +44,11 @@ type Querier interface {
 	// no day. The days counted run from the first given to the day before the second: a day and the
 	// next one for the runs of a day, the first days of two months for the runs of a month.
 	CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg CountRunUsageByStatusBetweenParams) ([]CountRunUsageByStatusBetweenRow, error)
+	// The runs of the day, the same ones as CountRunUsageByStatusBetween counts for it, by what their
+	// row holds of their error. Every row of the day is given, with its status: which of them count
+	// as an error, and under what when a row holds no category, is decided by the one rule of the
+	// store, not here.
+	CountRunUsageErrorsOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error)
 	// The types of the columns the runs saw, counted by type. The schema, the table and the column
 	// are not selected. The columns of the jobs given are not counted: they are the jobs the caller
 	// could not read, which it leaves out of every count.

@@ -1,9 +1,11 @@
 package usagestore
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -39,6 +41,13 @@ type SourceEngineRuns struct {
 	JobId        string
 	VersionMajor string
 	Runs         int64
+}
+
+// ErrorCount is how many runs did not complete for a category of error, at a step.
+type ErrorCount struct {
+	Category ErrorCategory
+	Step     ErrorStep
+	Count    int64
 }
 
 // GateCount is how many times a gate refused, over every account.
@@ -111,6 +120,30 @@ func (s *Store) SourceVersionsOfDay(ctx context.Context, day time.Time) ([]Sourc
 		})
 	}
 	return versions, nil
+}
+
+// ErrorsOfDay gives, per category and step, the runs counted on the UTC day that did not complete.
+// They are the runs RunsOfDay counts for that day, each once.
+func (s *Store) ErrorsOfDay(ctx context.Context, day time.Time) ([]ErrorCount, error) {
+	rows, err := s.db.Q.CountRunUsageErrorsOfDay(ctx, s.db.Db, utcDate(day))
+	if err != nil {
+		return nil, err
+	}
+	counted := make(map[RunError]int64, len(rows))
+	for _, row := range rows {
+		// Rows of several statuses, and rows that hold no pair, meet under one pair.
+		if pair := errorRead(Status(row.Status), row.ErrorCategory, row.ErrorStep); pair != (RunError{}) {
+			counted[pair] += row.Runs
+		}
+	}
+	counts := make([]ErrorCount, 0, len(counted))
+	for pair, count := range counted {
+		counts = append(counts, ErrorCount{Category: pair.Category, Step: pair.Step, Count: count})
+	}
+	slices.SortFunc(counts, func(a, b ErrorCount) int {
+		return cmp.Or(cmp.Compare(a.Category, b.Category), cmp.Compare(a.Step, b.Step))
+	})
+	return counts, nil
 }
 
 // RefusalsOfDay adds up, over every account, the refusals of each gate on the UTC day.

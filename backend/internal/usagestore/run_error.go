@@ -46,6 +46,16 @@ func errorOf(status Status, told RunError) RunError {
 	return RunError{Category: ErrorCategory(telemetry.ErrorCategory(string(told.Category))), Step: step}
 }
 
+// errorRead is the error a row counts for, from its status and the two values it holds. It is
+// errorOf again, with what the row holds as what was told: a row the store wrote reads as it was
+// written, and a row that did not complete and holds nothing reads as a run nothing was told of.
+// Such rows exist, an API of the version before the two columns writes them while both versions
+// serve, so a count of errors goes through here and never asks the table which rows hold a
+// category.
+func errorRead(status Status, category, step pgtype.Text) RunError {
+	return errorOf(status, RunError{Category: ErrorCategory(category.String), Step: ErrorStep(step.String)})
+}
+
 // columns are the two values of the row: null for an error that tells nothing.
 func (e RunError) columns() (category, step pgtype.Text) {
 	if e == (RunError{}) {

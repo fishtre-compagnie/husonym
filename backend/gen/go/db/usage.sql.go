@@ -193,6 +193,51 @@ func (q *Queries) CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg
 	return items, nil
 }
 
+const countRunUsageErrorsOfDay = `-- name: CountRunUsageErrorsOfDay :many
+SELECT status, error_category, error_step, count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+GROUP BY status, error_category, error_step
+ORDER BY status, error_category, error_step
+`
+
+type CountRunUsageErrorsOfDayRow struct {
+	Status        string
+	ErrorCategory pgtype.Text
+	ErrorStep     pgtype.Text
+	Runs          int64
+}
+
+// The runs of the day, the same ones as CountRunUsageByStatusBetween counts for it, by what their
+// row holds of their error. Every row of the day is given, with its status: which of them count
+// as an error, and under what when a row holds no category, is decided by the one rule of the
+// store, not here.
+func (q *Queries) CountRunUsageErrorsOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error) {
+	rows, err := db.Query(ctx, countRunUsageErrorsOfDay, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRunUsageErrorsOfDayRow
+	for rows.Next() {
+		var i CountRunUsageErrorsOfDayRow
+		if err := rows.Scan(
+			&i.Status,
+			&i.ErrorCategory,
+			&i.ErrorStep,
+			&i.Runs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countUsersSeenSince = `-- name: CountUsersSeenSince :one
 SELECT count(*)::bigint
 FROM husonym_api.user_activity

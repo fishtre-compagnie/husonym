@@ -3,8 +3,28 @@ package usagestore
 import (
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/telemetry"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
+
+// Reading a row is the rule it was written with: whatever the status and whatever was told, the
+// row the store writes reads as it was written, and a row emptied of its pair reads as the row
+// of a run nothing was told of.
+func Test_ErrorRead_IsTheRuleTheRowWasWrittenWith(t *testing.T) {
+	categories := append([]string{"", "deadlock"}, telemetry.ErrorCategories...)
+	steps := append([]string{"", "somewhere"}, telemetry.ErrorSteps...)
+	for _, status := range Statuses() {
+		for _, category := range categories {
+			for _, step := range steps {
+				written := errorOf(status, RunError{Category: ErrorCategory(category), Step: ErrorStep(step)})
+				heldCategory, heldStep := written.columns()
+				require.Equal(t, written, errorRead(status, heldCategory, heldStep), "%s %s %s", status, category, step)
+			}
+		}
+		require.Equal(t, errorOf(status, RunError{}), errorRead(status, pgtype.Text{}, pgtype.Text{}), status)
+	}
+}
 
 func Test_ErrorOf(t *testing.T) {
 	other := RunError{Category: ErrorCategoryOther, Step: ErrorStepOther}

@@ -112,6 +112,18 @@ WHERE source_version_major IS NOT NULL
 GROUP BY job_id, source_version_major
 ORDER BY job_id, source_version_major;
 
+-- The runs of the day, the same ones as CountRunUsageByStatusBetween counts for it, by what their
+-- row holds of their error. Every row of the day is given, with its status: which of them count
+-- as an error, and under what when a row holds no category, is decided by the one rule of the
+-- store, not here.
+-- name: CountRunUsageErrorsOfDay :many
+SELECT status, error_category, error_step, count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+GROUP BY status, error_category, error_step
+ORDER BY status, error_category, error_step;
+
 -- The days counted run from the first given to the day before the second, as for the runs.
 -- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
