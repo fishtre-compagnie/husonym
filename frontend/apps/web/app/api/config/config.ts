@@ -18,7 +18,6 @@ export function getSystemAppConfig(): SystemAppConfig {
     isStripeEnabled: process.env.STRIPE_ENABLED === 'true',
     enableRunLogs: process.env.ENABLE_RUN_LOGS === 'true',
     signInProviderId: getProviderId(),
-    isMetricsServiceEnabled: process.env.METRICS_SERVICE_ENABLED === 'true',
     // Optional link surfaced by the upgrade CTA. When unset, the CTA is hidden.
     upgradeLink: process.env.UPGRADE_LINK ?? '',
     isGcpCloudStorageConnectionsEnabled: isGcpConnectionsEnabled(),

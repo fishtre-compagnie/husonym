@@ -127,9 +127,6 @@ AUTH_TRUST_HOST: {{ .Values.auth.trustHost | default "true" | quote }}
 AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE: "true"
 {{- end }}
 ENABLE_RUN_LOGS: {{ .Values.enableRunLogs | default "false" | quote }}
-{{- if and .Values.protometrics .Values.protometrics.enabled }}
-METRICS_SERVICE_ENABLED: {{ .Values.protometrics.enabled | default "false" | quote }}
-{{- end }}
 GCP_CS_CONNECTIONS_DISABLED: {{ .Values.disableGcpCloudStorageConnections | default "false" | quote }}
 JOBHOOKS_ENABLED: {{ .Values.jobHooks.enabled | default "false" | quote }}
 {{- end -}}

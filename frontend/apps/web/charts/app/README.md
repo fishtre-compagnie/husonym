@@ -47,7 +47,6 @@ A Helm chart for the Husonym App
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
-| protometrics.enabled | bool | `false` |  |
 | resources.limits.cpu | string | `"500m"` | Sets the max CPU amount |
 | resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
