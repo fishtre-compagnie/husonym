@@ -18,24 +18,39 @@ type carriedDetails struct {
 	RunErrorCategory int32
 }
 
-// Carry gives the error of an activity the category Classify reads in it, as the details of
-// the application error Temporal records, for the workflow to read with Carried.
-//
-// The error it returns is recorded by Temporal as err would have been, to the details: same
-// message, same type, same retryability and delay, same causes. It is read the same by the
-// worker too, which looks into the error of an activity to tell a cancellation and to retry
-// a local activity. Carry holds itself to both and returns err as it is otherwise, as it does
-// when it has nothing to tell: nil, a category that is "other" or "canceled", an error
-// Temporal does not record as an application failure, one that already has details.
+// Carry gives the error of an activity the category Classify reads in it, as Tell does.
 func Carry(err error) error {
 	if err == nil {
 		return nil
 	}
-	category := Classify(err)
-	if category == mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OTHER ||
+	return Tell(err, Classify(err))
+}
+
+// Tell gives an error a category, as the details of the application error Temporal records,
+// for the workflow to read with Carried. Carry tells the category it reads in the error; the
+// code that makes an error and knows its category by itself tells it here.
+//
+// The error it returns is recorded by Temporal as err would have been, to the details: same
+// message, same type, same retryability and delay, same causes. It is read the same by the
+// worker too, which looks into the error of an activity to tell a cancellation and to retry
+// a local activity. Tell holds itself to both and returns err as it is otherwise, as it does
+// when there is nothing to tell: nil, a category that is "other", "canceled" or none, an
+// error Temporal does not record as an application failure, one that already has details,
+// one whose inspection panics.
+func Tell(err error, category mgmtv1alpha1.RunErrorCategory) (told error) {
+	if err == nil {
+		return nil
+	}
+	if category == mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED ||
+		category == mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OTHER ||
 		category == mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED {
 		return err
 	}
+	defer func() {
+		if recover() != nil {
+			told = err
+		}
+	}()
 
 	// What Temporal makes of err is asked of Temporal: the message and the type of the
 	// failure are its own, and are given back to it as they are.

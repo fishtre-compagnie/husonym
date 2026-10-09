@@ -235,7 +235,6 @@ func Test_Classify(t *testing.T) {
 		{"another error of the system", syscall.EACCES, other},
 		{"a refusal of the license", License(errors.New("x")), license},
 		{"a refusal of the license over a database error", License(&pgconn.PgError{Code: "23505"}), license},
-		{"a refusal of the license of a canceled run", License(context.Canceled), license},
 		{
 			"an error that only says so",
 			errors.New("connection refused: permission denied for table users (SQLSTATE 42501)"),

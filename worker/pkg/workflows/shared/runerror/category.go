@@ -10,19 +10,16 @@ import (
 // CategoryOf gives the category of the error a run ends on, as its workflow sees it. The
 // first of these that is found anywhere in the error decides:
 //
-//  1. the category an activity carried out (Carried);
-//  2. the mark of a refusal of the license (License);
-//  3. a timeout of Temporal;
-//  4. a cancellation of Temporal.
+//  1. the category an activity carried out (Carried), the mark of a refusal of the license
+//     included, which is one;
+//  2. a timeout of Temporal;
+//  3. a cancellation of Temporal.
 //
 // Anything else is "other", nil included. It reads the error and nothing else: a workflow
 // may call it, and gets the same answer when it is replayed.
 func CategoryOf(err error) mgmtv1alpha1.RunErrorCategory {
 	if category, ok := Carried(err); ok {
 		return category
-	}
-	if isLicense(err) {
-		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
 	}
 	var timeoutErr *temporal.TimeoutError
 	if errors.As(err, &timeoutErr) {

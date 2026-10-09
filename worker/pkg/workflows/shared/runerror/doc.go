@@ -13,6 +13,10 @@
 // application error of Temporal, as the one value {"RunErrorCategory": <number>} (Carry).
 // The workflow reads it back with CategoryOf.
 //
+// An activity that makes an error whose category no type tells gives it the category itself,
+// the same way (Tell): a refusal of the license (License), a pre-flight check that stops the
+// run.
+//
 // The interceptor observes. What Temporal records of the error, apart from the details, and
 // what the worker reads of it to retry or to cancel the activity, are what they were without
 // it; an error that cannot be given details at that price is left as it is, and so is the

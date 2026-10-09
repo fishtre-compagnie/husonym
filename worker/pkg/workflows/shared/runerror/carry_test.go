@@ -53,10 +53,6 @@ func Test_Carry_ChangesNothingButTheDetails(t *testing.T) {
 		{"a typed error of the worker", &typedError{cause: &mysql.MySQLError{Number: 1062}}},
 		{"a join, of which Temporal records no cause", errors.Join(errors.New("first"), database)},
 		{
-			"a refusal of the license over a timeout of Temporal",
-			License(temporal.NewTimeoutError(enumspb.TIMEOUT_TYPE_START_TO_CLOSE, database)),
-		},
-		{
 			"a database error of an activity Temporal canceled, under a wrapper",
 			fmt.Errorf("x: %w", errors.Join(database, temporal.NewCanceledError())),
 		},

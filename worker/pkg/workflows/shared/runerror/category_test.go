@@ -38,11 +38,6 @@ func Test_CategoryOf(t *testing.T) {
 		},
 		{"a refusal of the license", fmt.Errorf("halting: %w", License(errors.New("x"))), license},
 		{
-			"a refusal of the license over a timeout",
-			License(temporal.NewTimeoutError(enumspb.TIMEOUT_TYPE_START_TO_CLOSE, nil)),
-			license,
-		},
-		{
 			"an activity that timed out",
 			fmt.Errorf("x: %w", temporal.NewTimeoutError(enumspb.TIMEOUT_TYPE_START_TO_CLOSE, nil)),
 			timeout,

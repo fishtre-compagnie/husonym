@@ -1,25 +1,27 @@
 package runerror
 
-import "errors"
+import (
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+)
 
-// licensed marks an error as a refusal of the license. Its text is that of the error it
-// holds, which it gives without reading it: the method is the one of the embedded error.
-type licensed struct{ error }
-
-func (l *licensed) Unwrap() error { return l.error }
-
-// License marks err as a refusal of the license: Classify and CategoryOf read it as such,
-// wherever it is in an error. The text of the error is unchanged and err is still found
-// under it. The mark is a Go type: it does not cross the boundary of an activity or of a
-// child workflow by itself, the category Carry gives the error does.
+// License marks err as a refusal of the license, for an activity that refuses to return:
+// Classify and CategoryOf read it as such, wherever it is in an error, on both sides of the
+// boundary of the activity.
+//
+// The mark is the category told in the details of the error (Tell), and nothing else: what
+// Temporal records of the marked error is what it would have recorded of err, the details
+// apart. An error that cannot be marked at that price is returned as it is.
+//
+// The error returned is another value than err: a refusal kept as a variable, to be returned
+// and compared with, is to be the marked value.
+//
+// A workflow that refuses by itself needs no mark: it tells the category with the step of its
+// run (workflow_shared.RunFailure).
 func License(err error) error {
-	if err == nil {
-		return nil
-	}
-	return &licensed{error: err}
+	return Tell(err, mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE)
 }
 
 func isLicense(err error) bool {
-	var mark *licensed
-	return errors.As(err, &mark)
+	category, ok := Carried(err)
+	return ok && category == mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
 }

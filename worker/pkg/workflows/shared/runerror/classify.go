@@ -16,7 +16,7 @@ import (
 // Classify gives the category of an error of the worker, from its Go types and from the
 // code of the database, the first of these that is found anywhere in the error:
 //
-//  1. the mark of a refusal of the license (License);
+//  1. the mark of a refusal of the license (License), which is a category the error tells;
 //  2. a cancellation;
 //  3. a deadline;
 //  4. an error of PostgreSQL, by its SQLSTATE;

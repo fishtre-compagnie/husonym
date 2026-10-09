@@ -188,7 +188,6 @@ func Test_Interceptor_ChangesNothingButTheDetails(t *testing.T) {
 			insufficientPrivileges,
 		},
 		{"a deadline", context.DeadlineExceeded, timeout},
-		{"a refusal of the license", License(errors.New("no license")), license},
 		{"a typed error of the worker", &typedError{cause: &mysql.MySQLError{Number: 1062}}, constraintViolated},
 	}
 	for _, tc := range cases {
