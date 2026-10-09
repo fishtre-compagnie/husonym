@@ -133,8 +133,10 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 				runWorkflow,
 			)
 			// The refusal is the workflow's own, and holds no category: the run tells it
-			// here, of the very error it ends on, wherever it was returned from.
-			if errors.Is(err, errInvalidAccountStatusError) {
+			// here, of the very error it ends on, wherever it was returned from. A run that
+			// ends on that error because the status could not be asked was refused nothing:
+			// its category is read in the error of the asking (failure.Cause).
+			if errors.Is(err, errInvalidAccountStatusError) && failure.Cause == nil {
 				failure.Category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
 			}
 			return resp, err
@@ -310,6 +312,9 @@ func executeWorkflow(
 
 	// spawn account status checker in loop
 	stopChan := workflow.NewNamedChannel(ctx, "account-status")
+	// The error of a poll that could not ask the status, when that is what stops the run: the
+	// run then ends as on a refusal, and tells the category of this error, not a refusal.
+	var accountStatusPollErr error
 	if initialCheckAccountStatusResponse.ShouldPoll {
 		accountStatusTimerDuration := getAccountStatusTimerDuration()
 		workflow.GoNamed(
@@ -344,6 +349,7 @@ func executeWorkflow(
 								"error",
 								err,
 							)
+							accountStatusPollErr = err
 							stopChan.Send(ctx, true)
 							shouldStop = true
 							cancelHandler()
@@ -383,6 +389,7 @@ func executeWorkflow(
 		// Stop signal received, exit the routing
 		logger.Warn("received signal to stop workflow based on account status")
 		activityErr = errInvalidAccountStatusError
+		failure.Cause = accountStatusPollErr
 		cancelHandler()
 	})
 

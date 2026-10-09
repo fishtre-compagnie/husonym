@@ -326,6 +326,34 @@ func Test_Workflow_TellsTheStepAndTheCategoryItFailedOn(t *testing.T) {
 			message: "exiting workflow due to invalid account status", category: categoryLicense, step: stepTableSync,
 		},
 		{
+			// The run ends on the same error as a refusal, and no account was refused.
+			name: "the account status cannot be checked while the tables are synced",
+			arrange: func(run *failingRun) {
+				var statusActivity *accountstatus_activity.Activity
+				run.env.OnActivity(statusActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+					Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true, ShouldPoll: true}, nil).Once()
+				run.env.OnActivity(statusActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+					Return(nil, errors.New("the API is away"))
+				run.tableSync = func(ctx workflow.Context, _ *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+					return nil, workflow.Sleep(ctx, time.Hour)
+				}
+			},
+			message: "exiting workflow due to invalid account status", category: categoryOther, step: stepTableSync,
+		},
+		{
+			name: "the check of the account status meets a database that refuses it while the tables are synced",
+			arrange: func(run *failingRun) {
+				var statusActivity *accountstatus_activity.Activity
+				run.env.OnActivity(statusActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+					Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true, ShouldPoll: true}, nil).Once()
+				run.env.OnActivity(statusActivity.CheckAccountStatus, mock.Anything, mock.Anything).Return(nil, denied)
+				run.tableSync = func(ctx workflow.Context, _ *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+					return nil, workflow.Sleep(ctx, time.Hour)
+				}
+			},
+			message: "exiting workflow due to invalid account status", category: categoryInsufficientPrivileges, step: stepTableSync,
+		},
+		{
 			name: "the references of the destination do not hold",
 			arrange: func(run *failingRun) {
 				run.configs = []*benthosbuilder.BenthosConfigResponse{usageTestConfig("users"), childTable("orders")}

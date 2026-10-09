@@ -482,6 +482,21 @@ func Test_runError(t *testing.T) {
 		"canceled, at no step": {runusage.OutcomeCanceled, licensed, RunFailure{}, categoryCanceled, stepOther},
 		"failed":               {runusage.OutcomeFailed, licensed, RunFailure{Step: stepTableSync}, categoryLicense, stepTableSync},
 		"failed, nothing told": {runusage.OutcomeFailed, errors.New("x"), RunFailure{}, categoryOther, stepOther},
+		"failed on an error of its own, because of another": {
+			runusage.OutcomeFailed, errors.New("x"),
+			RunFailure{Step: stepTableSync, Cause: runerror.Carry(fmt.Errorf("y: %w", &pgconn.PgError{Code: "23505"}))},
+			categoryConstraintViolated, stepTableSync,
+		},
+		"failed because of an error that tells nothing": {
+			runusage.OutcomeFailed, licensed, RunFailure{Cause: errors.New("y")}, categoryOther, stepOther,
+		},
+		"what the workflow tells by itself comes before the cause": {
+			runusage.OutcomeFailed, errors.New("x"),
+			RunFailure{Category: categoryLicense, Cause: errors.New("y")}, categoryLicense, stepOther,
+		},
+		"canceled, whatever the cause": {
+			runusage.OutcomeCanceled, errors.New("x"), RunFailure{Cause: licensed}, categoryCanceled, stepOther,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			category, step := runError(tc.outcome, tc.err, tc.failure)

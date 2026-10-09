@@ -36,6 +36,9 @@ type RunFailure struct {
 	// Category is the category of the error, when the workflow knows it by itself: a refusal
 	// it returns. Unspecified, the category is read in the error (runerror.CategoryOf).
 	Category mgmtv1alpha1.RunErrorCategory
+	// Cause is the error the category is read in, when it is not the one the run ends on: the
+	// run stopped itself on an error of its own because of this one. It is never returned.
+	Cause error
 }
 
 const runUsageReportedChangeId = "run-usage-reported"
@@ -131,7 +134,8 @@ func runOutcome(ctx workflow.Context, err error) string {
 // runError gives the category and the step of the error of a run, for the report of its end.
 // A run that completed tells neither. A canceled run is canceled whatever error it returns.
 // A run that failed tells the category its workflow knows by itself, else the one read in
-// its error. The step is the one the run was at, "other" when it told none.
+// the error that made it stop itself, when it tells one, else in the error it ends on. The
+// step is the one the run was at, "other" when it told none.
 //
 // It reads what it is given and nothing else: the same answer on every replay.
 //
@@ -159,6 +163,8 @@ func runError(
 		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED, step
 	case failure.Category != mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED:
 		return failure.Category, step
+	case failure.Cause != nil:
+		return runerror.CategoryOf(failure.Cause), step
 	default:
 		return runerror.CategoryOf(err), step
 	}
