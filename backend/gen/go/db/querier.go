@@ -213,6 +213,9 @@ type Querier interface {
 	// As for the jobs, the configuration is handed over as stored.
 	ListConnectionsOfInstance(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error)
 	ListJobDestinationsOfInstance(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error)
+	// The jobs of an account as the usage pages name them: the name of each, and the two values its
+	// kind is read from. The mappings, the heavy part of a job, are not returned.
+	ListJobNamesByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error)
 	// The runs of a job of the account in the period, the most recently recorded first.
 	ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJobRunUsageBetweenParams) ([]ListJobRunUsageBetweenRow, error)
 	// What is needed to count the sources of the instance: the source options, the job type and,

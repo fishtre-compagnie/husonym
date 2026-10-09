@@ -48,6 +48,12 @@ const (
 	// UsageServiceGetUsagePeriodReportProcedure is the fully-qualified name of the UsageService's
 	// GetUsagePeriodReport RPC.
 	UsageServiceGetUsagePeriodReportProcedure = "/mgmt.v1alpha1.UsageService/GetUsagePeriodReport"
+	// UsageServiceGetAccountUsageProcedure is the fully-qualified name of the UsageService's
+	// GetAccountUsage RPC.
+	UsageServiceGetAccountUsageProcedure = "/mgmt.v1alpha1.UsageService/GetAccountUsage"
+	// UsageServiceGetJobUsageProcedure is the fully-qualified name of the UsageService's GetJobUsage
+	// RPC.
+	UsageServiceGetJobUsageProcedure = "/mgmt.v1alpha1.UsageService/GetJobUsage"
 )
 
 // UsageServiceClient is a client for the mgmt.v1alpha1.UsageService service.
@@ -62,6 +68,10 @@ type UsageServiceClient interface {
 	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
 	// Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
 	GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error)
+	// Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.
+	GetAccountUsage(context.Context, *connect.Request[v1alpha1.GetAccountUsageRequest]) (*connect.Response[v1alpha1.GetAccountUsageResponse], error)
+	// Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+	GetJobUsage(context.Context, *connect.Request[v1alpha1.GetJobUsageRequest]) (*connect.Response[v1alpha1.GetJobUsageResponse], error)
 }
 
 // NewUsageServiceClient constructs a client for the mgmt.v1alpha1.UsageService service. By default,
@@ -108,6 +118,20 @@ func NewUsageServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getAccountUsage: connect.NewClient[v1alpha1.GetAccountUsageRequest, v1alpha1.GetAccountUsageResponse](
+			httpClient,
+			baseURL+UsageServiceGetAccountUsageProcedure,
+			connect.WithSchema(usageServiceMethods.ByName("GetAccountUsage")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getJobUsage: connect.NewClient[v1alpha1.GetJobUsageRequest, v1alpha1.GetJobUsageResponse](
+			httpClient,
+			baseURL+UsageServiceGetJobUsageProcedure,
+			connect.WithSchema(usageServiceMethods.ByName("GetJobUsage")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -118,6 +142,8 @@ type usageServiceClient struct {
 	getUsageReporting    *connect.Client[v1alpha1.GetUsageReportingRequest, v1alpha1.GetUsageReportingResponse]
 	getUsageReport       *connect.Client[v1alpha1.GetUsageReportRequest, v1alpha1.GetUsageReportResponse]
 	getUsagePeriodReport *connect.Client[v1alpha1.GetUsagePeriodReportRequest, v1alpha1.GetUsagePeriodReportResponse]
+	getAccountUsage      *connect.Client[v1alpha1.GetAccountUsageRequest, v1alpha1.GetAccountUsageResponse]
+	getJobUsage          *connect.Client[v1alpha1.GetJobUsageRequest, v1alpha1.GetJobUsageResponse]
 }
 
 // RecordRunStarted calls mgmt.v1alpha1.UsageService.RecordRunStarted.
@@ -145,6 +171,16 @@ func (c *usageServiceClient) GetUsagePeriodReport(ctx context.Context, req *conn
 	return c.getUsagePeriodReport.CallUnary(ctx, req)
 }
 
+// GetAccountUsage calls mgmt.v1alpha1.UsageService.GetAccountUsage.
+func (c *usageServiceClient) GetAccountUsage(ctx context.Context, req *connect.Request[v1alpha1.GetAccountUsageRequest]) (*connect.Response[v1alpha1.GetAccountUsageResponse], error) {
+	return c.getAccountUsage.CallUnary(ctx, req)
+}
+
+// GetJobUsage calls mgmt.v1alpha1.UsageService.GetJobUsage.
+func (c *usageServiceClient) GetJobUsage(ctx context.Context, req *connect.Request[v1alpha1.GetJobUsageRequest]) (*connect.Response[v1alpha1.GetJobUsageResponse], error) {
+	return c.getJobUsage.CallUnary(ctx, req)
+}
+
 // UsageServiceHandler is an implementation of the mgmt.v1alpha1.UsageService service.
 type UsageServiceHandler interface {
 	// Tells that a run has begun. Only the worker calls this, with its key.
@@ -157,6 +193,10 @@ type UsageServiceHandler interface {
 	GetUsageReport(context.Context, *connect.Request[v1alpha1.GetUsageReportRequest]) (*connect.Response[v1alpha1.GetUsageReportResponse], error)
 	// Makes the usage report of the instance for a period of months, month by month, and seals it. Needs a license key in force.
 	GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error)
+	// Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.
+	GetAccountUsage(context.Context, *connect.Request[v1alpha1.GetAccountUsageRequest]) (*connect.Response[v1alpha1.GetAccountUsageResponse], error)
+	// Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+	GetJobUsage(context.Context, *connect.Request[v1alpha1.GetJobUsageRequest]) (*connect.Response[v1alpha1.GetJobUsageResponse], error)
 }
 
 // NewUsageServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -199,6 +239,20 @@ func NewUsageServiceHandler(svc UsageServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	usageServiceGetAccountUsageHandler := connect.NewUnaryHandler(
+		UsageServiceGetAccountUsageProcedure,
+		svc.GetAccountUsage,
+		connect.WithSchema(usageServiceMethods.ByName("GetAccountUsage")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	usageServiceGetJobUsageHandler := connect.NewUnaryHandler(
+		UsageServiceGetJobUsageProcedure,
+		svc.GetJobUsage,
+		connect.WithSchema(usageServiceMethods.ByName("GetJobUsage")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.UsageService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UsageServiceRecordRunStartedProcedure:
@@ -211,6 +265,10 @@ func NewUsageServiceHandler(svc UsageServiceHandler, opts ...connect.HandlerOpti
 			usageServiceGetUsageReportHandler.ServeHTTP(w, r)
 		case UsageServiceGetUsagePeriodReportProcedure:
 			usageServiceGetUsagePeriodReportHandler.ServeHTTP(w, r)
+		case UsageServiceGetAccountUsageProcedure:
+			usageServiceGetAccountUsageHandler.ServeHTTP(w, r)
+		case UsageServiceGetJobUsageProcedure:
+			usageServiceGetJobUsageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -238,4 +296,12 @@ func (UnimplementedUsageServiceHandler) GetUsageReport(context.Context, *connect
 
 func (UnimplementedUsageServiceHandler) GetUsagePeriodReport(context.Context, *connect.Request[v1alpha1.GetUsagePeriodReportRequest]) (*connect.Response[v1alpha1.GetUsagePeriodReportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetUsagePeriodReport is not implemented"))
+}
+
+func (UnimplementedUsageServiceHandler) GetAccountUsage(context.Context, *connect.Request[v1alpha1.GetAccountUsageRequest]) (*connect.Response[v1alpha1.GetAccountUsageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetAccountUsage is not implemented"))
+}
+
+func (UnimplementedUsageServiceHandler) GetJobUsage(context.Context, *connect.Request[v1alpha1.GetJobUsageRequest]) (*connect.Response[v1alpha1.GetJobUsageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UsageService.GetJobUsage is not implemented"))
 }

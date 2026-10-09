@@ -432,6 +432,46 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 	return count, err
 }
 
+const listJobNamesByAccount = `-- name: ListJobNamesByAccount :many
+SELECT id, name, connection_options, jobtype_config
+FROM husonym_api.jobs
+WHERE account_id = $1
+`
+
+type ListJobNamesByAccountRow struct {
+	ID                pgtype.UUID
+	Name              string
+	ConnectionOptions *pg_models.JobSourceOptions
+	JobtypeConfig     []byte
+}
+
+// The jobs of an account as the usage pages name them: the name of each, and the two values its
+// kind is read from. The mappings, the heavy part of a job, are not returned.
+func (q *Queries) ListJobNamesByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error) {
+	rows, err := db.Query(ctx, listJobNamesByAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListJobNamesByAccountRow
+	for rows.Next() {
+		var i ListJobNamesByAccountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ConnectionOptions,
+			&i.JobtypeConfig,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listJobSourcesOfInstance = `-- name: ListJobSourcesOfInstance :many
 SELECT
   j.id,

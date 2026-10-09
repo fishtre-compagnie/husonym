@@ -22635,6 +22635,39 @@
       "hasServices": true,
       "enums": [
         {
+          "name": "JobKind",
+          "longName": "JobKind",
+          "fullName": "mgmt.v1alpha1.JobKind",
+          "description": "What a job does, as its runs are counted.",
+          "values": [
+            {
+              "name": "JOB_KIND_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "JOB_KIND_SYNC",
+              "number": "1",
+              "description": "The job copies the rows of a source to its destinations."
+            },
+            {
+              "name": "JOB_KIND_GENERATE",
+              "number": "2",
+              "description": "The job generates rows."
+            },
+            {
+              "name": "JOB_KIND_AI_GENERATE",
+              "number": "3",
+              "description": "The job generates rows with a model."
+            },
+            {
+              "name": "JOB_KIND_PII_DETECT",
+              "number": "4",
+              "description": "The job looks for personal data in a source. Its runs count no rows."
+            }
+          ]
+        },
+        {
           "name": "RunErrorCategory",
           "longName": "RunErrorCategory",
           "fullName": "mgmt.v1alpha1.RunErrorCategory",
@@ -22837,6 +22870,354 @@
       ],
       "extensions": [],
       "messages": [
+        {
+          "name": "GateRefusalCount",
+          "longName": "GateRefusalCount",
+          "fullName": "mgmt.v1alpha1.GateRefusalCount",
+          "description": "The times the license refused something at a gate.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "gate",
+              "description": "The gate: a feature of the license, or one of its limits. A member of a closed list.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "refusals",
+              "description": "",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetAccountUsageRequest",
+          "longName": "GetAccountUsageRequest",
+          "fullName": "mgmt.v1alpha1.GetAccountUsageRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "from_day",
+              "description": "The first day of the period.",
+              "label": "",
+              "type": "Date",
+              "longType": "Date",
+              "fullType": "mgmt.v1alpha1.Date",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "to_day",
+              "description": "The last day of the period, included: not before the first, and at most 366 days in all.",
+              "label": "",
+              "type": "Date",
+              "longType": "Date",
+              "fullType": "mgmt.v1alpha1.Date",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "time_zone",
+              "description": "The IANA name of the time zone the days are counted in, as \"Europe/Paris\". A name that is empty or not known reads as UTC.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetAccountUsageResponse",
+          "longName": "GetAccountUsageResponse",
+          "fullName": "mgmt.v1alpha1.GetAccountUsageResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "totals",
+              "description": "Every run of the account counted in the period, those of jobs deleted since among them.",
+              "label": "",
+              "type": "UsageTotals",
+              "longType": "UsageTotals",
+              "fullType": "mgmt.v1alpha1.UsageTotals",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "duration_total_seconds",
+              "description": "The sum of the durations of the runs that have a known end. Absent when none has.",
+              "label": "optional",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_duration_total_seconds",
+              "defaultValue": ""
+            },
+            {
+              "name": "days",
+              "description": "Every day of the period, the oldest first; a day without a run is there, at zero.",
+              "label": "repeated",
+              "type": "UsageDay",
+              "longType": "UsageDay",
+              "fullType": "mgmt.v1alpha1.UsageDay",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "jobs",
+              "description": "The jobs that have a run counted in the period and still exist, the one that read the most rows first.",
+              "label": "repeated",
+              "type": "JobUsage",
+              "longType": "JobUsage",
+              "fullType": "mgmt.v1alpha1.JobUsage",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "errors",
+              "description": "The runs that did not complete, by category, the category with the most runs first.",
+              "label": "repeated",
+              "type": "UsageErrorCount",
+              "longType": "UsageErrorCount",
+              "fullType": "mgmt.v1alpha1.UsageErrorCount",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "refusals",
+              "description": "What the license refused the account, by gate. Refusals are counted by UTC day, whatever the time zone.",
+              "label": "repeated",
+              "type": "GateRefusalCount",
+              "longType": "GateRefusalCount",
+              "fullType": "mgmt.v1alpha1.GateRefusalCount",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "time_zone",
+              "description": "The time zone the days were counted in: the one asked, or \"UTC\" when it is not known.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJobUsageRequest",
+          "longName": "GetJobUsageRequest",
+          "fullName": "mgmt.v1alpha1.GetJobUsageRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The unique identifier of the job. A job that is not of the account has no usage.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "from_day",
+              "description": "The first day of the period.",
+              "label": "",
+              "type": "Date",
+              "longType": "Date",
+              "fullType": "mgmt.v1alpha1.Date",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "to_day",
+              "description": "The last day of the period, included: not before the first, and at most 366 days in all.",
+              "label": "",
+              "type": "Date",
+              "longType": "Date",
+              "fullType": "mgmt.v1alpha1.Date",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "time_zone",
+              "description": "The IANA name of the time zone the days are counted in, as \"Europe/Paris\". A name that is empty or not known reads as UTC.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJobUsageResponse",
+          "longName": "GetJobUsageResponse",
+          "fullName": "mgmt.v1alpha1.GetJobUsageResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "kind",
+              "description": "What the job does. Unspecified when the account has no such job.",
+              "label": "",
+              "type": "JobKind",
+              "longType": "JobKind",
+              "fullType": "mgmt.v1alpha1.JobKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "totals",
+              "description": "",
+              "label": "",
+              "type": "UsageTotals",
+              "longType": "UsageTotals",
+              "fullType": "mgmt.v1alpha1.UsageTotals",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "duration_median_seconds",
+              "description": "The median duration of the runs that have a known end. Absent when none has.",
+              "label": "optional",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_duration_median_seconds",
+              "defaultValue": ""
+            },
+            {
+              "name": "days",
+              "description": "Every day of the period, the oldest first; a day without a run is there, at zero.",
+              "label": "repeated",
+              "type": "UsageDay",
+              "longType": "UsageDay",
+              "fullType": "mgmt.v1alpha1.UsageDay",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs",
+              "description": "The runs counted in the period, the most recently recorded first, 20 at most.",
+              "label": "repeated",
+              "type": "RunUsage",
+              "longType": "RunUsage",
+              "fullType": "mgmt.v1alpha1.RunUsage",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "time_zone",
+              "description": "The time zone the days were counted in: the one asked, or \"UTC\" when it is not known.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
         {
           "name": "GetUsagePeriodReportRequest",
           "longName": "GetUsagePeriodReportRequest",
@@ -23162,6 +23543,78 @@
           ]
         },
         {
+          "name": "JobUsage",
+          "longName": "JobUsage",
+          "fullName": "mgmt.v1alpha1.JobUsage",
+          "description": "What the runs of a job add up to in the period.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_name",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "kind",
+              "description": "",
+              "label": "",
+              "type": "JobKind",
+              "longType": "JobKind",
+              "fullType": "mgmt.v1alpha1.JobKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "totals",
+              "description": "",
+              "label": "",
+              "type": "UsageTotals",
+              "longType": "UsageTotals",
+              "fullType": "mgmt.v1alpha1.UsageTotals",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "duration_median_seconds",
+              "description": "The median duration of the runs that have a known end. Absent when none has.",
+              "label": "optional",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_duration_median_seconds",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "RecordRunEndedRequest",
           "longName": "RecordRunEndedRequest",
           "fullName": "mgmt.v1alpha1.RecordRunEndedRequest",
@@ -23388,6 +23841,198 @@
           "fields": []
         },
         {
+          "name": "RunUsage",
+          "longName": "RunUsage",
+          "fullName": "mgmt.v1alpha1.RunUsage",
+          "description": "A run as the counters hold it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "run_id",
+              "description": "The identifier of the run, as the orchestrator gives it.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "status",
+              "description": "",
+              "label": "",
+              "type": "JobRunStatus",
+              "longType": "JobRunStatus",
+              "fullType": "mgmt.v1alpha1.JobRunStatus",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "started_at",
+              "description": "",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "ended_at",
+              "description": "Absent for a run that was settled without a known end.",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_read",
+              "description": "The rows the run read from its source.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tables_uncounted",
+              "description": "The tables of the run whose rows were not counted.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "error_category",
+              "description": "What kept the run from completing. Unspecified for a run that completed.",
+              "label": "",
+              "type": "RunErrorCategory",
+              "longType": "RunErrorCategory",
+              "fullType": "mgmt.v1alpha1.RunErrorCategory",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "error_step",
+              "description": "The step the run was at when it stopped. Unspecified for a run that completed.",
+              "label": "",
+              "type": "RunErrorStep",
+              "longType": "RunErrorStep",
+              "fullType": "mgmt.v1alpha1.RunErrorStep",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "UsageDay",
+          "longName": "UsageDay",
+          "fullName": "mgmt.v1alpha1.UsageDay",
+          "description": "The runs counted on a day of the period.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "day",
+              "description": "The day, in the time zone of the answer.",
+              "label": "",
+              "type": "Date",
+              "longType": "Date",
+              "fullType": "mgmt.v1alpha1.Date",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_read",
+              "description": "",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs",
+              "description": "",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "UsageErrorCount",
+          "longName": "UsageErrorCount",
+          "fullName": "mgmt.v1alpha1.UsageErrorCount",
+          "description": "The runs that did not complete for a category of error.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "category",
+              "description": "",
+              "label": "",
+              "type": "RunErrorCategory",
+              "longType": "RunErrorCategory",
+              "fullType": "mgmt.v1alpha1.RunErrorCategory",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs",
+              "description": "",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "UsageReportSummary",
           "longName": "UsageReportSummary",
           "fullName": "mgmt.v1alpha1.UsageReportSummary",
@@ -23440,6 +24085,90 @@
               "type": "int32",
               "longType": "int32",
               "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "UsageTotals",
+          "longName": "UsageTotals",
+          "fullName": "mgmt.v1alpha1.UsageTotals",
+          "description": "What the runs counted in a period add up to. A run counts on the day the instance learned of its end; a run still running counts nowhere.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "runs",
+              "description": "The runs whose end was recorded in the period, whatever their status.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs_completed",
+              "description": "Those that completed. The success rate is this number over the runs less the canceled ones.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs_canceled",
+              "description": "Those that were canceled: they neither succeeded nor failed.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_read",
+              "description": "The rows the runs read from their sources.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows_discarded",
+              "description": "The rows the runs set aside instead of writing them.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "runs_with_uncounted_rows",
+              "description": "The runs with a table that reported no row count: their rows are not all counted.",
+              "label": "",
+              "type": "int64",
+              "longType": "int64",
+              "fullType": "int64",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -23519,6 +24248,36 @@
               "responseType": "GetUsagePeriodReportResponse",
               "responseLongType": "GetUsagePeriodReportResponse",
               "responseFullType": "mgmt.v1alpha1.GetUsagePeriodReportResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetAccountUsage",
+              "description": "Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.",
+              "requestType": "GetAccountUsageRequest",
+              "requestLongType": "GetAccountUsageRequest",
+              "requestFullType": "mgmt.v1alpha1.GetAccountUsageRequest",
+              "requestStreaming": false,
+              "responseType": "GetAccountUsageResponse",
+              "responseLongType": "GetAccountUsageResponse",
+              "responseFullType": "mgmt.v1alpha1.GetAccountUsageResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetJobUsage",
+              "description": "Gives what the runs of a job of an account add up to over a period of days, and the latest of them.",
+              "requestType": "GetJobUsageRequest",
+              "requestLongType": "GetJobUsageRequest",
+              "requestFullType": "mgmt.v1alpha1.GetJobUsageRequest",
+              "requestStreaming": false,
+              "responseType": "GetJobUsageResponse",
+              "responseLongType": "GetJobUsageResponse",
+              "responseFullType": "mgmt.v1alpha1.GetJobUsageResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

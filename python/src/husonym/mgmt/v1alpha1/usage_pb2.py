@@ -24,11 +24,12 @@ _sym_db = _symbol_database.Default()
 
 from buf.validate import validate_pb2 as buf_dot_validate_dot_validate__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from mgmt.v1alpha1 import job_pb2 as mgmt_dot_v1alpha1_dot_job__pb2
 from mgmt.v1alpha1 import metrics_pb2 as mgmt_dot_v1alpha1_dot_metrics__pb2
 from mgmt.v1alpha1 import permission_pb2 as mgmt_dot_v1alpha1_dot_permission__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmgmt/v1alpha1/metrics.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n\x17RecordRunStartedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n\x18RecordRunStartedResponse\"\xa5\x05\n\x15RecordRunEndedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\x12=\n\x08\x65nded_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\x07\x65ndedAt\x12?\n\x07outcome\x18\x05 \x01(\x0e\x32\x19.mgmt.v1alpha1.RunOutcomeB\n\xbaH\x07\x82\x01\x04\x10\x01 \x00R\x07outcome\x12$\n\trows_read\x18\x06 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x08rowsRead\x12.\n\x0erows_discarded\x18\x07 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\rrowsDiscarded\x12!\n\x07retries\x18\x08 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x07retries\x12\x32\n\x10tables_uncounted\x18\t \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n\x14source_version_major\x18\n \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\x12\x46\n\x0e\x65rror_category\x18\x0b \x01(\x0e\x32\x1f.mgmt.v1alpha1.RunErrorCategoryR\rerrorCategory\x12:\n\nerror_step\x18\x0c \x01(\x0e\x32\x1b.mgmt.v1alpha1.RunErrorStepR\terrorStep\"\x18\n\x16RecordRunEndedResponse\"C\n\x18GetUsageReportingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"\xf3\x03\n\x19GetUsageReportingResponse\x12\x44\n\x0clicense_mode\x18\x01 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x0blicenseMode\x12\x35\n\x04mode\x18\x02 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x04mode\x12#\n\rbelow_license\x18\x03 \x01(\x08R\x0c\x62\x65lowLicense\x12 \n\x0b\x64iagnostics\x18\x04 \x01(\x08R\x0b\x64iagnostics\x12?\n\rsending_since\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0csendingSince\x12>\n\rfirst_send_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0b\x66irstSendAt\x12<\n\x0clast_sent_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nlastSentAt\x12\x16\n\x06silent\x18\x08 \x01(\x08R\x06silent\x12;\n\x07reports\x18\t \x03(\x0b\x32!.mgmt.v1alpha1.UsageReportSummaryR\x07reports\"\xc6\x01\n\x12UsageReportSummary\x12%\n\x03\x64\x61y\x18\x01 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateR\x03\x64\x61y\x12\x38\n\x06status\x18\x02 \x01(\x0e\x32 .mgmt.v1alpha1.UsageReportStatusR\x06status\x12\x33\n\x07sent_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x06sentAt\x12\x1a\n\x08\x61ttempts\x18\x04 \x01(\x05R\x08\x61ttempts\"o\n\x15GetUsageReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12-\n\x03\x64\x61y\x18\x02 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x03\x64\x61y\"q\n\x16GetUsageReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xc6\x01\n\x1bGetUsagePeriodReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12@\n\nfrom_month\x18\x02 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\tfromMonth\x12<\n\x08to_month\x18\x03 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\x07toMonth\"w\n\x1cGetUsagePeriodReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint*v\n\nRunOutcome\x12\x1b\n\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n\x15RUN_OUTCOME_COMPLETED\x10\x01\x12\x16\n\x12RUN_OUTCOME_FAILED\x10\x02\x12\x18\n\x14RUN_OUTCOME_CANCELED\x10\x03*\xe4\x03\n\x10RunErrorCategory\x12\"\n\x1eRUN_ERROR_CATEGORY_UNSPECIFIED\x10\x00\x12)\n%RUN_ERROR_CATEGORY_CONNECTION_REFUSED\x10\x01\x12-\n)RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED\x10\x02\x12\x1e\n\x1aRUN_ERROR_CATEGORY_TIMEOUT\x10\x03\x12*\n&RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED\x10\x04\x12.\n*RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES\x10\x05\x12%\n!RUN_ERROR_CATEGORY_OBJECT_MISSING\x10\x06\x12$\n RUN_ERROR_CATEGORY_TYPE_MISMATCH\x10\x07\x12*\n&RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED\x10\x08\x12\x1f\n\x1bRUN_ERROR_CATEGORY_CANCELED\x10\t\x12\x1e\n\x1aRUN_ERROR_CATEGORY_LICENSE\x10\n\x12\x1c\n\x18RUN_ERROR_CATEGORY_OTHER\x10\x0b*\xe3\x01\n\x0cRunErrorStep\x12\x1e\n\x1aRUN_ERROR_STEP_UNSPECIFIED\x10\x00\x12\x1c\n\x18RUN_ERROR_STEP_PREFLIGHT\x10\x01\x12\x1e\n\x1aRUN_ERROR_STEP_SCHEMA_INIT\x10\x02\x12\x1d\n\x19RUN_ERROR_STEP_TABLE_SYNC\x10\x03\x12\x18\n\x14RUN_ERROR_STEP_HOOKS\x10\x04\x12\"\n\x1eRUN_ERROR_STEP_INTEGRITY_CHECK\x10\x05\x12\x18\n\x14RUN_ERROR_STEP_OTHER\x10\x06*\xa3\x01\n\x12UsageReportingMode\x12$\n USAGE_REPORTING_MODE_UNSPECIFIED\x10\x00\x12\x1f\n\x1bUSAGE_REPORTING_MODE_ONLINE\x10\x01\x12\'\n#USAGE_REPORTING_MODE_OFFLINE_REPORT\x10\x02\x12\x1d\n\x19USAGE_REPORTING_MODE_NONE\x10\x03*\xba\x01\n\x11UsageReportStatus\x12#\n\x1fUSAGE_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n\x18USAGE_REPORT_STATUS_KEPT\x10\x01\x12\"\n\x1eUSAGE_REPORT_STATUS_TO_BE_SENT\x10\x02\x12\x1c\n\x18USAGE_REPORT_STATUS_SENT\x10\x03\x12 \n\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x04\x32\xbe\x04\n\x0cUsageService\x12k\n\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a\'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x65\n\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n\x11GetUsageReporting\x12\'.mgmt.v1alpha1.GetUsageReportingRequest\x1a(.mgmt.v1alpha1.GetUsageReportingResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12i\n\x0eGetUsageReport\x12$.mgmt.v1alpha1.GetUsageReportRequest\x1a%.mgmt.v1alpha1.GetUsageReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12{\n\x14GetUsagePeriodReport\x12*.mgmt.v1alpha1.GetUsagePeriodReportRequest\x1a+.mgmt.v1alpha1.GetUsagePeriodReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x42\xcb\x01\n\x11\x63om.mgmt.v1alpha1B\nUsageProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mgmt/v1alpha1/job.proto\x1a\x1bmgmt/v1alpha1/metrics.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n\x17RecordRunStartedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n\x18RecordRunStartedResponse\"\xa5\x05\n\x15RecordRunEndedRequest\x12\x1f\n\x06job_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n\x06run_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05runId\x12\x41\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\x12=\n\x08\x65nded_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\x07\x65ndedAt\x12?\n\x07outcome\x18\x05 \x01(\x0e\x32\x19.mgmt.v1alpha1.RunOutcomeB\n\xbaH\x07\x82\x01\x04\x10\x01 \x00R\x07outcome\x12$\n\trows_read\x18\x06 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x08rowsRead\x12.\n\x0erows_discarded\x18\x07 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\rrowsDiscarded\x12!\n\x07retries\x18\x08 \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x07retries\x12\x32\n\x10tables_uncounted\x18\t \x01(\x03\x42\x07\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n\x14source_version_major\x18\n \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\x12\x46\n\x0e\x65rror_category\x18\x0b \x01(\x0e\x32\x1f.mgmt.v1alpha1.RunErrorCategoryR\rerrorCategory\x12:\n\nerror_step\x18\x0c \x01(\x0e\x32\x1b.mgmt.v1alpha1.RunErrorStepR\terrorStep\"\x18\n\x16RecordRunEndedResponse\"C\n\x18GetUsageReportingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"\xf3\x03\n\x19GetUsageReportingResponse\x12\x44\n\x0clicense_mode\x18\x01 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x0blicenseMode\x12\x35\n\x04mode\x18\x02 \x01(\x0e\x32!.mgmt.v1alpha1.UsageReportingModeR\x04mode\x12#\n\rbelow_license\x18\x03 \x01(\x08R\x0c\x62\x65lowLicense\x12 \n\x0b\x64iagnostics\x18\x04 \x01(\x08R\x0b\x64iagnostics\x12?\n\rsending_since\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0csendingSince\x12>\n\rfirst_send_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0b\x66irstSendAt\x12<\n\x0clast_sent_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nlastSentAt\x12\x16\n\x06silent\x18\x08 \x01(\x08R\x06silent\x12;\n\x07reports\x18\t \x03(\x0b\x32!.mgmt.v1alpha1.UsageReportSummaryR\x07reports\"\xc6\x01\n\x12UsageReportSummary\x12%\n\x03\x64\x61y\x18\x01 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateR\x03\x64\x61y\x12\x38\n\x06status\x18\x02 \x01(\x0e\x32 .mgmt.v1alpha1.UsageReportStatusR\x06status\x12\x33\n\x07sent_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x06sentAt\x12\x1a\n\x08\x61ttempts\x18\x04 \x01(\x05R\x08\x61ttempts\"o\n\x15GetUsageReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12-\n\x03\x64\x61y\x18\x02 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x03\x64\x61y\"q\n\x16GetUsageReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xc6\x01\n\x1bGetUsagePeriodReportRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12@\n\nfrom_month\x18\x02 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\tfromMonth\x12<\n\x08to_month\x18\x03 \x01(\tB!\xbaH\x1er\x1c\x32\x1a^[0-9]{4}-(0[1-9]|1[0-2])$R\x07toMonth\"w\n\x1cGetUsagePeriodReportResponse\x12\x1a\n\x08\x64ocument\x18\x01 \x01(\tR\x08\x64ocument\x12\x12\n\x04seal\x18\x02 \x01(\tR\x04seal\x12\'\n\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xea\x01\n\x0bUsageTotals\x12\x12\n\x04runs\x18\x01 \x01(\x03R\x04runs\x12%\n\x0eruns_completed\x18\x02 \x01(\x03R\rrunsCompleted\x12#\n\rruns_canceled\x18\x03 \x01(\x03R\x0crunsCanceled\x12\x1b\n\trows_read\x18\x04 \x01(\x03R\x08rowsRead\x12%\n\x0erows_discarded\x18\x05 \x01(\x03R\rrowsDiscarded\x12\x37\n\x18runs_with_uncounted_rows\x18\x06 \x01(\x03R\x15runsWithUncountedRows\"b\n\x08UsageDay\x12%\n\x03\x64\x61y\x18\x01 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateR\x03\x64\x61y\x12\x1b\n\trows_read\x18\x02 \x01(\x03R\x08rowsRead\x12\x12\n\x04runs\x18\x03 \x01(\x03R\x04runs\"\xf5\x01\n\x08JobUsage\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x19\n\x08job_name\x18\x02 \x01(\tR\x07jobName\x12*\n\x04kind\x18\x03 \x01(\x0e\x32\x16.mgmt.v1alpha1.JobKindR\x04kind\x12\x32\n\x06totals\x18\x04 \x01(\x0b\x32\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x12;\n\x17\x64uration_median_seconds\x18\x05 \x01(\x03H\x00R\x15\x64urationMedianSeconds\x88\x01\x01\x42\x1a\n\x18_duration_median_seconds\"b\n\x0fUsageErrorCount\x12;\n\x08\x63\x61tegory\x18\x01 \x01(\x0e\x32\x1f.mgmt.v1alpha1.RunErrorCategoryR\x08\x63\x61tegory\x12\x12\n\x04runs\x18\x02 \x01(\x03R\x04runs\"B\n\x10GateRefusalCount\x12\x12\n\x04gate\x18\x01 \x01(\tR\x04gate\x12\x1a\n\x08refusals\x18\x02 \x01(\x03R\x08refusals\"\x94\x03\n\x08RunUsage\x12\x15\n\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x33\n\x06status\x18\x02 \x01(\x0e\x32\x1b.mgmt.v1alpha1.JobRunStatusR\x06status\x12\x39\n\nstarted_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tstartedAt\x12\x35\n\x08\x65nded_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x07\x65ndedAt\x12\x1b\n\trows_read\x18\x05 \x01(\x03R\x08rowsRead\x12)\n\x10tables_uncounted\x18\x06 \x01(\x03R\x0ftablesUncounted\x12\x46\n\x0e\x65rror_category\x18\x07 \x01(\x0e\x32\x1f.mgmt.v1alpha1.RunErrorCategoryR\rerrorCategory\x12:\n\nerror_step\x18\x08 \x01(\x0e\x32\x1b.mgmt.v1alpha1.RunErrorStepR\terrorStep\"\xca\x01\n\x16GetAccountUsageRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x36\n\x08\x66rom_day\x18\x02 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x07\x66romDay\x12\x32\n\x06to_day\x18\x03 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x05toDay\x12\x1b\n\ttime_zone\x18\x04 \x01(\tR\x08timeZone\"\x8f\x03\n\x17GetAccountUsageResponse\x12\x32\n\x06totals\x18\x01 \x01(\x0b\x32\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x12\x39\n\x16\x64uration_total_seconds\x18\x02 \x01(\x03H\x00R\x14\x64urationTotalSeconds\x88\x01\x01\x12+\n\x04\x64\x61ys\x18\x03 \x03(\x0b\x32\x17.mgmt.v1alpha1.UsageDayR\x04\x64\x61ys\x12+\n\x04jobs\x18\x04 \x03(\x0b\x32\x17.mgmt.v1alpha1.JobUsageR\x04jobs\x12\x36\n\x06\x65rrors\x18\x05 \x03(\x0b\x32\x1e.mgmt.v1alpha1.UsageErrorCountR\x06\x65rrors\x12;\n\x08refusals\x18\x06 \x03(\x0b\x32\x1f.mgmt.v1alpha1.GateRefusalCountR\x08refusals\x12\x1b\n\ttime_zone\x18\x07 \x01(\tR\x08timeZoneB\x19\n\x17_duration_total_seconds\"\xe7\x01\n\x12GetJobUsageRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x1f\n\x06job_id\x18\x02 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x36\n\x08\x66rom_day\x18\x03 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x07\x66romDay\x12\x32\n\x06to_day\x18\x04 \x01(\x0b\x32\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x05toDay\x12\x1b\n\ttime_zone\x18\x05 \x01(\tR\x08timeZone\"\xc5\x02\n\x13GetJobUsageResponse\x12*\n\x04kind\x18\x01 \x01(\x0e\x32\x16.mgmt.v1alpha1.JobKindR\x04kind\x12\x32\n\x06totals\x18\x02 \x01(\x0b\x32\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x12;\n\x17\x64uration_median_seconds\x18\x03 \x01(\x03H\x00R\x15\x64urationMedianSeconds\x88\x01\x01\x12+\n\x04\x64\x61ys\x18\x04 \x03(\x0b\x32\x17.mgmt.v1alpha1.UsageDayR\x04\x64\x61ys\x12+\n\x04runs\x18\x05 \x03(\x0b\x32\x17.mgmt.v1alpha1.RunUsageR\x04runs\x12\x1b\n\ttime_zone\x18\x06 \x01(\tR\x08timeZoneB\x1a\n\x18_duration_median_seconds*v\n\nRunOutcome\x12\x1b\n\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n\x15RUN_OUTCOME_COMPLETED\x10\x01\x12\x16\n\x12RUN_OUTCOME_FAILED\x10\x02\x12\x18\n\x14RUN_OUTCOME_CANCELED\x10\x03*\xe4\x03\n\x10RunErrorCategory\x12\"\n\x1eRUN_ERROR_CATEGORY_UNSPECIFIED\x10\x00\x12)\n%RUN_ERROR_CATEGORY_CONNECTION_REFUSED\x10\x01\x12-\n)RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED\x10\x02\x12\x1e\n\x1aRUN_ERROR_CATEGORY_TIMEOUT\x10\x03\x12*\n&RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED\x10\x04\x12.\n*RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES\x10\x05\x12%\n!RUN_ERROR_CATEGORY_OBJECT_MISSING\x10\x06\x12$\n RUN_ERROR_CATEGORY_TYPE_MISMATCH\x10\x07\x12*\n&RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED\x10\x08\x12\x1f\n\x1bRUN_ERROR_CATEGORY_CANCELED\x10\t\x12\x1e\n\x1aRUN_ERROR_CATEGORY_LICENSE\x10\n\x12\x1c\n\x18RUN_ERROR_CATEGORY_OTHER\x10\x0b*\xe3\x01\n\x0cRunErrorStep\x12\x1e\n\x1aRUN_ERROR_STEP_UNSPECIFIED\x10\x00\x12\x1c\n\x18RUN_ERROR_STEP_PREFLIGHT\x10\x01\x12\x1e\n\x1aRUN_ERROR_STEP_SCHEMA_INIT\x10\x02\x12\x1d\n\x19RUN_ERROR_STEP_TABLE_SYNC\x10\x03\x12\x18\n\x14RUN_ERROR_STEP_HOOKS\x10\x04\x12\"\n\x1eRUN_ERROR_STEP_INTEGRITY_CHECK\x10\x05\x12\x18\n\x14RUN_ERROR_STEP_OTHER\x10\x06*\xa3\x01\n\x12UsageReportingMode\x12$\n USAGE_REPORTING_MODE_UNSPECIFIED\x10\x00\x12\x1f\n\x1bUSAGE_REPORTING_MODE_ONLINE\x10\x01\x12\'\n#USAGE_REPORTING_MODE_OFFLINE_REPORT\x10\x02\x12\x1d\n\x19USAGE_REPORTING_MODE_NONE\x10\x03*\xba\x01\n\x11UsageReportStatus\x12#\n\x1fUSAGE_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n\x18USAGE_REPORT_STATUS_KEPT\x10\x01\x12\"\n\x1eUSAGE_REPORT_STATUS_TO_BE_SENT\x10\x02\x12\x1c\n\x18USAGE_REPORT_STATUS_SENT\x10\x03\x12 \n\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x04*\x80\x01\n\x07JobKind\x12\x18\n\x14JOB_KIND_UNSPECIFIED\x10\x00\x12\x11\n\rJOB_KIND_SYNC\x10\x01\x12\x15\n\x11JOB_KIND_GENERATE\x10\x02\x12\x18\n\x14JOB_KIND_AI_GENERATE\x10\x03\x12\x17\n\x13JOB_KIND_PII_DETECT\x10\x04\x32\x8e\x06\n\x0cUsageService\x12k\n\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a\'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x65\n\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n\x11GetUsageReporting\x12\'.mgmt.v1alpha1.GetUsageReportingRequest\x1a(.mgmt.v1alpha1.GetUsageReportingResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12i\n\x0eGetUsageReport\x12$.mgmt.v1alpha1.GetUsageReportRequest\x1a%.mgmt.v1alpha1.GetUsageReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12{\n\x14GetUsagePeriodReport\x12*.mgmt.v1alpha1.GetUsagePeriodReportRequest\x1a+.mgmt.v1alpha1.GetUsagePeriodReportResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12l\n\x0fGetAccountUsage\x12%.mgmt.v1alpha1.GetAccountUsageRequest\x1a&.mgmt.v1alpha1.GetAccountUsageResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12`\n\x0bGetJobUsage\x12!.mgmt.v1alpha1.GetJobUsageRequest\x1a\".mgmt.v1alpha1.GetJobUsageResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x42\xcb\x01\n\x11\x63om.mgmt.v1alpha1B\nUsageProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -74,6 +75,20 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['from_month']._serialized_options = b'\272H\036r\0342\032^[0-9]{4}-(0[1-9]|1[0-2])$'
   _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['to_month']._loaded_options = None
   _globals['_GETUSAGEPERIODREPORTREQUEST'].fields_by_name['to_month']._serialized_options = b'\272H\036r\0342\032^[0-9]{4}-(0[1-9]|1[0-2])$'
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['account_id']._loaded_options = None
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['from_day']._loaded_options = None
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['from_day']._serialized_options = b'\272H\003\310\001\001'
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['to_day']._loaded_options = None
+  _globals['_GETACCOUNTUSAGEREQUEST'].fields_by_name['to_day']._serialized_options = b'\272H\003\310\001\001'
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['account_id']._loaded_options = None
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['job_id']._loaded_options = None
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['job_id']._serialized_options = b'\272H\005r\003\260\001\001'
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['from_day']._loaded_options = None
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['from_day']._serialized_options = b'\272H\003\310\001\001'
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['to_day']._loaded_options = None
+  _globals['_GETJOBUSAGEREQUEST'].fields_by_name['to_day']._serialized_options = b'\272H\003\310\001\001'
   _globals['_USAGESERVICE'].methods_by_name['RecordRunStarted']._loaded_options = None
   _globals['_USAGESERVICE'].methods_by_name['RecordRunStarted']._serialized_options = b'\222\265\030\002\020\001'
   _globals['_USAGESERVICE'].methods_by_name['RecordRunEnded']._loaded_options = None
@@ -84,38 +99,64 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_USAGESERVICE'].methods_by_name['GetUsageReport']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
   _globals['_USAGESERVICE'].methods_by_name['GetUsagePeriodReport']._loaded_options = None
   _globals['_USAGESERVICE'].methods_by_name['GetUsagePeriodReport']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
-  _globals['_RUNOUTCOME']._serialized_start=2383
-  _globals['_RUNOUTCOME']._serialized_end=2501
-  _globals['_RUNERRORCATEGORY']._serialized_start=2504
-  _globals['_RUNERRORCATEGORY']._serialized_end=2988
-  _globals['_RUNERRORSTEP']._serialized_start=2991
-  _globals['_RUNERRORSTEP']._serialized_end=3218
-  _globals['_USAGEREPORTINGMODE']._serialized_start=3221
-  _globals['_USAGEREPORTINGMODE']._serialized_end=3384
-  _globals['_USAGEREPORTSTATUS']._serialized_start=3387
-  _globals['_USAGEREPORTSTATUS']._serialized_end=3573
-  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_start=168
-  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_end=325
-  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_start=327
-  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_end=353
-  _globals['_RECORDRUNENDEDREQUEST']._serialized_start=356
-  _globals['_RECORDRUNENDEDREQUEST']._serialized_end=1033
-  _globals['_RECORDRUNENDEDRESPONSE']._serialized_start=1035
-  _globals['_RECORDRUNENDEDRESPONSE']._serialized_end=1059
-  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_start=1061
-  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_end=1128
-  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_start=1131
-  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_end=1630
-  _globals['_USAGEREPORTSUMMARY']._serialized_start=1633
-  _globals['_USAGEREPORTSUMMARY']._serialized_end=1831
-  _globals['_GETUSAGEREPORTREQUEST']._serialized_start=1833
-  _globals['_GETUSAGEREPORTREQUEST']._serialized_end=1944
-  _globals['_GETUSAGEREPORTRESPONSE']._serialized_start=1946
-  _globals['_GETUSAGEREPORTRESPONSE']._serialized_end=2059
-  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_start=2062
-  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_end=2260
-  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_start=2262
-  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_end=2381
-  _globals['_USAGESERVICE']._serialized_start=3576
-  _globals['_USAGESERVICE']._serialized_end=4150
+  _globals['_USAGESERVICE'].methods_by_name['GetAccountUsage']._loaded_options = None
+  _globals['_USAGESERVICE'].methods_by_name['GetAccountUsage']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
+  _globals['_USAGESERVICE'].methods_by_name['GetJobUsage']._loaded_options = None
+  _globals['_USAGESERVICE'].methods_by_name['GetJobUsage']._serialized_options = b'\220\002\001\222\265\030\003\n\001\001'
+  _globals['_RUNOUTCOME']._serialized_start=4737
+  _globals['_RUNOUTCOME']._serialized_end=4855
+  _globals['_RUNERRORCATEGORY']._serialized_start=4858
+  _globals['_RUNERRORCATEGORY']._serialized_end=5342
+  _globals['_RUNERRORSTEP']._serialized_start=5345
+  _globals['_RUNERRORSTEP']._serialized_end=5572
+  _globals['_USAGEREPORTINGMODE']._serialized_start=5575
+  _globals['_USAGEREPORTINGMODE']._serialized_end=5738
+  _globals['_USAGEREPORTSTATUS']._serialized_start=5741
+  _globals['_USAGEREPORTSTATUS']._serialized_end=5927
+  _globals['_JOBKIND']._serialized_start=5930
+  _globals['_JOBKIND']._serialized_end=6058
+  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_start=193
+  _globals['_RECORDRUNSTARTEDREQUEST']._serialized_end=350
+  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_start=352
+  _globals['_RECORDRUNSTARTEDRESPONSE']._serialized_end=378
+  _globals['_RECORDRUNENDEDREQUEST']._serialized_start=381
+  _globals['_RECORDRUNENDEDREQUEST']._serialized_end=1058
+  _globals['_RECORDRUNENDEDRESPONSE']._serialized_start=1060
+  _globals['_RECORDRUNENDEDRESPONSE']._serialized_end=1084
+  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_start=1086
+  _globals['_GETUSAGEREPORTINGREQUEST']._serialized_end=1153
+  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_start=1156
+  _globals['_GETUSAGEREPORTINGRESPONSE']._serialized_end=1655
+  _globals['_USAGEREPORTSUMMARY']._serialized_start=1658
+  _globals['_USAGEREPORTSUMMARY']._serialized_end=1856
+  _globals['_GETUSAGEREPORTREQUEST']._serialized_start=1858
+  _globals['_GETUSAGEREPORTREQUEST']._serialized_end=1969
+  _globals['_GETUSAGEREPORTRESPONSE']._serialized_start=1971
+  _globals['_GETUSAGEREPORTRESPONSE']._serialized_end=2084
+  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_start=2087
+  _globals['_GETUSAGEPERIODREPORTREQUEST']._serialized_end=2285
+  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_start=2287
+  _globals['_GETUSAGEPERIODREPORTRESPONSE']._serialized_end=2406
+  _globals['_USAGETOTALS']._serialized_start=2409
+  _globals['_USAGETOTALS']._serialized_end=2643
+  _globals['_USAGEDAY']._serialized_start=2645
+  _globals['_USAGEDAY']._serialized_end=2743
+  _globals['_JOBUSAGE']._serialized_start=2746
+  _globals['_JOBUSAGE']._serialized_end=2991
+  _globals['_USAGEERRORCOUNT']._serialized_start=2993
+  _globals['_USAGEERRORCOUNT']._serialized_end=3091
+  _globals['_GATEREFUSALCOUNT']._serialized_start=3093
+  _globals['_GATEREFUSALCOUNT']._serialized_end=3159
+  _globals['_RUNUSAGE']._serialized_start=3162
+  _globals['_RUNUSAGE']._serialized_end=3566
+  _globals['_GETACCOUNTUSAGEREQUEST']._serialized_start=3569
+  _globals['_GETACCOUNTUSAGEREQUEST']._serialized_end=3771
+  _globals['_GETACCOUNTUSAGERESPONSE']._serialized_start=3774
+  _globals['_GETACCOUNTUSAGERESPONSE']._serialized_end=4173
+  _globals['_GETJOBUSAGEREQUEST']._serialized_start=4176
+  _globals['_GETJOBUSAGEREQUEST']._serialized_end=4407
+  _globals['_GETJOBUSAGERESPONSE']._serialized_start=4410
+  _globals['_GETJOBUSAGERESPONSE']._serialized_end=4735
+  _globals['_USAGESERVICE']._serialized_start=6061
+  _globals['_USAGESERVICE']._serialized_end=6843
 # @@protoc_insertion_point(module_scope)

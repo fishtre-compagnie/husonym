@@ -351,6 +351,66 @@ func (UsageReportStatus) EnumDescriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{4}
 }
 
+// What a job does, as its runs are counted.
+type JobKind int32
+
+const (
+	JobKind_JOB_KIND_UNSPECIFIED JobKind = 0
+	// The job copies the rows of a source to its destinations.
+	JobKind_JOB_KIND_SYNC JobKind = 1
+	// The job generates rows.
+	JobKind_JOB_KIND_GENERATE JobKind = 2
+	// The job generates rows with a model.
+	JobKind_JOB_KIND_AI_GENERATE JobKind = 3
+	// The job looks for personal data in a source. Its runs count no rows.
+	JobKind_JOB_KIND_PII_DETECT JobKind = 4
+)
+
+// Enum value maps for JobKind.
+var (
+	JobKind_name = map[int32]string{
+		0: "JOB_KIND_UNSPECIFIED",
+		1: "JOB_KIND_SYNC",
+		2: "JOB_KIND_GENERATE",
+		3: "JOB_KIND_AI_GENERATE",
+		4: "JOB_KIND_PII_DETECT",
+	}
+	JobKind_value = map[string]int32{
+		"JOB_KIND_UNSPECIFIED": 0,
+		"JOB_KIND_SYNC":        1,
+		"JOB_KIND_GENERATE":    2,
+		"JOB_KIND_AI_GENERATE": 3,
+		"JOB_KIND_PII_DETECT":  4,
+	}
+)
+
+func (x JobKind) Enum() *JobKind {
+	p := new(JobKind)
+	*p = x
+	return p
+}
+
+func (x JobKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (JobKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_usage_proto_enumTypes[5].Descriptor()
+}
+
+func (JobKind) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_usage_proto_enumTypes[5]
+}
+
+func (x JobKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use JobKind.Descriptor instead.
+func (JobKind) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{5}
+}
+
 type RecordRunStartedRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The job the run belongs to. The account and the kind of the run are read from it.
@@ -1106,11 +1166,797 @@ func (x *GetUsagePeriodReportResponse) GetKeyFingerprint() string {
 	return ""
 }
 
+// What the runs counted in a period add up to. A run counts on the day the instance learned of its end; a run still running counts nowhere.
+type UsageTotals struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The runs whose end was recorded in the period, whatever their status.
+	Runs int64 `protobuf:"varint,1,opt,name=runs,proto3" json:"runs,omitempty"`
+	// Those that completed. The success rate is this number over the runs less the canceled ones.
+	RunsCompleted int64 `protobuf:"varint,2,opt,name=runs_completed,json=runsCompleted,proto3" json:"runs_completed,omitempty"`
+	// Those that were canceled: they neither succeeded nor failed.
+	RunsCanceled int64 `protobuf:"varint,3,opt,name=runs_canceled,json=runsCanceled,proto3" json:"runs_canceled,omitempty"`
+	// The rows the runs read from their sources.
+	RowsRead int64 `protobuf:"varint,4,opt,name=rows_read,json=rowsRead,proto3" json:"rows_read,omitempty"`
+	// The rows the runs set aside instead of writing them.
+	RowsDiscarded int64 `protobuf:"varint,5,opt,name=rows_discarded,json=rowsDiscarded,proto3" json:"rows_discarded,omitempty"`
+	// The runs with a table that reported no row count: their rows are not all counted.
+	RunsWithUncountedRows int64 `protobuf:"varint,6,opt,name=runs_with_uncounted_rows,json=runsWithUncountedRows,proto3" json:"runs_with_uncounted_rows,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *UsageTotals) Reset() {
+	*x = UsageTotals{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsageTotals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsageTotals) ProtoMessage() {}
+
+func (x *UsageTotals) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsageTotals.ProtoReflect.Descriptor instead.
+func (*UsageTotals) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UsageTotals) GetRuns() int64 {
+	if x != nil {
+		return x.Runs
+	}
+	return 0
+}
+
+func (x *UsageTotals) GetRunsCompleted() int64 {
+	if x != nil {
+		return x.RunsCompleted
+	}
+	return 0
+}
+
+func (x *UsageTotals) GetRunsCanceled() int64 {
+	if x != nil {
+		return x.RunsCanceled
+	}
+	return 0
+}
+
+func (x *UsageTotals) GetRowsRead() int64 {
+	if x != nil {
+		return x.RowsRead
+	}
+	return 0
+}
+
+func (x *UsageTotals) GetRowsDiscarded() int64 {
+	if x != nil {
+		return x.RowsDiscarded
+	}
+	return 0
+}
+
+func (x *UsageTotals) GetRunsWithUncountedRows() int64 {
+	if x != nil {
+		return x.RunsWithUncountedRows
+	}
+	return 0
+}
+
+// The runs counted on a day of the period.
+type UsageDay struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The day, in the time zone of the answer.
+	Day           *Date `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
+	RowsRead      int64 `protobuf:"varint,2,opt,name=rows_read,json=rowsRead,proto3" json:"rows_read,omitempty"`
+	Runs          int64 `protobuf:"varint,3,opt,name=runs,proto3" json:"runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsageDay) Reset() {
+	*x = UsageDay{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsageDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsageDay) ProtoMessage() {}
+
+func (x *UsageDay) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsageDay.ProtoReflect.Descriptor instead.
+func (*UsageDay) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UsageDay) GetDay() *Date {
+	if x != nil {
+		return x.Day
+	}
+	return nil
+}
+
+func (x *UsageDay) GetRowsRead() int64 {
+	if x != nil {
+		return x.RowsRead
+	}
+	return 0
+}
+
+func (x *UsageDay) GetRuns() int64 {
+	if x != nil {
+		return x.Runs
+	}
+	return 0
+}
+
+// What the runs of a job add up to in the period.
+type JobUsage struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	JobId   string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	JobName string                 `protobuf:"bytes,2,opt,name=job_name,json=jobName,proto3" json:"job_name,omitempty"`
+	Kind    JobKind                `protobuf:"varint,3,opt,name=kind,proto3,enum=mgmt.v1alpha1.JobKind" json:"kind,omitempty"`
+	Totals  *UsageTotals           `protobuf:"bytes,4,opt,name=totals,proto3" json:"totals,omitempty"`
+	// The median duration of the runs that have a known end. Absent when none has.
+	DurationMedianSeconds *int64 `protobuf:"varint,5,opt,name=duration_median_seconds,json=durationMedianSeconds,proto3,oneof" json:"duration_median_seconds,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *JobUsage) Reset() {
+	*x = JobUsage{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JobUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JobUsage) ProtoMessage() {}
+
+func (x *JobUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JobUsage.ProtoReflect.Descriptor instead.
+func (*JobUsage) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *JobUsage) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *JobUsage) GetJobName() string {
+	if x != nil {
+		return x.JobName
+	}
+	return ""
+}
+
+func (x *JobUsage) GetKind() JobKind {
+	if x != nil {
+		return x.Kind
+	}
+	return JobKind_JOB_KIND_UNSPECIFIED
+}
+
+func (x *JobUsage) GetTotals() *UsageTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+func (x *JobUsage) GetDurationMedianSeconds() int64 {
+	if x != nil && x.DurationMedianSeconds != nil {
+		return *x.DurationMedianSeconds
+	}
+	return 0
+}
+
+// The runs that did not complete for a category of error.
+type UsageErrorCount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Category      RunErrorCategory       `protobuf:"varint,1,opt,name=category,proto3,enum=mgmt.v1alpha1.RunErrorCategory" json:"category,omitempty"`
+	Runs          int64                  `protobuf:"varint,2,opt,name=runs,proto3" json:"runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsageErrorCount) Reset() {
+	*x = UsageErrorCount{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsageErrorCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsageErrorCount) ProtoMessage() {}
+
+func (x *UsageErrorCount) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsageErrorCount.ProtoReflect.Descriptor instead.
+func (*UsageErrorCount) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UsageErrorCount) GetCategory() RunErrorCategory {
+	if x != nil {
+		return x.Category
+	}
+	return RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED
+}
+
+func (x *UsageErrorCount) GetRuns() int64 {
+	if x != nil {
+		return x.Runs
+	}
+	return 0
+}
+
+// The times the license refused something at a gate.
+type GateRefusalCount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The gate: a feature of the license, or one of its limits. A member of a closed list.
+	Gate          string `protobuf:"bytes,1,opt,name=gate,proto3" json:"gate,omitempty"`
+	Refusals      int64  `protobuf:"varint,2,opt,name=refusals,proto3" json:"refusals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GateRefusalCount) Reset() {
+	*x = GateRefusalCount{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GateRefusalCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GateRefusalCount) ProtoMessage() {}
+
+func (x *GateRefusalCount) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GateRefusalCount.ProtoReflect.Descriptor instead.
+func (*GateRefusalCount) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GateRefusalCount) GetGate() string {
+	if x != nil {
+		return x.Gate
+	}
+	return ""
+}
+
+func (x *GateRefusalCount) GetRefusals() int64 {
+	if x != nil {
+		return x.Refusals
+	}
+	return 0
+}
+
+// A run as the counters hold it.
+type RunUsage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The identifier of the run, as the orchestrator gives it.
+	RunId     string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Status    JobRunStatus           `protobuf:"varint,2,opt,name=status,proto3,enum=mgmt.v1alpha1.JobRunStatus" json:"status,omitempty"`
+	StartedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	// Absent for a run that was settled without a known end.
+	EndedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	// The rows the run read from its source.
+	RowsRead int64 `protobuf:"varint,5,opt,name=rows_read,json=rowsRead,proto3" json:"rows_read,omitempty"`
+	// The tables of the run whose rows were not counted.
+	TablesUncounted int64 `protobuf:"varint,6,opt,name=tables_uncounted,json=tablesUncounted,proto3" json:"tables_uncounted,omitempty"`
+	// What kept the run from completing. Unspecified for a run that completed.
+	ErrorCategory RunErrorCategory `protobuf:"varint,7,opt,name=error_category,json=errorCategory,proto3,enum=mgmt.v1alpha1.RunErrorCategory" json:"error_category,omitempty"`
+	// The step the run was at when it stopped. Unspecified for a run that completed.
+	ErrorStep     RunErrorStep `protobuf:"varint,8,opt,name=error_step,json=errorStep,proto3,enum=mgmt.v1alpha1.RunErrorStep" json:"error_step,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunUsage) Reset() {
+	*x = RunUsage{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunUsage) ProtoMessage() {}
+
+func (x *RunUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunUsage.ProtoReflect.Descriptor instead.
+func (*RunUsage) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *RunUsage) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *RunUsage) GetStatus() JobRunStatus {
+	if x != nil {
+		return x.Status
+	}
+	return JobRunStatus_JOB_RUN_STATUS_UNSPECIFIED
+}
+
+func (x *RunUsage) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *RunUsage) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
+func (x *RunUsage) GetRowsRead() int64 {
+	if x != nil {
+		return x.RowsRead
+	}
+	return 0
+}
+
+func (x *RunUsage) GetTablesUncounted() int64 {
+	if x != nil {
+		return x.TablesUncounted
+	}
+	return 0
+}
+
+func (x *RunUsage) GetErrorCategory() RunErrorCategory {
+	if x != nil {
+		return x.ErrorCategory
+	}
+	return RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED
+}
+
+func (x *RunUsage) GetErrorStep() RunErrorStep {
+	if x != nil {
+		return x.ErrorStep
+	}
+	return RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED
+}
+
+type GetAccountUsageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account.
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The first day of the period.
+	FromDay *Date `protobuf:"bytes,2,opt,name=from_day,json=fromDay,proto3" json:"from_day,omitempty"`
+	// The last day of the period, included: not before the first, and at most 366 days in all.
+	ToDay *Date `protobuf:"bytes,3,opt,name=to_day,json=toDay,proto3" json:"to_day,omitempty"`
+	// The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+	TimeZone      string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountUsageRequest) Reset() {
+	*x = GetAccountUsageRequest{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountUsageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountUsageRequest) ProtoMessage() {}
+
+func (x *GetAccountUsageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountUsageRequest.ProtoReflect.Descriptor instead.
+func (*GetAccountUsageRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetAccountUsageRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *GetAccountUsageRequest) GetFromDay() *Date {
+	if x != nil {
+		return x.FromDay
+	}
+	return nil
+}
+
+func (x *GetAccountUsageRequest) GetToDay() *Date {
+	if x != nil {
+		return x.ToDay
+	}
+	return nil
+}
+
+func (x *GetAccountUsageRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+type GetAccountUsageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Every run of the account counted in the period, those of jobs deleted since among them.
+	Totals *UsageTotals `protobuf:"bytes,1,opt,name=totals,proto3" json:"totals,omitempty"`
+	// The sum of the durations of the runs that have a known end. Absent when none has.
+	DurationTotalSeconds *int64 `protobuf:"varint,2,opt,name=duration_total_seconds,json=durationTotalSeconds,proto3,oneof" json:"duration_total_seconds,omitempty"`
+	// Every day of the period, the oldest first; a day without a run is there, at zero.
+	Days []*UsageDay `protobuf:"bytes,3,rep,name=days,proto3" json:"days,omitempty"`
+	// The jobs that have a run counted in the period and still exist, the one that read the most rows first.
+	Jobs []*JobUsage `protobuf:"bytes,4,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	// The runs that did not complete, by category, the category with the most runs first.
+	Errors []*UsageErrorCount `protobuf:"bytes,5,rep,name=errors,proto3" json:"errors,omitempty"`
+	// What the license refused the account, by gate. Refusals are counted by UTC day, whatever the time zone.
+	Refusals []*GateRefusalCount `protobuf:"bytes,6,rep,name=refusals,proto3" json:"refusals,omitempty"`
+	// The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+	TimeZone      string `protobuf:"bytes,7,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountUsageResponse) Reset() {
+	*x = GetAccountUsageResponse{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountUsageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountUsageResponse) ProtoMessage() {}
+
+func (x *GetAccountUsageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountUsageResponse.ProtoReflect.Descriptor instead.
+func (*GetAccountUsageResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetAccountUsageResponse) GetTotals() *UsageTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+func (x *GetAccountUsageResponse) GetDurationTotalSeconds() int64 {
+	if x != nil && x.DurationTotalSeconds != nil {
+		return *x.DurationTotalSeconds
+	}
+	return 0
+}
+
+func (x *GetAccountUsageResponse) GetDays() []*UsageDay {
+	if x != nil {
+		return x.Days
+	}
+	return nil
+}
+
+func (x *GetAccountUsageResponse) GetJobs() []*JobUsage {
+	if x != nil {
+		return x.Jobs
+	}
+	return nil
+}
+
+func (x *GetAccountUsageResponse) GetErrors() []*UsageErrorCount {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
+func (x *GetAccountUsageResponse) GetRefusals() []*GateRefusalCount {
+	if x != nil {
+		return x.Refusals
+	}
+	return nil
+}
+
+func (x *GetAccountUsageResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+type GetJobUsageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique identifier of the account.
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The unique identifier of the job. A job that is not of the account has no usage.
+	JobId string `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	// The first day of the period.
+	FromDay *Date `protobuf:"bytes,3,opt,name=from_day,json=fromDay,proto3" json:"from_day,omitempty"`
+	// The last day of the period, included: not before the first, and at most 366 days in all.
+	ToDay *Date `protobuf:"bytes,4,opt,name=to_day,json=toDay,proto3" json:"to_day,omitempty"`
+	// The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+	TimeZone      string `protobuf:"bytes,5,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetJobUsageRequest) Reset() {
+	*x = GetJobUsageRequest{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetJobUsageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetJobUsageRequest) ProtoMessage() {}
+
+func (x *GetJobUsageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetJobUsageRequest.ProtoReflect.Descriptor instead.
+func (*GetJobUsageRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetJobUsageRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *GetJobUsageRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *GetJobUsageRequest) GetFromDay() *Date {
+	if x != nil {
+		return x.FromDay
+	}
+	return nil
+}
+
+func (x *GetJobUsageRequest) GetToDay() *Date {
+	if x != nil {
+		return x.ToDay
+	}
+	return nil
+}
+
+func (x *GetJobUsageRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+type GetJobUsageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the job does. Unspecified when the account has no such job.
+	Kind   JobKind      `protobuf:"varint,1,opt,name=kind,proto3,enum=mgmt.v1alpha1.JobKind" json:"kind,omitempty"`
+	Totals *UsageTotals `protobuf:"bytes,2,opt,name=totals,proto3" json:"totals,omitempty"`
+	// The median duration of the runs that have a known end. Absent when none has.
+	DurationMedianSeconds *int64 `protobuf:"varint,3,opt,name=duration_median_seconds,json=durationMedianSeconds,proto3,oneof" json:"duration_median_seconds,omitempty"`
+	// Every day of the period, the oldest first; a day without a run is there, at zero.
+	Days []*UsageDay `protobuf:"bytes,4,rep,name=days,proto3" json:"days,omitempty"`
+	// The runs counted in the period, the most recently recorded first, 20 at most.
+	Runs []*RunUsage `protobuf:"bytes,5,rep,name=runs,proto3" json:"runs,omitempty"`
+	// The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+	TimeZone      string `protobuf:"bytes,6,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetJobUsageResponse) Reset() {
+	*x = GetJobUsageResponse{}
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetJobUsageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetJobUsageResponse) ProtoMessage() {}
+
+func (x *GetJobUsageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_usage_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetJobUsageResponse.ProtoReflect.Descriptor instead.
+func (*GetJobUsageResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetJobUsageResponse) GetKind() JobKind {
+	if x != nil {
+		return x.Kind
+	}
+	return JobKind_JOB_KIND_UNSPECIFIED
+}
+
+func (x *GetJobUsageResponse) GetTotals() *UsageTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+func (x *GetJobUsageResponse) GetDurationMedianSeconds() int64 {
+	if x != nil && x.DurationMedianSeconds != nil {
+		return *x.DurationMedianSeconds
+	}
+	return 0
+}
+
+func (x *GetJobUsageResponse) GetDays() []*UsageDay {
+	if x != nil {
+		return x.Days
+	}
+	return nil
+}
+
+func (x *GetJobUsageResponse) GetRuns() []*RunUsage {
+	if x != nil {
+		return x.Runs
+	}
+	return nil
+}
+
+func (x *GetJobUsageResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
 var File_mgmt_v1alpha1_usage_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\n" +
-	"\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmgmt/v1alpha1/metrics.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n" +
+	"\x19mgmt/v1alpha1/usage.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mgmt/v1alpha1/job.proto\x1a\x1bmgmt/v1alpha1/metrics.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x9d\x01\n" +
 	"\x17RecordRunStartedRequest\x12\x1f\n" +
 	"\x06job_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n" +
 	"\x06run_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05runId\x12A\n" +
@@ -1171,7 +2017,72 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x1cGetUsagePeriodReportResponse\x12\x1a\n" +
 	"\bdocument\x18\x01 \x01(\tR\bdocument\x12\x12\n" +
 	"\x04seal\x18\x02 \x01(\tR\x04seal\x12'\n" +
-	"\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint*v\n" +
+	"\x0fkey_fingerprint\x18\x03 \x01(\tR\x0ekeyFingerprint\"\xea\x01\n" +
+	"\vUsageTotals\x12\x12\n" +
+	"\x04runs\x18\x01 \x01(\x03R\x04runs\x12%\n" +
+	"\x0eruns_completed\x18\x02 \x01(\x03R\rrunsCompleted\x12#\n" +
+	"\rruns_canceled\x18\x03 \x01(\x03R\frunsCanceled\x12\x1b\n" +
+	"\trows_read\x18\x04 \x01(\x03R\browsRead\x12%\n" +
+	"\x0erows_discarded\x18\x05 \x01(\x03R\rrowsDiscarded\x127\n" +
+	"\x18runs_with_uncounted_rows\x18\x06 \x01(\x03R\x15runsWithUncountedRows\"b\n" +
+	"\bUsageDay\x12%\n" +
+	"\x03day\x18\x01 \x01(\v2\x13.mgmt.v1alpha1.DateR\x03day\x12\x1b\n" +
+	"\trows_read\x18\x02 \x01(\x03R\browsRead\x12\x12\n" +
+	"\x04runs\x18\x03 \x01(\x03R\x04runs\"\xf5\x01\n" +
+	"\bJobUsage\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x19\n" +
+	"\bjob_name\x18\x02 \x01(\tR\ajobName\x12*\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x16.mgmt.v1alpha1.JobKindR\x04kind\x122\n" +
+	"\x06totals\x18\x04 \x01(\v2\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x12;\n" +
+	"\x17duration_median_seconds\x18\x05 \x01(\x03H\x00R\x15durationMedianSeconds\x88\x01\x01B\x1a\n" +
+	"\x18_duration_median_seconds\"b\n" +
+	"\x0fUsageErrorCount\x12;\n" +
+	"\bcategory\x18\x01 \x01(\x0e2\x1f.mgmt.v1alpha1.RunErrorCategoryR\bcategory\x12\x12\n" +
+	"\x04runs\x18\x02 \x01(\x03R\x04runs\"B\n" +
+	"\x10GateRefusalCount\x12\x12\n" +
+	"\x04gate\x18\x01 \x01(\tR\x04gate\x12\x1a\n" +
+	"\brefusals\x18\x02 \x01(\x03R\brefusals\"\x94\x03\n" +
+	"\bRunUsage\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x123\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1b.mgmt.v1alpha1.JobRunStatusR\x06status\x129\n" +
+	"\n" +
+	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
+	"\bended_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12\x1b\n" +
+	"\trows_read\x18\x05 \x01(\x03R\browsRead\x12)\n" +
+	"\x10tables_uncounted\x18\x06 \x01(\x03R\x0ftablesUncounted\x12F\n" +
+	"\x0eerror_category\x18\a \x01(\x0e2\x1f.mgmt.v1alpha1.RunErrorCategoryR\rerrorCategory\x12:\n" +
+	"\n" +
+	"error_step\x18\b \x01(\x0e2\x1b.mgmt.v1alpha1.RunErrorStepR\terrorStep\"\xca\x01\n" +
+	"\x16GetAccountUsageRequest\x12'\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x126\n" +
+	"\bfrom_day\x18\x02 \x01(\v2\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\afromDay\x122\n" +
+	"\x06to_day\x18\x03 \x01(\v2\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x05toDay\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\x8f\x03\n" +
+	"\x17GetAccountUsageResponse\x122\n" +
+	"\x06totals\x18\x01 \x01(\v2\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x129\n" +
+	"\x16duration_total_seconds\x18\x02 \x01(\x03H\x00R\x14durationTotalSeconds\x88\x01\x01\x12+\n" +
+	"\x04days\x18\x03 \x03(\v2\x17.mgmt.v1alpha1.UsageDayR\x04days\x12+\n" +
+	"\x04jobs\x18\x04 \x03(\v2\x17.mgmt.v1alpha1.JobUsageR\x04jobs\x126\n" +
+	"\x06errors\x18\x05 \x03(\v2\x1e.mgmt.v1alpha1.UsageErrorCountR\x06errors\x12;\n" +
+	"\brefusals\x18\x06 \x03(\v2\x1f.mgmt.v1alpha1.GateRefusalCountR\brefusals\x12\x1b\n" +
+	"\ttime_zone\x18\a \x01(\tR\btimeZoneB\x19\n" +
+	"\x17_duration_total_seconds\"\xe7\x01\n" +
+	"\x12GetJobUsageRequest\x12'\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x1f\n" +
+	"\x06job_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x126\n" +
+	"\bfrom_day\x18\x03 \x01(\v2\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\afromDay\x122\n" +
+	"\x06to_day\x18\x04 \x01(\v2\x13.mgmt.v1alpha1.DateB\x06\xbaH\x03\xc8\x01\x01R\x05toDay\x12\x1b\n" +
+	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\"\xc5\x02\n" +
+	"\x13GetJobUsageResponse\x12*\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x16.mgmt.v1alpha1.JobKindR\x04kind\x122\n" +
+	"\x06totals\x18\x02 \x01(\v2\x1a.mgmt.v1alpha1.UsageTotalsR\x06totals\x12;\n" +
+	"\x17duration_median_seconds\x18\x03 \x01(\x03H\x00R\x15durationMedianSeconds\x88\x01\x01\x12+\n" +
+	"\x04days\x18\x04 \x03(\v2\x17.mgmt.v1alpha1.UsageDayR\x04days\x12+\n" +
+	"\x04runs\x18\x05 \x03(\v2\x17.mgmt.v1alpha1.RunUsageR\x04runs\x12\x1b\n" +
+	"\ttime_zone\x18\x06 \x01(\tR\btimeZoneB\x1a\n" +
+	"\x18_duration_median_seconds*v\n" +
 	"\n" +
 	"RunOutcome\x12\x1b\n" +
 	"\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n" +
@@ -1210,7 +2121,13 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x18USAGE_REPORT_STATUS_KEPT\x10\x01\x12\"\n" +
 	"\x1eUSAGE_REPORT_STATUS_TO_BE_SENT\x10\x02\x12\x1c\n" +
 	"\x18USAGE_REPORT_STATUS_SENT\x10\x03\x12 \n" +
-	"\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x042\xbe\x04\n" +
+	"\x1cUSAGE_REPORT_STATUS_NOT_SENT\x10\x04*\x80\x01\n" +
+	"\aJobKind\x12\x18\n" +
+	"\x14JOB_KIND_UNSPECIFIED\x10\x00\x12\x11\n" +
+	"\rJOB_KIND_SYNC\x10\x01\x12\x15\n" +
+	"\x11JOB_KIND_GENERATE\x10\x02\x12\x18\n" +
+	"\x14JOB_KIND_AI_GENERATE\x10\x03\x12\x17\n" +
+	"\x13JOB_KIND_PII_DETECT\x10\x042\x8e\x06\n" +
 	"\fUsageService\x12k\n" +
 	"\x10RecordRunStarted\x12&.mgmt.v1alpha1.RecordRunStartedRequest\x1a'.mgmt.v1alpha1.RecordRunStartedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12e\n" +
 	"\x0eRecordRunEnded\x12$.mgmt.v1alpha1.RecordRunEndedRequest\x1a%.mgmt.v1alpha1.RecordRunEndedResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n" +
@@ -1221,6 +2138,12 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\x01\x90\x02\x01\x12{\n" +
 	"\x14GetUsagePeriodReport\x12*.mgmt.v1alpha1.GetUsagePeriodReportRequest\x1a+.mgmt.v1alpha1.GetUsagePeriodReportResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12l\n" +
+	"\x0fGetAccountUsage\x12%.mgmt.v1alpha1.GetAccountUsageRequest\x1a&.mgmt.v1alpha1.GetAccountUsageResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12`\n" +
+	"\vGetJobUsage\x12!.mgmt.v1alpha1.GetJobUsageRequest\x1a\".mgmt.v1alpha1.GetJobUsageResponse\"\n" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\x01\x90\x02\x01B\xcb\x01\n" +
 	"\x11com.mgmt.v1alpha1B\n" +
@@ -1238,60 +2161,98 @@ func file_mgmt_v1alpha1_usage_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_usage_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_usage_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_mgmt_v1alpha1_usage_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_mgmt_v1alpha1_usage_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_mgmt_v1alpha1_usage_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_mgmt_v1alpha1_usage_proto_goTypes = []any{
 	(RunOutcome)(0),                      // 0: mgmt.v1alpha1.RunOutcome
 	(RunErrorCategory)(0),                // 1: mgmt.v1alpha1.RunErrorCategory
 	(RunErrorStep)(0),                    // 2: mgmt.v1alpha1.RunErrorStep
 	(UsageReportingMode)(0),              // 3: mgmt.v1alpha1.UsageReportingMode
 	(UsageReportStatus)(0),               // 4: mgmt.v1alpha1.UsageReportStatus
-	(*RecordRunStartedRequest)(nil),      // 5: mgmt.v1alpha1.RecordRunStartedRequest
-	(*RecordRunStartedResponse)(nil),     // 6: mgmt.v1alpha1.RecordRunStartedResponse
-	(*RecordRunEndedRequest)(nil),        // 7: mgmt.v1alpha1.RecordRunEndedRequest
-	(*RecordRunEndedResponse)(nil),       // 8: mgmt.v1alpha1.RecordRunEndedResponse
-	(*GetUsageReportingRequest)(nil),     // 9: mgmt.v1alpha1.GetUsageReportingRequest
-	(*GetUsageReportingResponse)(nil),    // 10: mgmt.v1alpha1.GetUsageReportingResponse
-	(*UsageReportSummary)(nil),           // 11: mgmt.v1alpha1.UsageReportSummary
-	(*GetUsageReportRequest)(nil),        // 12: mgmt.v1alpha1.GetUsageReportRequest
-	(*GetUsageReportResponse)(nil),       // 13: mgmt.v1alpha1.GetUsageReportResponse
-	(*GetUsagePeriodReportRequest)(nil),  // 14: mgmt.v1alpha1.GetUsagePeriodReportRequest
-	(*GetUsagePeriodReportResponse)(nil), // 15: mgmt.v1alpha1.GetUsagePeriodReportResponse
-	(*timestamppb.Timestamp)(nil),        // 16: google.protobuf.Timestamp
-	(*Date)(nil),                         // 17: mgmt.v1alpha1.Date
+	(JobKind)(0),                         // 5: mgmt.v1alpha1.JobKind
+	(*RecordRunStartedRequest)(nil),      // 6: mgmt.v1alpha1.RecordRunStartedRequest
+	(*RecordRunStartedResponse)(nil),     // 7: mgmt.v1alpha1.RecordRunStartedResponse
+	(*RecordRunEndedRequest)(nil),        // 8: mgmt.v1alpha1.RecordRunEndedRequest
+	(*RecordRunEndedResponse)(nil),       // 9: mgmt.v1alpha1.RecordRunEndedResponse
+	(*GetUsageReportingRequest)(nil),     // 10: mgmt.v1alpha1.GetUsageReportingRequest
+	(*GetUsageReportingResponse)(nil),    // 11: mgmt.v1alpha1.GetUsageReportingResponse
+	(*UsageReportSummary)(nil),           // 12: mgmt.v1alpha1.UsageReportSummary
+	(*GetUsageReportRequest)(nil),        // 13: mgmt.v1alpha1.GetUsageReportRequest
+	(*GetUsageReportResponse)(nil),       // 14: mgmt.v1alpha1.GetUsageReportResponse
+	(*GetUsagePeriodReportRequest)(nil),  // 15: mgmt.v1alpha1.GetUsagePeriodReportRequest
+	(*GetUsagePeriodReportResponse)(nil), // 16: mgmt.v1alpha1.GetUsagePeriodReportResponse
+	(*UsageTotals)(nil),                  // 17: mgmt.v1alpha1.UsageTotals
+	(*UsageDay)(nil),                     // 18: mgmt.v1alpha1.UsageDay
+	(*JobUsage)(nil),                     // 19: mgmt.v1alpha1.JobUsage
+	(*UsageErrorCount)(nil),              // 20: mgmt.v1alpha1.UsageErrorCount
+	(*GateRefusalCount)(nil),             // 21: mgmt.v1alpha1.GateRefusalCount
+	(*RunUsage)(nil),                     // 22: mgmt.v1alpha1.RunUsage
+	(*GetAccountUsageRequest)(nil),       // 23: mgmt.v1alpha1.GetAccountUsageRequest
+	(*GetAccountUsageResponse)(nil),      // 24: mgmt.v1alpha1.GetAccountUsageResponse
+	(*GetJobUsageRequest)(nil),           // 25: mgmt.v1alpha1.GetJobUsageRequest
+	(*GetJobUsageResponse)(nil),          // 26: mgmt.v1alpha1.GetJobUsageResponse
+	(*timestamppb.Timestamp)(nil),        // 27: google.protobuf.Timestamp
+	(*Date)(nil),                         // 28: mgmt.v1alpha1.Date
+	(JobRunStatus)(0),                    // 29: mgmt.v1alpha1.JobRunStatus
 }
 var file_mgmt_v1alpha1_usage_proto_depIdxs = []int32{
-	16, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
-	16, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
-	16, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
+	27, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
+	27, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
+	27, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: mgmt.v1alpha1.RecordRunEndedRequest.outcome:type_name -> mgmt.v1alpha1.RunOutcome
 	1,  // 4: mgmt.v1alpha1.RecordRunEndedRequest.error_category:type_name -> mgmt.v1alpha1.RunErrorCategory
 	2,  // 5: mgmt.v1alpha1.RecordRunEndedRequest.error_step:type_name -> mgmt.v1alpha1.RunErrorStep
 	3,  // 6: mgmt.v1alpha1.GetUsageReportingResponse.license_mode:type_name -> mgmt.v1alpha1.UsageReportingMode
 	3,  // 7: mgmt.v1alpha1.GetUsageReportingResponse.mode:type_name -> mgmt.v1alpha1.UsageReportingMode
-	16, // 8: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
-	16, // 9: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
-	16, // 10: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
-	11, // 11: mgmt.v1alpha1.GetUsageReportingResponse.reports:type_name -> mgmt.v1alpha1.UsageReportSummary
-	17, // 12: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
+	27, // 8: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
+	27, // 9: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
+	27, // 10: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
+	12, // 11: mgmt.v1alpha1.GetUsageReportingResponse.reports:type_name -> mgmt.v1alpha1.UsageReportSummary
+	28, // 12: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
 	4,  // 13: mgmt.v1alpha1.UsageReportSummary.status:type_name -> mgmt.v1alpha1.UsageReportStatus
-	16, // 14: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
-	17, // 15: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
-	5,  // 16: mgmt.v1alpha1.UsageService.RecordRunStarted:input_type -> mgmt.v1alpha1.RecordRunStartedRequest
-	7,  // 17: mgmt.v1alpha1.UsageService.RecordRunEnded:input_type -> mgmt.v1alpha1.RecordRunEndedRequest
-	9,  // 18: mgmt.v1alpha1.UsageService.GetUsageReporting:input_type -> mgmt.v1alpha1.GetUsageReportingRequest
-	12, // 19: mgmt.v1alpha1.UsageService.GetUsageReport:input_type -> mgmt.v1alpha1.GetUsageReportRequest
-	14, // 20: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:input_type -> mgmt.v1alpha1.GetUsagePeriodReportRequest
-	6,  // 21: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
-	8,  // 22: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
-	10, // 23: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
-	13, // 24: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
-	15, // 25: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:output_type -> mgmt.v1alpha1.GetUsagePeriodReportResponse
-	21, // [21:26] is the sub-list for method output_type
-	16, // [16:21] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	27, // 14: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
+	28, // 15: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
+	28, // 16: mgmt.v1alpha1.UsageDay.day:type_name -> mgmt.v1alpha1.Date
+	5,  // 17: mgmt.v1alpha1.JobUsage.kind:type_name -> mgmt.v1alpha1.JobKind
+	17, // 18: mgmt.v1alpha1.JobUsage.totals:type_name -> mgmt.v1alpha1.UsageTotals
+	1,  // 19: mgmt.v1alpha1.UsageErrorCount.category:type_name -> mgmt.v1alpha1.RunErrorCategory
+	29, // 20: mgmt.v1alpha1.RunUsage.status:type_name -> mgmt.v1alpha1.JobRunStatus
+	27, // 21: mgmt.v1alpha1.RunUsage.started_at:type_name -> google.protobuf.Timestamp
+	27, // 22: mgmt.v1alpha1.RunUsage.ended_at:type_name -> google.protobuf.Timestamp
+	1,  // 23: mgmt.v1alpha1.RunUsage.error_category:type_name -> mgmt.v1alpha1.RunErrorCategory
+	2,  // 24: mgmt.v1alpha1.RunUsage.error_step:type_name -> mgmt.v1alpha1.RunErrorStep
+	28, // 25: mgmt.v1alpha1.GetAccountUsageRequest.from_day:type_name -> mgmt.v1alpha1.Date
+	28, // 26: mgmt.v1alpha1.GetAccountUsageRequest.to_day:type_name -> mgmt.v1alpha1.Date
+	17, // 27: mgmt.v1alpha1.GetAccountUsageResponse.totals:type_name -> mgmt.v1alpha1.UsageTotals
+	18, // 28: mgmt.v1alpha1.GetAccountUsageResponse.days:type_name -> mgmt.v1alpha1.UsageDay
+	19, // 29: mgmt.v1alpha1.GetAccountUsageResponse.jobs:type_name -> mgmt.v1alpha1.JobUsage
+	20, // 30: mgmt.v1alpha1.GetAccountUsageResponse.errors:type_name -> mgmt.v1alpha1.UsageErrorCount
+	21, // 31: mgmt.v1alpha1.GetAccountUsageResponse.refusals:type_name -> mgmt.v1alpha1.GateRefusalCount
+	28, // 32: mgmt.v1alpha1.GetJobUsageRequest.from_day:type_name -> mgmt.v1alpha1.Date
+	28, // 33: mgmt.v1alpha1.GetJobUsageRequest.to_day:type_name -> mgmt.v1alpha1.Date
+	5,  // 34: mgmt.v1alpha1.GetJobUsageResponse.kind:type_name -> mgmt.v1alpha1.JobKind
+	17, // 35: mgmt.v1alpha1.GetJobUsageResponse.totals:type_name -> mgmt.v1alpha1.UsageTotals
+	18, // 36: mgmt.v1alpha1.GetJobUsageResponse.days:type_name -> mgmt.v1alpha1.UsageDay
+	22, // 37: mgmt.v1alpha1.GetJobUsageResponse.runs:type_name -> mgmt.v1alpha1.RunUsage
+	6,  // 38: mgmt.v1alpha1.UsageService.RecordRunStarted:input_type -> mgmt.v1alpha1.RecordRunStartedRequest
+	8,  // 39: mgmt.v1alpha1.UsageService.RecordRunEnded:input_type -> mgmt.v1alpha1.RecordRunEndedRequest
+	10, // 40: mgmt.v1alpha1.UsageService.GetUsageReporting:input_type -> mgmt.v1alpha1.GetUsageReportingRequest
+	13, // 41: mgmt.v1alpha1.UsageService.GetUsageReport:input_type -> mgmt.v1alpha1.GetUsageReportRequest
+	15, // 42: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:input_type -> mgmt.v1alpha1.GetUsagePeriodReportRequest
+	23, // 43: mgmt.v1alpha1.UsageService.GetAccountUsage:input_type -> mgmt.v1alpha1.GetAccountUsageRequest
+	25, // 44: mgmt.v1alpha1.UsageService.GetJobUsage:input_type -> mgmt.v1alpha1.GetJobUsageRequest
+	7,  // 45: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
+	9,  // 46: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
+	11, // 47: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
+	14, // 48: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
+	16, // 49: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:output_type -> mgmt.v1alpha1.GetUsagePeriodReportResponse
+	24, // 50: mgmt.v1alpha1.UsageService.GetAccountUsage:output_type -> mgmt.v1alpha1.GetAccountUsageResponse
+	26, // 51: mgmt.v1alpha1.UsageService.GetJobUsage:output_type -> mgmt.v1alpha1.GetJobUsageResponse
+	45, // [45:52] is the sub-list for method output_type
+	38, // [38:45] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_usage_proto_init() }
@@ -1299,15 +2260,19 @@ func file_mgmt_v1alpha1_usage_proto_init() {
 	if File_mgmt_v1alpha1_usage_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_job_proto_init()
 	file_mgmt_v1alpha1_metrics_proto_init()
 	file_mgmt_v1alpha1_permission_proto_init()
+	file_mgmt_v1alpha1_usage_proto_msgTypes[13].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_usage_proto_msgTypes[18].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_usage_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_usage_proto_rawDesc), len(file_mgmt_v1alpha1_usage_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   11,
+			NumEnums:      6,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

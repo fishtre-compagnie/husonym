@@ -7,6 +7,8 @@ import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { JobRunStatus } from "./job_pb.js";
+import { file_mgmt_v1alpha1_job } from "./job_pb.js";
 import type { Date } from "./metrics_pb.js";
 import { file_mgmt_v1alpha1_metrics } from "./metrics_pb.js";
 import { file_mgmt_v1alpha1_permission } from "./permission_pb.js";
@@ -16,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/usage.proto.
  */
 export const file_mgmt_v1alpha1_usage: GenFile = /*@__PURE__*/
-  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKZBAoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kEjcKDmVycm9yX2NhdGVnb3J5GAsgASgOMh8ubWdtdC52MWFscGhhMS5SdW5FcnJvckNhdGVnb3J5Ei8KCmVycm9yX3N0ZXAYDCABKA4yGy5tZ210LnYxYWxwaGExLlJ1bkVycm9yU3RlcCIYChZSZWNvcmRSdW5FbmRlZFJlc3BvbnNlIjgKGEdldFVzYWdlUmVwb3J0aW5nUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABASKNAwoZR2V0VXNhZ2VSZXBvcnRpbmdSZXNwb25zZRI3CgxsaWNlbnNlX21vZGUYASABKA4yIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0aW5nTW9kZRIvCgRtb2RlGAIgASgOMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydGluZ01vZGUSFQoNYmVsb3dfbGljZW5zZRgDIAEoCBITCgtkaWFnbm9zdGljcxgEIAEoCBIxCg1zZW5kaW5nX3NpbmNlGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1maXJzdF9zZW5kX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3NlbnRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnNpbGVudBgIIAEoCBIyCgdyZXBvcnRzGAkgAygLMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN1bW1hcnkipwEKElVzYWdlUmVwb3J0U3VtbWFyeRIgCgNkYXkYASABKAsyEy5tZ210LnYxYWxwaGExLkRhdGUSMAoGc3RhdHVzGAIgASgOMiAubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN0YXR1cxIrCgdzZW50X2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghhdHRlbXB0cxgEIAEoBSJfChVHZXRVc2FnZVJlcG9ydFJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESKAoDZGF5GAIgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQEiUQoWR2V0VXNhZ2VSZXBvcnRSZXNwb25zZRIQCghkb2N1bWVudBgBIAEoCRIMCgRzZWFsGAIgASgJEhcKD2tleV9maW5nZXJwcmludBgDIAEoCSKnAQobR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjUKCmZyb21fbW9udGgYAiABKAlCIbpIHnIcMhpeWzAtOV17NH0tKDBbMS05XXwxWzAtMl0pJBIzCgh0b19tb250aBgDIAEoCUIhukgechwyGl5bMC05XXs0fS0oMFsxLTldfDFbMC0yXSkkIlcKHEdldFVzYWdlUGVyaW9kUmVwb3J0UmVzcG9uc2USEAoIZG9jdW1lbnQYASABKAkSDAoEc2VhbBgCIAEoCRIXCg9rZXlfZmluZ2VycHJpbnQYAyABKAkqdgoKUnVuT3V0Y29tZRIbChdSVU5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhkKFVJVTl9PVVRDT01FX0NPTVBMRVRFRBABEhYKElJVTl9PVVRDT01FX0ZBSUxFRBACEhgKFFJVTl9PVVRDT01FX0NBTkNFTEVEEAMq5AMKEFJ1bkVycm9yQ2F0ZWdvcnkSIgoeUlVOX0VSUk9SX0NBVEVHT1JZX1VOU1BFQ0lGSUVEEAASKQolUlVOX0VSUk9SX0NBVEVHT1JZX0NPTk5FQ1RJT05fUkVGVVNFRBABEi0KKVJVTl9FUlJPUl9DQVRFR09SWV9BVVRIRU5USUNBVElPTl9SRUZVU0VEEAISHgoaUlVOX0VSUk9SX0NBVEVHT1JZX1RJTUVPVVQQAxIqCiZSVU5fRVJST1JfQ0FURUdPUllfQ09OU1RSQUlOVF9WSU9MQVRFRBAEEi4KKlJVTl9FUlJPUl9DQVRFR09SWV9JTlNVRkZJQ0lFTlRfUFJJVklMRUdFUxAFEiUKIVJVTl9FUlJPUl9DQVRFR09SWV9PQkpFQ1RfTUlTU0lORxAGEiQKIFJVTl9FUlJPUl9DQVRFR09SWV9UWVBFX01JU01BVENIEAcSKgomUlVOX0VSUk9SX0NBVEVHT1JZX1JFU09VUkNFU19FWEhBVVNURUQQCBIfChtSVU5fRVJST1JfQ0FURUdPUllfQ0FOQ0VMRUQQCRIeChpSVU5fRVJST1JfQ0FURUdPUllfTElDRU5TRRAKEhwKGFJVTl9FUlJPUl9DQVRFR09SWV9PVEhFUhALKuMBCgxSdW5FcnJvclN0ZXASHgoaUlVOX0VSUk9SX1NURVBfVU5TUEVDSUZJRUQQABIcChhSVU5fRVJST1JfU1RFUF9QUkVGTElHSFQQARIeChpSVU5fRVJST1JfU1RFUF9TQ0hFTUFfSU5JVBACEh0KGVJVTl9FUlJPUl9TVEVQX1RBQkxFX1NZTkMQAxIYChRSVU5fRVJST1JfU1RFUF9IT09LUxAEEiIKHlJVTl9FUlJPUl9TVEVQX0lOVEVHUklUWV9DSEVDSxAFEhgKFFJVTl9FUlJPUl9TVEVQX09USEVSEAYqowEKElVzYWdlUmVwb3J0aW5nTW9kZRIkCiBVU0FHRV9SRVBPUlRJTkdfTU9ERV9VTlNQRUNJRklFRBAAEh8KG1VTQUdFX1JFUE9SVElOR19NT0RFX09OTElORRABEicKI1VTQUdFX1JFUE9SVElOR19NT0RFX09GRkxJTkVfUkVQT1JUEAISHQoZVVNBR0VfUkVQT1JUSU5HX01PREVfTk9ORRADKroBChFVc2FnZVJlcG9ydFN0YXR1cxIjCh9VU0FHRV9SRVBPUlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19LRVBUEAESIgoeVVNBR0VfUkVQT1JUX1NUQVRVU19UT19CRV9TRU5UEAISHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19TRU5UEAMSIAocVVNBR0VfUkVQT1JUX1NUQVRVU19OT1RfU0VOVBAEMr4ECgxVc2FnZVNlcnZpY2USawoQUmVjb3JkUnVuU3RhcnRlZBImLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlcXVlc3QaJy5tZ210LnYxYWxwaGExLlJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSIGkrUYAhABEmUKDlJlY29yZFJ1bkVuZGVkEiQubWdtdC52MWFscGhhMS5SZWNvcmRSdW5FbmRlZFJlcXVlc3QaJS5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVzcG9uc2UiBpK1GAIQARJyChFHZXRVc2FnZVJlcG9ydGluZxInLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VSZXBvcnRpbmdSZXF1ZXN0GigubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydGluZ1Jlc3BvbnNlIgqQAgGStRgDCgEBEmkKDkdldFVzYWdlUmVwb3J0EiQubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydFJlcXVlc3QaJS5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0UmVzcG9uc2UiCpACAZK1GAMKAQESewoUR2V0VXNhZ2VQZXJpb2RSZXBvcnQSKi5tZ210LnYxYWxwaGExLkdldFVzYWdlUGVyaW9kUmVwb3J0UmVxdWVzdBorLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXNwb25zZSIKkAIBkrUYAwoBAULLAQoRY29tLm1nbXQudjFhbHBoYTFCClVzYWdlUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_metrics, file_mgmt_v1alpha1_permission]);
+  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKZBAoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kEjcKDmVycm9yX2NhdGVnb3J5GAsgASgOMh8ubWdtdC52MWFscGhhMS5SdW5FcnJvckNhdGVnb3J5Ei8KCmVycm9yX3N0ZXAYDCABKA4yGy5tZ210LnYxYWxwaGExLlJ1bkVycm9yU3RlcCIYChZSZWNvcmRSdW5FbmRlZFJlc3BvbnNlIjgKGEdldFVzYWdlUmVwb3J0aW5nUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABASKNAwoZR2V0VXNhZ2VSZXBvcnRpbmdSZXNwb25zZRI3CgxsaWNlbnNlX21vZGUYASABKA4yIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0aW5nTW9kZRIvCgRtb2RlGAIgASgOMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydGluZ01vZGUSFQoNYmVsb3dfbGljZW5zZRgDIAEoCBITCgtkaWFnbm9zdGljcxgEIAEoCBIxCg1zZW5kaW5nX3NpbmNlGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1maXJzdF9zZW5kX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3NlbnRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnNpbGVudBgIIAEoCBIyCgdyZXBvcnRzGAkgAygLMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN1bW1hcnkipwEKElVzYWdlUmVwb3J0U3VtbWFyeRIgCgNkYXkYASABKAsyEy5tZ210LnYxYWxwaGExLkRhdGUSMAoGc3RhdHVzGAIgASgOMiAubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN0YXR1cxIrCgdzZW50X2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghhdHRlbXB0cxgEIAEoBSJfChVHZXRVc2FnZVJlcG9ydFJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESKAoDZGF5GAIgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQEiUQoWR2V0VXNhZ2VSZXBvcnRSZXNwb25zZRIQCghkb2N1bWVudBgBIAEoCRIMCgRzZWFsGAIgASgJEhcKD2tleV9maW5nZXJwcmludBgDIAEoCSKnAQobR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjUKCmZyb21fbW9udGgYAiABKAlCIbpIHnIcMhpeWzAtOV17NH0tKDBbMS05XXwxWzAtMl0pJBIzCgh0b19tb250aBgDIAEoCUIhukgechwyGl5bMC05XXs0fS0oMFsxLTldfDFbMC0yXSkkIlcKHEdldFVzYWdlUGVyaW9kUmVwb3J0UmVzcG9uc2USEAoIZG9jdW1lbnQYASABKAkSDAoEc2VhbBgCIAEoCRIXCg9rZXlfZmluZ2VycHJpbnQYAyABKAkilwEKC1VzYWdlVG90YWxzEgwKBHJ1bnMYASABKAMSFgoOcnVuc19jb21wbGV0ZWQYAiABKAMSFQoNcnVuc19jYW5jZWxlZBgDIAEoAxIRCglyb3dzX3JlYWQYBCABKAMSFgoOcm93c19kaXNjYXJkZWQYBSABKAMSIAoYcnVuc193aXRoX3VuY291bnRlZF9yb3dzGAYgASgDIk0KCFVzYWdlRGF5EiAKA2RheRgBIAEoCzITLm1nbXQudjFhbHBoYTEuRGF0ZRIRCglyb3dzX3JlYWQYAiABKAMSDAoEcnVucxgDIAEoAyLAAQoISm9iVXNhZ2USDgoGam9iX2lkGAEgASgJEhAKCGpvYl9uYW1lGAIgASgJEiQKBGtpbmQYAyABKA4yFi5tZ210LnYxYWxwaGExLkpvYktpbmQSKgoGdG90YWxzGAQgASgLMhoubWdtdC52MWFscGhhMS5Vc2FnZVRvdGFscxIkChdkdXJhdGlvbl9tZWRpYW5fc2Vjb25kcxgFIAEoA0gAiAEBQhoKGF9kdXJhdGlvbl9tZWRpYW5fc2Vjb25kcyJSCg9Vc2FnZUVycm9yQ291bnQSMQoIY2F0ZWdvcnkYASABKA4yHy5tZ210LnYxYWxwaGExLlJ1bkVycm9yQ2F0ZWdvcnkSDAoEcnVucxgCIAEoAyIyChBHYXRlUmVmdXNhbENvdW50EgwKBGdhdGUYASABKAkSEAoIcmVmdXNhbHMYAiABKAMivAIKCFJ1blVzYWdlEg4KBnJ1bl9pZBgBIAEoCRIrCgZzdGF0dXMYAiABKA4yGy5tZ210LnYxYWxwaGExLkpvYlJ1blN0YXR1cxIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJcm93c19yZWFkGAUgASgDEhgKEHRhYmxlc191bmNvdW50ZWQYBiABKAMSNwoOZXJyb3JfY2F0ZWdvcnkYByABKA4yHy5tZ210LnYxYWxwaGExLlJ1bkVycm9yQ2F0ZWdvcnkSLwoKZXJyb3Jfc3RlcBgIIAEoDjIbLm1nbXQudjFhbHBoYTEuUnVuRXJyb3JTdGVwIqUBChZHZXRBY2NvdW50VXNhZ2VSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEi0KCGZyb21fZGF5GAIgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQESKwoGdG9fZGF5GAMgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQESEQoJdGltZV96b25lGAQgASgJIskCChdHZXRBY2NvdW50VXNhZ2VSZXNwb25zZRIqCgZ0b3RhbHMYASABKAsyGi5tZ210LnYxYWxwaGExLlVzYWdlVG90YWxzEiMKFmR1cmF0aW9uX3RvdGFsX3NlY29uZHMYAiABKANIAIgBARIlCgRkYXlzGAMgAygLMhcubWdtdC52MWFscGhhMS5Vc2FnZURheRIlCgRqb2JzGAQgAygLMhcubWdtdC52MWFscGhhMS5Kb2JVc2FnZRIuCgZlcnJvcnMYBSADKAsyHi5tZ210LnYxYWxwaGExLlVzYWdlRXJyb3JDb3VudBIxCghyZWZ1c2FscxgGIAMoCzIfLm1nbXQudjFhbHBoYTEuR2F0ZVJlZnVzYWxDb3VudBIRCgl0aW1lX3pvbmUYByABKAlCGQoXX2R1cmF0aW9uX3RvdGFsX3NlY29uZHMiuwEKEkdldEpvYlVzYWdlUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARIYCgZqb2JfaWQYAiABKAlCCLpIBXIDsAEBEi0KCGZyb21fZGF5GAMgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQESKwoGdG9fZGF5GAQgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQESEQoJdGltZV96b25lGAUgASgJIooCChNHZXRKb2JVc2FnZVJlc3BvbnNlEiQKBGtpbmQYASABKA4yFi5tZ210LnYxYWxwaGExLkpvYktpbmQSKgoGdG90YWxzGAIgASgLMhoubWdtdC52MWFscGhhMS5Vc2FnZVRvdGFscxIkChdkdXJhdGlvbl9tZWRpYW5fc2Vjb25kcxgDIAEoA0gAiAEBEiUKBGRheXMYBCADKAsyFy5tZ210LnYxYWxwaGExLlVzYWdlRGF5EiUKBHJ1bnMYBSADKAsyFy5tZ210LnYxYWxwaGExLlJ1blVzYWdlEhEKCXRpbWVfem9uZRgGIAEoCUIaChhfZHVyYXRpb25fbWVkaWFuX3NlY29uZHMqdgoKUnVuT3V0Y29tZRIbChdSVU5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhkKFVJVTl9PVVRDT01FX0NPTVBMRVRFRBABEhYKElJVTl9PVVRDT01FX0ZBSUxFRBACEhgKFFJVTl9PVVRDT01FX0NBTkNFTEVEEAMq5AMKEFJ1bkVycm9yQ2F0ZWdvcnkSIgoeUlVOX0VSUk9SX0NBVEVHT1JZX1VOU1BFQ0lGSUVEEAASKQolUlVOX0VSUk9SX0NBVEVHT1JZX0NPTk5FQ1RJT05fUkVGVVNFRBABEi0KKVJVTl9FUlJPUl9DQVRFR09SWV9BVVRIRU5USUNBVElPTl9SRUZVU0VEEAISHgoaUlVOX0VSUk9SX0NBVEVHT1JZX1RJTUVPVVQQAxIqCiZSVU5fRVJST1JfQ0FURUdPUllfQ09OU1RSQUlOVF9WSU9MQVRFRBAEEi4KKlJVTl9FUlJPUl9DQVRFR09SWV9JTlNVRkZJQ0lFTlRfUFJJVklMRUdFUxAFEiUKIVJVTl9FUlJPUl9DQVRFR09SWV9PQkpFQ1RfTUlTU0lORxAGEiQKIFJVTl9FUlJPUl9DQVRFR09SWV9UWVBFX01JU01BVENIEAcSKgomUlVOX0VSUk9SX0NBVEVHT1JZX1JFU09VUkNFU19FWEhBVVNURUQQCBIfChtSVU5fRVJST1JfQ0FURUdPUllfQ0FOQ0VMRUQQCRIeChpSVU5fRVJST1JfQ0FURUdPUllfTElDRU5TRRAKEhwKGFJVTl9FUlJPUl9DQVRFR09SWV9PVEhFUhALKuMBCgxSdW5FcnJvclN0ZXASHgoaUlVOX0VSUk9SX1NURVBfVU5TUEVDSUZJRUQQABIcChhSVU5fRVJST1JfU1RFUF9QUkVGTElHSFQQARIeChpSVU5fRVJST1JfU1RFUF9TQ0hFTUFfSU5JVBACEh0KGVJVTl9FUlJPUl9TVEVQX1RBQkxFX1NZTkMQAxIYChRSVU5fRVJST1JfU1RFUF9IT09LUxAEEiIKHlJVTl9FUlJPUl9TVEVQX0lOVEVHUklUWV9DSEVDSxAFEhgKFFJVTl9FUlJPUl9TVEVQX09USEVSEAYqowEKElVzYWdlUmVwb3J0aW5nTW9kZRIkCiBVU0FHRV9SRVBPUlRJTkdfTU9ERV9VTlNQRUNJRklFRBAAEh8KG1VTQUdFX1JFUE9SVElOR19NT0RFX09OTElORRABEicKI1VTQUdFX1JFUE9SVElOR19NT0RFX09GRkxJTkVfUkVQT1JUEAISHQoZVVNBR0VfUkVQT1JUSU5HX01PREVfTk9ORRADKroBChFVc2FnZVJlcG9ydFN0YXR1cxIjCh9VU0FHRV9SRVBPUlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19LRVBUEAESIgoeVVNBR0VfUkVQT1JUX1NUQVRVU19UT19CRV9TRU5UEAISHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19TRU5UEAMSIAocVVNBR0VfUkVQT1JUX1NUQVRVU19OT1RfU0VOVBAEKoABCgdKb2JLaW5kEhgKFEpPQl9LSU5EX1VOU1BFQ0lGSUVEEAASEQoNSk9CX0tJTkRfU1lOQxABEhUKEUpPQl9LSU5EX0dFTkVSQVRFEAISGAoUSk9CX0tJTkRfQUlfR0VORVJBVEUQAxIXChNKT0JfS0lORF9QSUlfREVURUNUEAQyjgYKDFVzYWdlU2VydmljZRJrChBSZWNvcmRSdW5TdGFydGVkEiYubWdtdC52MWFscGhhMS5SZWNvcmRSdW5TdGFydGVkUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlc3BvbnNlIgaStRgCEAESZQoOUmVjb3JkUnVuRW5kZWQSJC5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVxdWVzdBolLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuRW5kZWRSZXNwb25zZSIGkrUYAhABEnIKEUdldFVzYWdlUmVwb3J0aW5nEicubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydGluZ1JlcXVlc3QaKC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0aW5nUmVzcG9uc2UiCpACAZK1GAMKAQESaQoOR2V0VXNhZ2VSZXBvcnQSJC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0UmVxdWVzdBolLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VSZXBvcnRSZXNwb25zZSIKkAIBkrUYAwoBARJ7ChRHZXRVc2FnZVBlcmlvZFJlcG9ydBIqLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0GisubWdtdC52MWFscGhhMS5HZXRVc2FnZVBlcmlvZFJlcG9ydFJlc3BvbnNlIgqQAgGStRgDCgEBEmwKD0dldEFjY291bnRVc2FnZRIlLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudFVzYWdlUmVxdWVzdBomLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudFVzYWdlUmVzcG9uc2UiCpACAZK1GAMKAQESYAoLR2V0Sm9iVXNhZ2USIS5tZ210LnYxYWxwaGExLkdldEpvYlVzYWdlUmVxdWVzdBoiLm1nbXQudjFhbHBoYTEuR2V0Sm9iVXNhZ2VSZXNwb25zZSIKkAIBkrUYAwoBAULLAQoRY29tLm1nbXQudjFhbHBoYTFCClVzYWdlUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_job, file_mgmt_v1alpha1_metrics, file_mgmt_v1alpha1_permission]);
 
 /**
  * @generated from message mgmt.v1alpha1.RecordRunStartedRequest
@@ -431,6 +433,450 @@ export const GetUsagePeriodReportResponseSchema: GenMessage<GetUsagePeriodReport
   messageDesc(file_mgmt_v1alpha1_usage, 10);
 
 /**
+ * What the runs counted in a period add up to. A run counts on the day the instance learned of its end; a run still running counts nowhere.
+ *
+ * @generated from message mgmt.v1alpha1.UsageTotals
+ */
+export type UsageTotals = Message<"mgmt.v1alpha1.UsageTotals"> & {
+  /**
+   * The runs whose end was recorded in the period, whatever their status.
+   *
+   * @generated from field: int64 runs = 1;
+   */
+  runs: bigint;
+
+  /**
+   * Those that completed. The success rate is this number over the runs less the canceled ones.
+   *
+   * @generated from field: int64 runs_completed = 2;
+   */
+  runsCompleted: bigint;
+
+  /**
+   * Those that were canceled: they neither succeeded nor failed.
+   *
+   * @generated from field: int64 runs_canceled = 3;
+   */
+  runsCanceled: bigint;
+
+  /**
+   * The rows the runs read from their sources.
+   *
+   * @generated from field: int64 rows_read = 4;
+   */
+  rowsRead: bigint;
+
+  /**
+   * The rows the runs set aside instead of writing them.
+   *
+   * @generated from field: int64 rows_discarded = 5;
+   */
+  rowsDiscarded: bigint;
+
+  /**
+   * The runs with a table that reported no row count: their rows are not all counted.
+   *
+   * @generated from field: int64 runs_with_uncounted_rows = 6;
+   */
+  runsWithUncountedRows: bigint;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.UsageTotals.
+ * Use `create(UsageTotalsSchema)` to create a new message.
+ */
+export const UsageTotalsSchema: GenMessage<UsageTotals> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 11);
+
+/**
+ * The runs counted on a day of the period.
+ *
+ * @generated from message mgmt.v1alpha1.UsageDay
+ */
+export type UsageDay = Message<"mgmt.v1alpha1.UsageDay"> & {
+  /**
+   * The day, in the time zone of the answer.
+   *
+   * @generated from field: mgmt.v1alpha1.Date day = 1;
+   */
+  day?: Date | undefined;
+
+  /**
+   * @generated from field: int64 rows_read = 2;
+   */
+  rowsRead: bigint;
+
+  /**
+   * @generated from field: int64 runs = 3;
+   */
+  runs: bigint;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.UsageDay.
+ * Use `create(UsageDaySchema)` to create a new message.
+ */
+export const UsageDaySchema: GenMessage<UsageDay> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 12);
+
+/**
+ * What the runs of a job add up to in the period.
+ *
+ * @generated from message mgmt.v1alpha1.JobUsage
+ */
+export type JobUsage = Message<"mgmt.v1alpha1.JobUsage"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: string job_name = 2;
+   */
+  jobName: string;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.JobKind kind = 3;
+   */
+  kind: JobKind;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.UsageTotals totals = 4;
+   */
+  totals?: UsageTotals | undefined;
+
+  /**
+   * The median duration of the runs that have a known end. Absent when none has.
+   *
+   * @generated from field: optional int64 duration_median_seconds = 5;
+   */
+  durationMedianSeconds?: bigint | undefined;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.JobUsage.
+ * Use `create(JobUsageSchema)` to create a new message.
+ */
+export const JobUsageSchema: GenMessage<JobUsage> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 13);
+
+/**
+ * The runs that did not complete for a category of error.
+ *
+ * @generated from message mgmt.v1alpha1.UsageErrorCount
+ */
+export type UsageErrorCount = Message<"mgmt.v1alpha1.UsageErrorCount"> & {
+  /**
+   * @generated from field: mgmt.v1alpha1.RunErrorCategory category = 1;
+   */
+  category: RunErrorCategory;
+
+  /**
+   * @generated from field: int64 runs = 2;
+   */
+  runs: bigint;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.UsageErrorCount.
+ * Use `create(UsageErrorCountSchema)` to create a new message.
+ */
+export const UsageErrorCountSchema: GenMessage<UsageErrorCount> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 14);
+
+/**
+ * The times the license refused something at a gate.
+ *
+ * @generated from message mgmt.v1alpha1.GateRefusalCount
+ */
+export type GateRefusalCount = Message<"mgmt.v1alpha1.GateRefusalCount"> & {
+  /**
+   * The gate: a feature of the license, or one of its limits. A member of a closed list.
+   *
+   * @generated from field: string gate = 1;
+   */
+  gate: string;
+
+  /**
+   * @generated from field: int64 refusals = 2;
+   */
+  refusals: bigint;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GateRefusalCount.
+ * Use `create(GateRefusalCountSchema)` to create a new message.
+ */
+export const GateRefusalCountSchema: GenMessage<GateRefusalCount> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 15);
+
+/**
+ * A run as the counters hold it.
+ *
+ * @generated from message mgmt.v1alpha1.RunUsage
+ */
+export type RunUsage = Message<"mgmt.v1alpha1.RunUsage"> & {
+  /**
+   * The identifier of the run, as the orchestrator gives it.
+   *
+   * @generated from field: string run_id = 1;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.JobRunStatus status = 2;
+   */
+  status: JobRunStatus;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 3;
+   */
+  startedAt?: Timestamp | undefined;
+
+  /**
+   * Absent for a run that was settled without a known end.
+   *
+   * @generated from field: google.protobuf.Timestamp ended_at = 4;
+   */
+  endedAt?: Timestamp | undefined;
+
+  /**
+   * The rows the run read from its source.
+   *
+   * @generated from field: int64 rows_read = 5;
+   */
+  rowsRead: bigint;
+
+  /**
+   * The tables of the run whose rows were not counted.
+   *
+   * @generated from field: int64 tables_uncounted = 6;
+   */
+  tablesUncounted: bigint;
+
+  /**
+   * What kept the run from completing. Unspecified for a run that completed.
+   *
+   * @generated from field: mgmt.v1alpha1.RunErrorCategory error_category = 7;
+   */
+  errorCategory: RunErrorCategory;
+
+  /**
+   * The step the run was at when it stopped. Unspecified for a run that completed.
+   *
+   * @generated from field: mgmt.v1alpha1.RunErrorStep error_step = 8;
+   */
+  errorStep: RunErrorStep;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.RunUsage.
+ * Use `create(RunUsageSchema)` to create a new message.
+ */
+export const RunUsageSchema: GenMessage<RunUsage> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 16);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetAccountUsageRequest
+ */
+export type GetAccountUsageRequest = Message<"mgmt.v1alpha1.GetAccountUsageRequest"> & {
+  /**
+   * The unique identifier of the account.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * The first day of the period.
+   *
+   * @generated from field: mgmt.v1alpha1.Date from_day = 2;
+   */
+  fromDay?: Date | undefined;
+
+  /**
+   * The last day of the period, included: not before the first, and at most 366 days in all.
+   *
+   * @generated from field: mgmt.v1alpha1.Date to_day = 3;
+   */
+  toDay?: Date | undefined;
+
+  /**
+   * The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+   *
+   * @generated from field: string time_zone = 4;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetAccountUsageRequest.
+ * Use `create(GetAccountUsageRequestSchema)` to create a new message.
+ */
+export const GetAccountUsageRequestSchema: GenMessage<GetAccountUsageRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 17);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetAccountUsageResponse
+ */
+export type GetAccountUsageResponse = Message<"mgmt.v1alpha1.GetAccountUsageResponse"> & {
+  /**
+   * Every run of the account counted in the period, those of jobs deleted since among them.
+   *
+   * @generated from field: mgmt.v1alpha1.UsageTotals totals = 1;
+   */
+  totals?: UsageTotals | undefined;
+
+  /**
+   * The sum of the durations of the runs that have a known end. Absent when none has.
+   *
+   * @generated from field: optional int64 duration_total_seconds = 2;
+   */
+  durationTotalSeconds?: bigint | undefined;
+
+  /**
+   * Every day of the period, the oldest first; a day without a run is there, at zero.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.UsageDay days = 3;
+   */
+  days: UsageDay[];
+
+  /**
+   * The jobs that have a run counted in the period and still exist, the one that read the most rows first.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.JobUsage jobs = 4;
+   */
+  jobs: JobUsage[];
+
+  /**
+   * The runs that did not complete, by category, the category with the most runs first.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.UsageErrorCount errors = 5;
+   */
+  errors: UsageErrorCount[];
+
+  /**
+   * What the license refused the account, by gate. Refusals are counted by UTC day, whatever the time zone.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.GateRefusalCount refusals = 6;
+   */
+  refusals: GateRefusalCount[];
+
+  /**
+   * The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+   *
+   * @generated from field: string time_zone = 7;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetAccountUsageResponse.
+ * Use `create(GetAccountUsageResponseSchema)` to create a new message.
+ */
+export const GetAccountUsageResponseSchema: GenMessage<GetAccountUsageResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 18);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetJobUsageRequest
+ */
+export type GetJobUsageRequest = Message<"mgmt.v1alpha1.GetJobUsageRequest"> & {
+  /**
+   * The unique identifier of the account.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * The unique identifier of the job. A job that is not of the account has no usage.
+   *
+   * @generated from field: string job_id = 2;
+   */
+  jobId: string;
+
+  /**
+   * The first day of the period.
+   *
+   * @generated from field: mgmt.v1alpha1.Date from_day = 3;
+   */
+  fromDay?: Date | undefined;
+
+  /**
+   * The last day of the period, included: not before the first, and at most 366 days in all.
+   *
+   * @generated from field: mgmt.v1alpha1.Date to_day = 4;
+   */
+  toDay?: Date | undefined;
+
+  /**
+   * The IANA name of the time zone the days are counted in, as "Europe/Paris". A name that is empty or not known reads as UTC.
+   *
+   * @generated from field: string time_zone = 5;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetJobUsageRequest.
+ * Use `create(GetJobUsageRequestSchema)` to create a new message.
+ */
+export const GetJobUsageRequestSchema: GenMessage<GetJobUsageRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 19);
+
+/**
+ * @generated from message mgmt.v1alpha1.GetJobUsageResponse
+ */
+export type GetJobUsageResponse = Message<"mgmt.v1alpha1.GetJobUsageResponse"> & {
+  /**
+   * What the job does. Unspecified when the account has no such job.
+   *
+   * @generated from field: mgmt.v1alpha1.JobKind kind = 1;
+   */
+  kind: JobKind;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.UsageTotals totals = 2;
+   */
+  totals?: UsageTotals | undefined;
+
+  /**
+   * The median duration of the runs that have a known end. Absent when none has.
+   *
+   * @generated from field: optional int64 duration_median_seconds = 3;
+   */
+  durationMedianSeconds?: bigint | undefined;
+
+  /**
+   * Every day of the period, the oldest first; a day without a run is there, at zero.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.UsageDay days = 4;
+   */
+  days: UsageDay[];
+
+  /**
+   * The runs counted in the period, the most recently recorded first, 20 at most.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.RunUsage runs = 5;
+   */
+  runs: RunUsage[];
+
+  /**
+   * The time zone the days were counted in: the one asked, or "UTC" when it is not known.
+   *
+   * @generated from field: string time_zone = 6;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetJobUsageResponse.
+ * Use `create(GetJobUsageResponseSchema)` to create a new message.
+ */
+export const GetJobUsageResponseSchema: GenMessage<GetJobUsageResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_usage, 20);
+
+/**
  * How a run ended.
  *
  * @generated from enum mgmt.v1alpha1.RunOutcome
@@ -710,6 +1156,52 @@ export const UsageReportStatusSchema: GenEnum<UsageReportStatus> = /*@__PURE__*/
   enumDesc(file_mgmt_v1alpha1_usage, 4);
 
 /**
+ * What a job does, as its runs are counted.
+ *
+ * @generated from enum mgmt.v1alpha1.JobKind
+ */
+export enum JobKind {
+  /**
+   * @generated from enum value: JOB_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The job copies the rows of a source to its destinations.
+   *
+   * @generated from enum value: JOB_KIND_SYNC = 1;
+   */
+  SYNC = 1,
+
+  /**
+   * The job generates rows.
+   *
+   * @generated from enum value: JOB_KIND_GENERATE = 2;
+   */
+  GENERATE = 2,
+
+  /**
+   * The job generates rows with a model.
+   *
+   * @generated from enum value: JOB_KIND_AI_GENERATE = 3;
+   */
+  AI_GENERATE = 3,
+
+  /**
+   * The job looks for personal data in a source. Its runs count no rows.
+   *
+   * @generated from enum value: JOB_KIND_PII_DETECT = 4;
+   */
+  PII_DETECT = 4,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.JobKind.
+ */
+export const JobKindSchema: GenEnum<JobKind> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_usage, 5);
+
+/**
  * Holds the counters of what the instance runs.
  *
  * @generated from service mgmt.v1alpha1.UsageService
@@ -764,6 +1256,26 @@ export const UsageService: GenService<{
     methodKind: "unary";
     input: typeof GetUsagePeriodReportRequestSchema;
     output: typeof GetUsagePeriodReportResponseSchema;
+  },
+  /**
+   * Gives what the runs of an account add up to over a period of days: its totals, its days, its jobs, its errors and what the license refused it.
+   *
+   * @generated from rpc mgmt.v1alpha1.UsageService.GetAccountUsage
+   */
+  getAccountUsage: {
+    methodKind: "unary";
+    input: typeof GetAccountUsageRequestSchema;
+    output: typeof GetAccountUsageResponseSchema;
+  },
+  /**
+   * Gives what the runs of a job of an account add up to over a period of days, and the latest of them.
+   *
+   * @generated from rpc mgmt.v1alpha1.UsageService.GetJobUsage
+   */
+  getJobUsage: {
+    methodKind: "unary";
+    input: typeof GetJobUsageRequestSchema;
+    output: typeof GetJobUsageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_mgmt_v1alpha1_usage, 0);

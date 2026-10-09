@@ -8995,6 +8995,80 @@ func (_c *MockQuerier_ListJobDestinationsOfInstance_Call) RunAndReturn(run func(
 	return _c
 }
 
+// ListJobNamesByAccount provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListJobNamesByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error) {
+	ret := _mock.Called(ctx, db, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListJobNamesByAccount")
+	}
+
+	var r0 []ListJobNamesByAccountRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]ListJobNamesByAccountRow, error)); ok {
+		return returnFunc(ctx, db, accountID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []ListJobNamesByAccountRow); ok {
+		r0 = returnFunc(ctx, db, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListJobNamesByAccountRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListJobNamesByAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListJobNamesByAccount'
+type MockQuerier_ListJobNamesByAccount_Call struct {
+	*mock.Call
+}
+
+// ListJobNamesByAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountID pgtype.UUID
+func (_e *MockQuerier_Expecter) ListJobNamesByAccount(ctx any, db any, accountID any) *MockQuerier_ListJobNamesByAccount_Call {
+	return &MockQuerier_ListJobNamesByAccount_Call{Call: _e.mock.On("ListJobNamesByAccount", ctx, db, accountID)}
+}
+
+func (_c *MockQuerier_ListJobNamesByAccount_Call) Run(run func(ctx context.Context, db DBTX, accountID pgtype.UUID)) *MockQuerier_ListJobNamesByAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListJobNamesByAccount_Call) Return(listJobNamesByAccountRows []ListJobNamesByAccountRow, err error) *MockQuerier_ListJobNamesByAccount_Call {
+	_c.Call.Return(listJobNamesByAccountRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListJobNamesByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error)) *MockQuerier_ListJobNamesByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListJobRunUsageBetween provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJobRunUsageBetweenParams) ([]ListJobRunUsageBetweenRow, error) {
 	ret := _mock.Called(ctx, db, arg)
