@@ -192,6 +192,115 @@ func Test_UsagePages_AZoneTheDatabaseDoesNotKnowIsAnError(t *testing.T) {
 	require.Error(t, err)
 }
 
+// zoneOnlyGoKnows finds a zone time.LoadLocation accepts and the database refuses. Local is one
+// wherever the process has a local zone: Go names it "Local", which is no zone of the database.
+// The others are zones the two may or may not hold, each with its own data.
+func zoneOnlyGoKnows(ctx context.Context, t *testing.T, container *tcpostgres.PostgresTestContainer) *time.Location {
+	t.Helper()
+	for _, name := range []string{"Local", "Asia/Choibalsan", "posix/Europe/Paris", "right/Europe/Paris"} {
+		zone, err := time.LoadLocation(name)
+		if err != nil {
+			continue
+		}
+		var at time.Time
+		if err := container.DB.QueryRow(ctx, `SELECT now() AT TIME ZONE $1::text`, zone.String()).Scan(&at); err != nil {
+			t.Logf("Go knows the zone %q (asked as %q) and the database refuses it: %v", zone.String(), name, err)
+			return zone
+		}
+	}
+	require.FailNow(t, "no zone that Go knows and the database refuses was found on this platform")
+	return nil
+}
+
+// A zone Go knows and the database does not is read as UTC days, and the read says so: the page
+// is never refused for the zone of a browser.
+func Test_ReadInZone_AZoneOnlyGoKnowsIsReadInUtc(t *testing.T) {
+	if !testutil.ShouldRunIntegrationTest() {
+		return
+	}
+	ctx := t.Context()
+	container, store := migratedDatabase(ctx, t)
+	zone := zoneOnlyGoKnows(ctx, t, container)
+
+	recordRuns(t, container, store,
+		time.Date(2026, 10, 6, 22, 30, 0, 0, time.UTC), // October 6 in UTC, October 7 in Paris
+		time.Date(2026, 10, 7, 22, 30, 0, 0, time.UTC),
+	)
+	account, job := Scope{AccountId: accountA}, Scope{AccountId: accountA, JobId: jobA}
+
+	// Alone, each read that places runs in days fails on such a zone.
+	for name, read := range pageReads(store, job, Period{From: oct6, To: oct6, Zone: zone}) {
+		if name == "AccountRefusals" {
+			require.NoError(t, read(ctx), "the refusals are of UTC days whatever the zone")
+			continue
+		}
+		require.Error(t, read(ctx), name)
+	}
+
+	for name, read := range map[string]func(Period) (int64, error){
+		"UsageTotals": func(period Period) (int64, error) {
+			totals, err := store.UsageTotals(ctx, account, period)
+			if err != nil {
+				return 0, err
+			}
+			return totals.RowsRead, nil
+		},
+		"UsageDays": func(period Period) (int64, error) {
+			days, err := store.UsageDays(ctx, job, period)
+			if err != nil {
+				return 0, err
+			}
+			return days[0].RowsRead, nil
+		},
+		"UsageJobs": func(period Period) (int64, error) {
+			jobs, err := store.UsageJobs(ctx, accountA, period)
+			if err != nil {
+				return 0, err
+			}
+			return jobs[0].Totals.RowsRead, nil
+		},
+		"LatestRuns": func(period Period) (int64, error) {
+			runs, err := store.LatestRuns(ctx, job, period, 20)
+			if err != nil {
+				return 0, err
+			}
+			return runs[0].RowsRead, nil
+		},
+		"UsageErrors": func(period Period) (int64, error) {
+			_, err := store.UsageErrors(ctx, accountA, period)
+			return 1, err
+		},
+	} {
+		var rows int64
+		calls := 0
+		used, err := ReadInZone(Period{From: oct6, To: oct6, Zone: zone}, func(period Period) error {
+			calls++
+			var err error
+			rows, err = read(period)
+			return err
+		})
+		require.NoError(t, err, name)
+		require.Equal(t, 2, calls, name)
+		require.Equal(t, utcDays(oct6, oct6), used, name)
+		require.Equal(t, "UTC", used.ZoneName(), name)
+		require.Equal(t, int64(1), rows, "%s: the run of October 6 as UTC counts it", name)
+	}
+
+	// A zone both know is read as itself, once.
+	calls := 0
+	used, err := ReadInZone(Period{From: oct7, To: oct7, Zone: paris(t)}, func(period Period) error {
+		calls++
+		totals, err := store.UsageTotals(ctx, account, period)
+		if err == nil {
+			require.Equal(t, int64(1), totals.RowsRead, "half past midnight on October 7 in Paris")
+		}
+		return err
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, calls)
+	require.Equal(t, "Europe/Paris", used.ZoneName())
+}
+
 // The longest period read is a leap year, in a table that holds runs of every one of its days.
 func Test_UsageDays_ReadTheLongestPeriod(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {

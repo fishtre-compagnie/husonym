@@ -2,9 +2,12 @@ package usagestore
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,9 +87,9 @@ func Test_CalendarDay_TheNextDayCrossesMonthsAndYears(t *testing.T) {
 func Test_Period_NamesItsZoneForTheDatabase(t *testing.T) {
 	paris, err := time.LoadLocation("Europe/Paris")
 	require.NoError(t, err)
-	require.Equal(t, "Europe/Paris", Period{Zone: paris}.zoneName())
-	require.Equal(t, "UTC", Period{Zone: time.UTC}.zoneName())
-	require.Equal(t, "UTC", Period{}.zoneName())
+	require.Equal(t, "Europe/Paris", Period{Zone: paris}.ZoneName())
+	require.Equal(t, "UTC", Period{Zone: time.UTC}.ZoneName())
+	require.Equal(t, "UTC", Period{}.ZoneName())
 }
 
 func Test_UsagePages_RefuseAnIdThatIsNotAUuid(t *testing.T) {
@@ -116,4 +119,80 @@ func Test_UsagePages_RefuseAnIdThatIsNotAUuid(t *testing.T) {
 func Test_LatestRuns_AreTheOnesOfAJob(t *testing.T) {
 	_, err := New(nil).LatestRuns(t.Context(), Scope{AccountId: accountA}, Period{From: day(2026, 10, 6), To: day(2026, 10, 6)}, 20)
 	require.ErrorContains(t, err, "job")
+}
+
+// zoneRefusal is the error of the database for a zone it does not know, as the driver gives it.
+func zoneRefusal() error {
+	return fmt.Errorf("unable to add up: %w", &pgconn.PgError{Code: "22023", Message: "whatever the database words it"})
+}
+
+func Test_ReadInZone_ReadsOnceWhenTheReadWorks(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	require.NoError(t, err)
+	asked := Period{From: day(2026, 10, 6), To: day(2026, 10, 7), Zone: paris}
+
+	var read []Period
+	used, err := ReadInZone(asked, func(period Period) error {
+		read = append(read, period)
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, []Period{asked}, read)
+	require.Equal(t, asked, used)
+	require.Equal(t, "Europe/Paris", used.ZoneName())
+}
+
+func Test_ReadInZone_ReadsAgainInUtcWhenTheDatabaseRefusesTheZone(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	require.NoError(t, err)
+	asked := Period{From: day(2026, 10, 6), To: day(2026, 10, 7), Zone: paris}
+	inUtc := Period{From: day(2026, 10, 6), To: day(2026, 10, 7), Zone: time.UTC}
+
+	var read []Period
+	used, err := ReadInZone(asked, func(period Period) error {
+		read = append(read, period)
+		if period.ZoneName() != "UTC" {
+			return zoneRefusal()
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, []Period{asked, inUtc}, read, "the same days, read once more as UTC days")
+	require.Equal(t, inUtc, used)
+}
+
+func Test_ReadInZone_ReadsAgainOnlyForARefusedZone(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	require.NoError(t, err)
+	failure := errors.New("the database is away")
+
+	for name, c := range map[string]struct {
+		zone *time.Location
+		err  error
+	}{
+		"another error":                         {paris, failure},
+		"another error of the database":         {paris, &pgconn.PgError{Code: "57014"}},
+		"the same code for a read in UTC":       {time.UTC, zoneRefusal()},
+		"the same code for a read with no zone": {nil, zoneRefusal()},
+	} {
+		calls := 0
+		_, err := ReadInZone(Period{From: day(2026, 10, 6), To: day(2026, 10, 6), Zone: c.zone}, func(Period) error {
+			calls++
+			return c.err
+		})
+		require.ErrorIs(t, err, c.err, name)
+		require.Equal(t, 1, calls, name)
+	}
+
+	// A read that fails in UTC as well gives the error of that second read.
+	calls := 0
+	_, err = ReadInZone(Period{From: day(2026, 10, 6), To: day(2026, 10, 6), Zone: paris}, func(Period) error {
+		calls++
+		if calls == 1 {
+			return zoneRefusal()
+		}
+		return failure
+	})
+	require.ErrorIs(t, err, failure)
+	require.Equal(t, 2, calls)
 }

@@ -11,6 +11,7 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -33,7 +34,7 @@ type CalendarDay struct {
 // counts them: a day starts and ends at the midnights of the zone, and lasts 23 or 25 hours when
 // its clocks change. Zone is a location loaded by its name; nil reads as UTC. The database
 // places the runs in the days, with its own knowledge of the zones: a zone it does not know
-// fails the read.
+// fails the read, and ReadInZone then reads the same days as UTC days.
 //
 // A run is of the day on which the API recorded its end, as in the daily report, which counts
 // in UTC days: the totals of a day in another zone are not the ones of that report. A run still
@@ -299,7 +300,7 @@ func readOf(scope Scope, period Period) (*pageRead, error) {
 		return nil, err
 	}
 	read := &pageRead{
-		zone:      period.zoneName(),
+		zone:      period.ZoneName(),
 		fromDay:   period.From.date(),
 		beforeDay: period.To.next().date(),
 		days:      days,
@@ -352,8 +353,31 @@ func (p Period) days() ([]CalendarDay, error) {
 	return days, nil
 }
 
-// zoneName is the name the database knows the zone by.
-func (p Period) zoneName() string {
+// ReadInZone reads a period, and reads it once more as UTC days when the database does not know
+// its zone: the zones a browser names and the ones the database holds come from two sets of data,
+// and a page is not refused for a zone. read is every read of one answer, so that all of it is of
+// the same days; it is given the period to read, and starts over when it is called again. The
+// period returned is the one that was read: its zone is the one to tell with what was read.
+//
+// The refusal is told by the code of the database's error, never by its words. A read in UTC is
+// not read again, whatever it fails on.
+func ReadInZone(period Period, read func(Period) error) (Period, error) {
+	err := read(period)
+	var refusal *pgconn.PgError
+	if err == nil || period.ZoneName() == time.UTC.String() ||
+		!errors.As(err, &refusal) || refusal.Code != pgUnknownZoneCode {
+		return period, err
+	}
+	period.Zone = time.UTC
+	return period, read(period)
+}
+
+// pgUnknownZoneCode is invalid_parameter_value: what AT TIME ZONE answers for a name that is no
+// zone of the database.
+const pgUnknownZoneCode = "22023"
+
+// ZoneName is the name the database knows the zone by.
+func (p Period) ZoneName() string {
 	if p.Zone == nil {
 		return time.UTC.String()
 	}
