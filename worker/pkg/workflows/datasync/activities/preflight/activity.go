@@ -38,7 +38,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
-	"go.temporal.io/sdk/temporal"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -157,10 +156,7 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 		}
 	}
 	if blocking := preflight.BlockingOf(findings); len(blocking) > 0 {
-		// Asking again finds the same: the job, or the grants, have to change.
-		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("pre-flight check stopped the run: %s", strings.Join(preflight.Messages(blocking), "; ")),
-			"PreflightBlocking", nil)
+		return nil, blockingError(blocking)
 	}
 	logger.Debug("pre-flight check passed", "findings", len(findings))
 	// The reading has a session of its own, which it releases itself: it may outlast this call.
