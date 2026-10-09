@@ -784,9 +784,6 @@ SELECT
   COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
-  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
-    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
   COALESCE(round(sum(
     GREATEST(extract(epoch FROM ended_at - started_at), 0)
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
@@ -815,7 +812,6 @@ type SumAccountRunUsageBetweenRow struct {
 	RowsDiscarded     int64
 	WithUncountedRows int64
 	RunsWithEnd       int64
-	DurationMedian    int64
 	DurationTotal     int64
 }
 
@@ -845,7 +841,9 @@ type SumAccountRunUsageBetweenRow struct {
 // None of these reads decides which runs count as an error: the ones that tell of errors give the
 // status and what the row holds, and the one rule of the store reads them.
 // Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
-// negative: an end told before its start counts for nothing.
+// negative: an end told before its start counts for nothing. Each read computes the one duration
+// its page shows: an account is told the time its runs lasted in all, a job the median of its
+// runs. A median sorts every run it is of, which an account has no use for.
 func (q *Queries) SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageBetweenParams) (SumAccountRunUsageBetweenRow, error) {
 	row := db.QueryRow(ctx, sumAccountRunUsageBetween,
 		arg.AccountID,
@@ -862,7 +860,6 @@ func (q *Queries) SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg Su
 		&i.RowsDiscarded,
 		&i.WithUncountedRows,
 		&i.RunsWithEnd,
-		&i.DurationMedian,
 		&i.DurationTotal,
 	)
 	return i, err
@@ -937,10 +934,7 @@ SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
     ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
-  COALESCE(round(sum(
-    GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
 FROM husonym_api.run_usage
 WHERE account_id = $1
   AND recorded_at >= ($3::date - 1)::timestamp AT TIME ZONE $2::text
@@ -971,11 +965,10 @@ type SumAccountRunUsageByJobBetweenRow struct {
 	WithUncountedRows int64
 	RunsWithEnd       int64
 	DurationMedian    int64
-	DurationTotal     int64
 }
 
-// The same sums as SumAccountRunUsageBetween, for each job of the account that has a run in the
-// period. The kind of a job is the one of its run recorded last.
+// The same counts and the same median as SumJobRunUsageBetween, for each job of the account that
+// has a run in the period. The kind of a job is the one of its run recorded last.
 func (q *Queries) SumAccountRunUsageByJobBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageByJobBetweenParams) ([]SumAccountRunUsageByJobBetweenRow, error) {
 	rows, err := db.Query(ctx, sumAccountRunUsageByJobBetween,
 		arg.AccountID,
@@ -1001,7 +994,6 @@ func (q *Queries) SumAccountRunUsageByJobBetween(ctx context.Context, db DBTX, a
 			&i.WithUncountedRows,
 			&i.RunsWithEnd,
 			&i.DurationMedian,
-			&i.DurationTotal,
 		); err != nil {
 			return nil, err
 		}
@@ -1063,10 +1055,7 @@ SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
     ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
-  COALESCE(round(sum(
-    GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
 FROM husonym_api.run_usage
 WHERE account_id = $1
   AND job_id = $2
@@ -1095,10 +1084,10 @@ type SumJobRunUsageBetweenRow struct {
 	WithUncountedRows int64
 	RunsWithEnd       int64
 	DurationMedian    int64
-	DurationTotal     int64
 }
 
-// The same sums as SumAccountRunUsageBetween, for one job of the account.
+// The same counts as SumAccountRunUsageBetween, for one job of the account, and the median of
+// the durations of its runs.
 func (q *Queries) SumJobRunUsageBetween(ctx context.Context, db DBTX, arg SumJobRunUsageBetweenParams) (SumJobRunUsageBetweenRow, error) {
 	row := db.QueryRow(ctx, sumJobRunUsageBetween,
 		arg.AccountID,
@@ -1117,7 +1106,6 @@ func (q *Queries) SumJobRunUsageBetween(ctx context.Context, db DBTX, arg SumJob
 		&i.WithUncountedRows,
 		&i.RunsWithEnd,
 		&i.DurationMedian,
-		&i.DurationTotal,
 	)
 	return i, err
 }

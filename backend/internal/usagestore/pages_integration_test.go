@@ -87,31 +87,32 @@ func Test_UsageTotals_CountOnlyTheAccountTheJobAndThePeriod(t *testing.T) {
 	}
 	day := utcDays(oct6, oct6)
 
-	// Four of the five runs have an end: 20, 60, 120 and 600 seconds.
+	// Four of the five runs have an end: 20, 60, 120 and 600 seconds. An account is told what
+	// they add up to and no median, a job their median and no sum.
 	require.Equal(t, &UsageTotals{
 		Runs: 5, Completed: 2, Canceled: 1, RowsRead: 1143, RowsDiscarded: 5, WithUncountedRows: 1,
-		DurationMedian: seconds(90), DurationTotal: seconds(800),
+		DurationTotal: seconds(800),
 	}, totals(Scope{AccountId: accountA}, day))
 	require.Equal(t, &UsageTotals{
 		Runs: 4, Completed: 1, Canceled: 1, RowsRead: 143, RowsDiscarded: 5, WithUncountedRows: 1,
-		DurationMedian: seconds(60), DurationTotal: seconds(200),
+		DurationMedian: seconds(60),
 	}, totals(Scope{AccountId: accountA, JobId: jobA}, day))
 	require.Equal(t, &UsageTotals{
-		Runs: 1, Completed: 1, RowsRead: 1000, DurationMedian: seconds(600), DurationTotal: seconds(600),
+		Runs: 1, Completed: 1, RowsRead: 1000, DurationMedian: seconds(600),
 	}, totals(Scope{AccountId: accountA, JobId: jobA2}, day))
 
 	require.Equal(t, &UsageTotals{
-		Runs: 1, Completed: 1, RowsRead: 9999, DurationMedian: seconds(10), DurationTotal: seconds(10),
+		Runs: 1, Completed: 1, RowsRead: 9999, DurationTotal: seconds(10),
 	}, totals(Scope{AccountId: accountB}, day))
 	require.Equal(t, &UsageTotals{
-		Runs: 1, Completed: 1, RowsRead: 9999, DurationMedian: seconds(10), DurationTotal: seconds(10),
+		Runs: 1, Completed: 1, RowsRead: 9999, DurationMedian: seconds(10),
 	}, totals(Scope{AccountId: accountB, JobId: jobA}, day))
 	// A job of another account: nothing, and no duration.
 	require.Equal(t, &UsageTotals{}, totals(Scope{AccountId: accountB, JobId: jobA2}, day))
 
 	// The day before holds one run, and both days hold six.
 	require.Equal(t, &UsageTotals{
-		Runs: 1, Completed: 1, RowsRead: 7, DurationMedian: seconds(30), DurationTotal: seconds(30),
+		Runs: 1, Completed: 1, RowsRead: 7, DurationTotal: seconds(30),
 	}, totals(Scope{AccountId: accountA}, utcDays(oct5, oct5)))
 	require.Equal(t, int64(6), totals(Scope{AccountId: accountA}, utcDays(oct5, oct6)).Runs)
 	require.Equal(t, &UsageTotals{}, totals(Scope{AccountId: accountA}, utcDays(oct7, oct7)))
@@ -137,7 +138,12 @@ func Test_UsageTotals_ARunWithoutAnEndCountsInNoDuration(t *testing.T) {
 	endRun(t, container, store, "backwards", october6.Add(3*time.Hour), october6.Add(2*time.Hour), nil)
 	got, err = store.UsageTotals(ctx, Scope{AccountId: accountA}, utcDays(oct6, oct6))
 	require.NoError(t, err)
-	require.Equal(t, &UsageTotals{Runs: 2, Completed: 1, DurationMedian: seconds(0), DurationTotal: seconds(0)}, got)
+	require.Equal(t, &UsageTotals{Runs: 2, Completed: 1, DurationTotal: seconds(0)}, got)
+
+	// The same for the median of a job.
+	ofJob, err := store.UsageTotals(ctx, Scope{AccountId: accountA, JobId: jobA}, utcDays(oct6, oct6))
+	require.NoError(t, err)
+	require.Equal(t, &UsageTotals{Runs: 2, Completed: 1, DurationMedian: seconds(0)}, ofJob)
 }
 
 // The success rate is completed / (runs - canceled): the store gives the three terms, and a
@@ -207,18 +213,18 @@ func Test_UsageJobs_PutTheJobWithMostRowsFirst(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []JobUsage{
 		{JobId: jobA2, Kind: JobKindGenerate, Totals: UsageTotals{
-			Runs: 1, Completed: 1, RowsRead: 1000, DurationMedian: seconds(600), DurationTotal: seconds(600),
+			Runs: 1, Completed: 1, RowsRead: 1000, DurationMedian: seconds(600),
 		}},
 		{JobId: jobA, Kind: JobKindSync, Totals: UsageTotals{
 			Runs: 4, Completed: 1, Canceled: 1, RowsRead: 143, RowsDiscarded: 5, WithUncountedRows: 1,
-			DurationMedian: seconds(60), DurationTotal: seconds(200),
+			DurationMedian: seconds(60),
 		}},
 	}, jobs)
 
 	ofB, err := store.UsageJobs(ctx, accountB, utcDays(oct6, oct6))
 	require.NoError(t, err)
 	require.Equal(t, []JobUsage{{JobId: jobA, Kind: JobKindSync, Totals: UsageTotals{
-		Runs: 1, Completed: 1, RowsRead: 9999, DurationMedian: seconds(10), DurationTotal: seconds(10),
+		Runs: 1, Completed: 1, RowsRead: 9999, DurationMedian: seconds(10),
 	}}}, ofB)
 
 	none, err := store.UsageJobs(ctx, accountA, utcDays(oct7, oct7))
@@ -243,7 +249,6 @@ func Test_UsageJobs_AddUpToTheTotalsOfTheAccount(t *testing.T) {
 	require.NoError(t, err)
 
 	var sum UsageTotals
-	var lasted int64
 	for _, job := range jobs {
 		sum.Runs += job.Totals.Runs
 		sum.Completed += job.Totals.Completed
@@ -251,14 +256,15 @@ func Test_UsageJobs_AddUpToTheTotalsOfTheAccount(t *testing.T) {
 		sum.RowsRead += job.Totals.RowsRead
 		sum.RowsDiscarded += job.Totals.RowsDiscarded
 		sum.WithUncountedRows += job.Totals.WithUncountedRows
-		lasted += *job.Totals.DurationTotal
 
 		// Each job reads the same through the scope of the job.
 		ofJob, err := store.UsageTotals(ctx, Scope{AccountId: accountA, JobId: job.JobId}, period)
 		require.NoError(t, err)
 		require.Equal(t, &job.Totals, ofJob, job.JobId)
 	}
-	sum.DurationMedian, sum.DurationTotal = totals.DurationMedian, &lasted
+	// The time the runs lasted is told of the account alone: the jobs tell a median, which does
+	// not add up.
+	sum.DurationTotal = totals.DurationTotal
 	require.Equal(t, totals, &sum)
 }
 

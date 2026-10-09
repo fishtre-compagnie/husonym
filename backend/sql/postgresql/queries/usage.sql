@@ -248,7 +248,9 @@ FROM husonym_api.usage_reports;
 -- status and what the row holds, and the one rule of the store reads them.
 
 -- Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
--- negative: an end told before its start counts for nothing.
+-- negative: an end told before its start counts for nothing. Each read computes the one duration
+-- its page shows: an account is told the time its runs lasted in all, a job the median of its
+-- runs. A median sorts every run it is of, which an account has no use for.
 -- name: SumAccountRunUsageBetween :one
 SELECT
   count(*)::bigint AS runs,
@@ -258,9 +260,6 @@ SELECT
   COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
   count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
-  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
-    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
   COALESCE(round(sum(
     GREATEST(extract(epoch FROM ended_at - started_at), 0)
   ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
@@ -273,7 +272,8 @@ WHERE account_id = sqlc.arg(account_id)
     OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
       AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
 
--- The same sums as SumAccountRunUsageBetween, for one job of the account.
+-- The same counts as SumAccountRunUsageBetween, for one job of the account, and the median of
+-- the durations of its runs.
 -- name: SumJobRunUsageBetween :one
 SELECT
   count(*)::bigint AS runs,
@@ -285,10 +285,7 @@ SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
     ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
-  COALESCE(round(sum(
-    GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
 FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND job_id = sqlc.arg(job_id)
@@ -299,8 +296,8 @@ WHERE account_id = sqlc.arg(account_id)
     OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
       AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
 
--- The same sums as SumAccountRunUsageBetween, for each job of the account that has a run in the
--- period. The kind of a job is the one of its run recorded last.
+-- The same counts and the same median as SumJobRunUsageBetween, for each job of the account that
+-- has a run in the period. The kind of a job is the one of its run recorded last.
 -- name: SumAccountRunUsageByJobBetween :many
 SELECT
   job_id,
@@ -314,10 +311,7 @@ SELECT
   count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
   COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
     ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
-  COALESCE(round(sum(
-    GREATEST(extract(epoch FROM ended_at - started_at), 0)
-  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median
 FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text

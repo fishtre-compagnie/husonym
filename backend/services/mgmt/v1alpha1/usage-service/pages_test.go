@@ -461,7 +461,7 @@ func Test_GetAccountUsage_GivesTheTotalsTheDaysTheErrorsAndTheRefusals(t *testin
 	f.holdsJobs(t)
 	f.pages.totals = usagestore.UsageTotals{
 		Runs: 5, Completed: 2, Canceled: 1, RowsRead: 1143, RowsDiscarded: 5, WithUncountedRows: 1,
-		DurationMedian: seconds(90), DurationTotal: seconds(800),
+		DurationTotal: seconds(800),
 	}
 	f.pages.days = []usagestore.UsageDay{
 		{Day: on(2026, 10, 5), RowsRead: 7, Runs: 1},
@@ -537,10 +537,10 @@ func Test_GetAccountUsage_NamesTheJobsThatStillExist(t *testing.T) {
 		aJob(t, "0b6f1d1e-7a43-4c36-9d6b-3f1b6c0f9a44", "idle"))
 	f.pages.totals = usagestore.UsageTotals{Runs: 6, Completed: 3, RowsRead: 1340}
 	f.pages.jobs = []usagestore.JobUsage{
-		{JobId: aDeletedJob, Kind: usagestore.JobKindSync, Totals: usagestore.UsageTotals{Runs: 1, Completed: 1, RowsRead: 1200, DurationMedian: seconds(600), DurationTotal: seconds(600)}},
+		{JobId: aDeletedJob, Kind: usagestore.JobKindSync, Totals: usagestore.UsageTotals{Runs: 1, Completed: 1, RowsRead: 1200, DurationMedian: seconds(600)}},
 		{JobId: aJobId, Kind: usagestore.JobKindSync, Totals: usagestore.UsageTotals{
 			Runs: 3, Completed: 1, Canceled: 1, RowsRead: 140, RowsDiscarded: 5, WithUncountedRows: 1,
-			DurationMedian: seconds(90), DurationTotal: seconds(200),
+			DurationMedian: seconds(90),
 		}},
 		{JobId: anotherJobId, Kind: usagestore.JobKindPiiDetect, Totals: usagestore.UsageTotals{Runs: 2, Completed: 1}},
 	}
@@ -646,7 +646,7 @@ func Test_GetJobUsage_TellsTheTotalsAndEachRun(t *testing.T) {
 	f.holdsTheJob(t, false)
 	f.pages.totals = usagestore.UsageTotals{
 		Runs: 3, Completed: 1, Canceled: 0, RowsRead: 140, RowsDiscarded: 5, WithUncountedRows: 1,
-		DurationMedian: seconds(90), DurationTotal: seconds(180),
+		DurationMedian: seconds(90),
 	}
 	f.pages.days = []usagestore.UsageDay{{Day: on(2026, 10, 9), RowsRead: 140, Runs: 3}}
 	failedAt := began.Add(2 * time.Minute)

@@ -62,9 +62,12 @@ type UsageTotals struct {
 	RowsRead, RowsDiscarded   int64
 	// WithUncountedRows is how many runs had a table that reported no row count.
 	WithUncountedRows int64
-	// Durations are in seconds, from the start of a run to its end, and never negative: the median
-	// the daily report gives, and the sum. A run without an end counts in neither, and both are
-	// nil when no run of the period has an end.
+	// Durations are in seconds, from the start of a run to its end, and never negative. A run
+	// without an end counts in neither, and each is nil when no run of the period has an end.
+	//
+	// Each scope is told the one duration its page shows, and the other is not computed: it stays
+	// nil. DurationTotal is the time the runs of an account lasted in all. DurationMedian is the
+	// median the daily report gives, for the runs of a job: the scope of a job, and each JobUsage.
 	DurationMedian, DurationTotal *int64
 }
 
@@ -108,22 +111,23 @@ func (s *Store) UsageTotals(ctx context.Context, scope Scope, period Period) (*U
 	if err != nil {
 		return nil, err
 	}
-	var sums db_queries.SumAccountRunUsageBetweenRow
+	var totals UsageTotals
 	if scope.JobId == "" {
+		var sums db_queries.SumAccountRunUsageBetweenRow
 		sums, err = s.db.Q.SumAccountRunUsageBetween(ctx, s.db.Db, db_queries.SumAccountRunUsageBetweenParams{
 			AccountID: read.account, Zone: read.zone, FromDay: read.fromDay, BeforeDay: read.beforeDay,
 		})
+		totals = accountTotalsOf(sums)
 	} else {
-		var ofJob db_queries.SumJobRunUsageBetweenRow
-		ofJob, err = s.db.Q.SumJobRunUsageBetween(ctx, s.db.Db, db_queries.SumJobRunUsageBetweenParams{
+		var sums db_queries.SumJobRunUsageBetweenRow
+		sums, err = s.db.Q.SumJobRunUsageBetween(ctx, s.db.Db, db_queries.SumJobRunUsageBetweenParams{
 			AccountID: read.account, JobID: read.job, Zone: read.zone, FromDay: read.fromDay, BeforeDay: read.beforeDay,
 		})
-		sums = db_queries.SumAccountRunUsageBetweenRow(ofJob)
+		totals = jobTotalsOf(sums)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to add up the runs of the period: %w", err)
 	}
-	totals := totalsOf(sums)
 	return &totals, nil
 }
 
@@ -186,10 +190,10 @@ func (s *Store) UsageJobs(ctx context.Context, accountId string, period Period) 
 		jobs = append(jobs, JobUsage{
 			JobId: husonymdb.UUIDString(row.JobID),
 			Kind:  JobKind(row.JobKind),
-			Totals: totalsOf(db_queries.SumAccountRunUsageBetweenRow{
+			Totals: jobTotalsOf(db_queries.SumJobRunUsageBetweenRow{
 				Runs: row.Runs, RunsCompleted: row.RunsCompleted, RunsCanceled: row.RunsCanceled,
 				RowsRead: row.RowsRead, RowsDiscarded: row.RowsDiscarded, WithUncountedRows: row.WithUncountedRows,
-				RunsWithEnd: row.RunsWithEnd, DurationMedian: row.DurationMedian, DurationTotal: row.DurationTotal,
+				RunsWithEnd: row.RunsWithEnd, DurationMedian: row.DurationMedian,
 			}),
 		})
 	}
@@ -339,8 +343,8 @@ func readOf(scope Scope, period Period) (*pageRead, error) {
 	return read, nil
 }
 
-// totalsOf gives no duration when no run has an end, where the sums hold a zero.
-func totalsOf(sums db_queries.SumAccountRunUsageBetweenRow) UsageTotals {
+// accountTotalsOf gives no duration when no run has an end, where the sums hold a zero.
+func accountTotalsOf(sums db_queries.SumAccountRunUsageBetweenRow) UsageTotals {
 	totals := UsageTotals{
 		Runs:              sums.Runs,
 		Completed:         sums.RunsCompleted,
@@ -350,7 +354,23 @@ func totalsOf(sums db_queries.SumAccountRunUsageBetweenRow) UsageTotals {
 		WithUncountedRows: sums.WithUncountedRows,
 	}
 	if sums.RunsWithEnd > 0 {
-		totals.DurationMedian, totals.DurationTotal = &sums.DurationMedian, &sums.DurationTotal
+		totals.DurationTotal = &sums.DurationTotal
+	}
+	return totals
+}
+
+// jobTotalsOf gives no duration when no run has an end, where the sums hold a zero.
+func jobTotalsOf(sums db_queries.SumJobRunUsageBetweenRow) UsageTotals {
+	totals := UsageTotals{
+		Runs:              sums.Runs,
+		Completed:         sums.RunsCompleted,
+		Canceled:          sums.RunsCanceled,
+		RowsRead:          sums.RowsRead,
+		RowsDiscarded:     sums.RowsDiscarded,
+		WithUncountedRows: sums.WithUncountedRows,
+	}
+	if sums.RunsWithEnd > 0 {
+		totals.DurationMedian = &sums.DurationMedian
 	}
 	return totals
 }
