@@ -13,6 +13,7 @@ import {
   featureNoticeMessage,
   featureRows,
   featureUseNote,
+  gateLabel,
   invitationRole,
   isFeatureAvailable,
   isKeyAlreadyInForce,
@@ -72,6 +73,31 @@ describe('featureLabel', () => {
   it('takes the name of a feature and nothing else', () => {
     // @ts-expect-error a name that is not a feature does not compile
     featureLabel('time_travel');
+  });
+});
+
+describe('gateLabel', () => {
+  it('names the gate of a feature as the feature', () => {
+    expect(gateLabel('rbac')).toBe('Member roles');
+    for (const name of LICENSE_FEATURES) {
+      expect(gateLabel(name)).toBe(featureLabel(name));
+    }
+  });
+
+  it('names the gates that are not features', () => {
+    expect(gateLabel('license_not_in_force')).toBe('No license in force');
+    expect(gateLabel('source_cap')).toBe('Source limit');
+    expect(gateLabel('job_cap')).toBe('Job limit');
+    expect(gateLabel('connection_cap')).toBe('Connection limit');
+    expect(gateLabel('connection_type')).toBe('Connection type');
+  });
+
+  it('reads a gate it does not know as Other', () => {
+    expect(gateLabel('whatever')).toBe('Other');
+    expect(gateLabel('')).toBe('Other');
+    // The names every object answers to are no gates.
+    expect(gateLabel('constructor')).toBe('Other');
+    expect(gateLabel('toString')).toBe('Other');
   });
 });
 

@@ -3,66 +3,125 @@ import SubPageHeader from '@/components/headers/SubPageHeader';
 import { useAccount } from '@/components/providers/account-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import DailyMetricCount from '@/components/usage/DailyMetricCount';
-import MetricCount from '@/components/usage/MetricCount';
-import UsagePeriodSelector from '@/components/usage/UsagePeriodSelector';
+import ReportingNotice from '@/components/usage/ReportingNotice';
+import RowsPerDayChart from '@/components/usage/RowsPerDayChart';
+import UsagePeriodSelect from '@/components/usage/UsagePeriodSelect';
+import UsageTiles from '@/components/usage/UsageTiles';
 import {
+  browserTimeZone,
+  DEFAULT_USAGE_PERIOD,
+  periodRange,
+  rangeLabel,
   UsagePeriod,
-  getDateRangeLabel,
-  getPeriodLabel,
-  periodToDateRange,
-} from '@/components/usage/util';
-import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { RangedMetricName } from '@husonym/sdk';
+} from '@/libs/usage/period';
+import { errorRows, errorsEmptyLine, refusalRows } from '@/libs/usage/rows';
+import { noRunLine } from '@/libs/usage/totals';
+import { getErrorMessage } from '@/util/util';
+import { useQuery } from '@connectrpc/connect-query';
+import { GetAccountUsageResponse, UsageService } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
+import CountsCard from './components/CountsCard';
+import JobsUsageTable from './components/JobsUsageTable';
 
+// What the account ran over a period, from the counters of the instance. The days are
+// the viewer's: the period is cut in the zone of the browser, and the line under the
+// title says the zone the API counted the days in, which is UTC when it does not know
+// the one it was asked.
 export default function UsagePage(): ReactElement {
-  const [period, setPeriod] = useState<UsagePeriod>('current');
-  const { data: configData, isLoading } = useGetSystemAppConfig();
   const { account } = useAccount();
-  if (isLoading) {
-    return <Skeleton className="w-full h-12" />;
-  }
-  if (!configData?.isMetricsServiceEnabled) {
-    return (
-      <div>
-        <Alert variant="warning">
-          <AlertTitle>Metrics are not currently enabled</AlertTitle>
-          <AlertDescription>
-            To enable them, please update Husonym configuration or contact your
-            system administrator.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-  const [start, end] = periodToDateRange(period);
+  const accountId = account?.id ?? '';
+  const [period, setPeriod] = useState<UsagePeriod>(DEFAULT_USAGE_PERIOD);
+  const timeZone = browserTimeZone();
+  const range = periodRange(period, new Date(), timeZone);
+  const { data, error } = useQuery(
+    UsageService.method.getAccountUsage,
+    { accountId, fromDay: range.fromDay, toDay: range.toDay, timeZone },
+    { enabled: !!accountId, retry: false }
+  );
+
   return (
     <div className="flex flex-col gap-5">
+      <ReportingNotice accountId={accountId} />
       <SubPageHeader
         header="Usage"
-        description="See periodic usage for this account"
-        subHeadings={`${getPeriodLabel(period)}: ${getDateRangeLabel(start, end)}`}
+        description="What this account ran, from the counters of this instance"
+        subHeadings={
+          error ? (
+            rangeLabel(range, undefined)
+          ) : data ? (
+            rangeLabel(range, data.timeZone)
+          ) : (
+            <Skeleton className="h-5 w-72" />
+          )
+        }
         extraHeading={
-          <UsagePeriodSelector period={period} setPeriod={setPeriod} />
+          <UsagePeriodSelect period={period} setPeriod={setPeriod} />
         }
       />
-      <div className="flex">
-        <MetricCount
-          period={period}
-          metric={RangedMetricName.INPUT_RECEIVED}
-          idtype="accountId"
-          identifier={account?.id ?? ''}
-        />
-      </div>
-      <div>
-        <DailyMetricCount
-          period={period}
-          metric={RangedMetricName.INPUT_RECEIVED}
-          idtype="accountId"
-          identifier={account?.id ?? ''}
-        />
-      </div>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to read the usage of this account</AlertTitle>
+          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+        </Alert>
+      ) : data ? (
+        <AccountUsage accountName={account?.name ?? ''} usage={data} />
+      ) : (
+        <UsageSkeleton />
+      )}
     </div>
+  );
+}
+
+function AccountUsage({
+  accountName,
+  usage,
+}: {
+  accountName: string;
+  usage: GetAccountUsageResponse;
+}): ReactElement {
+  const refusals = refusalRows(usage.refusals);
+  return (
+    <>
+      <UsageTiles
+        totals={usage.totals}
+        duration={{ label: 'Run time', seconds: usage.durationTotalSeconds }}
+      />
+      <RowsPerDayChart days={usage.days} emptyLine={noRunLine(usage.totals)} />
+      <JobsUsageTable
+        accountName={accountName}
+        jobs={usage.jobs}
+        totals={usage.totals}
+      />
+      <CountsCard
+        title="Errors by category"
+        columns={['Category', 'Runs']}
+        rows={errorRows(usage.errors)}
+        emptyLine={errorsEmptyLine(usage.totals)}
+      />
+      {refusals.length > 0 && (
+        <CountsCard
+          title="License refusals"
+          description="Counted by UTC day, when a call reaches the API. A screen that is greyed out makes no call."
+          columns={['Refused', 'Times']}
+          rows={refusals}
+        />
+      )}
+    </>
+  );
+}
+
+// The shape of the page while it is read: the tiles, then a card each.
+function UsageSkeleton(): ReactElement {
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+      <Skeleton className="h-96 w-full" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </>
   );
 }

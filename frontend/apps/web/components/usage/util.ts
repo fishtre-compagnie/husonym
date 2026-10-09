@@ -3,7 +3,7 @@ import {
   Date as HusonymDate,
   DateSchema as HusonymDateSchema,
 } from '@husonym/sdk';
-import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
+import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 
 export type MetricIdentifierType = 'accountId' | 'jobId' | 'runId';
 
@@ -60,8 +60,4 @@ export function getPeriodLabel(period: UsagePeriod): string {
       return 'Last Month';
     }
   }
-}
-
-export function getDateRangeLabel(start: Date, end: Date): string {
-  return `${format(start, 'MM/dd/yy')} - ${format(end, 'MM/dd/yy')}`;
 }

@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ReportingNoticeAlert } from '@/components/usage/ReportingNotice';
 import { formatDate } from '@/libs/license/license';
 import {
   nextReport,
@@ -31,7 +32,6 @@ import {
   firstReportAt,
   reportDayLabel,
   reportingLabel,
-  reportingNotice,
   reportStatusLabel,
 } from '@/libs/license/usage-report';
 import { getErrorMessage } from '@/util/util';
@@ -67,16 +67,9 @@ export default function UsageReportCard(props: Props): ReactElement {
     return <Skeleton className="w-full h-48" />;
   }
 
-  const notice = reporting ? reportingNotice(reporting) : undefined;
-
   return (
     <div className="flex flex-col gap-5">
-      {notice && (
-        <Alert variant="warning">
-          <AlertTitle>{notice.title}</AlertTitle>
-          <AlertDescription>{notice.description}</AlertDescription>
-        </Alert>
-      )}
+      <ReportingNoticeAlert reporting={reporting} />
       <Card>
         <CardHeader>
           <CardTitle>Usage report</CardTitle>
