@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dayPoints } from '@/libs/usage/days';
-import { formatCount } from '@/libs/usage/totals';
+import { countFormat, formatCount } from '@/libs/usage/numbers';
 import { UsageDay } from '@husonym/sdk';
 import { ReactElement, ReactNode } from 'react';
 import {
@@ -26,10 +26,6 @@ interface Props {
 
 type DayPoint = ReturnType<typeof dayPoints>[number];
 
-const AXIS_NUMBERS = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 1,
-});
-
 // The colors are the variables of the theme, so that the chart follows it without
 // being told which one is on.
 const TICK = { fill: 'var(--muted-foreground)', fontSize: 12 };
@@ -39,6 +35,9 @@ const TICK = { fill: 'var(--muted-foreground)', fontSize: 12 };
 export default function RowsPerDayChart(props: Props): ReactElement {
   const { days, emptyLine } = props;
   const points = dayPoints(days);
+  // Made here, not once for the module: the module is also loaded where there is no
+  // browser to tell its languages.
+  const axisNumbers = countFormat({ maximumFractionDigits: 1 });
   return (
     <Card>
       <CardHeader>
@@ -77,7 +76,7 @@ export default function RowsPerDayChart(props: Props): ReactElement {
                     axisLine={false}
                     width={56}
                     tickFormatter={(value: number) =>
-                      shortNumberFormatter(AXIS_NUMBERS, value)
+                      shortNumberFormatter(axisNumbers, value)
                     }
                   />
                   <Tooltip

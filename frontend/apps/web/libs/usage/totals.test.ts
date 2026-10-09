@@ -2,7 +2,6 @@ import { create } from '@bufbuild/protobuf';
 import { JobKind, UsageTotalsSchema } from '@husonym/sdk';
 import {
   durationLabel,
-  formatCount,
   isUnknownJob,
   noRowsPerDayLine,
   noRunLine,
@@ -40,21 +39,6 @@ function runs(all: number, completed: number, canceled = 0) {
     runsCanceled: canceled,
   });
 }
-
-describe('formatCount', () => {
-  it('groups the digits', () => {
-    expect(formatCount(BigInt(0))).toBe('0');
-    expect(formatCount(BigInt(999))).toBe('999');
-    expect(formatCount(BigInt(1234567))).toBe('1,234,567');
-    expect(formatCount(1234567)).toBe('1,234,567');
-  });
-
-  it('keeps every digit of a number a float cannot hold', () => {
-    expect(formatCount(BigInt('9007199254740993'))).toBe(
-      '9,007,199,254,740,993'
-    );
-  });
-});
 
 describe('successRateLabel', () => {
   it('has nothing to say without a run that succeeded or failed', () => {

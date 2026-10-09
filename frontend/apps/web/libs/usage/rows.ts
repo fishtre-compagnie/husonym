@@ -10,9 +10,9 @@ import type {
   UsageTotals,
 } from '@husonym/sdk';
 import { errorCategoryLabel, errorStepLabel } from './labels';
+import { formatCount } from './numbers';
 import {
   durationLabel,
-  formatCount,
   noRunLine,
   rowsHint,
   rowsLabel,

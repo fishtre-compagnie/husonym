@@ -1,5 +1,6 @@
 import { JobKind } from '@husonym/sdk';
 import type { UsageTotals } from '@husonym/sdk';
+import { formatCount } from './numbers';
 
 // What a tile or a cell shows when there is nothing to say.
 const NO_VALUE = '—';
@@ -13,11 +14,6 @@ const HUNDRED = BigInt(100);
 const MINUTE = BigInt(60);
 const HOUR = BigInt(3600);
 const DAY = BigInt(86_400);
-
-// A count with its digits grouped. A bigint keeps every digit.
-export function formatCount(value: bigint | number): string {
-  return value.toLocaleString('en-US');
-}
 
 function plural(count: bigint, one: string, many: string): string {
   return count === ONE ? one : many;
