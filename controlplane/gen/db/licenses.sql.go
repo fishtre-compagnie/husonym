@@ -85,6 +85,19 @@ func (q *Queries) InsertLicense(ctx context.Context, arg InsertLicenseParams) (i
 	return result.RowsAffected(), nil
 }
 
+const lockLicenseID = `-- name: LockLicenseID :exec
+SELECT pg_advisory_xact_lock(hashtextextended('controlplane.licenses:' || $1::text, 0))
+`
+
+// Held until the transaction ends: two writers of one license id go one after the other. Without
+// it, two inserts of the same license at once may meet on the unique constraint of the encoded key
+// or of its fingerprint before they meet on the id, and that one is an error, not a conflict left
+// alone.
+func (q *Queries) LockLicenseID(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, lockLicenseID, id)
+	return err
+}
+
 const upsertCustomer = `-- name: UpsertCustomer :one
 INSERT INTO controlplane.customers (external_id, name)
 VALUES ($1, $2)

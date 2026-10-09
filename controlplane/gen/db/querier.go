@@ -84,6 +84,11 @@ type Querier interface {
 	// their license is in force and asks for reports: that is judged by the caller.
 	ListSilentCandidates(ctx context.Context, arg ListSilentCandidatesParams) ([]ListSilentCandidatesRow, error)
 	ListSuccessorsOfLicense(ctx context.Context, licenseID string) ([]string, error)
+	// Held until the transaction ends: two writers of one license id go one after the other. Without
+	// it, two inserts of the same license at once may meet on the unique constraint of the encoded key
+	// or of its fingerprint before they meet on the id, and that one is an error, not a conflict left
+	// alone.
+	LockLicenseID(ctx context.Context, id string) error
 	PendingReportExists(ctx context.Context, arg PendingReportExistsParams) (bool, error)
 	PurgePendingReports(ctx context.Context, receivedAt pgtype.Timestamptz) (int64, error)
 	SumSealRejectionsOfDay(ctx context.Context, day pgtype.Date) (int64, error)
