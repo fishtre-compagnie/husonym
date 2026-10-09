@@ -3,6 +3,8 @@ import { JobKind, UsageTotalsSchema } from '@husonym/sdk';
 import {
   durationLabel,
   formatCount,
+  isUnknownJob,
+  noRowsPerDayLine,
   noRunLine,
   rowsLabel,
   successRateLabel,
@@ -215,6 +217,52 @@ describe('noRunLine', () => {
   it('has nothing to say once a run is counted, whatever became of it', () => {
     expect(noRunLine(runs(1, 0, 1))).toBeUndefined();
     expect(noRunLine(runs(3, 3))).toBeUndefined();
+  });
+});
+
+describe('noRowsPerDayLine', () => {
+  it('says that a job counts no rows, with or without runs', () => {
+    expect(noRowsPerDayLine(JobKind.PII_DETECT, runs(3, 3))).toBe(
+      'PII detection jobs count no rows.'
+    );
+    expect(noRowsPerDayLine(JobKind.PII_DETECT, undefined)).toBe(
+      'PII detection jobs count no rows.'
+    );
+  });
+
+  it('says that no run ended for a job that counts rows and did not run', () => {
+    expect(noRowsPerDayLine(JobKind.SYNC, totals())).toBe(
+      'No run ended in this period.'
+    );
+    expect(noRowsPerDayLine(JobKind.GENERATE, undefined)).toBe(
+      'No run ended in this period.'
+    );
+  });
+
+  it('has nothing to say when there are rows to plot', () => {
+    expect(noRowsPerDayLine(JobKind.SYNC, runs(1, 1))).toBeUndefined();
+    expect(noRowsPerDayLine(JobKind.AI_GENERATE, runs(2, 0))).toBeUndefined();
+  });
+});
+
+describe('isUnknownJob', () => {
+  it('is a job the answer tells no kind of', () => {
+    expect(isUnknownJob(JobKind.UNSPECIFIED)).toBe(true);
+  });
+
+  it('is not a job of a kind, whether or not it ran', () => {
+    for (const kind of [
+      JobKind.SYNC,
+      JobKind.GENERATE,
+      JobKind.AI_GENERATE,
+      JobKind.PII_DETECT,
+    ]) {
+      expect(isUnknownJob(kind)).toBe(false);
+    }
+  });
+
+  it('is not a job of a kind this page does not know yet', () => {
+    expect(isUnknownJob(99 as JobKind)).toBe(false);
   });
 });
 

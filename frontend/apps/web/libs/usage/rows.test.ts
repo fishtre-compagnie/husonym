@@ -1,9 +1,14 @@
-import { create } from '@bufbuild/protobuf';
+import { create, MessageInitShape } from '@bufbuild/protobuf';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import {
   GateRefusalCountSchema,
+  GetJobUsageResponseSchema,
   JobKind,
+  JobRunStatus,
   JobUsageSchema,
   RunErrorCategory,
+  RunErrorStep,
+  RunUsageSchema,
   UsageErrorCountSchema,
   UsageTotalsSchema,
 } from '@husonym/sdk';
@@ -13,6 +18,7 @@ import {
   jobsEmptyLine,
   jobsTable,
   refusalRows,
+  runsTable,
 } from './rows';
 
 const ORDERS_ID = '0b5c7d1e-0000-4000-8000-0000000000a1';
@@ -150,6 +156,191 @@ describe('errorsEmptyLine', () => {
     expect(errorsEmptyLine(runsCounted(3))).toBe(
       'Every run of this period completed.'
     );
+  });
+});
+
+const STARTED = new Date('2026-10-06T09:00:00Z');
+
+// A run that completed: started at STARTED, ended 200 seconds later, 1,140 rows.
+function run(fields: MessageInitShape<typeof RunUsageSchema> = {}) {
+  return create(RunUsageSchema, {
+    runId: 'r1',
+    status: JobRunStatus.COMPLETE,
+    startedAt: timestampFromDate(STARTED),
+    endedAt: timestampFromDate(new Date(STARTED.getTime() + 200_000)),
+    rowsRead: BigInt(1140),
+    ...fields,
+  });
+}
+
+function failed(fields: MessageInitShape<typeof RunUsageSchema> = {}) {
+  return run({
+    status: JobRunStatus.FAILED,
+    errorCategory: RunErrorCategory.CONSTRAINT_VIOLATED,
+    errorStep: RunErrorStep.TABLE_SYNC,
+    ...fields,
+  });
+}
+
+function jobUsage(fields: MessageInitShape<typeof GetJobUsageResponseSchema>) {
+  return create(GetJobUsageResponseSchema, { kind: JobKind.SYNC, ...fields });
+}
+
+describe('runsTable', () => {
+  it('gives a row per run, each leading to the page of the run', () => {
+    expect(runsTable(jobUsage({ runs: [run()] }), 'acme').rows).toEqual([
+      {
+        id: 'r1',
+        href: '/acme/runs/r1',
+        startedAt: STARTED,
+        status: JobRunStatus.COMPLETE,
+        duration: '3m 20s',
+        rowsRead: '1,140',
+        error: '',
+      },
+    ]);
+  });
+
+  it('names what kept a run from completing, and the step it was at', () => {
+    const [row] = runsTable(jobUsage({ runs: [failed()] }), 'acme').rows;
+    expect(row.status).toBe(JobRunStatus.FAILED);
+    expect(row.error).toBe('Constraint violated · Table sync');
+  });
+
+  it('leaves out a step that says nothing', () => {
+    const errors = runsTable(
+      jobUsage({
+        runs: [
+          failed({ errorStep: RunErrorStep.OTHER }),
+          failed({ errorStep: RunErrorStep.UNSPECIFIED }),
+          run({
+            status: JobRunStatus.CANCELED,
+            errorCategory: RunErrorCategory.CANCELED,
+          }),
+        ],
+      }),
+      'acme'
+    ).rows.map((row) => row.error);
+    expect(errors).toEqual([
+      'Constraint violated',
+      'Constraint violated',
+      'Canceled',
+    ]);
+  });
+
+  it('reads a run that did not complete and tells no category as Other', () => {
+    const [row] = runsTable(
+      jobUsage({
+        runs: [
+          failed({
+            errorCategory: RunErrorCategory.UNSPECIFIED,
+            errorStep: RunErrorStep.HOOKS,
+          }),
+        ],
+      }),
+      'acme'
+    ).rows;
+    expect(row.error).toBe('Other · Hooks');
+  });
+
+  it('shows no error for a run that completed, whatever it tells', () => {
+    const [row] = runsTable(
+      jobUsage({
+        runs: [
+          run({
+            errorCategory: RunErrorCategory.TIMEOUT,
+            errorStep: RunErrorStep.HOOKS,
+          }),
+        ],
+      }),
+      'acme'
+    ).rows;
+    expect(row.error).toBe('');
+  });
+
+  it('says that the rows of a run are not all counted', () => {
+    const [row] = runsTable(
+      jobUsage({
+        runs: [failed({ rowsRead: BigInt(40), tablesUncounted: BigInt(1) })],
+      }),
+      'acme'
+    ).rows;
+    expect(row.rowsRead).toBe('40 (incomplete)');
+  });
+
+  it('shows no row count for a job that counts none', () => {
+    const [row] = runsTable(
+      jobUsage({
+        kind: JobKind.PII_DETECT,
+        runs: [run({ rowsRead: BigInt(0), tablesUncounted: BigInt(1) })],
+      }),
+      'acme'
+    ).rows;
+    expect(row.rowsRead).toBe('—');
+  });
+
+  it('has no duration for a run without a known end or a known start', () => {
+    const rows = runsTable(
+      jobUsage({
+        runs: [run({ endedAt: undefined }), run({ startedAt: undefined })],
+      }),
+      'acme'
+    ).rows;
+    expect(rows.map((row) => row.duration)).toEqual(['—', '—']);
+    expect(rows.map((row) => row.startedAt)).toEqual([STARTED, undefined]);
+  });
+
+  it('counts whole seconds, and never less than none', () => {
+    const at = (ms: number) =>
+      timestampFromDate(new Date(STARTED.getTime() + ms));
+    const rows = runsTable(
+      jobUsage({
+        runs: [
+          run({ endedAt: at(-5000) }),
+          run({ endedAt: at(0) }),
+          run({ endedAt: at(1999) }),
+          run({ endedAt: at(3_600_000 + 5 * 60_000) }),
+        ],
+      }),
+      'acme'
+    ).rows;
+    expect(rows.map((row) => row.duration)).toEqual([
+      '0s',
+      '0s',
+      '1s',
+      '1h 5m',
+    ]);
+  });
+
+  it('keeps the order received', () => {
+    expect(
+      runsTable(
+        jobUsage({ runs: [run({ runId: 'b' }), run({ runId: 'a' })] }),
+        'acme'
+      ).rows.map((row) => row.id)
+    ).toEqual(['b', 'a']);
+  });
+
+  it('says so when the period has more runs than the list', () => {
+    const twenty = Array.from({ length: 20 }, (_, i) =>
+      run({ runId: `r${i}` })
+    );
+    expect(
+      runsTable(jobUsage({ runs: twenty, totals: runsCounted(21) }), 'acme')
+        .caption
+    ).toBe('The 20 most recent runs of the period.');
+  });
+
+  it('has no caption when every run of the period is listed', () => {
+    const two = [run({ runId: 'a' }), run({ runId: 'b' })];
+    expect(
+      runsTable(jobUsage({ runs: two, totals: runsCounted(2) }), 'acme').caption
+    ).toBeUndefined();
+    expect(runsTable(jobUsage({ runs: two }), 'acme').caption).toBeUndefined();
+    expect(runsTable(jobUsage({}), 'acme')).toEqual({
+      rows: [],
+      caption: undefined,
+    });
   });
 });
 

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ReportingNotice from '@/components/usage/ReportingNotice';
 import RowsPerDayChart from '@/components/usage/RowsPerDayChart';
 import UsagePeriodSelect from '@/components/usage/UsagePeriodSelect';
+import UsageSkeleton from '@/components/usage/UsageSkeleton';
 import UsageTiles from '@/components/usage/UsageTiles';
 import {
   browserTimeZone,
@@ -66,7 +67,7 @@ export default function UsagePage(): ReactElement {
       ) : data ? (
         <AccountUsage accountName={account?.name ?? ''} usage={data} />
       ) : (
-        <UsageSkeleton />
+        <UsageSkeleton cards={['h-96', 'h-48', 'h-32']} />
       )}
     </div>
   );
@@ -106,22 +107,6 @@ function AccountUsage({
           rows={refusals}
         />
       )}
-    </>
-  );
-}
-
-// The shape of the page while it is read: the tiles, then a card each.
-function UsageSkeleton(): ReactElement {
-  return (
-    <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
-        ))}
-      </div>
-      <Skeleton className="h-96 w-full" />
-      <Skeleton className="h-48 w-full" />
-      <Skeleton className="h-32 w-full" />
     </>
   );
 }

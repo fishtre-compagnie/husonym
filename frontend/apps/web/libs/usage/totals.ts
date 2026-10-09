@@ -117,6 +117,22 @@ export function noRunLine(totals: UsageTotals | undefined): string | undefined {
     : 'No run ended in this period.';
 }
 
+// What stands in place of the rows per day of a job when there is nothing to plot: a
+// job that counts no rows has no chart at all, a period without a run has an empty one.
+// Nothing when there are rows to plot.
+export function noRowsPerDayLine(
+  kind: JobKind,
+  totals: UsageTotals | undefined
+): string | undefined {
+  return rowsHint(kind) ?? noRunLine(totals);
+}
+
+// Whether the account has no such job: the API tells the kind of every job of the
+// account, ran or not, and none for a job that was deleted or is of another account.
+export function isUnknownJob(kind: JobKind): boolean {
+  return kind === JobKind.UNSPECIFIED;
+}
+
 // What the tiles do not say: the runs whose rows are not all counted, and the rows that
 // were set aside instead of being written. One line each, only when there is something
 // to say.

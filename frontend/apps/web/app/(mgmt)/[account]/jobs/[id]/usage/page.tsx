@@ -1,72 +1,104 @@
 'use client';
 import SubPageHeader from '@/components/headers/SubPageHeader';
+import JobNotFoundAlert from '@/components/jobs/JobNotFoundAlert';
+import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import DailyMetricCount from '@/components/usage/DailyMetricCount';
-import MetricCount from '@/components/usage/MetricCount';
-import UsagePeriodSelector from '@/components/usage/UsagePeriodSelector';
+import ReportingNotice from '@/components/usage/ReportingNotice';
+import RowsPerDayChart from '@/components/usage/RowsPerDayChart';
+import UsagePeriodSelect from '@/components/usage/UsagePeriodSelect';
+import UsageSkeleton from '@/components/usage/UsageSkeleton';
+import UsageTiles from '@/components/usage/UsageTiles';
 import {
+  browserTimeZone,
+  DEFAULT_USAGE_PERIOD,
+  periodRange,
+  rangeLabel,
   UsagePeriod,
-  getPeriodLabel,
-  periodToDateRange,
-} from '@/components/usage/util';
-import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { RangedMetricName } from '@husonym/sdk';
-import { format } from 'date-fns';
+} from '@/libs/usage/period';
+import { isUnknownJob, noRowsPerDayLine, noRunLine } from '@/libs/usage/totals';
+import { getErrorMessage } from '@/util/util';
+import { useQuery } from '@connectrpc/connect-query';
+import { UsageService } from '@husonym/sdk';
 import { ReactElement, use, useState } from 'react';
+import LatestRunsTable from './components/LatestRunsTable';
 
+// What a job ran over a period, from the counters of the instance. As on the Usage page
+// of the account, the period is cut in the zone of the browser and the line under the
+// title says the zone the API counted the days in.
 export default function UsagePage(props: PageProps): ReactElement {
   const params = use(props.params);
   const id = params?.id ?? '';
-  const [period, setPeriod] = useState<UsagePeriod>('current');
-  const { data: configData, isLoading } = useGetSystemAppConfig();
-  if (isLoading) {
-    return <Skeleton className="w-full h-12" />;
+  const { account } = useAccount();
+  const accountId = account?.id ?? '';
+  const [period, setPeriod] = useState<UsagePeriod>(DEFAULT_USAGE_PERIOD);
+  const timeZone = browserTimeZone();
+  const range = periodRange(period, new Date(), timeZone);
+  const { data, error } = useQuery(
+    UsageService.method.getJobUsage,
+    {
+      accountId,
+      jobId: id,
+      fromDay: range.fromDay,
+      toDay: range.toDay,
+      timeZone,
+    },
+    { enabled: !!accountId && !!id, retry: false }
+  );
+
+  // The account has no such job: there is no usage to show, not an empty one.
+  if (data && isUnknownJob(data.kind)) {
+    return <JobNotFoundAlert />;
   }
-  if (!configData?.isMetricsServiceEnabled) {
-    return (
-      <div>
-        <Alert variant="warning">
-          <AlertTitle>Metrics are not currently enabled</AlertTitle>
-          <AlertDescription>
-            To enable them, please update Husonym configuration or contact your
-            system administrator.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-  const [start, end] = periodToDateRange(period);
+
   return (
     <div className="job-details-usage-container flex flex-col gap-5">
+      <ReportingNotice accountId={accountId} />
       <SubPageHeader
         header="Usage"
-        description={`${getPeriodLabel(period)}: ${getDateRangeLabel(start, end)}`}
+        description="What this job ran, from the counters of this instance"
+        subHeadings={
+          error ? (
+            rangeLabel(range, undefined)
+          ) : data ? (
+            rangeLabel(range, data.timeZone)
+          ) : (
+            <Skeleton className="h-5 w-72" />
+          )
+        }
         extraHeading={
-          <UsagePeriodSelector period={period} setPeriod={setPeriod} />
+          <UsagePeriodSelect period={period} setPeriod={setPeriod} />
         }
       />
-      <div className="flex">
-        <MetricCount
-          period={period}
-          metric={RangedMetricName.INPUT_RECEIVED}
-          idtype="jobId"
-          identifier={id}
-        />
-      </div>
-      <div>
-        <DailyMetricCount
-          period={period}
-          metric={RangedMetricName.INPUT_RECEIVED}
-          idtype="jobId"
-          identifier={id}
-        />
-      </div>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to read the usage of this job</AlertTitle>
+          <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+        </Alert>
+      ) : data ? (
+        <>
+          <UsageTiles
+            totals={data.totals}
+            kind={data.kind}
+            duration={{
+              label: 'Median duration',
+              seconds: data.durationMedianSeconds,
+            }}
+          />
+          <RowsPerDayChart
+            days={data.days}
+            emptyLine={noRowsPerDayLine(data.kind, data.totals)}
+          />
+          <LatestRunsTable
+            accountName={account?.name ?? ''}
+            usage={data}
+            emptyLine={noRunLine(data.totals)}
+          />
+        </>
+      ) : (
+        <UsageSkeleton cards={['h-96', 'h-48']} />
+      )}
     </div>
   );
-}
-
-function getDateRangeLabel(start: Date, end: Date): string {
-  return `${format(start, 'MM/dd/yy')} - ${format(end, 'MM/dd/yy')}`;
 }
