@@ -28,6 +28,12 @@ it is placed in a `Report`. The schema has `additionalProperties: false` at each
   whichever way it learned of it. A run that ended just before midnight and whose end was recorded
   just after is in the report of the next day, and in no other. `duration_seconds` is still the
   time from the start of a run to its end.
+- `errors` holds, per category and step, the runs whose end the instance recorded on the day and
+  that did not complete: the same runs as `runs` counts under a status other than `completed`, so
+  the rows of `errors` add up to them. A run counts once. A canceled run counts under `canceled`.
+  A run the instance settled itself, having heard nothing of its end, counts as `timeout` or
+  `other` at the step `other`. The category comes from the type of the error and the code of the
+  database, never from its message.
 - `transformers.system[].columns` is the number of columns a transformer runs on. A column whose
   transformer is a PII text counts under that transformer and under each transformer it hands its
   findings to, so these counts can sum to more than `jobs.columns`.

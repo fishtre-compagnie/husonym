@@ -39,6 +39,8 @@ type Counters interface {
 	RunsOfDay(ctx context.Context, day time.Time) (*usagestore.DayRuns, error)
 	SourceVersionsOfDay(ctx context.Context, day time.Time) ([]usagestore.SourceEngineRuns, error)
 	RefusalsOfDay(ctx context.Context, day time.Time) ([]usagestore.GateCount, error)
+	// ErrorsOfDay counts the runs RunsOfDay counts for the day that did not complete.
+	ErrorsOfDay(ctx context.Context, day time.Time) ([]usagestore.ErrorCount, error)
 
 	RunsBetween(ctx context.Context, from, before time.Time) (*usagestore.DayRuns, error)
 	RefusalsBetween(ctx context.Context, from, before time.Time) ([]usagestore.GateCount, error)
@@ -195,6 +197,12 @@ func (b *Builder) diagnostics(ctx context.Context, day, now time.Time) (*telemet
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the refusals of the day: %w", err)
 	}
+	// Read as the runs are: the errors are the ones of the runs the same report counts, and a
+	// report that could not read them is not made, as for any other count of the day.
+	failures, err := b.counters.ErrorsOfDay(ctx, day)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read the errors of the day: %w", err)
+	}
 
 	configuration := telemetry.Configuration{
 		AuthEnabled:          b.facts.AuthEnabled,
@@ -227,9 +235,8 @@ func (b *Builder) diagnostics(ctx context.Context, day, now time.Time) (*telemet
 		Features:      inventory.Features,
 		Refusals:      refused,
 		Runs:          runsOf(runs),
-		// Empty for now: the lists its rows are of are declared, and nothing fills it yet.
-		Errors: []telemetry.ErrorCount{},
-		Users:  inventory.Users,
+		Errors:        ErrorCounts(failures),
+		Users:         inventory.Users,
 		Unread: telemetry.Unread{
 			Jobs:        int(inventory.Unread.Jobs),
 			Connections: int(inventory.Unread.Connections),
@@ -317,6 +324,22 @@ func refusalCounts(refusals []usagestore.GateCount) (counts []telemetry.GateCoun
 		counts = append(counts, telemetry.GateCount{Gate: gate, Count: int(refusal.Count)})
 	}
 	return counts, unknown
+}
+
+// ErrorCounts turns the errors the store counted into the rows of the report, never nil. A
+// category or a step the report does not know is other, and rows that become the same are added
+// up: nothing outside the two lists leaves, whatever a row holds.
+func ErrorCounts(rows []usagestore.ErrorCount) []telemetry.ErrorCount {
+	type place struct{ category, step string }
+	counted := make(map[place]int, len(rows))
+	for _, row := range rows {
+		counted[place{telemetry.ErrorCategory(string(row.Category)), telemetry.ErrorStep(string(row.Step))}] += int(row.Count)
+	}
+	counts := make([]telemetry.ErrorCount, 0, len(counted))
+	for key, count := range counted {
+		counts = append(counts, telemetry.ErrorCount{Category: key.category, Step: key.step, Count: count})
+	}
+	return counts
 }
 
 // runsOf turns the runs of the day into their block. Kinds and statuses the report does not
