@@ -57,9 +57,9 @@ func (w *JobWorkflow) JobPiiDetect(ctx workflow.Context, req *JobPiiDetectReques
 	// were asked ran and announced its events under a valid license, and keeps to that.
 	detectionAllowed := workflow_shared.LicenseAllows(ctx, w.license, license.FeaturePiiDetection, licensed)
 	accountHooksAllowed := workflow_shared.LicenseAllows(ctx, w.license, license.FeatureAccountHooks, licensed)
+	failure := &workflow_shared.RunFailure{}
 	// The start and the end of the run are told to the API around everything that follows:
 	// a run the license refuses is a run that failed. A detection reads no row of a sync.
-	failure := &workflow_shared.RunFailure{}
 	return workflow_shared.TrackRunUsage(
 		ctx,
 		req.JobId,
