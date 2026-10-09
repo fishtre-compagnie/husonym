@@ -50,7 +50,7 @@ type ErrorCount struct {
 	Count    int64
 }
 
-// GateCount is how many times a gate refused, over every account.
+// GateCount is how many times a gate refused: over every account, or for the one that was asked.
 type GateCount struct {
 	Gate  license.Gate
 	Count int64

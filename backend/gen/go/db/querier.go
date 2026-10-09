@@ -33,6 +33,9 @@ type Querier interface {
 	ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)
 	// The accounts that declared an identity provider of their own. The provider is not read.
 	CountAccountOidcProviders(ctx context.Context, db DBTX) (int64, error)
+	// Every run of the account in the period, by what its row holds of its error, as
+	// CountRunUsageErrorsOfDay gives the runs of a day.
+	CountAccountRunUsageErrorsBetween(ctx context.Context, db DBTX, arg CountAccountRunUsageErrorsBetweenParams) ([]CountAccountRunUsageErrorsBetweenRow, error)
 	CountAccounts(ctx context.Context, db DBTX) (int64, error)
 	// Whether an issuer is declared by an account other than the one given. Two accounts
 	// sharing an issuer share the subject space it mints, so the second one to claim it would
@@ -210,6 +213,8 @@ type Querier interface {
 	// As for the jobs, the configuration is handed over as stored.
 	ListConnectionsOfInstance(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error)
 	ListJobDestinationsOfInstance(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error)
+	// The runs of a job of the account in the period, the most recently recorded first.
+	ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJobRunUsageBetweenParams) ([]ListJobRunUsageBetweenRow, error)
 	// What is needed to count the sources of the instance: the source options, the job type and,
 	// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
 	// first query of this file that crosses accounts, on purpose: the license covers the whole
@@ -330,8 +335,30 @@ type Querier interface {
 	// Only an instance that does not send yet starts: the first date stays.
 	StartUsageSending(ctx context.Context, db DBTX, sendingSince pgtype.Timestamptz) error
 	StopUsageSending(ctx context.Context, db DBTX) error
+	// The refusals of an account. They are counted by UTC day, and the days run from the first given
+	// to the day before the second, as in SumGateRefusalsBetween.
+	SumAccountGateRefusalsBetween(ctx context.Context, db DBTX, arg SumAccountGateRefusalsBetweenParams) ([]SumAccountGateRefusalsBetweenRow, error)
+	// The usage pages. Every read below is the one of an account, and of one of its jobs where a
+	// job is given: a job of another account matches no row. A run counts, as everywhere, for the
+	// day on which the API recorded its end, but the days are the ones of the zone given, from the
+	// first day to the day before the second: a day of that zone starts and ends at its own
+	// midnights, whatever its length. None of these reads decides which runs count as an error: the
+	// ones that tell of errors give the status and what the row holds, and the one rule of the store
+	// reads them.
+	// Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
+	// negative: an end told before its start counts for nothing.
+	SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageBetweenParams) (SumAccountRunUsageBetweenRow, error)
+	// Only the days that have a run are given.
+	SumAccountRunUsageByDayBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageByDayBetweenParams) ([]SumAccountRunUsageByDayBetweenRow, error)
+	// The same sums as SumAccountRunUsageBetween, for each job of the account that has a run in the
+	// period. The kind of a job is the one of its run recorded last.
+	SumAccountRunUsageByJobBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageByJobBetweenParams) ([]SumAccountRunUsageByJobBetweenRow, error)
 	// The days counted run from the first given to the day before the second, as for the runs.
 	SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGateRefusalsBetweenParams) ([]SumGateRefusalsBetweenRow, error)
+	// The same sums as SumAccountRunUsageBetween, for one job of the account.
+	SumJobRunUsageBetween(ctx context.Context, db DBTX, arg SumJobRunUsageBetweenParams) (SumJobRunUsageBetweenRow, error)
+	// The same days as SumAccountRunUsageByDayBetween, for one job of the account.
+	SumJobRunUsageByDayBetween(ctx context.Context, db DBTX, arg SumJobRunUsageByDayBetweenParams) ([]SumJobRunUsageByDayBetweenRow, error)
 	// Durations come from the runs that have an end only, and are never negative: an end told
 	// before its start counts for nothing.
 	SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsageBetweenParams) (SumRunUsageBetweenRow, error)

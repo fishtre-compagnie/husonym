@@ -113,6 +113,62 @@ func (q *Queries) CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageP
 	return err
 }
 
+const countAccountRunUsageErrorsBetween = `-- name: CountAccountRunUsageErrorsBetween :many
+SELECT status, error_category, error_step, count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = $1
+  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+GROUP BY status, error_category, error_step
+ORDER BY status, error_category, error_step
+`
+
+type CountAccountRunUsageErrorsBetweenParams struct {
+	AccountID pgtype.UUID
+	Zone      string
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type CountAccountRunUsageErrorsBetweenRow struct {
+	Status        string
+	ErrorCategory pgtype.Text
+	ErrorStep     pgtype.Text
+	Runs          int64
+}
+
+// Every run of the account in the period, by what its row holds of its error, as
+// CountRunUsageErrorsOfDay gives the runs of a day.
+func (q *Queries) CountAccountRunUsageErrorsBetween(ctx context.Context, db DBTX, arg CountAccountRunUsageErrorsBetweenParams) ([]CountAccountRunUsageErrorsBetweenRow, error) {
+	rows, err := db.Query(ctx, countAccountRunUsageErrorsBetween,
+		arg.AccountID,
+		arg.Zone,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountAccountRunUsageErrorsBetweenRow
+	for rows.Next() {
+		var i CountAccountRunUsageErrorsBetweenRow
+		if err := rows.Scan(
+			&i.Status,
+			&i.ErrorCategory,
+			&i.ErrorStep,
+			&i.Runs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countRunUsageBySourceVersionOfDay = `-- name: CountRunUsageBySourceVersionOfDay :many
 SELECT job_id, source_version_major, count(*)::bigint AS runs
 FROM husonym_api.run_usage
@@ -404,6 +460,79 @@ func (q *Queries) InsertUsageReport(ctx context.Context, db DBTX, arg InsertUsag
 	return result.RowsAffected(), nil
 }
 
+const listJobRunUsageBetween = `-- name: ListJobRunUsageBetween :many
+SELECT run_id, job_kind, status, started_at, ended_at, rows_read, rows_discarded, tables_uncounted,
+  error_category, error_step
+FROM husonym_api.run_usage
+WHERE account_id = $1
+  AND job_id = $2
+  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $3::text
+  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $3::text
+ORDER BY recorded_at DESC, run_id
+LIMIT $6
+`
+
+type ListJobRunUsageBetweenParams struct {
+	AccountID pgtype.UUID
+	JobID     pgtype.UUID
+	Zone      string
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+	RunLimit  int32
+}
+
+type ListJobRunUsageBetweenRow struct {
+	RunID           string
+	JobKind         string
+	Status          string
+	StartedAt       pgtype.Timestamptz
+	EndedAt         pgtype.Timestamptz
+	RowsRead        int64
+	RowsDiscarded   int64
+	TablesUncounted int64
+	ErrorCategory   pgtype.Text
+	ErrorStep       pgtype.Text
+}
+
+// The runs of a job of the account in the period, the most recently recorded first.
+func (q *Queries) ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJobRunUsageBetweenParams) ([]ListJobRunUsageBetweenRow, error) {
+	rows, err := db.Query(ctx, listJobRunUsageBetween,
+		arg.AccountID,
+		arg.JobID,
+		arg.Zone,
+		arg.FromDay,
+		arg.BeforeDay,
+		arg.RunLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListJobRunUsageBetweenRow
+	for rows.Next() {
+		var i ListJobRunUsageBetweenRow
+		if err := rows.Scan(
+			&i.RunID,
+			&i.JobKind,
+			&i.Status,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.RowsRead,
+			&i.RowsDiscarded,
+			&i.TablesUncounted,
+			&i.ErrorCategory,
+			&i.ErrorStep,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenRunUsageStartedBefore = `-- name: ListOpenRunUsageStartedBefore :many
 SELECT run_id, account_id, started_at
 FROM husonym_api.run_usage
@@ -600,6 +729,257 @@ func (q *Queries) StopUsageSending(ctx context.Context, db DBTX) error {
 	return err
 }
 
+const sumAccountGateRefusalsBetween = `-- name: SumAccountGateRefusalsBetween :many
+SELECT gate, sum(count)::bigint AS refusals
+FROM husonym_api.gate_refusals_daily
+WHERE account_id = $1
+  AND day >= $2::date AND day < $3::date
+GROUP BY gate
+ORDER BY gate
+`
+
+type SumAccountGateRefusalsBetweenParams struct {
+	AccountID pgtype.UUID
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumAccountGateRefusalsBetweenRow struct {
+	Gate     string
+	Refusals int64
+}
+
+// The refusals of an account. They are counted by UTC day, and the days run from the first given
+// to the day before the second, as in SumGateRefusalsBetween.
+func (q *Queries) SumAccountGateRefusalsBetween(ctx context.Context, db DBTX, arg SumAccountGateRefusalsBetweenParams) ([]SumAccountGateRefusalsBetweenRow, error) {
+	rows, err := db.Query(ctx, sumAccountGateRefusalsBetween, arg.AccountID, arg.FromDay, arg.BeforeDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumAccountGateRefusalsBetweenRow
+	for rows.Next() {
+		var i SumAccountGateRefusalsBetweenRow
+		if err := rows.Scan(&i.Gate, &i.Refusals); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumAccountRunUsageBetween = `-- name: SumAccountRunUsageBetween :one
+
+SELECT
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
+  COALESCE(round(sum(
+    GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+FROM husonym_api.run_usage
+WHERE account_id = $1
+  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+`
+
+type SumAccountRunUsageBetweenParams struct {
+	AccountID pgtype.UUID
+	Zone      string
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumAccountRunUsageBetweenRow struct {
+	Runs              int64
+	RunsCompleted     int64
+	RunsCanceled      int64
+	RowsRead          int64
+	RowsDiscarded     int64
+	WithUncountedRows int64
+	RunsWithEnd       int64
+	DurationMedian    int64
+	DurationTotal     int64
+}
+
+// The usage pages. Every read below is the one of an account, and of one of its jobs where a
+// job is given: a job of another account matches no row. A run counts, as everywhere, for the
+// day on which the API recorded its end, but the days are the ones of the zone given, from the
+// first day to the day before the second: a day of that zone starts and ends at its own
+// midnights, whatever its length. None of these reads decides which runs count as an error: the
+// ones that tell of errors give the status and what the row holds, and the one rule of the store
+// reads them.
+// Durations, as in SumRunUsageBetween, come from the runs that have an end only, and are never
+// negative: an end told before its start counts for nothing.
+func (q *Queries) SumAccountRunUsageBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageBetweenParams) (SumAccountRunUsageBetweenRow, error) {
+	row := db.QueryRow(ctx, sumAccountRunUsageBetween,
+		arg.AccountID,
+		arg.Zone,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	var i SumAccountRunUsageBetweenRow
+	err := row.Scan(
+		&i.Runs,
+		&i.RunsCompleted,
+		&i.RunsCanceled,
+		&i.RowsRead,
+		&i.RowsDiscarded,
+		&i.WithUncountedRows,
+		&i.RunsWithEnd,
+		&i.DurationMedian,
+		&i.DurationTotal,
+	)
+	return i, err
+}
+
+const sumAccountRunUsageByDayBetween = `-- name: SumAccountRunUsageByDayBetween :many
+SELECT
+  (recorded_at AT TIME ZONE $1::text)::date AS day,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = $2
+  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $1::text
+  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $1::text
+GROUP BY day
+ORDER BY day
+`
+
+type SumAccountRunUsageByDayBetweenParams struct {
+	Zone      string
+	AccountID pgtype.UUID
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumAccountRunUsageByDayBetweenRow struct {
+	Day      pgtype.Date
+	RowsRead int64
+	Runs     int64
+}
+
+// Only the days that have a run are given.
+func (q *Queries) SumAccountRunUsageByDayBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageByDayBetweenParams) ([]SumAccountRunUsageByDayBetweenRow, error) {
+	rows, err := db.Query(ctx, sumAccountRunUsageByDayBetween,
+		arg.Zone,
+		arg.AccountID,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumAccountRunUsageByDayBetweenRow
+	for rows.Next() {
+		var i SumAccountRunUsageByDayBetweenRow
+		if err := rows.Scan(&i.Day, &i.RowsRead, &i.Runs); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumAccountRunUsageByJobBetween = `-- name: SumAccountRunUsageByJobBetween :many
+SELECT
+  job_id,
+  (array_agg(job_kind ORDER BY recorded_at DESC, run_id))[1]::text AS job_kind,
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
+  COALESCE(round(sum(
+    GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+FROM husonym_api.run_usage
+WHERE account_id = $1
+  AND recorded_at >= ($3::date)::timestamp AT TIME ZONE $2::text
+  AND recorded_at < ($4::date)::timestamp AT TIME ZONE $2::text
+GROUP BY job_id
+ORDER BY rows_read DESC, runs DESC, job_id
+`
+
+type SumAccountRunUsageByJobBetweenParams struct {
+	AccountID pgtype.UUID
+	Zone      string
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumAccountRunUsageByJobBetweenRow struct {
+	JobID             pgtype.UUID
+	JobKind           string
+	Runs              int64
+	RunsCompleted     int64
+	RunsCanceled      int64
+	RowsRead          int64
+	RowsDiscarded     int64
+	WithUncountedRows int64
+	RunsWithEnd       int64
+	DurationMedian    int64
+	DurationTotal     int64
+}
+
+// The same sums as SumAccountRunUsageBetween, for each job of the account that has a run in the
+// period. The kind of a job is the one of its run recorded last.
+func (q *Queries) SumAccountRunUsageByJobBetween(ctx context.Context, db DBTX, arg SumAccountRunUsageByJobBetweenParams) ([]SumAccountRunUsageByJobBetweenRow, error) {
+	rows, err := db.Query(ctx, sumAccountRunUsageByJobBetween,
+		arg.AccountID,
+		arg.Zone,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumAccountRunUsageByJobBetweenRow
+	for rows.Next() {
+		var i SumAccountRunUsageByJobBetweenRow
+		if err := rows.Scan(
+			&i.JobID,
+			&i.JobKind,
+			&i.Runs,
+			&i.RunsCompleted,
+			&i.RunsCanceled,
+			&i.RowsRead,
+			&i.RowsDiscarded,
+			&i.WithUncountedRows,
+			&i.RunsWithEnd,
+			&i.DurationMedian,
+			&i.DurationTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sumGateRefusalsBetween = `-- name: SumGateRefusalsBetween :many
 SELECT gate, sum(count)::bigint AS refusals
 FROM husonym_api.gate_refusals_daily
@@ -629,6 +1009,127 @@ func (q *Queries) SumGateRefusalsBetween(ctx context.Context, db DBTX, arg SumGa
 	for rows.Next() {
 		var i SumGateRefusalsBetweenRow
 		if err := rows.Scan(&i.Gate, &i.Refusals); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumJobRunUsageBetween = `-- name: SumJobRunUsageBetween :one
+SELECT
+  count(*)::bigint AS runs,
+  count(*) FILTER (WHERE status = 'completed')::bigint AS runs_completed,
+  count(*) FILTER (WHERE status = 'canceled')::bigint AS runs_canceled,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  COALESCE(sum(rows_discarded), 0)::bigint AS rows_discarded,
+  count(*) FILTER (WHERE tables_uncounted > 0)::bigint AS with_uncounted_rows,
+  count(*) FILTER (WHERE ended_at IS NOT NULL)::bigint AS runs_with_end,
+  COALESCE(round(percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_median,
+  COALESCE(round(sum(
+    GREATEST(extract(epoch FROM ended_at - started_at), 0)
+  ) FILTER (WHERE ended_at IS NOT NULL)), 0)::bigint AS duration_total
+FROM husonym_api.run_usage
+WHERE account_id = $1
+  AND job_id = $2
+  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $3::text
+  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $3::text
+`
+
+type SumJobRunUsageBetweenParams struct {
+	AccountID pgtype.UUID
+	JobID     pgtype.UUID
+	Zone      string
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumJobRunUsageBetweenRow struct {
+	Runs              int64
+	RunsCompleted     int64
+	RunsCanceled      int64
+	RowsRead          int64
+	RowsDiscarded     int64
+	WithUncountedRows int64
+	RunsWithEnd       int64
+	DurationMedian    int64
+	DurationTotal     int64
+}
+
+// The same sums as SumAccountRunUsageBetween, for one job of the account.
+func (q *Queries) SumJobRunUsageBetween(ctx context.Context, db DBTX, arg SumJobRunUsageBetweenParams) (SumJobRunUsageBetweenRow, error) {
+	row := db.QueryRow(ctx, sumJobRunUsageBetween,
+		arg.AccountID,
+		arg.JobID,
+		arg.Zone,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	var i SumJobRunUsageBetweenRow
+	err := row.Scan(
+		&i.Runs,
+		&i.RunsCompleted,
+		&i.RunsCanceled,
+		&i.RowsRead,
+		&i.RowsDiscarded,
+		&i.WithUncountedRows,
+		&i.RunsWithEnd,
+		&i.DurationMedian,
+		&i.DurationTotal,
+	)
+	return i, err
+}
+
+const sumJobRunUsageByDayBetween = `-- name: SumJobRunUsageByDayBetween :many
+SELECT
+  (recorded_at AT TIME ZONE $1::text)::date AS day,
+  COALESCE(sum(rows_read), 0)::bigint AS rows_read,
+  count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE account_id = $2
+  AND job_id = $3
+  AND recorded_at >= ($4::date)::timestamp AT TIME ZONE $1::text
+  AND recorded_at < ($5::date)::timestamp AT TIME ZONE $1::text
+GROUP BY day
+ORDER BY day
+`
+
+type SumJobRunUsageByDayBetweenParams struct {
+	Zone      string
+	AccountID pgtype.UUID
+	JobID     pgtype.UUID
+	FromDay   pgtype.Date
+	BeforeDay pgtype.Date
+}
+
+type SumJobRunUsageByDayBetweenRow struct {
+	Day      pgtype.Date
+	RowsRead int64
+	Runs     int64
+}
+
+// The same days as SumAccountRunUsageByDayBetween, for one job of the account.
+func (q *Queries) SumJobRunUsageByDayBetween(ctx context.Context, db DBTX, arg SumJobRunUsageByDayBetweenParams) ([]SumJobRunUsageByDayBetweenRow, error) {
+	rows, err := db.Query(ctx, sumJobRunUsageByDayBetween,
+		arg.Zone,
+		arg.AccountID,
+		arg.JobID,
+		arg.FromDay,
+		arg.BeforeDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumJobRunUsageByDayBetweenRow
+	for rows.Next() {
+		var i SumJobRunUsageByDayBetweenRow
+		if err := rows.Scan(&i.Day, &i.RowsRead, &i.Runs); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
