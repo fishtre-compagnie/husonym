@@ -230,11 +230,18 @@ FROM husonym_api.usage_reports;
 --
 -- The day of a run is the date the clocks of the zone showed when its end was recorded:
 --   (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date
--- It is what the series of the days group by, and it alone decides whether a run is of the
--- period, so that every read counts the same runs for the same days: where clocks go back to
--- midnight, that midnight comes twice and no moment starts the day. The two conditions on
--- recorded_at itself only let the index find the rows: they reach one day further on each side,
--- more than any change of clocks moves a midnight. The four lines are the same, character for
+-- It is what the series of the days group by, and it decides whether a run is of the period
+-- wherever a change of clocks could make a moment and a day disagree, so that every read counts
+-- the same runs for the same days: where clocks go back to midnight, that midnight comes twice
+-- and no moment starts the day.
+--
+-- The first two conditions on recorded_at only let the index find the rows: they reach one day
+-- further on each side, more than any change of clocks moves a midnight. Of those rows, the ones
+-- recorded between the midnight that ends the first day and the one that starts the last day are
+-- of the period without their day being computed: no change of clocks is a day long, so a moment
+-- a whole day inside the period on each side is of one of its days. The two moments are computed
+-- once for the read. The day decides for the other rows only, the ones of the two days at each
+-- end, which is what makes the long periods cheap. The six lines are the same, character for
 -- character, in each of the seven reads of the runs: a test of the store fails when they differ.
 --
 -- None of these reads decides which runs count as an error: the ones that tell of errors give the
@@ -261,8 +268,10 @@ FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date;
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
 
 -- The same sums as SumAccountRunUsageBetween, for one job of the account.
 -- name: SumJobRunUsageBetween :one
@@ -285,8 +294,10 @@ WHERE account_id = sqlc.arg(account_id)
   AND job_id = sqlc.arg(job_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date;
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date));
 
 -- The same sums as SumAccountRunUsageBetween, for each job of the account that has a run in the
 -- period. The kind of a job is the one of its run recorded last.
@@ -311,8 +322,10 @@ FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
 GROUP BY job_id
 ORDER BY rows_read DESC, runs DESC, job_id;
 
@@ -326,8 +339,10 @@ FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
 GROUP BY day
 ORDER BY day;
 
@@ -342,8 +357,10 @@ WHERE account_id = sqlc.arg(account_id)
   AND job_id = sqlc.arg(job_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
 GROUP BY day
 ORDER BY day;
 
@@ -355,8 +372,10 @@ FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
 GROUP BY status, error_category, error_step
 ORDER BY status, error_category, error_step;
 
@@ -368,8 +387,10 @@ WHERE account_id = sqlc.arg(account_id)
   AND job_id = sqlc.arg(job_id)
   AND recorded_at >= (sqlc.arg(from_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
   AND recorded_at < (sqlc.arg(before_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
-  AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date
+  AND ((recorded_at >= (SELECT (sqlc.arg(from_day)::date + 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text)
+      AND recorded_at < (SELECT (sqlc.arg(before_day)::date - 1)::timestamp AT TIME ZONE sqlc.arg(zone)::text))
+    OR ((recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date >= sqlc.arg(from_day)::date
+      AND (recorded_at AT TIME ZONE sqlc.arg(zone)::text)::date < sqlc.arg(before_day)::date))
 ORDER BY recorded_at DESC, run_id
 LIMIT sqlc.arg(run_limit);
 

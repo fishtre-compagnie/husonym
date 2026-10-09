@@ -37,8 +37,9 @@ func recordEveryHalfHour(ctx context.Context, t *testing.T, container *tcpostgre
 // series of the days counts them. Clocks that go back at midnight make that midnight twice, and
 // the hour between the two is of the day that follows, in the totals as in the series.
 //
-// The runs are one every half hour, so a day of 24 hours holds 48 of them, one of 25 hours 50
-// and one of 23 hours 46: the numbers below are counted by hand from the hours of each change.
+// The runs are one every half hour, so a day of 24 hours holds 48 of them, one of 25 hours 50,
+// one of 23 hours 46, and one that half an hour was added to or taken from 49 or 47: the numbers
+// below are counted by hand from the hours of each change.
 func Test_UsagePages_ADayIsTheSameDayInEveryRead(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
@@ -61,6 +62,13 @@ func Test_UsagePages_ADayIsTheSameDayInEveryRead(t *testing.T) {
 		// A change in the middle of the night.
 		{"Europe/Paris", CalendarDay{Year: 2026, Month: time.October, Day: 25}, [5]int64{48, 48, 50, 48, 48}},
 		{"Europe/Paris", CalendarDay{Year: 2026, Month: time.March, Day: 29}, [5]int64{48, 48, 46, 48, 48}},
+		// A change of half an hour: 02:00 goes back to 01:30, then 02:00 goes forward to 02:30.
+		{"Australia/Lord_Howe", CalendarDay{Year: 2026, Month: time.April, Day: 5}, [5]int64{48, 48, 49, 48, 48}},
+		{"Australia/Lord_Howe", CalendarDay{Year: 2026, Month: time.October, Day: 4}, [5]int64{48, 48, 47, 48, 48}},
+		// A change at the end of a day: midnight goes back to 23:00 of the day that ends, then 23:00
+		// goes forward to the midnight of the next.
+		{"America/Nuuk", CalendarDay{Year: 2026, Month: time.October, Day: 24}, [5]int64{48, 48, 50, 48, 48}},
+		{"America/Nuuk", CalendarDay{Year: 2026, Month: time.March, Day: 28}, [5]int64{48, 48, 46, 48, 48}},
 		// No change: fourteen hours ahead of UTC, and UTC.
 		{"Pacific/Kiritimati", CalendarDay{Year: 2026, Month: time.October, Day: 25}, [5]int64{48, 48, 48, 48, 48}},
 		{"UTC", CalendarDay{Year: 2026, Month: time.October, Day: 25}, [5]int64{48, 48, 48, 48, 48}},
