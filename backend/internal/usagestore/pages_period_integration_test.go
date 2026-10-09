@@ -244,8 +244,8 @@ func runUsageIndexes(ctx context.Context, t *testing.T, container *tcpostgres.Po
 }
 
 var (
+	// No index by account: the runs of an account are read by the moment they were recorded.
 	indexesOfThePages = []string{
-		"run_usage_account_id_recorded_at_idx",
 		"run_usage_job_id_recorded_at_idx",
 		"run_usage_pkey",
 		"run_usage_recorded_at_idx",
