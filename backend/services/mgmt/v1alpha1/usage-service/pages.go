@@ -42,8 +42,9 @@ type pageStore interface {
 // days were counted in. The refusals of the license are kept by UTC day and stay so whatever the
 // zone.
 //
-// The totals count every run of the account. The jobs are the ones that still exist: the runs
-// of a job deleted since are in the totals and in no line of the jobs.
+// The totals count every run of the account. The jobs are the ones that have a run counted in the
+// period and still exist: the runs of a job deleted since are in the totals and in no line of the
+// jobs. The kind of a job is the one its runs tell, and only its name is read from the job.
 func (s *Service) GetAccountUsage(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountUsageRequest],
@@ -82,7 +83,7 @@ func (s *Service) GetAccountUsage(
 	if err != nil {
 		return nil, pageError(err)
 	}
-	known, err := s.jobsOf(ctx, accountId)
+	names, err := s.jobNamesOf(ctx, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -96,14 +97,14 @@ func (s *Service) GetAccountUsage(
 	for i := range jobs {
 		job := &jobs[i]
 		// A job that is gone has no name to show and no page to lead to.
-		existing, ok := known[job.JobId]
+		name, ok := names[job.JobId]
 		if !ok {
 			continue
 		}
 		res.Jobs = append(res.Jobs, &mgmtv1alpha1.JobUsage{
 			JobId:                 job.JobId,
-			JobName:               existing.name,
-			Kind:                  kindOf(existing.kind),
+			JobName:               name,
+			Kind:                  kindOf(job.Kind),
 			Totals:                totalsOf(&job.Totals),
 			DurationMedianSeconds: job.Totals.DurationMedian,
 		})
@@ -124,9 +125,10 @@ func (s *Service) GetAccountUsage(
 // GetJobUsage gives what the runs of a job of an account add up to over a period of days, each
 // of its days, and the latest of its runs counted in the period.
 //
-// The runs are read by account and by job at once, and the job is looked for among the jobs of
-// the account only: a job of another account has no run and no kind here, and the answer is the
-// one of a job that never ran, which tells nothing of what other accounts hold.
+// The runs are read by account and by job at once, and so is the job, once, for its kind: a job
+// of another account has no run and no kind here, and the answer is the one of a job that never
+// ran, which tells nothing of what other accounts hold. The other jobs of the account are not
+// read.
 func (s *Service) GetJobUsage(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetJobUsageRequest],
@@ -157,14 +159,14 @@ func (s *Service) GetJobUsage(
 	if err != nil {
 		return nil, pageError(err)
 	}
-	known, err := s.jobsOf(ctx, accountId)
+	kind, err := s.kindOfJob(ctx, accountId, jobId)
 	if err != nil {
 		return nil, err
 	}
 
 	res := &mgmtv1alpha1.GetJobUsageResponse{
 		// The kind is the one of the job, so that a job with no run in the period tells it too.
-		Kind:                  kindOf(known[jobId].kind),
+		Kind:                  kindOf(kind),
 		Totals:                totalsOf(totals),
 		DurationMedianSeconds: totals.DurationMedian,
 		Days:                  daysOf(days),
@@ -186,34 +188,48 @@ func (s *Service) GetJobUsage(
 	return connect.NewResponse(res), nil
 }
 
-// existingJob is what the usage pages tell of a job the account holds.
-type existingJob struct {
-	name string
-	kind usagestore.JobKind
-}
-
-// jobsOf gives the jobs the account holds, by id. It is asked of the account alone: a job of
-// another account is never read.
-func (s *Service) jobsOf(ctx context.Context, accountId string) (map[string]existingJob, error) {
+// jobNamesOf gives the names of the jobs the account holds, by id. It is asked of the account
+// alone: a job of another account is never read.
+func (s *Service) jobNamesOf(ctx context.Context, accountId string) (map[string]string, error) {
 	accountUuid, err := husonymdb.ToUuid(accountId)
 	if err != nil {
 		return nil, husonymerrors.NewBadRequest("the account id is not a uuid")
 	}
 	rows, err := s.db.Q.ListJobNamesByAccount(ctx, s.db.Db, accountUuid)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read the jobs of the account: %w", err)
+		return nil, fmt.Errorf("unable to read the names of the jobs of the account: %w", err)
 	}
-	jobs := make(map[string]existingJob, len(rows))
-	for i := range rows {
-		row := &rows[i]
-		jobs[husonymdb.UUIDString(row.ID)] = existingJob{
-			name: row.Name,
-			kind: usagestore.KindOfJob(&db_queries.HusonymApiJob{
-				ConnectionOptions: row.ConnectionOptions, JobtypeConfig: row.JobtypeConfig,
-			}),
-		}
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
+		names[husonymdb.UUIDString(row.ID)] = row.Name
 	}
-	return jobs, nil
+	return names, nil
+}
+
+// kindOfJob gives the kind of a job of the account, and no kind for a job the account does not
+// hold. The job is asked by its id and by the account at once: a job of another account is never
+// read.
+func (s *Service) kindOfJob(ctx context.Context, accountId, jobId string) (usagestore.JobKind, error) {
+	accountUuid, err := husonymdb.ToUuid(accountId)
+	if err != nil {
+		return "", husonymerrors.NewBadRequest("the account id is not a uuid")
+	}
+	jobUuid, err := husonymdb.ToUuid(jobId)
+	if err != nil {
+		return "", husonymerrors.NewBadRequest("the job id is not a uuid")
+	}
+	row, err := s.db.Q.GetJobKindSourceByAccount(ctx, s.db.Db, db_queries.GetJobKindSourceByAccountParams{
+		ID: jobUuid, AccountID: accountUuid,
+	})
+	if husonymdb.IsNoRows(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("unable to read the job of the account: %w", err)
+	}
+	return usagestore.KindOfJob(&db_queries.HusonymApiJob{
+		ConnectionOptions: row.ConnectionOptions, JobtypeConfig: row.JobtypeConfig,
+	}), nil
 }
 
 // periodOf is the period a request asks for: its two days as they are written, in its time

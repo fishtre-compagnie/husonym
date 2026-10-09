@@ -5939,6 +5939,78 @@ func (_c *MockQuerier_GetJobHooksByJob_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// GetJobKindSourceByAccount provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetJobKindSourceByAccount(ctx context.Context, db DBTX, arg GetJobKindSourceByAccountParams) (GetJobKindSourceByAccountRow, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobKindSourceByAccount")
+	}
+
+	var r0 GetJobKindSourceByAccountRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetJobKindSourceByAccountParams) (GetJobKindSourceByAccountRow, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetJobKindSourceByAccountParams) GetJobKindSourceByAccountRow); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(GetJobKindSourceByAccountRow)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetJobKindSourceByAccountParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetJobKindSourceByAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobKindSourceByAccount'
+type MockQuerier_GetJobKindSourceByAccount_Call struct {
+	*mock.Call
+}
+
+// GetJobKindSourceByAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetJobKindSourceByAccountParams
+func (_e *MockQuerier_Expecter) GetJobKindSourceByAccount(ctx any, db any, arg any) *MockQuerier_GetJobKindSourceByAccount_Call {
+	return &MockQuerier_GetJobKindSourceByAccount_Call{Call: _e.mock.On("GetJobKindSourceByAccount", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetJobKindSourceByAccount_Call) Run(run func(ctx context.Context, db DBTX, arg GetJobKindSourceByAccountParams)) *MockQuerier_GetJobKindSourceByAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetJobKindSourceByAccountParams
+		if args[2] != nil {
+			arg2 = args[2].(GetJobKindSourceByAccountParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetJobKindSourceByAccount_Call) Return(getJobKindSourceByAccountRow GetJobKindSourceByAccountRow, err error) *MockQuerier_GetJobKindSourceByAccount_Call {
+	_c.Call.Return(getJobKindSourceByAccountRow, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetJobKindSourceByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetJobKindSourceByAccountParams) (GetJobKindSourceByAccountRow, error)) *MockQuerier_GetJobKindSourceByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobSourceColumns provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error) {
 	ret := _mock.Called(ctx, db, jobID)

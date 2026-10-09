@@ -371,6 +371,31 @@ func (q *Queries) GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpd
 	return i, err
 }
 
+const getJobKindSourceByAccount = `-- name: GetJobKindSourceByAccount :one
+SELECT connection_options, jobtype_config
+FROM husonym_api.jobs
+WHERE id = $1 AND account_id = $2
+`
+
+type GetJobKindSourceByAccountParams struct {
+	ID        pgtype.UUID
+	AccountID pgtype.UUID
+}
+
+type GetJobKindSourceByAccountRow struct {
+	ConnectionOptions *pg_models.JobSourceOptions
+	JobtypeConfig     []byte
+}
+
+// The two values the kind of a job is read from, for one job of an account. The job is asked by
+// its id and by its account at once: a job of another account gives no row.
+func (q *Queries) GetJobKindSourceByAccount(ctx context.Context, db DBTX, arg GetJobKindSourceByAccountParams) (GetJobKindSourceByAccountRow, error) {
+	row := db.QueryRow(ctx, getJobKindSourceByAccount, arg.ID, arg.AccountID)
+	var i GetJobKindSourceByAccountRow
+	err := row.Scan(&i.ConnectionOptions, &i.JobtypeConfig)
+	return i, err
+}
+
 const getJobsByAccount = `-- name: GetJobsByAccount :many
 SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from husonym_api.jobs j
 INNER JOIN husonym_api.accounts a ON a.id = j.account_id
@@ -433,20 +458,18 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 }
 
 const listJobNamesByAccount = `-- name: ListJobNamesByAccount :many
-SELECT id, name, connection_options, jobtype_config
+SELECT id, name
 FROM husonym_api.jobs
 WHERE account_id = $1
 `
 
 type ListJobNamesByAccountRow struct {
-	ID                pgtype.UUID
-	Name              string
-	ConnectionOptions *pg_models.JobSourceOptions
-	JobtypeConfig     []byte
+	ID   pgtype.UUID
+	Name string
 }
 
-// The jobs of an account as the usage pages name them: the name of each, and the two values its
-// kind is read from. The mappings, the heavy part of a job, are not returned.
+// The jobs of an account as its usage page names them: the name of each, and nothing of what a
+// job holds.
 func (q *Queries) ListJobNamesByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error) {
 	rows, err := db.Query(ctx, listJobNamesByAccount, accountID)
 	if err != nil {
@@ -456,12 +479,7 @@ func (q *Queries) ListJobNamesByAccount(ctx context.Context, db DBTX, accountID 
 	var items []ListJobNamesByAccountRow
 	for rows.Next() {
 		var i ListJobNamesByAccountRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.ConnectionOptions,
-			&i.JobtypeConfig,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

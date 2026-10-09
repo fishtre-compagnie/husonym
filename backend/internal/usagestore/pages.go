@@ -73,8 +73,9 @@ type UsageDay struct {
 	RowsRead, Runs int64
 }
 
-// JobUsage is what the runs of a job add up to. Kind is the kind of its run recorded last. The
-// store holds no name and does not know whether the job still exists.
+// JobUsage is what the runs of a job add up to. Kind is the kind of its run recorded last in the
+// period: it is the kind the table of jobs tells, so that nothing of a job but its name is read
+// to show it. The store holds no name and does not know whether the job still exists.
 type JobUsage struct {
 	JobId  string
 	Kind   JobKind
@@ -90,12 +91,11 @@ type CategoryCount struct {
 // RunRow is a run as its row tells it. EndedAt is nil for a run settled without a known end.
 type RunRow struct {
 	RunId     string
-	Kind      JobKind
 	Status    Status
 	StartedAt time.Time
 	EndedAt   *time.Time
 
-	RowsRead, RowsDiscarded, TablesUncounted int64
+	RowsRead, TablesUncounted int64
 
 	// Error is empty for a run that completed.
 	Error RunError
@@ -269,11 +269,9 @@ func (s *Store) LatestRuns(ctx context.Context, scope Scope, period Period, limi
 		row := &rows[i]
 		run := RunRow{
 			RunId:           row.RunID,
-			Kind:            JobKind(row.JobKind),
 			Status:          Status(row.Status),
 			StartedAt:       row.StartedAt.Time,
 			RowsRead:        row.RowsRead,
-			RowsDiscarded:   row.RowsDiscarded,
 			TablesUncounted: row.TablesUncounted,
 			Error:           errorRead(Status(row.Status), row.ErrorCategory, row.ErrorStep),
 		}

@@ -463,8 +463,7 @@ func (q *Queries) InsertUsageReport(ctx context.Context, db DBTX, arg InsertUsag
 }
 
 const listJobRunUsageBetween = `-- name: ListJobRunUsageBetween :many
-SELECT run_id, job_kind, status, started_at, ended_at, rows_read, rows_discarded, tables_uncounted,
-  error_category, error_step
+SELECT run_id, status, started_at, ended_at, rows_read, tables_uncounted, error_category, error_step
 FROM husonym_api.run_usage
 WHERE account_id = $1
   AND job_id = $2
@@ -487,12 +486,10 @@ type ListJobRunUsageBetweenParams struct {
 
 type ListJobRunUsageBetweenRow struct {
 	RunID           string
-	JobKind         string
 	Status          string
 	StartedAt       pgtype.Timestamptz
 	EndedAt         pgtype.Timestamptz
 	RowsRead        int64
-	RowsDiscarded   int64
 	TablesUncounted int64
 	ErrorCategory   pgtype.Text
 	ErrorStep       pgtype.Text
@@ -517,12 +514,10 @@ func (q *Queries) ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJ
 		var i ListJobRunUsageBetweenRow
 		if err := rows.Scan(
 			&i.RunID,
-			&i.JobKind,
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
 			&i.RowsRead,
-			&i.RowsDiscarded,
 			&i.TablesUncounted,
 			&i.ErrorCategory,
 			&i.ErrorStep,

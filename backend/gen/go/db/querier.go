@@ -154,6 +154,9 @@ type Querier interface {
 	GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error)
 	GetJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobHook, error)
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
+	// The two values the kind of a job is read from, for one job of an account. The job is asked by
+	// its id and by its account at once: a job of another account gives no row.
+	GetJobKindSourceByAccount(ctx context.Context, db DBTX, arg GetJobKindSourceByAccountParams) (GetJobKindSourceByAccountRow, error)
 	GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
 	GetLastUsageReportSentAt(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)
@@ -213,8 +216,8 @@ type Querier interface {
 	// As for the jobs, the configuration is handed over as stored.
 	ListConnectionsOfInstance(ctx context.Context, db DBTX) ([]ListConnectionsOfInstanceRow, error)
 	ListJobDestinationsOfInstance(ctx context.Context, db DBTX) ([]ListJobDestinationsOfInstanceRow, error)
-	// The jobs of an account as the usage pages name them: the name of each, and the two values its
-	// kind is read from. The mappings, the heavy part of a job, are not returned.
+	// The jobs of an account as its usage page names them: the name of each, and nothing of what a
+	// job holds.
 	ListJobNamesByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]ListJobNamesByAccountRow, error)
 	// The runs of a job of the account in the period, the most recently recorded first.
 	ListJobRunUsageBetween(ctx context.Context, db DBTX, arg ListJobRunUsageBetweenParams) ([]ListJobRunUsageBetweenRow, error)

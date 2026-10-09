@@ -362,8 +362,7 @@ ORDER BY status, error_category, error_step;
 
 -- The runs of a job of the account in the period, the most recently recorded first.
 -- name: ListJobRunUsageBetween :many
-SELECT run_id, job_kind, status, started_at, ended_at, rows_read, rows_discarded, tables_uncounted,
-  error_category, error_step
+SELECT run_id, status, started_at, ended_at, rows_read, tables_uncounted, error_category, error_step
 FROM husonym_api.run_usage
 WHERE account_id = sqlc.arg(account_id)
   AND job_id = sqlc.arg(job_id)

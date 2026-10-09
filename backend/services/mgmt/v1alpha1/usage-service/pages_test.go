@@ -20,6 +20,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -138,21 +139,12 @@ func usagePages(t *testing.T, mayView bool) *pagesFixture {
 	return &pagesFixture{svc: svc, pages: pages, querier: querier}
 }
 
-// aJob is a job as the account holds it: a synchronization, or a detection of PII.
-func aJob(t *testing.T, id, name string, detectsPii bool) db_queries.ListJobNamesByAccountRow {
+// aJob is a job as the account names it: nothing else of a job is read for the table of jobs.
+func aJob(t *testing.T, id, name string) db_queries.ListJobNamesByAccountRow {
 	t.Helper()
 	jobUuid, err := husonymdb.ToUuid(id)
 	require.NoError(t, err)
-	jobType := &mgmtv1alpha1.JobTypeConfig{}
-	if detectsPii {
-		jobType.JobType = &mgmtv1alpha1.JobTypeConfig_PiiDetect{PiiDetect: &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{}}
-	}
-	config, err := json.Marshal(jobType)
-	require.NoError(t, err)
-	return db_queries.ListJobNamesByAccountRow{
-		ID: jobUuid, Name: name, JobtypeConfig: config,
-		ConnectionOptions: &pg_models.JobSourceOptions{PostgresOptions: &pg_models.PostgresSourceOptions{}},
-	}
+	return db_queries.ListJobNamesByAccountRow{ID: jobUuid, Name: name}
 }
 
 // holdsJobs makes the account of the test hold the jobs, and no other account any.
@@ -161,6 +153,41 @@ func (f *pagesFixture) holdsJobs(t *testing.T, jobs ...db_queries.ListJobNamesBy
 	accountUuid, err := husonymdb.ToUuid(anAccountId)
 	require.NoError(t, err)
 	f.querier.On("ListJobNamesByAccount", mock.Anything, mock.Anything, accountUuid).Return(jobs, nil).Once()
+}
+
+// theJobOfTheAccount is the one read the usage of a job makes of its job: by its id and by the
+// account at once.
+func theJobOfTheAccount(t *testing.T) db_queries.GetJobKindSourceByAccountParams {
+	t.Helper()
+	accountUuid, err := husonymdb.ToUuid(anAccountId)
+	require.NoError(t, err)
+	jobUuid, err := husonymdb.ToUuid(aJobId)
+	require.NoError(t, err)
+	return db_queries.GetJobKindSourceByAccountParams{ID: jobUuid, AccountID: accountUuid}
+}
+
+// holdsTheJob makes the account of the test hold the job asked: a synchronization, or a
+// detection of PII. Its jobs are not listed: the querier of the fixture expects no other call.
+func (f *pagesFixture) holdsTheJob(t *testing.T, detectsPii bool) {
+	t.Helper()
+	jobType := &mgmtv1alpha1.JobTypeConfig{}
+	if detectsPii {
+		jobType.JobType = &mgmtv1alpha1.JobTypeConfig_PiiDetect{PiiDetect: &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{}}
+	}
+	config, err := json.Marshal(jobType)
+	require.NoError(t, err)
+	f.querier.On("GetJobKindSourceByAccount", mock.Anything, mock.Anything, theJobOfTheAccount(t)).
+		Return(db_queries.GetJobKindSourceByAccountRow{
+			JobtypeConfig:     config,
+			ConnectionOptions: &pg_models.JobSourceOptions{PostgresOptions: &pg_models.PostgresSourceOptions{}},
+		}, nil).Once()
+}
+
+// holdsNoSuchJob makes the job asked be none of the account: it is of another account, or of none.
+func (f *pagesFixture) holdsNoSuchJob(t *testing.T) {
+	t.Helper()
+	f.querier.On("GetJobKindSourceByAccount", mock.Anything, mock.Anything, theJobOfTheAccount(t)).
+		Return(db_queries.GetJobKindSourceByAccountRow{}, pgx.ErrNoRows).Once()
 }
 
 func on(year int, month time.Month, dayOfMonth int) usagestore.CalendarDay {
@@ -237,7 +264,7 @@ func Test_GetAccountUsage_AZoneThatIsNotOneReadsAsUtc(t *testing.T) {
 		require.Equal(t, "UTC", res.Msg.GetTimeZone(), name)
 
 		job := usagePages(t, true)
-		job.holdsJobs(t)
+		job.holdsNoSuchJob(t)
 		ofJob, err := job.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(zone))
 		require.NoError(t, err, name)
 		require.Equal(t, "UTC", ofJob.Msg.GetTimeZone(), name)
@@ -263,7 +290,7 @@ func Test_GetAccountUsage_AZoneTheDatabaseDoesNotKnowReadsAsUtc(t *testing.T) {
 	}
 
 	job := usagePages(t, true)
-	job.holdsJobs(t)
+	job.holdsNoSuchJob(t)
 	job.pages.unknownZone = true
 	ofJob, err := job.svc.GetJobUsage(t.Context(), thirtyDaysOfJob("Europe/Paris"))
 	require.NoError(t, err)
@@ -350,6 +377,14 @@ func Test_GetAccountUsage_AReadThatFailsIsNotARefusalOfThePeriod(t *testing.T) {
 	res, err = names.svc.GetAccountUsage(t.Context(), thirtyDays(""))
 	require.ErrorIs(t, err, away)
 	require.Nil(t, res)
+
+	// The job that cannot be read is not a job the account does not hold.
+	kind := usagePages(t, true)
+	kind.querier.On("GetJobKindSourceByAccount", mock.Anything, mock.Anything, theJobOfTheAccount(t)).
+		Return(db_queries.GetJobKindSourceByAccountRow{}, away)
+	ofJob, err = kind.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(""))
+	require.ErrorIs(t, err, away)
+	require.Nil(t, ofJob)
 }
 
 func Test_GetAccountUsage_GivesTheTotalsTheDaysTheErrorsAndTheRefusals(t *testing.T) {
@@ -412,7 +447,7 @@ func Test_GetAccountUsage_GivesTheTotalsTheDaysTheErrorsAndTheRefusals(t *testin
 
 func Test_GetAccountUsage_GivesNoDurationWhenNoRunHasAnEnd(t *testing.T) {
 	f := usagePages(t, true)
-	f.holdsJobs(t, aJob(t, aJobId, "orders", false))
+	f.holdsJobs(t, aJob(t, aJobId, "orders"))
 	f.pages.totals = usagestore.UsageTotals{Runs: 1}
 	f.pages.jobs = []usagestore.JobUsage{{JobId: aJobId, Totals: usagestore.UsageTotals{Runs: 1}}}
 
@@ -429,8 +464,8 @@ func Test_GetAccountUsage_GivesNoDurationWhenNoRunHasAnEnd(t *testing.T) {
 func Test_GetAccountUsage_NamesTheJobsThatStillExist(t *testing.T) {
 	f := usagePages(t, true)
 	// The account also holds a job that did not run: it is not listed.
-	f.holdsJobs(t, aJob(t, anotherJobId, "scan", true), aJob(t, aJobId, "orders", false),
-		aJob(t, "0b6f1d1e-7a43-4c36-9d6b-3f1b6c0f9a44", "idle", false))
+	f.holdsJobs(t, aJob(t, anotherJobId, "scan"), aJob(t, aJobId, "orders"),
+		aJob(t, "0b6f1d1e-7a43-4c36-9d6b-3f1b6c0f9a44", "idle"))
 	f.pages.totals = usagestore.UsageTotals{Runs: 6, Completed: 3, RowsRead: 1340}
 	f.pages.jobs = []usagestore.JobUsage{
 		{JobId: aDeletedJob, Kind: usagestore.JobKindSync, Totals: usagestore.UsageTotals{Runs: 1, Completed: 1, RowsRead: 1200, DurationMedian: seconds(600), DurationTotal: seconds(600)}},
@@ -467,9 +502,26 @@ func Test_GetAccountUsage_NamesTheJobsThatStillExist(t *testing.T) {
 	require.Equal(t, int64(1340), res.Msg.GetTotals().GetRowsRead())
 }
 
+// The table of jobs tells the kind the runs of each job tell, as the store reads it: nothing of
+// a job but its name is read for it.
+func Test_GetAccountUsage_TellsTheKindTheRunsOfAJobTell(t *testing.T) {
+	f := usagePages(t, true)
+	f.holdsJobs(t, aJob(t, aJobId, "orders"), aJob(t, anotherJobId, "made up"))
+	f.pages.jobs = []usagestore.JobUsage{
+		{JobId: aJobId, Kind: usagestore.JobKindAiGenerate, Totals: usagestore.UsageTotals{Runs: 1}},
+		{JobId: anotherJobId, Kind: "of a later version", Totals: usagestore.UsageTotals{Runs: 1}},
+	}
+
+	res, err := f.svc.GetAccountUsage(t.Context(), thirtyDays(""))
+	require.NoError(t, err)
+	require.Len(t, res.Msg.GetJobs(), 2)
+	require.Equal(t, mgmtv1alpha1.JobKind_JOB_KIND_AI_GENERATE, res.Msg.GetJobs()[0].GetKind())
+	require.Equal(t, mgmtv1alpha1.JobKind_JOB_KIND_UNSPECIFIED, res.Msg.GetJobs()[1].GetKind())
+}
+
 func Test_GetJobUsage_ReadsOnlyTheJobOfTheAccountAsked(t *testing.T) {
 	f := usagePages(t, true)
-	f.holdsJobs(t, aJob(t, aJobId, "orders", false))
+	f.holdsTheJob(t, false)
 	paris, err := time.LoadLocation("Europe/Paris")
 	require.NoError(t, err)
 
@@ -492,8 +544,8 @@ func Test_GetJobUsage_ReadsOnlyTheJobOfTheAccountAsked(t *testing.T) {
 // job exists elsewhere.
 func Test_GetJobUsage_AJobThatIsNotOfTheAccountGivesAnEmptyAnswer(t *testing.T) {
 	f := usagePages(t, true)
-	// The jobs are asked of the account, never of the job id: another account's job is not read.
-	f.holdsJobs(t, aJob(t, anotherJobId, "scan", true))
+	// The job is asked by its id and by the account at once: another account's job is not read.
+	f.holdsNoSuchJob(t)
 	f.pages.days = []usagestore.UsageDay{{Day: on(2026, 10, 9)}}
 
 	res, err := f.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(""))
@@ -512,7 +564,7 @@ func Test_GetJobUsage_AJobThatIsNotOfTheAccountGivesAnEmptyAnswer(t *testing.T) 
 // The kind is the one of the job, so that a job that has not run in the period tells it too.
 func Test_GetJobUsage_TellsTheKindOfAJobThatDidNotRun(t *testing.T) {
 	f := usagePages(t, true)
-	f.holdsJobs(t, aJob(t, aJobId, "scan", true))
+	f.holdsTheJob(t, true)
 
 	res, err := f.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(""))
 	require.NoError(t, err)
@@ -522,7 +574,7 @@ func Test_GetJobUsage_TellsTheKindOfAJobThatDidNotRun(t *testing.T) {
 
 func Test_GetJobUsage_TellsTheTotalsAndEachRun(t *testing.T) {
 	f := usagePages(t, true)
-	f.holdsJobs(t, aJob(t, aJobId, "orders", false))
+	f.holdsTheJob(t, false)
 	f.pages.totals = usagestore.UsageTotals{
 		Runs: 3, Completed: 1, Canceled: 0, RowsRead: 140, RowsDiscarded: 5, WithUncountedRows: 1,
 		DurationMedian: seconds(90), DurationTotal: seconds(180),
@@ -530,12 +582,12 @@ func Test_GetJobUsage_TellsTheTotalsAndEachRun(t *testing.T) {
 	f.pages.days = []usagestore.UsageDay{{Day: on(2026, 10, 9), RowsRead: 140, Runs: 3}}
 	failedAt := began.Add(2 * time.Minute)
 	f.pages.runs = []usagestore.RunRow{
-		{RunId: "settled", Kind: usagestore.JobKindSync, Status: usagestore.StatusTerminated, StartedAt: began,
+		{RunId: "settled", Status: usagestore.StatusTerminated, StartedAt: began,
 			Error: usagestore.RunError{Category: usagestore.ErrorCategoryOther, Step: usagestore.ErrorStepOther}},
-		{RunId: "failed", Kind: usagestore.JobKindSync, Status: usagestore.StatusFailed, StartedAt: began, EndedAt: &failedAt,
-			RowsRead: 40, RowsDiscarded: 2, TablesUncounted: 1,
+		{RunId: "failed", Status: usagestore.StatusFailed, StartedAt: began, EndedAt: &failedAt,
+			RowsRead: 40, TablesUncounted: 1,
 			Error: usagestore.RunError{Category: "constraint_violated", Step: "table_sync"}},
-		{RunId: "ok", Kind: usagestore.JobKindSync, Status: usagestore.StatusCompleted, StartedAt: began, EndedAt: &ended, RowsRead: 100},
+		{RunId: "ok", Status: usagestore.StatusCompleted, StartedAt: began, EndedAt: &ended, RowsRead: 100},
 	}
 
 	res, err := f.svc.GetJobUsage(t.Context(), thirtyDaysOfJob(""))

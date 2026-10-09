@@ -416,7 +416,6 @@ func Test_LatestRuns_AreTheRunsOfTheJobOfTheAccountInThePeriod(t *testing.T) {
 	require.Equal(t, RunError{Category: "other", Step: "other"}, settled.Error)
 
 	require.Equal(t, StatusFailed, failed.Status)
-	require.Equal(t, JobKindSync, failed.Kind)
 	require.Equal(t, int64(40), failed.RowsRead)
 	require.Equal(t, int64(1), failed.TablesUncounted)
 	require.Equal(t, RunError{Category: "constraint_violated", Step: "table_sync"}, failed.Error)
@@ -426,7 +425,6 @@ func Test_LatestRuns_AreTheRunsOfTheJobOfTheAccountInThePeriod(t *testing.T) {
 
 	require.Equal(t, StatusCompleted, ok.Status)
 	require.Equal(t, int64(100), ok.RowsRead)
-	require.Equal(t, int64(5), ok.RowsDiscarded)
 	require.Equal(t, RunError{}, ok.Error)
 
 	// A longer period reaches the run of the day before, the oldest last.
@@ -437,7 +435,6 @@ func Test_LatestRuns_AreTheRunsOfTheJobOfTheAccountInThePeriod(t *testing.T) {
 
 	other := latest(Scope{AccountId: accountA, JobId: jobA2}, utcDays(oct6, oct6), 10)
 	require.Equal(t, []string{"a2-ok"}, ids(other))
-	require.Equal(t, JobKindGenerate, other[0].Kind)
 
 	// The same job id through the other account gives the run of that account only.
 	require.Equal(t, []string{"b-ok"}, ids(latest(Scope{AccountId: accountB, JobId: jobA}, utcDays(oct5, oct6), 10)))
