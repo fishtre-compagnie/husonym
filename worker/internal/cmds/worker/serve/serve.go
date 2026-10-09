@@ -48,6 +48,7 @@ import (
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	piidetect_model "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
@@ -328,7 +329,11 @@ func serve(ctx context.Context) error {
 	logger.Debug("temporal client dialed successfully")
 	defer temporalClient.Close()
 
-	w := worker.New(temporalClient, taskQueue, worker.Options{})
+	// Every activity runs under the interceptor that gives its error a category, for the
+	// usage report of the run.
+	w := worker.New(temporalClient, taskQueue, worker.Options{
+		Interceptors: []interceptor.WorkerInterceptor{runerror.NewInterceptor()},
+	})
 	_ = w
 
 	husonymurl := shared.GetHusonymUrl()
