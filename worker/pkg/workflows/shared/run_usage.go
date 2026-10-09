@@ -134,18 +134,26 @@ func runOutcome(ctx workflow.Context, err error) string {
 // its error. The step is the one the run was at, "other" when it told none.
 //
 // It reads what it is given and nothing else: the same answer on every replay.
+//
+// It is workflow code, where a panic does not fail a run but blocks it: an error that cannot
+// be read is "other", at the step already known, and the run ends on its error as it would.
 func runError(
 	outcome string,
 	err error,
 	failure RunFailure,
-) (mgmtv1alpha1.RunErrorCategory, mgmtv1alpha1.RunErrorStep) {
+) (category mgmtv1alpha1.RunErrorCategory, step mgmtv1alpha1.RunErrorStep) {
 	if outcome == runusage.OutcomeCompleted {
 		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED, mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED
 	}
-	step := failure.Step
+	step = failure.Step
 	if step == mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED {
 		step = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER
 	}
+	defer func() {
+		if recover() != nil {
+			category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OTHER
+		}
+	}()
 	switch {
 	case outcome == runusage.OutcomeCanceled:
 		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED, step

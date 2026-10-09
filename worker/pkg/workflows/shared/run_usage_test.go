@@ -491,6 +491,34 @@ func Test_runError(t *testing.T) {
 	}
 }
 
+// brittleError is an error whose methods read a member: a nil pointer of it under a wrapper
+// is an error that is not nil, and that panics as soon as it is walked.
+type brittleError struct{ cause error }
+
+func (e *brittleError) Error() string { return "brittle" }
+func (e *brittleError) Unwrap() error { return e.cause }
+
+// A panic in workflow code does not fail a run, it blocks it: an error that cannot be read
+// is "other", at the step the run was at.
+func Test_runError_AnErrorThatCannotBeReadIsOther(t *testing.T) {
+	var brittle *brittleError
+	err := fmt.Errorf("x: %w", error(brittle))
+
+	var category mgmtv1alpha1.RunErrorCategory
+	var step mgmtv1alpha1.RunErrorStep
+	require.NotPanics(t, func() {
+		category, step = runError(runusage.OutcomeFailed, err, RunFailure{Step: stepTableSync})
+	})
+	assert.Equal(t, categoryOther, category)
+	assert.Equal(t, stepTableSync, step)
+
+	require.NotPanics(t, func() {
+		category, step = runError(runusage.OutcomeFailed, err, RunFailure{})
+	})
+	assert.Equal(t, categoryOther, category)
+	assert.Equal(t, stepOther, step)
+}
+
 // The id of the change is written in the histories of the runs that met it: it stays.
 func Test_RunUsageChangeId(t *testing.T) {
 	require.Equal(t, "run-usage-reported", runUsageReportedChangeId)
