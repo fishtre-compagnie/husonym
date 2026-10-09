@@ -111,6 +111,97 @@ func Test_RecordRunEnded_SendsWhatItIsGiven(t *testing.T) {
 	}
 }
 
+// The category and the step of the error of a run are sent as they are given, a number the
+// lists do not hold included: the API is the one that reads them.
+func Test_RecordRunEnded_SendsTheErrorItIsGiven(t *testing.T) {
+	for name, tt := range map[string]struct {
+		category mgmtv1alpha1.RunErrorCategory
+		step     mgmtv1alpha1.RunErrorStep
+	}{
+		"a category and a step": {
+			mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
+			mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC,
+		},
+		"nothing told": {
+			mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED,
+			mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED,
+		},
+		"numbers of a newer worker": {mgmtv1alpha1.RunErrorCategory(99), mgmtv1alpha1.RunErrorStep(98)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client := &recorder{}
+			env := (&testsuite.WorkflowTestSuite{}).NewTestActivityEnvironment()
+			activities := New(client)
+			Register(env, activities)
+
+			_, err := env.ExecuteActivity(activities.RecordRunEnded, &RunEndedRequest{
+				JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt, EndedAt: testEndedAt,
+				Outcome: OutcomeFailed, ErrorCategory: tt.category, ErrorStep: tt.step,
+			})
+			require.NoError(t, err)
+
+			require.Len(t, client.ended, 1)
+			require.Equal(t, mgmtv1alpha1.RunOutcome_RUN_OUTCOME_FAILED, client.ended[0].GetOutcome())
+			require.Equal(t, tt.category, client.ended[0].GetErrorCategory())
+			require.Equal(t, tt.step, client.ended[0].GetErrorStep())
+		})
+	}
+}
+
+// The serialized form of the request is in the histories of the runs. The error of a run is
+// two numbers in it, left out when nothing is told; a request recorded before they existed
+// reads as nothing told.
+func Test_RunEndedRequest_TheErrorIsTwoNumbersLeftOutWhenEmpty(t *testing.T) {
+	payload, err := json.Marshal(&RunEndedRequest{
+		JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt, EndedAt: testEndedAt, Outcome: OutcomeFailed,
+		ErrorCategory: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED,
+		ErrorStep:     mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC,
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"JobId": "job-1", "RunId": "run-1",
+		"StartedAt": "2026-10-07T09:00:00Z", "EndedAt": "2026-10-07T09:12:30Z",
+		"Outcome": "failed", "ErrorCategory": 4, "ErrorStep": 3
+	}`, string(payload))
+
+	payload, err = json.Marshal(&RunEndedRequest{
+		JobId: "job-1", RunId: "run-1", StartedAt: testStartedAt, EndedAt: testEndedAt, Outcome: OutcomeFailed,
+	})
+	require.NoError(t, err)
+	require.NotContains(t, string(payload), "ErrorCategory")
+	require.NotContains(t, string(payload), "ErrorStep")
+
+	var recorded RunEndedRequest
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"JobId": "job-1", "RunId": "run-1",
+		"StartedAt": "2026-10-07T09:00:00Z", "EndedAt": "2026-10-07T09:12:30Z",
+		"Outcome": "failed", "RowsRead": 7
+	}`), &recorded))
+	require.Equal(t, mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED, recorded.ErrorCategory)
+	require.Equal(t, mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED, recorded.ErrorStep)
+	require.Equal(t, int64(7), recorded.RowsRead)
+}
+
+// A worker that does not know the two members yet reads a request that holds them: what it
+// does not know is left aside, as the converter of Temporal leaves it.
+func Test_RunEndedRequest_IsReadByAWorkerThatDoesNotKnowTheError(t *testing.T) {
+	type earlierRunEndedRequest struct {
+		JobId   string
+		RunId   string
+		Outcome string
+	}
+	payload, err := json.Marshal(&RunEndedRequest{
+		JobId: "job-1", RunId: "run-1", Outcome: OutcomeFailed,
+		ErrorCategory: mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE,
+		ErrorStep:     mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_HOOKS,
+	})
+	require.NoError(t, err)
+
+	var earlier earlierRunEndedRequest
+	require.NoError(t, json.Unmarshal(payload, &earlier))
+	require.Equal(t, earlierRunEndedRequest{JobId: "job-1", RunId: "run-1", Outcome: OutcomeFailed}, earlier)
+}
+
 // One worker serves every kind of run, and each kind registers the two activities with its
 // workflow: a worker refuses a name it already holds unless it is told otherwise, and stops
 // the process.

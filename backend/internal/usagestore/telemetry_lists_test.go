@@ -70,3 +70,25 @@ func Test_TheStoreLists_ListEveryConstantAndEveryValueOfTheTable(t *testing.T) {
 	}
 	require.Equal(t, map[string]bool{"job_kind": true, "status": true}, checked)
 }
+
+var errorCheckValues = regexp.MustCompile(`(?s)(error_category|error_step) IN \(([^)]*)\)`)
+
+// The table allows the categories and the steps the usage report lists, and no other: a row
+// always holds a value the report can carry.
+func Test_TheErrorListsOfTheTable_AreTheOnesOfTheUsageReport(t *testing.T) {
+	migration, err := os.ReadFile(filepath.Join("..", "..", "sql", "postgresql", "schema", "20261011100000_adds-run-usage-errors.up.sql"))
+	require.NoError(t, err)
+	checked := map[string][]string{}
+	for _, m := range errorCheckValues.FindAllStringSubmatch(string(migration), -1) {
+		require.NotContains(t, checked, m[1], "the migration checks %s twice", m[1])
+		values := []string{}
+		for _, q := range quoted.FindAllStringSubmatch(m[2], -1) {
+			values = append(values, q[1])
+		}
+		checked[m[1]] = values
+	}
+	require.Contains(t, checked, "error_category", "no CHECK constraint on error_category was found in the migration")
+	require.Contains(t, checked, "error_step", "no CHECK constraint on error_step was found in the migration")
+	require.ElementsMatch(t, telemetry.ErrorCategories, checked["error_category"])
+	require.ElementsMatch(t, telemetry.ErrorSteps, checked["error_step"])
+}

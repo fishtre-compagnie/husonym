@@ -16,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,9 @@ type jobRun struct {
 	events []string
 	// usage is what the run told the API of itself, in order: its start, then its end
 	// with its outcome and the rows it counted.
-	usage      []string
+	usage []string
+	// ended is the end of the run as the API was told it.
+	ended      []*runusage.RunEndedRequest
 	tables     []*TablePiiDetectRequest
 	running    int
 	maxRunning int
@@ -98,6 +101,7 @@ func newJobRunUnder(t *testing.T, license *testutil.FakeEELicense, tablesAtOnce 
 				"%s %s %s, %d rows read, %d discarded, %d retries",
 				req.Outcome, req.JobId, req.RunId, req.RowsRead, req.RowsDiscarded, req.Retries,
 			))
+			run.ended = append(run.ended, req)
 			return nil
 		}).Once()
 	return run
@@ -330,6 +334,68 @@ func Test_PiiDetect_FailsWithoutTheFeature(t *testing.T) {
 	require.Empty(t, run.tables, "no table is scanned")
 	require.Empty(t, run.started(), "no event is announced")
 	require.Equal(t, usageOf(runusage.OutcomeFailed), run.reported())
+}
+
+// errorOf is the category and the step the run told the API of its error.
+func (r *jobRun) errorOf(t *testing.T) (mgmtv1alpha1.RunErrorCategory, mgmtv1alpha1.RunErrorStep) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	require.Len(t, r.ended, 1)
+	return r.ended[0].ErrorCategory, r.ended[0].ErrorStep
+}
+
+// A run the license refuses tells the API so, and ends on the error it always ended on: the
+// refusal is told beside the error, which holds no mark of it.
+func Test_JobPiiDetect_TellsTheLicenseThatRefusedIt(t *testing.T) {
+	for name, tt := range map[string]struct {
+		license *testutil.FakeEELicense
+		message string
+	}{
+		"a license that is not valid": {
+			testutil.NewFakeEELicense(),
+			"ee license is not valid, unable to run pii detect",
+		},
+		"a license without the detection": {
+			testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureAccountHooks)),
+			"this license does not include pii_detection",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			run := newJobRunUnder(t, tt.license, 3)
+
+			run.execute()
+
+			require.True(t, run.env.IsWorkflowCompleted())
+			var appErr *temporal.ApplicationError
+			require.ErrorAs(t, run.env.GetWorkflowError(), &appErr)
+			require.Equal(t, tt.message, appErr.Message())
+			require.Empty(t, appErr.Type(), "the type Temporal names a plain error by")
+			require.False(t, appErr.HasDetails(), "the error of the run holds no mark")
+			require.NoError(t, appErr.Unwrap())
+
+			category, step := run.errorOf(t)
+			require.Equal(t, mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE, category)
+			require.Equal(t, mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER, step)
+			require.Equal(t, usageOf(runusage.OutcomeFailed), run.reported())
+		})
+	}
+}
+
+// A detection has no steps to tell: a run that fails for another reason than the license
+// tells the category its error carries, at the step "other".
+func Test_JobPiiDetect_TellsTheCategoryOfAnotherFailure(t *testing.T) {
+	run := newJobRun(t, 3)
+	run.env.OnActivity(run.activities.GetPiiDetectJobDetails, mock.Anything, mock.Anything).
+		Return(nil, runerror.Carry(fmt.Errorf("reading the job: %w", context.DeadlineExceeded)))
+
+	run.execute()
+
+	require.True(t, run.env.IsWorkflowCompleted())
+	require.Error(t, run.env.GetWorkflowError())
+	category, step := run.errorOf(t)
+	require.Equal(t, mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT, category)
+	require.Equal(t, mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER, step)
 }
 
 // A run under a license that includes PII detection scans its tables. Its events are

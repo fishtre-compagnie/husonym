@@ -26,6 +26,7 @@ import (
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
@@ -35,8 +36,10 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/worker"
 )
 
 type Option func(*TestWorkflowEnv)
@@ -131,6 +134,9 @@ func NewTestDataSyncWorkflowEnv(
 	testSuite := &testsuite.WorkflowTestSuite{}
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestWorkflowEnvironment()
+	// The activities run under the interceptor the worker runs them under: every run of these
+	// tests goes through it, as a run of a deployment does.
+	env.SetWorkerOptions(worker.Options{Interceptors: []interceptor.WorkerInterceptor{runerror.NewInterceptor()}})
 
 	var activityMeter metric.Meter
 

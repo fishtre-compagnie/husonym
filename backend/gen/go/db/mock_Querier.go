@@ -823,6 +823,80 @@ func (_c *MockQuerier_CountRunUsageByStatusBetween_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// CountRunUsageErrorsOfDay provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountRunUsageErrorsOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error) {
+	ret := _mock.Called(ctx, db, dollar_1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountRunUsageErrorsOfDay")
+	}
+
+	var r0 []CountRunUsageErrorsOfDayRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error)); ok {
+		return returnFunc(ctx, db, dollar_1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Date) []CountRunUsageErrorsOfDayRow); ok {
+		r0 = returnFunc(ctx, db, dollar_1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]CountRunUsageErrorsOfDayRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Date) error); ok {
+		r1 = returnFunc(ctx, db, dollar_1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountRunUsageErrorsOfDay_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRunUsageErrorsOfDay'
+type MockQuerier_CountRunUsageErrorsOfDay_Call struct {
+	*mock.Call
+}
+
+// CountRunUsageErrorsOfDay is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - dollar_1 pgtype.Date
+func (_e *MockQuerier_Expecter) CountRunUsageErrorsOfDay(ctx any, db any, dollar_1 any) *MockQuerier_CountRunUsageErrorsOfDay_Call {
+	return &MockQuerier_CountRunUsageErrorsOfDay_Call{Call: _e.mock.On("CountRunUsageErrorsOfDay", ctx, db, dollar_1)}
+}
+
+func (_c *MockQuerier_CountRunUsageErrorsOfDay_Call) Run(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date)) *MockQuerier_CountRunUsageErrorsOfDay_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Date
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Date)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageErrorsOfDay_Call) Return(countRunUsageErrorsOfDayRows []CountRunUsageErrorsOfDayRow, err error) *MockQuerier_CountRunUsageErrorsOfDay_Call {
+	_c.Call.Return(countRunUsageErrorsOfDayRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountRunUsageErrorsOfDay_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error)) *MockQuerier_CountRunUsageErrorsOfDay_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountSourceColumnTypesOfInstance provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CountSourceColumnTypesOfInstance(ctx context.Context, db DBTX, excludedjobids []pgtype.UUID) ([]CountSourceColumnTypesOfInstanceRow, error) {
 	ret := _mock.Called(ctx, db, excludedjobids)

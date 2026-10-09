@@ -64,6 +64,10 @@ type RunEnd struct {
 	// major version of the source engine, empty when it is not known.
 	TablesUncounted    int64
 	SourceVersionMajor string
+
+	// Error is what the worker told of the error of the run. The row holds what errorOf makes
+	// of it: nothing for a run that completed.
+	Error RunError
 }
 
 // OpenRun is a run that was started and has not been told to end.
@@ -119,12 +123,15 @@ func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocri
 	if err != nil {
 		return err
 	}
+	category, step := errorOf(run.Status, run.Error).columns()
 	return s.db.Q.UpsertRunUsageEnded(ctx, s.db.Db, db_queries.UpsertRunUsageEndedParams{
 		RunID:         run.RunId,
 		AccountID:     accountId,
 		JobID:         jobId,
 		JobKind:       string(run.Kind),
 		Status:        string(run.Status),
+		ErrorCategory: category,
+		ErrorStep:     step,
 		StartedAt:     toTimestamptz(run.StartedAt),
 		EndedAt:       toTimestamptz(run.EndedAt),
 		RowsRead:      run.RowsRead,
@@ -136,9 +143,9 @@ func (s *Store) RunEnded(ctx context.Context, run RunEnd) error { //nolint:gocri
 	})
 }
 
-// CloseRun closes the row of a run that is still running, with the status, the end and the counts
-// the worker told. It creates nothing: a run with no row, or whose row finished, is left as it
-// is. It serves a run whose job is gone, of which nothing else is known.
+// CloseRun closes the row of a run that is still running, with the status, the end, the counts
+// and the error the worker told. It creates nothing: a run with no row, or whose row finished, is
+// left as it is. It serves a run whose job is gone, of which nothing else is known.
 func (s *Store) CloseRun(
 	ctx context.Context,
 	runId string,
@@ -146,15 +153,19 @@ func (s *Store) CloseRun(
 	endedAt time.Time,
 	rowsRead, rowsDiscarded, retries, tablesUncounted int64,
 	sourceVersionMajor string,
+	told RunError,
 ) error {
 	switch status {
 	case StatusCompleted, StatusFailed, StatusCanceled:
 	default:
 		return fmt.Errorf("a run cannot end with the status %q", status)
 	}
+	category, step := errorOf(status, told).columns()
 	return s.db.Q.CloseRunUsage(ctx, s.db.Db, db_queries.CloseRunUsageParams{
 		RunID:         runId,
 		Status:        string(status),
+		ErrorCategory: category,
+		ErrorStep:     step,
 		EndedAt:       toTimestamptz(endedAt),
 		RowsRead:      rowsRead,
 		RowsDiscarded: rowsDiscarded,
@@ -184,16 +195,20 @@ func (s *Store) OpenRunsStartedBefore(ctx context.Context, before time.Time) ([]
 
 // Settle closes a run that is still open with the status the orchestrator reports. The end is
 // nil when it is not known. A run that already finished is left as it is. As with any end, the
-// run counts for the UTC day of this call.
+// run counts for the UTC day of this call. Nothing was told of the error of such a run: the status
+// alone gives its category.
 func (s *Store) Settle(ctx context.Context, runId string, status Status, endedAt *time.Time) error {
 	ended := pgtype.Timestamptz{}
 	if endedAt != nil {
 		ended = toTimestamptz(*endedAt)
 	}
+	category, step := errorOf(status, RunError{}).columns()
 	return s.db.Q.SettleRunUsage(ctx, s.db.Db, db_queries.SettleRunUsageParams{
-		RunID:   runId,
-		Status:  string(status),
-		EndedAt: ended,
+		RunID:         runId,
+		Status:        string(status),
+		ErrorCategory: category,
+		ErrorStep:     step,
+		EndedAt:       ended,
 	})
 }
 

@@ -74,16 +74,19 @@ func (q *Queries) ClaimUsageReport(ctx context.Context, db DBTX, arg ClaimUsageR
 
 const closeRunUsage = `-- name: CloseRunUsage :exec
 UPDATE husonym_api.run_usage
-SET status = $1, ended_at = $2, rows_read = $3,
-  rows_discarded = $4, retries = $5,
-  tables_uncounted = $6,
-  source_version_major = NULLIF($7::text, ''),
+SET status = $1, error_category = $2,
+  error_step = $3, ended_at = $4, rows_read = $5,
+  rows_discarded = $6, retries = $7,
+  tables_uncounted = $8,
+  source_version_major = NULLIF($9::text, ''),
   recorded_at = CURRENT_TIMESTAMP
-WHERE run_id = $8 AND status = 'running'
+WHERE run_id = $10 AND status = 'running'
 `
 
 type CloseRunUsageParams struct {
 	Status             string
+	ErrorCategory      pgtype.Text
+	ErrorStep          pgtype.Text
 	EndedAt            pgtype.Timestamptz
 	RowsRead           int64
 	RowsDiscarded      int64
@@ -97,6 +100,8 @@ type CloseRunUsageParams struct {
 func (q *Queries) CloseRunUsage(ctx context.Context, db DBTX, arg CloseRunUsageParams) error {
 	_, err := db.Exec(ctx, closeRunUsage,
 		arg.Status,
+		arg.ErrorCategory,
+		arg.ErrorStep,
 		arg.EndedAt,
 		arg.RowsRead,
 		arg.RowsDiscarded,
@@ -178,6 +183,51 @@ func (q *Queries) CountRunUsageByStatusBetween(ctx context.Context, db DBTX, arg
 	for rows.Next() {
 		var i CountRunUsageByStatusBetweenRow
 		if err := rows.Scan(&i.JobKind, &i.Status, &i.Runs); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countRunUsageErrorsOfDay = `-- name: CountRunUsageErrorsOfDay :many
+SELECT status, error_category, error_step, count(*)::bigint AS runs
+FROM husonym_api.run_usage
+WHERE recorded_at >= ($1::date)::timestamp AT TIME ZONE 'UTC'
+  AND recorded_at < (($1::date) + 1)::timestamp AT TIME ZONE 'UTC'
+GROUP BY status, error_category, error_step
+ORDER BY status, error_category, error_step
+`
+
+type CountRunUsageErrorsOfDayRow struct {
+	Status        string
+	ErrorCategory pgtype.Text
+	ErrorStep     pgtype.Text
+	Runs          int64
+}
+
+// The runs of the day, the same ones as CountRunUsageByStatusBetween counts for it, by what their
+// row holds of their error. Every row of the day is given, with its status: which of them count
+// as an error, and under what when a row holds no category, is decided by the one rule of the
+// store, not here.
+func (q *Queries) CountRunUsageErrorsOfDay(ctx context.Context, db DBTX, dollar_1 pgtype.Date) ([]CountRunUsageErrorsOfDayRow, error) {
+	rows, err := db.Query(ctx, countRunUsageErrorsOfDay, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRunUsageErrorsOfDayRow
+	for rows.Next() {
+		var i CountRunUsageErrorsOfDayRow
+		if err := rows.Scan(
+			&i.Status,
+			&i.ErrorCategory,
+			&i.ErrorStep,
+			&i.Runs,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -503,19 +553,28 @@ func (q *Queries) MarkUsageReportSent(ctx context.Context, db DBTX, arg MarkUsag
 
 const settleRunUsage = `-- name: SettleRunUsage :exec
 UPDATE husonym_api.run_usage
-SET status = $2, ended_at = $3, recorded_at = CURRENT_TIMESTAMP
-WHERE run_id = $1 AND status = 'running'
+SET status = $1, error_category = $2,
+  error_step = $3, ended_at = $4, recorded_at = CURRENT_TIMESTAMP
+WHERE run_id = $5 AND status = 'running'
 `
 
 type SettleRunUsageParams struct {
-	RunID   string
-	Status  string
-	EndedAt pgtype.Timestamptz
+	Status        string
+	ErrorCategory pgtype.Text
+	ErrorStep     pgtype.Text
+	EndedAt       pgtype.Timestamptz
+	RunID         string
 }
 
 // Only a run still open is settled.
 func (q *Queries) SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error {
-	_, err := db.Exec(ctx, settleRunUsage, arg.RunID, arg.Status, arg.EndedAt)
+	_, err := db.Exec(ctx, settleRunUsage,
+		arg.Status,
+		arg.ErrorCategory,
+		arg.ErrorStep,
+		arg.EndedAt,
+		arg.RunID,
+	)
 	return err
 }
 
@@ -632,16 +691,19 @@ func (q *Queries) SumRunUsageBetween(ctx context.Context, db DBTX, arg SumRunUsa
 
 const upsertRunUsageEnded = `-- name: UpsertRunUsageEnded :exec
 INSERT INTO husonym_api.run_usage (
-  run_id, account_id, job_id, job_kind, status, started_at, ended_at,
+  run_id, account_id, job_id, job_kind, status, error_category, error_step, started_at, ended_at,
   rows_read, rows_discarded, retries, tables_uncounted, source_version_major, recorded_at
 ) VALUES (
   $1, $2, $3, $4, $5,
-  $6, $7, $8, $9,
-  $10, $11, NULLIF($12::text, ''),
+  $6, $7,
+  $8, $9, $10, $11,
+  $12, $13, NULLIF($14::text, ''),
   CURRENT_TIMESTAMP
 )
 ON CONFLICT (run_id) DO UPDATE SET
   status = EXCLUDED.status,
+  error_category = EXCLUDED.error_category,
+  error_step = EXCLUDED.error_step,
   ended_at = EXCLUDED.ended_at,
   rows_read = EXCLUDED.rows_read,
   rows_discarded = EXCLUDED.rows_discarded,
@@ -658,6 +720,8 @@ type UpsertRunUsageEndedParams struct {
 	JobID              pgtype.UUID
 	JobKind            string
 	Status             string
+	ErrorCategory      pgtype.Text
+	ErrorStep          pgtype.Text
 	StartedAt          pgtype.Timestamptz
 	EndedAt            pgtype.Timestamptz
 	RowsRead           int64
@@ -669,7 +733,8 @@ type UpsertRunUsageEndedParams struct {
 
 // Creates the row when the start was never recorded; a row already finished keeps what it
 // holds, so that the first end told wins. The moment the end is recorded is the clock of the
-// database, and a second end does not move it.
+// database, and a second end does not move it. The category and the step of the error go with
+// the status: null for a run that completed, both set for any other.
 func (q *Queries) UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error {
 	_, err := db.Exec(ctx, upsertRunUsageEnded,
 		arg.RunID,
@@ -677,6 +742,8 @@ func (q *Queries) UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRu
 		arg.JobID,
 		arg.JobKind,
 		arg.Status,
+		arg.ErrorCategory,
+		arg.ErrorStep,
 		arg.StartedAt,
 		arg.EndedAt,
 		arg.RowsRead,

@@ -72,6 +72,12 @@ type RunEndedRequest struct {
 	TablesUncounted int64 `json:",omitempty"`
 	// SourceVersionMajor is the major version of the database the run read, as "16" or "8.0".
 	SourceVersionMajor string `json:",omitempty"`
+	// ErrorCategory and ErrorStep are the category and the step of the error of a run that did
+	// not complete; both unspecified, and left out, for a run that completed and in the
+	// requests recorded before the two existed. They hold numbers of the lists of the API,
+	// and nothing of the error itself.
+	ErrorCategory mgmtv1alpha1.RunErrorCategory `json:",omitempty"`
+	ErrorStep     mgmtv1alpha1.RunErrorStep     `json:",omitempty"`
 }
 
 // RecordRunStarted tells the API that a run has begun.
@@ -105,6 +111,9 @@ func (a *Activities) RecordRunEnded(ctx context.Context, req *RunEndedRequest) e
 
 		TablesUncounted:    req.TablesUncounted,
 		SourceVersionMajor: req.SourceVersionMajor,
+
+		ErrorCategory: req.ErrorCategory,
+		ErrorStep:     req.ErrorStep,
 	}))
 	return reportFailure("the end", err)
 }

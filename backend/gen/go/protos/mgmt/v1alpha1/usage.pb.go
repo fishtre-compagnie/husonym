@@ -79,6 +79,162 @@ func (RunOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{0}
 }
 
+// What kept a run from completing, read from the type of its error and from the code of the database, never from a message.
+type RunErrorCategory int32
+
+const (
+	RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED RunErrorCategory = 0
+	// The database or the network refused the connection, or closed it.
+	RunErrorCategory_RUN_ERROR_CATEGORY_CONNECTION_REFUSED RunErrorCategory = 1
+	// The database refused who connects.
+	RunErrorCategory_RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED RunErrorCategory = 2
+	// Something took longer than it is allowed to.
+	RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT RunErrorCategory = 3
+	// A row broke a constraint of the database.
+	RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED RunErrorCategory = 4
+	// The database refused what the run is not allowed to do.
+	RunErrorCategory_RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES RunErrorCategory = 5
+	// A table, a column or another object is not there.
+	RunErrorCategory_RUN_ERROR_CATEGORY_OBJECT_MISSING RunErrorCategory = 6
+	// A value does not fit the type it goes into.
+	RunErrorCategory_RUN_ERROR_CATEGORY_TYPE_MISMATCH RunErrorCategory = 7
+	// Memory, disk space or another resource ran out.
+	RunErrorCategory_RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED RunErrorCategory = 8
+	// The run was told to stop.
+	RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED RunErrorCategory = 9
+	// The license refused the run.
+	RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE RunErrorCategory = 10
+	// Anything that is none of the above.
+	RunErrorCategory_RUN_ERROR_CATEGORY_OTHER RunErrorCategory = 11
+)
+
+// Enum value maps for RunErrorCategory.
+var (
+	RunErrorCategory_name = map[int32]string{
+		0:  "RUN_ERROR_CATEGORY_UNSPECIFIED",
+		1:  "RUN_ERROR_CATEGORY_CONNECTION_REFUSED",
+		2:  "RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED",
+		3:  "RUN_ERROR_CATEGORY_TIMEOUT",
+		4:  "RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED",
+		5:  "RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES",
+		6:  "RUN_ERROR_CATEGORY_OBJECT_MISSING",
+		7:  "RUN_ERROR_CATEGORY_TYPE_MISMATCH",
+		8:  "RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED",
+		9:  "RUN_ERROR_CATEGORY_CANCELED",
+		10: "RUN_ERROR_CATEGORY_LICENSE",
+		11: "RUN_ERROR_CATEGORY_OTHER",
+	}
+	RunErrorCategory_value = map[string]int32{
+		"RUN_ERROR_CATEGORY_UNSPECIFIED":             0,
+		"RUN_ERROR_CATEGORY_CONNECTION_REFUSED":      1,
+		"RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED":  2,
+		"RUN_ERROR_CATEGORY_TIMEOUT":                 3,
+		"RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED":     4,
+		"RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES": 5,
+		"RUN_ERROR_CATEGORY_OBJECT_MISSING":          6,
+		"RUN_ERROR_CATEGORY_TYPE_MISMATCH":           7,
+		"RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED":     8,
+		"RUN_ERROR_CATEGORY_CANCELED":                9,
+		"RUN_ERROR_CATEGORY_LICENSE":                 10,
+		"RUN_ERROR_CATEGORY_OTHER":                   11,
+	}
+)
+
+func (x RunErrorCategory) Enum() *RunErrorCategory {
+	p := new(RunErrorCategory)
+	*p = x
+	return p
+}
+
+func (x RunErrorCategory) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RunErrorCategory) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_usage_proto_enumTypes[1].Descriptor()
+}
+
+func (RunErrorCategory) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_usage_proto_enumTypes[1]
+}
+
+func (x RunErrorCategory) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RunErrorCategory.Descriptor instead.
+func (RunErrorCategory) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{1}
+}
+
+// The step a run was at when it stopped.
+type RunErrorStep int32
+
+const (
+	RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED RunErrorStep = 0
+	// The checks made before anything is written.
+	RunErrorStep_RUN_ERROR_STEP_PREFLIGHT RunErrorStep = 1
+	// The making of the schema of a destination.
+	RunErrorStep_RUN_ERROR_STEP_SCHEMA_INIT RunErrorStep = 2
+	// The synchronization of a table.
+	RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC RunErrorStep = 3
+	// The hooks run before or after the synchronization.
+	RunErrorStep_RUN_ERROR_STEP_HOOKS RunErrorStep = 4
+	// The check of referential integrity.
+	RunErrorStep_RUN_ERROR_STEP_INTEGRITY_CHECK RunErrorStep = 5
+	// Any step that is none of the above.
+	RunErrorStep_RUN_ERROR_STEP_OTHER RunErrorStep = 6
+)
+
+// Enum value maps for RunErrorStep.
+var (
+	RunErrorStep_name = map[int32]string{
+		0: "RUN_ERROR_STEP_UNSPECIFIED",
+		1: "RUN_ERROR_STEP_PREFLIGHT",
+		2: "RUN_ERROR_STEP_SCHEMA_INIT",
+		3: "RUN_ERROR_STEP_TABLE_SYNC",
+		4: "RUN_ERROR_STEP_HOOKS",
+		5: "RUN_ERROR_STEP_INTEGRITY_CHECK",
+		6: "RUN_ERROR_STEP_OTHER",
+	}
+	RunErrorStep_value = map[string]int32{
+		"RUN_ERROR_STEP_UNSPECIFIED":     0,
+		"RUN_ERROR_STEP_PREFLIGHT":       1,
+		"RUN_ERROR_STEP_SCHEMA_INIT":     2,
+		"RUN_ERROR_STEP_TABLE_SYNC":      3,
+		"RUN_ERROR_STEP_HOOKS":           4,
+		"RUN_ERROR_STEP_INTEGRITY_CHECK": 5,
+		"RUN_ERROR_STEP_OTHER":           6,
+	}
+)
+
+func (x RunErrorStep) Enum() *RunErrorStep {
+	p := new(RunErrorStep)
+	*p = x
+	return p
+}
+
+func (x RunErrorStep) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RunErrorStep) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_usage_proto_enumTypes[2].Descriptor()
+}
+
+func (RunErrorStep) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_usage_proto_enumTypes[2]
+}
+
+func (x RunErrorStep) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RunErrorStep.Descriptor instead.
+func (RunErrorStep) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{2}
+}
+
 // What the instance does with its usage report.
 type UsageReportingMode int32
 
@@ -119,11 +275,11 @@ func (x UsageReportingMode) String() string {
 }
 
 func (UsageReportingMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_usage_proto_enumTypes[1].Descriptor()
+	return file_mgmt_v1alpha1_usage_proto_enumTypes[3].Descriptor()
 }
 
 func (UsageReportingMode) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_usage_proto_enumTypes[1]
+	return &file_mgmt_v1alpha1_usage_proto_enumTypes[3]
 }
 
 func (x UsageReportingMode) Number() protoreflect.EnumNumber {
@@ -132,7 +288,7 @@ func (x UsageReportingMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use UsageReportingMode.Descriptor instead.
 func (UsageReportingMode) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{1}
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{3}
 }
 
 // What became of the usage report of a day.
@@ -179,11 +335,11 @@ func (x UsageReportStatus) String() string {
 }
 
 func (UsageReportStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_usage_proto_enumTypes[2].Descriptor()
+	return file_mgmt_v1alpha1_usage_proto_enumTypes[4].Descriptor()
 }
 
 func (UsageReportStatus) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_usage_proto_enumTypes[2]
+	return &file_mgmt_v1alpha1_usage_proto_enumTypes[4]
 }
 
 func (x UsageReportStatus) Number() protoreflect.EnumNumber {
@@ -192,7 +348,7 @@ func (x UsageReportStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use UsageReportStatus.Descriptor instead.
 func (UsageReportStatus) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{2}
+	return file_mgmt_v1alpha1_usage_proto_rawDescGZIP(), []int{4}
 }
 
 type RecordRunStartedRequest struct {
@@ -316,8 +472,12 @@ type RecordRunEndedRequest struct {
 	TablesUncounted int64 `protobuf:"varint,9,opt,name=tables_uncounted,json=tablesUncounted,proto3" json:"tables_uncounted,omitempty"`
 	// The major version of the database the run read, as "16" or "8.0". Empty when it is not known.
 	SourceVersionMajor string `protobuf:"bytes,10,opt,name=source_version_major,json=sourceVersionMajor,proto3" json:"source_version_major,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// What kept the run from completing. Unspecified when it is not told; a value the service does not know counts as other.
+	ErrorCategory RunErrorCategory `protobuf:"varint,11,opt,name=error_category,json=errorCategory,proto3,enum=mgmt.v1alpha1.RunErrorCategory" json:"error_category,omitempty"`
+	// The step the run was at when it stopped. Unspecified when it is not told; a value the service does not know counts as other.
+	ErrorStep     RunErrorStep `protobuf:"varint,12,opt,name=error_step,json=errorStep,proto3,enum=mgmt.v1alpha1.RunErrorStep" json:"error_step,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RecordRunEndedRequest) Reset() {
@@ -418,6 +578,20 @@ func (x *RecordRunEndedRequest) GetSourceVersionMajor() string {
 		return x.SourceVersionMajor
 	}
 	return ""
+}
+
+func (x *RecordRunEndedRequest) GetErrorCategory() RunErrorCategory {
+	if x != nil {
+		return x.ErrorCategory
+	}
+	return RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED
+}
+
+func (x *RecordRunEndedRequest) GetErrorStep() RunErrorStep {
+	if x != nil {
+		return x.ErrorStep
+	}
+	return RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED
 }
 
 type RecordRunEndedResponse struct {
@@ -942,7 +1116,7 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x06run_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05runId\x12A\n" +
 	"\n" +
 	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\tstartedAt\"\x1a\n" +
-	"\x18RecordRunStartedResponse\"\xa1\x04\n" +
+	"\x18RecordRunStartedResponse\"\xa5\x05\n" +
 	"\x15RecordRunEndedRequest\x12\x1f\n" +
 	"\x06job_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x05jobId\x12\x1e\n" +
 	"\x06run_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05runId\x12A\n" +
@@ -956,7 +1130,10 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\aretries\x18\b \x01(\x03B\a\xbaH\x04\"\x02(\x00R\aretries\x122\n" +
 	"\x10tables_uncounted\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x0ftablesUncounted\x12W\n" +
 	"\x14source_version_major\x18\n" +
-	" \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\"\x18\n" +
+	" \x01(\tB%\xbaH\"r 2\x1e^([0-9]{1,3}(\\.[0-9]{1,3})?)?$R\x12sourceVersionMajor\x12F\n" +
+	"\x0eerror_category\x18\v \x01(\x0e2\x1f.mgmt.v1alpha1.RunErrorCategoryR\rerrorCategory\x12:\n" +
+	"\n" +
+	"error_step\x18\f \x01(\x0e2\x1b.mgmt.v1alpha1.RunErrorStepR\terrorStep\"\x18\n" +
 	"\x16RecordRunEndedResponse\"C\n" +
 	"\x18GetUsageReportingRequest\x12'\n" +
 	"\n" +
@@ -1000,7 +1177,29 @@ const file_mgmt_v1alpha1_usage_proto_rawDesc = "" +
 	"\x17RUN_OUTCOME_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15RUN_OUTCOME_COMPLETED\x10\x01\x12\x16\n" +
 	"\x12RUN_OUTCOME_FAILED\x10\x02\x12\x18\n" +
-	"\x14RUN_OUTCOME_CANCELED\x10\x03*\xa3\x01\n" +
+	"\x14RUN_OUTCOME_CANCELED\x10\x03*\xe4\x03\n" +
+	"\x10RunErrorCategory\x12\"\n" +
+	"\x1eRUN_ERROR_CATEGORY_UNSPECIFIED\x10\x00\x12)\n" +
+	"%RUN_ERROR_CATEGORY_CONNECTION_REFUSED\x10\x01\x12-\n" +
+	")RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED\x10\x02\x12\x1e\n" +
+	"\x1aRUN_ERROR_CATEGORY_TIMEOUT\x10\x03\x12*\n" +
+	"&RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED\x10\x04\x12.\n" +
+	"*RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES\x10\x05\x12%\n" +
+	"!RUN_ERROR_CATEGORY_OBJECT_MISSING\x10\x06\x12$\n" +
+	" RUN_ERROR_CATEGORY_TYPE_MISMATCH\x10\a\x12*\n" +
+	"&RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED\x10\b\x12\x1f\n" +
+	"\x1bRUN_ERROR_CATEGORY_CANCELED\x10\t\x12\x1e\n" +
+	"\x1aRUN_ERROR_CATEGORY_LICENSE\x10\n" +
+	"\x12\x1c\n" +
+	"\x18RUN_ERROR_CATEGORY_OTHER\x10\v*\xe3\x01\n" +
+	"\fRunErrorStep\x12\x1e\n" +
+	"\x1aRUN_ERROR_STEP_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18RUN_ERROR_STEP_PREFLIGHT\x10\x01\x12\x1e\n" +
+	"\x1aRUN_ERROR_STEP_SCHEMA_INIT\x10\x02\x12\x1d\n" +
+	"\x19RUN_ERROR_STEP_TABLE_SYNC\x10\x03\x12\x18\n" +
+	"\x14RUN_ERROR_STEP_HOOKS\x10\x04\x12\"\n" +
+	"\x1eRUN_ERROR_STEP_INTEGRITY_CHECK\x10\x05\x12\x18\n" +
+	"\x14RUN_ERROR_STEP_OTHER\x10\x06*\xa3\x01\n" +
 	"\x12UsageReportingMode\x12$\n" +
 	" USAGE_REPORTING_MODE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bUSAGE_REPORTING_MODE_ONLINE\x10\x01\x12'\n" +
@@ -1039,56 +1238,60 @@ func file_mgmt_v1alpha1_usage_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_usage_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_usage_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_mgmt_v1alpha1_usage_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_mgmt_v1alpha1_usage_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_mgmt_v1alpha1_usage_proto_goTypes = []any{
 	(RunOutcome)(0),                      // 0: mgmt.v1alpha1.RunOutcome
-	(UsageReportingMode)(0),              // 1: mgmt.v1alpha1.UsageReportingMode
-	(UsageReportStatus)(0),               // 2: mgmt.v1alpha1.UsageReportStatus
-	(*RecordRunStartedRequest)(nil),      // 3: mgmt.v1alpha1.RecordRunStartedRequest
-	(*RecordRunStartedResponse)(nil),     // 4: mgmt.v1alpha1.RecordRunStartedResponse
-	(*RecordRunEndedRequest)(nil),        // 5: mgmt.v1alpha1.RecordRunEndedRequest
-	(*RecordRunEndedResponse)(nil),       // 6: mgmt.v1alpha1.RecordRunEndedResponse
-	(*GetUsageReportingRequest)(nil),     // 7: mgmt.v1alpha1.GetUsageReportingRequest
-	(*GetUsageReportingResponse)(nil),    // 8: mgmt.v1alpha1.GetUsageReportingResponse
-	(*UsageReportSummary)(nil),           // 9: mgmt.v1alpha1.UsageReportSummary
-	(*GetUsageReportRequest)(nil),        // 10: mgmt.v1alpha1.GetUsageReportRequest
-	(*GetUsageReportResponse)(nil),       // 11: mgmt.v1alpha1.GetUsageReportResponse
-	(*GetUsagePeriodReportRequest)(nil),  // 12: mgmt.v1alpha1.GetUsagePeriodReportRequest
-	(*GetUsagePeriodReportResponse)(nil), // 13: mgmt.v1alpha1.GetUsagePeriodReportResponse
-	(*timestamppb.Timestamp)(nil),        // 14: google.protobuf.Timestamp
-	(*Date)(nil),                         // 15: mgmt.v1alpha1.Date
+	(RunErrorCategory)(0),                // 1: mgmt.v1alpha1.RunErrorCategory
+	(RunErrorStep)(0),                    // 2: mgmt.v1alpha1.RunErrorStep
+	(UsageReportingMode)(0),              // 3: mgmt.v1alpha1.UsageReportingMode
+	(UsageReportStatus)(0),               // 4: mgmt.v1alpha1.UsageReportStatus
+	(*RecordRunStartedRequest)(nil),      // 5: mgmt.v1alpha1.RecordRunStartedRequest
+	(*RecordRunStartedResponse)(nil),     // 6: mgmt.v1alpha1.RecordRunStartedResponse
+	(*RecordRunEndedRequest)(nil),        // 7: mgmt.v1alpha1.RecordRunEndedRequest
+	(*RecordRunEndedResponse)(nil),       // 8: mgmt.v1alpha1.RecordRunEndedResponse
+	(*GetUsageReportingRequest)(nil),     // 9: mgmt.v1alpha1.GetUsageReportingRequest
+	(*GetUsageReportingResponse)(nil),    // 10: mgmt.v1alpha1.GetUsageReportingResponse
+	(*UsageReportSummary)(nil),           // 11: mgmt.v1alpha1.UsageReportSummary
+	(*GetUsageReportRequest)(nil),        // 12: mgmt.v1alpha1.GetUsageReportRequest
+	(*GetUsageReportResponse)(nil),       // 13: mgmt.v1alpha1.GetUsageReportResponse
+	(*GetUsagePeriodReportRequest)(nil),  // 14: mgmt.v1alpha1.GetUsagePeriodReportRequest
+	(*GetUsagePeriodReportResponse)(nil), // 15: mgmt.v1alpha1.GetUsagePeriodReportResponse
+	(*timestamppb.Timestamp)(nil),        // 16: google.protobuf.Timestamp
+	(*Date)(nil),                         // 17: mgmt.v1alpha1.Date
 }
 var file_mgmt_v1alpha1_usage_proto_depIdxs = []int32{
-	14, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
-	14, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
-	14, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
+	16, // 0: mgmt.v1alpha1.RecordRunStartedRequest.started_at:type_name -> google.protobuf.Timestamp
+	16, // 1: mgmt.v1alpha1.RecordRunEndedRequest.started_at:type_name -> google.protobuf.Timestamp
+	16, // 2: mgmt.v1alpha1.RecordRunEndedRequest.ended_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: mgmt.v1alpha1.RecordRunEndedRequest.outcome:type_name -> mgmt.v1alpha1.RunOutcome
-	1,  // 4: mgmt.v1alpha1.GetUsageReportingResponse.license_mode:type_name -> mgmt.v1alpha1.UsageReportingMode
-	1,  // 5: mgmt.v1alpha1.GetUsageReportingResponse.mode:type_name -> mgmt.v1alpha1.UsageReportingMode
-	14, // 6: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
-	14, // 7: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
-	14, // 8: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
-	9,  // 9: mgmt.v1alpha1.GetUsageReportingResponse.reports:type_name -> mgmt.v1alpha1.UsageReportSummary
-	15, // 10: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
-	2,  // 11: mgmt.v1alpha1.UsageReportSummary.status:type_name -> mgmt.v1alpha1.UsageReportStatus
-	14, // 12: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
-	15, // 13: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
-	3,  // 14: mgmt.v1alpha1.UsageService.RecordRunStarted:input_type -> mgmt.v1alpha1.RecordRunStartedRequest
-	5,  // 15: mgmt.v1alpha1.UsageService.RecordRunEnded:input_type -> mgmt.v1alpha1.RecordRunEndedRequest
-	7,  // 16: mgmt.v1alpha1.UsageService.GetUsageReporting:input_type -> mgmt.v1alpha1.GetUsageReportingRequest
-	10, // 17: mgmt.v1alpha1.UsageService.GetUsageReport:input_type -> mgmt.v1alpha1.GetUsageReportRequest
-	12, // 18: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:input_type -> mgmt.v1alpha1.GetUsagePeriodReportRequest
-	4,  // 19: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
-	6,  // 20: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
-	8,  // 21: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
-	11, // 22: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
-	13, // 23: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:output_type -> mgmt.v1alpha1.GetUsagePeriodReportResponse
-	19, // [19:24] is the sub-list for method output_type
-	14, // [14:19] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	1,  // 4: mgmt.v1alpha1.RecordRunEndedRequest.error_category:type_name -> mgmt.v1alpha1.RunErrorCategory
+	2,  // 5: mgmt.v1alpha1.RecordRunEndedRequest.error_step:type_name -> mgmt.v1alpha1.RunErrorStep
+	3,  // 6: mgmt.v1alpha1.GetUsageReportingResponse.license_mode:type_name -> mgmt.v1alpha1.UsageReportingMode
+	3,  // 7: mgmt.v1alpha1.GetUsageReportingResponse.mode:type_name -> mgmt.v1alpha1.UsageReportingMode
+	16, // 8: mgmt.v1alpha1.GetUsageReportingResponse.sending_since:type_name -> google.protobuf.Timestamp
+	16, // 9: mgmt.v1alpha1.GetUsageReportingResponse.first_send_at:type_name -> google.protobuf.Timestamp
+	16, // 10: mgmt.v1alpha1.GetUsageReportingResponse.last_sent_at:type_name -> google.protobuf.Timestamp
+	11, // 11: mgmt.v1alpha1.GetUsageReportingResponse.reports:type_name -> mgmt.v1alpha1.UsageReportSummary
+	17, // 12: mgmt.v1alpha1.UsageReportSummary.day:type_name -> mgmt.v1alpha1.Date
+	4,  // 13: mgmt.v1alpha1.UsageReportSummary.status:type_name -> mgmt.v1alpha1.UsageReportStatus
+	16, // 14: mgmt.v1alpha1.UsageReportSummary.sent_at:type_name -> google.protobuf.Timestamp
+	17, // 15: mgmt.v1alpha1.GetUsageReportRequest.day:type_name -> mgmt.v1alpha1.Date
+	5,  // 16: mgmt.v1alpha1.UsageService.RecordRunStarted:input_type -> mgmt.v1alpha1.RecordRunStartedRequest
+	7,  // 17: mgmt.v1alpha1.UsageService.RecordRunEnded:input_type -> mgmt.v1alpha1.RecordRunEndedRequest
+	9,  // 18: mgmt.v1alpha1.UsageService.GetUsageReporting:input_type -> mgmt.v1alpha1.GetUsageReportingRequest
+	12, // 19: mgmt.v1alpha1.UsageService.GetUsageReport:input_type -> mgmt.v1alpha1.GetUsageReportRequest
+	14, // 20: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:input_type -> mgmt.v1alpha1.GetUsagePeriodReportRequest
+	6,  // 21: mgmt.v1alpha1.UsageService.RecordRunStarted:output_type -> mgmt.v1alpha1.RecordRunStartedResponse
+	8,  // 22: mgmt.v1alpha1.UsageService.RecordRunEnded:output_type -> mgmt.v1alpha1.RecordRunEndedResponse
+	10, // 23: mgmt.v1alpha1.UsageService.GetUsageReporting:output_type -> mgmt.v1alpha1.GetUsageReportingResponse
+	13, // 24: mgmt.v1alpha1.UsageService.GetUsageReport:output_type -> mgmt.v1alpha1.GetUsageReportResponse
+	15, // 25: mgmt.v1alpha1.UsageService.GetUsagePeriodReport:output_type -> mgmt.v1alpha1.GetUsagePeriodReportResponse
+	21, // [21:26] is the sub-list for method output_type
+	16, // [16:21] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_usage_proto_init() }
@@ -1103,7 +1306,7 @@ func file_mgmt_v1alpha1_usage_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_usage_proto_rawDesc), len(file_mgmt_v1alpha1_usage_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      5,
 			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,

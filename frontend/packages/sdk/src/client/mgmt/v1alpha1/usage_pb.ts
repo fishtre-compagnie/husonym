@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/usage.proto.
  */
 export const file_mgmt_v1alpha1_usage: GenFile = /*@__PURE__*/
-  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKvAwoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kIhgKFlJlY29yZFJ1bkVuZGVkUmVzcG9uc2UiOAoYR2V0VXNhZ2VSZXBvcnRpbmdSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBIo0DChlHZXRVc2FnZVJlcG9ydGluZ1Jlc3BvbnNlEjcKDGxpY2Vuc2VfbW9kZRgBIAEoDjIhLm1nbXQudjFhbHBoYTEuVXNhZ2VSZXBvcnRpbmdNb2RlEi8KBG1vZGUYAiABKA4yIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0aW5nTW9kZRIVCg1iZWxvd19saWNlbnNlGAMgASgIEhMKC2RpYWdub3N0aWNzGAQgASgIEjEKDXNlbmRpbmdfc2luY2UYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDWZpcnN0X3NlbmRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGxhc3Rfc2VudF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGc2lsZW50GAggASgIEjIKB3JlcG9ydHMYCSADKAsyIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0U3VtbWFyeSKnAQoSVXNhZ2VSZXBvcnRTdW1tYXJ5EiAKA2RheRgBIAEoCzITLm1nbXQudjFhbHBoYTEuRGF0ZRIwCgZzdGF0dXMYAiABKA4yIC5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0U3RhdHVzEisKB3NlbnRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGF0dGVtcHRzGAQgASgFIl8KFUdldFVzYWdlUmVwb3J0UmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARIoCgNkYXkYAiABKAsyEy5tZ210LnYxYWxwaGExLkRhdGVCBrpIA8gBASJRChZHZXRVc2FnZVJlcG9ydFJlc3BvbnNlEhAKCGRvY3VtZW50GAEgASgJEgwKBHNlYWwYAiABKAkSFwoPa2V5X2ZpbmdlcnByaW50GAMgASgJIqcBChtHZXRVc2FnZVBlcmlvZFJlcG9ydFJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESNQoKZnJvbV9tb250aBgCIAEoCUIhukgechwyGl5bMC05XXs0fS0oMFsxLTldfDFbMC0yXSkkEjMKCHRvX21vbnRoGAMgASgJQiG6SB5yHDIaXlswLTldezR9LSgwWzEtOV18MVswLTJdKSQiVwocR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXNwb25zZRIQCghkb2N1bWVudBgBIAEoCRIMCgRzZWFsGAIgASgJEhcKD2tleV9maW5nZXJwcmludBgDIAEoCSp2CgpSdW5PdXRjb21lEhsKF1JVTl9PVVRDT01FX1VOU1BFQ0lGSUVEEAASGQoVUlVOX09VVENPTUVfQ09NUExFVEVEEAESFgoSUlVOX09VVENPTUVfRkFJTEVEEAISGAoUUlVOX09VVENPTUVfQ0FOQ0VMRUQQAyqjAQoSVXNhZ2VSZXBvcnRpbmdNb2RlEiQKIFVTQUdFX1JFUE9SVElOR19NT0RFX1VOU1BFQ0lGSUVEEAASHwobVVNBR0VfUkVQT1JUSU5HX01PREVfT05MSU5FEAESJwojVVNBR0VfUkVQT1JUSU5HX01PREVfT0ZGTElORV9SRVBPUlQQAhIdChlVU0FHRV9SRVBPUlRJTkdfTU9ERV9OT05FEAMqugEKEVVzYWdlUmVwb3J0U3RhdHVzEiMKH1VTQUdFX1JFUE9SVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhVU0FHRV9SRVBPUlRfU1RBVFVTX0tFUFQQARIiCh5VU0FHRV9SRVBPUlRfU1RBVFVTX1RPX0JFX1NFTlQQAhIcChhVU0FHRV9SRVBPUlRfU1RBVFVTX1NFTlQQAxIgChxVU0FHRV9SRVBPUlRfU1RBVFVTX05PVF9TRU5UEAQyvgQKDFVzYWdlU2VydmljZRJrChBSZWNvcmRSdW5TdGFydGVkEiYubWdtdC52MWFscGhhMS5SZWNvcmRSdW5TdGFydGVkUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlc3BvbnNlIgaStRgCEAESZQoOUmVjb3JkUnVuRW5kZWQSJC5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVxdWVzdBolLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuRW5kZWRSZXNwb25zZSIGkrUYAhABEnIKEUdldFVzYWdlUmVwb3J0aW5nEicubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydGluZ1JlcXVlc3QaKC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0aW5nUmVzcG9uc2UiCpACAZK1GAMKAQESaQoOR2V0VXNhZ2VSZXBvcnQSJC5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0UmVxdWVzdBolLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VSZXBvcnRSZXNwb25zZSIKkAIBkrUYAwoBARJ7ChRHZXRVc2FnZVBlcmlvZFJlcG9ydBIqLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0GisubWdtdC52MWFscGhhMS5HZXRVc2FnZVBlcmlvZFJlcG9ydFJlc3BvbnNlIgqQAgGStRgDCgEBQssBChFjb20ubWdtdC52MWFscGhhMUIKVXNhZ2VQcm90b1ABWlVnaXRodWIuY29tL2Zpc2h0cmUtY29tcGFnbmllL2h1c29ueW0vYmFja2VuZC9nZW4vZ28vcHJvdG9zL21nbXQvdjFhbHBoYTE7bWdtdHYxYWxwaGExogIDTVhYqgINTWdtdC5WMWFscGhhMcoCDU1nbXRcVjFhbHBoYTHiAhlNZ210XFYxYWxwaGExXEdQQk1ldGFkYXRh6gIOTWdtdDo6VjFhbHBoYTFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_metrics, file_mgmt_v1alpha1_permission]);
+  fileDesc("ChltZ210L3YxYWxwaGExL3VzYWdlLnByb3RvEg1tZ210LnYxYWxwaGExIoQBChdSZWNvcmRSdW5TdGFydGVkUmVxdWVzdBIYCgZqb2JfaWQYASABKAlCCLpIBXIDsAEBEhcKBnJ1bl9pZBgCIAEoCUIHukgEcgIQARI2CgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIhoKGFJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSKZBAoVUmVjb3JkUnVuRW5kZWRSZXF1ZXN0EhgKBmpvYl9pZBgBIAEoCUIIukgFcgOwAQESFwoGcnVuX2lkGAIgASgJQge6SARyAhABEjYKCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNAoIZW5kZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoHb3V0Y29tZRgFIAEoDjIZLm1nbXQudjFhbHBoYTEuUnVuT3V0Y29tZUIKukgHggEEEAEgABIaCglyb3dzX3JlYWQYBiABKANCB7pIBCICKAASHwoOcm93c19kaXNjYXJkZWQYByABKANCB7pIBCICKAASGAoHcmV0cmllcxgIIAEoA0IHukgEIgIoABIhChB0YWJsZXNfdW5jb3VudGVkGAkgASgDQge6SAQiAigAEkMKFHNvdXJjZV92ZXJzaW9uX21ham9yGAogASgJQiW6SCJyIDIeXihbMC05XXsxLDN9KFwuWzAtOV17MSwzfSk/KT8kEjcKDmVycm9yX2NhdGVnb3J5GAsgASgOMh8ubWdtdC52MWFscGhhMS5SdW5FcnJvckNhdGVnb3J5Ei8KCmVycm9yX3N0ZXAYDCABKA4yGy5tZ210LnYxYWxwaGExLlJ1bkVycm9yU3RlcCIYChZSZWNvcmRSdW5FbmRlZFJlc3BvbnNlIjgKGEdldFVzYWdlUmVwb3J0aW5nUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABASKNAwoZR2V0VXNhZ2VSZXBvcnRpbmdSZXNwb25zZRI3CgxsaWNlbnNlX21vZGUYASABKA4yIS5tZ210LnYxYWxwaGExLlVzYWdlUmVwb3J0aW5nTW9kZRIvCgRtb2RlGAIgASgOMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydGluZ01vZGUSFQoNYmVsb3dfbGljZW5zZRgDIAEoCBITCgtkaWFnbm9zdGljcxgEIAEoCBIxCg1zZW5kaW5nX3NpbmNlGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCg1maXJzdF9zZW5kX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3NlbnRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnNpbGVudBgIIAEoCBIyCgdyZXBvcnRzGAkgAygLMiEubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN1bW1hcnkipwEKElVzYWdlUmVwb3J0U3VtbWFyeRIgCgNkYXkYASABKAsyEy5tZ210LnYxYWxwaGExLkRhdGUSMAoGc3RhdHVzGAIgASgOMiAubWdtdC52MWFscGhhMS5Vc2FnZVJlcG9ydFN0YXR1cxIrCgdzZW50X2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghhdHRlbXB0cxgEIAEoBSJfChVHZXRVc2FnZVJlcG9ydFJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESKAoDZGF5GAIgASgLMhMubWdtdC52MWFscGhhMS5EYXRlQga6SAPIAQEiUQoWR2V0VXNhZ2VSZXBvcnRSZXNwb25zZRIQCghkb2N1bWVudBgBIAEoCRIMCgRzZWFsGAIgASgJEhcKD2tleV9maW5nZXJwcmludBgDIAEoCSKnAQobR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjUKCmZyb21fbW9udGgYAiABKAlCIbpIHnIcMhpeWzAtOV17NH0tKDBbMS05XXwxWzAtMl0pJBIzCgh0b19tb250aBgDIAEoCUIhukgechwyGl5bMC05XXs0fS0oMFsxLTldfDFbMC0yXSkkIlcKHEdldFVzYWdlUGVyaW9kUmVwb3J0UmVzcG9uc2USEAoIZG9jdW1lbnQYASABKAkSDAoEc2VhbBgCIAEoCRIXCg9rZXlfZmluZ2VycHJpbnQYAyABKAkqdgoKUnVuT3V0Y29tZRIbChdSVU5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhkKFVJVTl9PVVRDT01FX0NPTVBMRVRFRBABEhYKElJVTl9PVVRDT01FX0ZBSUxFRBACEhgKFFJVTl9PVVRDT01FX0NBTkNFTEVEEAMq5AMKEFJ1bkVycm9yQ2F0ZWdvcnkSIgoeUlVOX0VSUk9SX0NBVEVHT1JZX1VOU1BFQ0lGSUVEEAASKQolUlVOX0VSUk9SX0NBVEVHT1JZX0NPTk5FQ1RJT05fUkVGVVNFRBABEi0KKVJVTl9FUlJPUl9DQVRFR09SWV9BVVRIRU5USUNBVElPTl9SRUZVU0VEEAISHgoaUlVOX0VSUk9SX0NBVEVHT1JZX1RJTUVPVVQQAxIqCiZSVU5fRVJST1JfQ0FURUdPUllfQ09OU1RSQUlOVF9WSU9MQVRFRBAEEi4KKlJVTl9FUlJPUl9DQVRFR09SWV9JTlNVRkZJQ0lFTlRfUFJJVklMRUdFUxAFEiUKIVJVTl9FUlJPUl9DQVRFR09SWV9PQkpFQ1RfTUlTU0lORxAGEiQKIFJVTl9FUlJPUl9DQVRFR09SWV9UWVBFX01JU01BVENIEAcSKgomUlVOX0VSUk9SX0NBVEVHT1JZX1JFU09VUkNFU19FWEhBVVNURUQQCBIfChtSVU5fRVJST1JfQ0FURUdPUllfQ0FOQ0VMRUQQCRIeChpSVU5fRVJST1JfQ0FURUdPUllfTElDRU5TRRAKEhwKGFJVTl9FUlJPUl9DQVRFR09SWV9PVEhFUhALKuMBCgxSdW5FcnJvclN0ZXASHgoaUlVOX0VSUk9SX1NURVBfVU5TUEVDSUZJRUQQABIcChhSVU5fRVJST1JfU1RFUF9QUkVGTElHSFQQARIeChpSVU5fRVJST1JfU1RFUF9TQ0hFTUFfSU5JVBACEh0KGVJVTl9FUlJPUl9TVEVQX1RBQkxFX1NZTkMQAxIYChRSVU5fRVJST1JfU1RFUF9IT09LUxAEEiIKHlJVTl9FUlJPUl9TVEVQX0lOVEVHUklUWV9DSEVDSxAFEhgKFFJVTl9FUlJPUl9TVEVQX09USEVSEAYqowEKElVzYWdlUmVwb3J0aW5nTW9kZRIkCiBVU0FHRV9SRVBPUlRJTkdfTU9ERV9VTlNQRUNJRklFRBAAEh8KG1VTQUdFX1JFUE9SVElOR19NT0RFX09OTElORRABEicKI1VTQUdFX1JFUE9SVElOR19NT0RFX09GRkxJTkVfUkVQT1JUEAISHQoZVVNBR0VfUkVQT1JUSU5HX01PREVfTk9ORRADKroBChFVc2FnZVJlcG9ydFN0YXR1cxIjCh9VU0FHRV9SRVBPUlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19LRVBUEAESIgoeVVNBR0VfUkVQT1JUX1NUQVRVU19UT19CRV9TRU5UEAISHAoYVVNBR0VfUkVQT1JUX1NUQVRVU19TRU5UEAMSIAocVVNBR0VfUkVQT1JUX1NUQVRVU19OT1RfU0VOVBAEMr4ECgxVc2FnZVNlcnZpY2USawoQUmVjb3JkUnVuU3RhcnRlZBImLm1nbXQudjFhbHBoYTEuUmVjb3JkUnVuU3RhcnRlZFJlcXVlc3QaJy5tZ210LnYxYWxwaGExLlJlY29yZFJ1blN0YXJ0ZWRSZXNwb25zZSIGkrUYAhABEmUKDlJlY29yZFJ1bkVuZGVkEiQubWdtdC52MWFscGhhMS5SZWNvcmRSdW5FbmRlZFJlcXVlc3QaJS5tZ210LnYxYWxwaGExLlJlY29yZFJ1bkVuZGVkUmVzcG9uc2UiBpK1GAIQARJyChFHZXRVc2FnZVJlcG9ydGluZxInLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VSZXBvcnRpbmdSZXF1ZXN0GigubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydGluZ1Jlc3BvbnNlIgqQAgGStRgDCgEBEmkKDkdldFVzYWdlUmVwb3J0EiQubWdtdC52MWFscGhhMS5HZXRVc2FnZVJlcG9ydFJlcXVlc3QaJS5tZ210LnYxYWxwaGExLkdldFVzYWdlUmVwb3J0UmVzcG9uc2UiCpACAZK1GAMKAQESewoUR2V0VXNhZ2VQZXJpb2RSZXBvcnQSKi5tZ210LnYxYWxwaGExLkdldFVzYWdlUGVyaW9kUmVwb3J0UmVxdWVzdBorLm1nbXQudjFhbHBoYTEuR2V0VXNhZ2VQZXJpb2RSZXBvcnRSZXNwb25zZSIKkAIBkrUYAwoBAULLAQoRY29tLm1nbXQudjFhbHBoYTFCClVzYWdlUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_metrics, file_mgmt_v1alpha1_permission]);
 
 /**
  * @generated from message mgmt.v1alpha1.RecordRunStartedRequest
@@ -137,6 +137,20 @@ export type RecordRunEndedRequest = Message<"mgmt.v1alpha1.RecordRunEndedRequest
    * @generated from field: string source_version_major = 10;
    */
   sourceVersionMajor: string;
+
+  /**
+   * What kept the run from completing. Unspecified when it is not told; a value the service does not know counts as other.
+   *
+   * @generated from field: mgmt.v1alpha1.RunErrorCategory error_category = 11;
+   */
+  errorCategory: RunErrorCategory;
+
+  /**
+   * The step the run was at when it stopped. Unspecified when it is not told; a value the service does not know counts as other.
+   *
+   * @generated from field: mgmt.v1alpha1.RunErrorStep error_step = 12;
+   */
+  errorStep: RunErrorStep;
 };
 
 /**
@@ -456,6 +470,161 @@ export const RunOutcomeSchema: GenEnum<RunOutcome> = /*@__PURE__*/
   enumDesc(file_mgmt_v1alpha1_usage, 0);
 
 /**
+ * What kept a run from completing, read from the type of its error and from the code of the database, never from a message.
+ *
+ * @generated from enum mgmt.v1alpha1.RunErrorCategory
+ */
+export enum RunErrorCategory {
+  /**
+   * @generated from enum value: RUN_ERROR_CATEGORY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The database or the network refused the connection, or closed it.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_CONNECTION_REFUSED = 1;
+   */
+  CONNECTION_REFUSED = 1,
+
+  /**
+   * The database refused who connects.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED = 2;
+   */
+  AUTHENTICATION_REFUSED = 2,
+
+  /**
+   * Something took longer than it is allowed to.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_TIMEOUT = 3;
+   */
+  TIMEOUT = 3,
+
+  /**
+   * A row broke a constraint of the database.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED = 4;
+   */
+  CONSTRAINT_VIOLATED = 4,
+
+  /**
+   * The database refused what the run is not allowed to do.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES = 5;
+   */
+  INSUFFICIENT_PRIVILEGES = 5,
+
+  /**
+   * A table, a column or another object is not there.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_OBJECT_MISSING = 6;
+   */
+  OBJECT_MISSING = 6,
+
+  /**
+   * A value does not fit the type it goes into.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_TYPE_MISMATCH = 7;
+   */
+  TYPE_MISMATCH = 7,
+
+  /**
+   * Memory, disk space or another resource ran out.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED = 8;
+   */
+  RESOURCES_EXHAUSTED = 8,
+
+  /**
+   * The run was told to stop.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_CANCELED = 9;
+   */
+  CANCELED = 9,
+
+  /**
+   * The license refused the run.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_LICENSE = 10;
+   */
+  LICENSE = 10,
+
+  /**
+   * Anything that is none of the above.
+   *
+   * @generated from enum value: RUN_ERROR_CATEGORY_OTHER = 11;
+   */
+  OTHER = 11,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.RunErrorCategory.
+ */
+export const RunErrorCategorySchema: GenEnum<RunErrorCategory> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_usage, 1);
+
+/**
+ * The step a run was at when it stopped.
+ *
+ * @generated from enum mgmt.v1alpha1.RunErrorStep
+ */
+export enum RunErrorStep {
+  /**
+   * @generated from enum value: RUN_ERROR_STEP_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The checks made before anything is written.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_PREFLIGHT = 1;
+   */
+  PREFLIGHT = 1,
+
+  /**
+   * The making of the schema of a destination.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_SCHEMA_INIT = 2;
+   */
+  SCHEMA_INIT = 2,
+
+  /**
+   * The synchronization of a table.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_TABLE_SYNC = 3;
+   */
+  TABLE_SYNC = 3,
+
+  /**
+   * The hooks run before or after the synchronization.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_HOOKS = 4;
+   */
+  HOOKS = 4,
+
+  /**
+   * The check of referential integrity.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_INTEGRITY_CHECK = 5;
+   */
+  INTEGRITY_CHECK = 5,
+
+  /**
+   * Any step that is none of the above.
+   *
+   * @generated from enum value: RUN_ERROR_STEP_OTHER = 6;
+   */
+  OTHER = 6,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.RunErrorStep.
+ */
+export const RunErrorStepSchema: GenEnum<RunErrorStep> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_usage, 2);
+
+/**
  * What the instance does with its usage report.
  *
  * @generated from enum mgmt.v1alpha1.UsageReportingMode
@@ -492,7 +661,7 @@ export enum UsageReportingMode {
  * Describes the enum mgmt.v1alpha1.UsageReportingMode.
  */
 export const UsageReportingModeSchema: GenEnum<UsageReportingMode> = /*@__PURE__*/
-  enumDesc(file_mgmt_v1alpha1_usage, 1);
+  enumDesc(file_mgmt_v1alpha1_usage, 3);
 
 /**
  * What became of the usage report of a day.
@@ -538,7 +707,7 @@ export enum UsageReportStatus {
  * Describes the enum mgmt.v1alpha1.UsageReportStatus.
  */
 export const UsageReportStatusSchema: GenEnum<UsageReportStatus> = /*@__PURE__*/
-  enumDesc(file_mgmt_v1alpha1_usage, 2);
+  enumDesc(file_mgmt_v1alpha1_usage, 4);
 
 /**
  * Holds the counters of what the instance runs.

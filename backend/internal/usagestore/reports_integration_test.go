@@ -113,7 +113,7 @@ func Test_RunsOfDay_AnEndLearnedTheDayAfterCountsForTheDayAfter(t *testing.T) {
 		RunId: "told", AccountId: accountA, JobId: jobA, Kind: JobKindSync,
 		StartedAt: ended.Add(-time.Minute), EndedAt: ended, Status: StatusCompleted, SourceVersionMajor: "16",
 	}))
-	require.NoError(t, store.CloseRun(ctx, "closed", StatusCompleted, ended, 0, 0, 0, 0, "16"))
+	require.NoError(t, store.CloseRun(ctx, "closed", StatusCompleted, ended, 0, 0, 0, 0, "16", RunError{}))
 	require.NoError(t, store.Settle(ctx, "settled", StatusCompleted, &ended))
 	for _, runId := range []string{"told", "closed", "settled"} {
 		recordOn(t, container, runId, learned)
@@ -163,7 +163,7 @@ func Test_EndingARun_RecordsTheMomentOnceOnly(t *testing.T) {
 	from := databaseNow(t, container)
 	require.NoError(t, store.RunEnded(ctx, end("upserted")))
 	require.NoError(t, store.RunEnded(ctx, end("unstarted")))
-	require.NoError(t, store.CloseRun(ctx, "closed", StatusFailed, ended, 0, 0, 0, 0, ""))
+	require.NoError(t, store.CloseRun(ctx, "closed", StatusFailed, ended, 0, 0, 0, 0, "", RunError{}))
 	require.NoError(t, store.Settle(ctx, "settled", StatusTerminated, nil))
 	to := databaseNow(t, container)
 
@@ -180,7 +180,7 @@ func Test_EndingARun_RecordsTheMomentOnceOnly(t *testing.T) {
 	for _, runId := range ends {
 		recordOn(t, container, runId, moved)
 		require.NoError(t, store.RunEnded(ctx, end(runId)))
-		require.NoError(t, store.CloseRun(ctx, runId, StatusFailed, ended, 0, 0, 0, 0, ""))
+		require.NoError(t, store.CloseRun(ctx, runId, StatusFailed, ended, 0, 0, 0, 0, "", RunError{}))
 		require.NoError(t, store.Settle(ctx, runId, StatusTerminated, nil))
 		at := recordedAt(t, container, runId)
 		require.NotNil(t, at, runId)
@@ -284,7 +284,7 @@ func Test_SourceVersionsOfDay_PerJobAndVersionWhereKnown(t *testing.T) {
 	for runId, version := range map[string]string{"a": "16", "b": "16", "c": "15", "d": ""} {
 		endRun(t, container, store, runId, ended.Add(-time.Minute), ended, func(r *RunEnd) { r.SourceVersionMajor = version })
 	}
-	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 0, 0, 0, 0, "9"))
+	require.NoError(t, store.CloseRun(ctx, "unknown", StatusCompleted, ended, 0, 0, 0, 0, "9", RunError{}))
 
 	versions, err := store.SourceVersionsOfDay(ctx, october6)
 	require.NoError(t, err)

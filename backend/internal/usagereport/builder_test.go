@@ -100,10 +100,13 @@ type fakeCounters struct {
 	runs       *usagestore.DayRuns
 	versions   []usagestore.SourceEngineRuns
 	refusals   []usagestore.GateCount
+	errors     []usagestore.ErrorCount
 	calls      int
 	days       []time.Time
+	// errorDays are the days the errors were asked for.
+	errorDays []time.Time
 
-	instanceErr, runsErr, versionsErr, refusalsErr error
+	instanceErr, runsErr, versionsErr, refusalsErr, errorsErr error
 
 	// What the store holds over several days: see period_test.go.
 	fakeMonths
@@ -130,6 +133,12 @@ func (f *fakeCounters) RefusalsOfDay(_ context.Context, day time.Time) ([]usages
 	f.calls++
 	f.days = append(f.days, day)
 	return f.refusals, f.refusalsErr
+}
+
+func (f *fakeCounters) ErrorsOfDay(_ context.Context, day time.Time) ([]usagestore.ErrorCount, error) {
+	f.calls++
+	f.errorDays = append(f.errorDays, day)
+	return f.errors, f.errorsErr
 }
 
 type fakeInventory struct {
@@ -227,6 +236,11 @@ func newFixture(t testing.TB) *fixture {
 			refusals: []usagestore.GateCount{
 				{Gate: license.Gate("subsetting"), Count: 2},
 				{Gate: license.Gate("source_cap"), Count: 1},
+			},
+			// The two runs of the day that failed.
+			errors: []usagestore.ErrorCount{
+				{Category: "constraint_violated", Step: "table_sync", Count: 1},
+				{Category: "timeout", Step: "preflight", Count: 1},
 			},
 		},
 		inventory: &fakeInventory{inventory: &Inventory{
@@ -577,6 +591,13 @@ func Test_Build_ValuesOutsideTheirLists(t *testing.T) {
 		{Gate: license.Gate("subsetting"), Count: 2},
 		{Gate: license.Gate(leak + "-gate"), Count: 7},
 	}
+	f.counters.errors = []usagestore.ErrorCount{
+		{Category: "timeout", Step: "hooks", Count: 1},
+		{Category: usagestore.ErrorCategory(leak + "-category"), Step: "hooks", Count: 2},
+		{Category: "timeout", Step: usagestore.ErrorStep(leak + "-step"), Count: 3},
+		{Category: usagestore.ErrorCategory(leak + "-another"), Step: usagestore.ErrorStep(leak + "-step"), Count: 4},
+		{Category: "other", Step: "other", Count: 5},
+	}
 
 	ctx, output := logged(t)
 	sealed, err := f.builder().Build(ctx, reportDay, reportNow)
@@ -616,6 +637,13 @@ func Test_Build_ValuesOutsideTheirLists(t *testing.T) {
 		map[string]any{"type": "postgres", "major": "16", "runs": float64(10)},
 	}, diagnostics["source_engines"])
 	require.Equal(t, []any{map[string]any{"gate": "subsetting", "count": float64(2)}}, diagnostics["refusals"])
+	// A category or a step nobody knows is other, and meets the rows that are other already.
+	require.Equal(t, []any{
+		map[string]any{"category": "other", "step": "hooks", "count": float64(2)},
+		map[string]any{"category": "other", "step": "other", "count": float64(9)},
+		map[string]any{"category": "timeout", "step": "hooks", "count": float64(1)},
+		map[string]any{"category": "timeout", "step": "other", "count": float64(3)},
+	}, diagnostics["errors"])
 }
 
 // A day without a run: the counters are there and empty, the durations are not.
@@ -624,6 +652,7 @@ func Test_Build_ADayWithoutRuns(t *testing.T) {
 	f.counters.runs = &usagestore.DayRuns{}
 	f.counters.versions = nil
 	f.counters.refusals = nil
+	f.counters.errors = nil
 	f.facts.AuthEnabled, f.facts.AuthProvider = false, "keycloak"
 	f.inventory.inventory.Users.Active30d = nil
 

@@ -32,14 +32,6 @@ var (
 		"integer", "decimal", "float", "boolean", "text", "binary", "date", "time", "timestamp",
 		"interval", "uuid", "json", "xml", "array", "enum", "network", "geometric", other,
 	}
-	// ErrorCategories are the categories a failure is counted under.
-	ErrorCategories = []string{
-		"connection_refused", "authentication_refused", "timeout", "constraint_violated",
-		"insufficient_privileges", "object_missing", "type_mismatch", "resources_exhausted",
-		"canceled", "license", other,
-	}
-	// ErrorSteps are the steps of a run a failure is counted under.
-	ErrorSteps = []string{"preflight", "schema_init", "table_sync", "hooks", "integrity_check", other}
 	// RowsBuckets are the bands the number of rows comes out in, in ascending order.
 	RowsBuckets = []string{"lt_1k", "lt_10k", "lt_100k", "lt_1m", "lt_10m", "lt_100m", "gte_100m"}
 	// InstallKinds are the ways the instance is installed.
@@ -61,6 +53,11 @@ var (
 		mgmtv1alpha1.TransformerSource_name, "TRANSFORMER_SOURCE_", nil, []string{other},
 		"UNSPECIFIED", "USER_DEFINED",
 	)
+	// ErrorCategories are the categories a failure is counted under: the ones a run tells the
+	// API, other among them.
+	ErrorCategories = protoNames(mgmtv1alpha1.RunErrorCategory_name, "RUN_ERROR_CATEGORY_", nil, nil)
+	// ErrorSteps are the steps of a run a failure is counted under, other among them.
+	ErrorSteps = protoNames(mgmtv1alpha1.RunErrorStep_name, "RUN_ERROR_STEP_", nil, nil)
 )
 
 // protoNames is the lower-cased names of an enum without their prefix, in the order of their
@@ -154,6 +151,12 @@ func RunStatus(raw string) string { return member(RunStatuses, raw) }
 
 // LicenseState is the state of the license lifecycle, or other.
 func LicenseState(raw string) string { return member(LicenseStates, raw) }
+
+// ErrorCategory is the category of the error of a run as the usage store names it, or other.
+func ErrorCategory(raw string) string { return member(ErrorCategories, raw) }
+
+// ErrorStep is the step a run stopped at as the usage store names it, or other.
+func ErrorStep(raw string) string { return member(ErrorSteps, raw) }
 
 // Role is the lower-cased name of an account role, none for a user who holds no role, or other.
 // It takes the enum and never a name, as TransformerName does.

@@ -17563,6 +17563,20 @@ components:
           description: >-
             The major version of the database the run read, as "16" or "8.0".
             Empty when it is not known.
+        errorCategory:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.RunErrorCategory'
+          title: error_category
+          description: >-
+            What kept the run from completing. Unspecified when it is not told;
+            a value the service does not know counts as other.
+        errorStep:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.RunErrorStep'
+          title: error_step
+          description: >-
+            The step the run was at when it stopped. Unspecified when it is not
+            told; a value the service does not know counts as other.
       title: RecordRunEndedRequest
       required:
         - startedAt
@@ -17600,6 +17614,37 @@ components:
       type: object
       title: RecordRunStartedResponse
       additionalProperties: false
+    mgmt.v1alpha1.RunErrorCategory:
+      type: string
+      title: RunErrorCategory
+      enum:
+        - RUN_ERROR_CATEGORY_UNSPECIFIED
+        - RUN_ERROR_CATEGORY_CONNECTION_REFUSED
+        - RUN_ERROR_CATEGORY_AUTHENTICATION_REFUSED
+        - RUN_ERROR_CATEGORY_TIMEOUT
+        - RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED
+        - RUN_ERROR_CATEGORY_INSUFFICIENT_PRIVILEGES
+        - RUN_ERROR_CATEGORY_OBJECT_MISSING
+        - RUN_ERROR_CATEGORY_TYPE_MISMATCH
+        - RUN_ERROR_CATEGORY_RESOURCES_EXHAUSTED
+        - RUN_ERROR_CATEGORY_CANCELED
+        - RUN_ERROR_CATEGORY_LICENSE
+        - RUN_ERROR_CATEGORY_OTHER
+      description: >-
+        What kept a run from completing, read from the type of its error and
+        from the code of the database, never from a message.
+    mgmt.v1alpha1.RunErrorStep:
+      type: string
+      title: RunErrorStep
+      enum:
+        - RUN_ERROR_STEP_UNSPECIFIED
+        - RUN_ERROR_STEP_PREFLIGHT
+        - RUN_ERROR_STEP_SCHEMA_INIT
+        - RUN_ERROR_STEP_TABLE_SYNC
+        - RUN_ERROR_STEP_HOOKS
+        - RUN_ERROR_STEP_INTEGRITY_CHECK
+        - RUN_ERROR_STEP_OTHER
+      description: The step a run was at when it stopped.
     mgmt.v1alpha1.RunOutcome:
       type: string
       title: RunOutcome

@@ -52,6 +52,18 @@ var (
 	errInvalidAccountStatusError = errors.New("exiting workflow due to invalid account status")
 )
 
+// The steps of a run, as the API is told the one a run that does not complete was at. What
+// is none of the others is "other": reading the options and the account status, generating
+// the configs, suspending and restoring the triggers, cleaning Redis.
+const (
+	stepPreflight      = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_PREFLIGHT
+	stepSchemaInit     = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_SCHEMA_INIT
+	stepTableSync      = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC
+	stepHooks          = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_HOOKS
+	stepIntegrityCheck = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_INTEGRITY_CHECK
+	stepOther          = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER
+)
+
 func withGenerateBenthosConfigsActivityOptions(ctx workflow.Context) workflow.Context {
 	return workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 5 * time.Minute,
@@ -97,8 +109,9 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 		return actOptResp.AccountId, nil
 	}
 	totals := &workflow_shared.RunTotals{}
+	failure := &workflow_shared.RunFailure{}
 	runWorkflow := func(ctx workflow.Context, _ log.Logger) (*WorkflowResponse, error) {
-		return executeWorkflow(ctx, req, licensed, totals)
+		return executeWorkflow(ctx, req, licensed, totals, failure)
 	}
 	wfinfo := workflow.GetInfo(ctx)
 	// The start and the end of the run are told to the API around everything it does, the
@@ -108,8 +121,9 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 		req.JobId,
 		wfinfo.WorkflowExecution.ID,
 		func() workflow_shared.RunTotals { return *totals },
+		func() workflow_shared.RunFailure { return *failure },
 		func(ctx workflow.Context) (*WorkflowResponse, error) {
-			return workflow_shared.HandleWorkflowEventLifecycle(
+			resp, err := workflow_shared.HandleWorkflowEventLifecycle(
 				ctx,
 				accountHooksAllowed,
 				req.JobId,
@@ -118,17 +132,30 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 				getAccountId,
 				runWorkflow,
 			)
+			// The refusal is the workflow's own, and holds no category: the run tells it
+			// here, of the very error it ends on, wherever it was returned from. A run that
+			// ends on that error because the status could not be asked was refused nothing:
+			// its category is read in the error of the asking (failure.Cause).
+			if errors.Is(err, errInvalidAccountStatusError) && failure.Cause == nil {
+				failure.Category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
+			}
+			return resp, err
 		},
 	)
 }
 
 // licensed is the license answer the run started with. The job hooks of every timing are
 // handed it, so that the hooks of the end follow what the hooks of the start followed.
+//
+// failure.Step is set as the run enters each of its steps, by this function alone: the
+// goroutines of the run and the handlers of its selector leave it. The step a run is told
+// with is then the one this function was at when it returned.
 func executeWorkflow(
 	wfctx workflow.Context,
 	req *WorkflowRequest,
 	licensed bool,
 	totals *workflow_shared.RunTotals,
+	failure *workflow_shared.RunFailure,
 ) (*WorkflowResponse, error) {
 	ctx, cancelHandler := workflow.WithCancel(wfctx)
 	logger := workflow.GetLogger(ctx)
@@ -188,9 +215,11 @@ func executeWorkflow(
 	// tells of the run, kept as the report of the run.
 	privilegesVersion := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 3)
 	if privilegesVersion == 1 {
+		failure.Step = stepPreflight
 		if err := runPrivilegeCheck(ctx, logger, req.JobId, nil); err != nil {
 			return nil, err
 		}
+		failure.Step = stepOther
 	}
 
 	info := workflow.GetInfo(ctx)
@@ -217,6 +246,7 @@ func executeWorkflow(
 	// Generating the configs reads metadata only: nothing is read from the tables nor
 	// written yet, and the hooks, the schema init and the emptying of the destination come
 	// after the check.
+	failure.Step = stepPreflight
 	switch {
 	case privilegesVersion == 2:
 		if err := runPrivilegeCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs); err != nil {
@@ -231,6 +261,7 @@ func executeWorkflow(
 		totals.SourceVersionMajor = sourceVersionMajor
 	}
 
+	failure.Step = stepHooks
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
@@ -244,6 +275,7 @@ func executeWorkflow(
 		return nil, err
 	}
 
+	failure.Step = stepSchemaInit
 	err = runSchemaInitWorkflowByDestination(
 		ctx,
 		logger,
@@ -255,6 +287,7 @@ func executeWorkflow(
 	if err != nil {
 		return nil, err
 	}
+	failure.Step = stepOther
 
 	// Version 2 puts the triggers back on every way out of the run, not only on success.
 	triggersVersion := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 2)
@@ -279,6 +312,9 @@ func executeWorkflow(
 
 	// spawn account status checker in loop
 	stopChan := workflow.NewNamedChannel(ctx, "account-status")
+	// The error of a poll that could not ask the status, when that is what stops the run: the
+	// run then ends as on a refusal, and tells the category of this error, not a refusal.
+	var accountStatusPollErr error
 	if initialCheckAccountStatusResponse.ShouldPoll {
 		accountStatusTimerDuration := getAccountStatusTimerDuration()
 		workflow.GoNamed(
@@ -313,6 +349,7 @@ func executeWorkflow(
 								"error",
 								err,
 							)
+							accountStatusPollErr = err
 							stopChan.Send(ctx, true)
 							shouldStop = true
 							cancelHandler()
@@ -352,6 +389,7 @@ func executeWorkflow(
 		// Stop signal received, exit the routing
 		logger.Warn("received signal to stop workflow based on account status")
 		activityErr = errInvalidAccountStatusError
+		failure.Cause = accountStatusPollErr
 		cancelHandler()
 	})
 
@@ -452,6 +490,9 @@ func executeWorkflow(
 		})
 	}
 
+	// From here to the end of the loops the run syncs its tables: whatever ends it there, the
+	// failure of a table or the stop the account status asks for, ends it at this step.
+	failure.Step = stepTableSync
 	for _, bc := range splitConfigs.Root {
 		// Ensures concurrency limits are respected.
 		for inFlight >= maxConcurrency {
@@ -577,11 +618,13 @@ func executeWorkflow(
 
 	logger.Info("data syncs completed")
 
+	failure.Step = stepIntegrityCheck
 	err = runReferentialIntegrityCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs)
 	if err != nil {
 		return nil, err
 	}
 
+	failure.Step = stepOther
 	err = restoreDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId)
 	if err != nil {
 		// The deferred restore, on a context of its own, is the one chance left: the flag
@@ -590,6 +633,7 @@ func executeWorkflow(
 	}
 	triggersRestored = true
 
+	failure.Step = stepHooks
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
@@ -603,6 +647,7 @@ func executeWorkflow(
 		return nil, err
 	}
 
+	failure.Step = stepOther
 	err = runRedisCleanUpActivity(ctx, logger, req.JobId, bcResp.BenthosConfigs)
 	if err != nil {
 		return nil, err

@@ -13,6 +13,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
@@ -57,10 +58,11 @@ type RunJobHooksByTimingResponse struct {
 }
 
 // errLicenseNotReceived fails the activity of a job that has hooks to run while the worker
-// holds no license in force.
-var errLicenseNotReceived = errors.New(
+// holds no license in force. It tells the run that the license refused it: Temporal records
+// it as the plain error it is, with the category beside.
+var errLicenseNotReceived = runerror.License(errors.New(
 	"the worker has not received the instance's license yet: job hooks were not run",
-)
+))
 
 // Runs active job hooks by the provided timing value
 func (a *Activity) RunJobHooksByTiming(
