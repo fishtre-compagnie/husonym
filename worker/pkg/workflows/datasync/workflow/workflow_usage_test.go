@@ -63,7 +63,7 @@ func runUsageWorkflow(
 	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
 	totals := &workflow_shared.RunTotals{}
 	run := func(ctx workflow.Context, req *WorkflowRequest) (*WorkflowResponse, error) {
-		return executeWorkflow(ctx, req, true, totals)
+		return executeWorkflow(ctx, req, true, totals, &workflow_shared.RunFailure{})
 	}
 	env.RegisterWorkflowWithOptions(run, workflow.RegisterOptions{Name: "usage-run"})
 	mockRunOfTables(env, configs, func(_ workflow.Context, req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {

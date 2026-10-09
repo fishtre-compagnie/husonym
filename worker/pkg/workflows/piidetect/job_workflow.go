@@ -59,29 +59,36 @@ func (w *JobWorkflow) JobPiiDetect(ctx workflow.Context, req *JobPiiDetectReques
 	accountHooksAllowed := workflow_shared.LicenseAllows(ctx, w.license, license.FeatureAccountHooks, licensed)
 	// The start and the end of the run are told to the API around everything that follows:
 	// a run the license refuses is a run that failed. A detection reads no row of a sync.
+	failure := &workflow_shared.RunFailure{}
 	return workflow_shared.TrackRunUsage(
 		ctx,
 		req.JobId,
 		workflow.GetInfo(ctx).WorkflowExecution.ID,
 		func() workflow_shared.RunTotals { return workflow_shared.RunTotals{} },
+		func() workflow_shared.RunFailure { return *failure },
 		func(ctx workflow.Context) (*JobPiiDetectResponse, error) {
-			return w.detect(ctx, req, licensed, detectionAllowed, accountHooksAllowed)
+			return w.detect(ctx, req, licensed, detectionAllowed, accountHooksAllowed, failure)
 		},
 	)
 }
 
-// detect is the run itself, on the answers of the license it started with.
+// detect is the run itself, on the answers of the license it started with. A refusal of the
+// license is told in failure, beside the error, which is the one it always was. A detection
+// tells no step.
 func (w *JobWorkflow) detect(
 	ctx workflow.Context,
 	req *JobPiiDetectRequest,
 	licensed, detectionAllowed, accountHooksAllowed bool,
+	failure *workflow_shared.RunFailure,
 ) (*JobPiiDetectResponse, error) {
 	if !licensed {
+		failure.Category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
 		return nil, errors.New("ee license is not valid, unable to run pii detect")
 	}
 	// Nothing else holds a run that a schedule starts: this workflow does not ask the API
 	// whether the job may run.
 	if !detectionAllowed {
+		failure.Category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
 		return nil, errors.New(license.NotIncludedMessage(license.FeaturePiiDetection))
 	}
 	logger := log.With(workflow.GetLogger(ctx), "jobId", req.JobId)

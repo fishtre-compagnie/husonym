@@ -8,10 +8,14 @@ import (
 	"testing"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/temporal"
@@ -38,6 +42,8 @@ type trackedRun struct {
 	endErr   error
 	// same tells whether TrackRunUsage returned the very values fn returned.
 	same bool
+	// failure is what the run knows of its error by itself, read once fn is done: fn sets it.
+	failure RunFailure
 }
 
 func newTrackedRun() *trackedRun {
@@ -70,6 +76,7 @@ func (r *trackedRun) execute(fn func(ctx workflow.Context, totals *RunTotals) (*
 		var fnErr error
 		result, err := TrackRunUsage(ctx, "job-1", "run-1",
 			func() RunTotals { return *totals },
+			func() RunFailure { return r.failure },
 			func(ctx workflow.Context) (*trackedResult, error) {
 				r.mu.Lock()
 				r.steps = append(r.steps, "fn")
@@ -278,6 +285,210 @@ func Test_TrackRunUsage_EarlierRunsReportNothing(t *testing.T) {
 	require.NoError(t, run.env.GetWorkflowError())
 	assert.True(t, run.same)
 	require.Equal(t, []string{"fn"}, run.steps)
+}
+
+const (
+	categoryLicense            = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_LICENSE
+	categoryCanceled           = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED
+	categoryConstraintViolated = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CONSTRAINT_VIOLATED
+	categoryTimeout            = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT
+	categoryOther              = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_OTHER
+	categoryUnspecified        = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED
+
+	stepHooks       = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_HOOKS
+	stepTableSync   = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_TABLE_SYNC
+	stepOther       = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER
+	stepUnspecified = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED
+)
+
+func Test_TrackRunUsage_TellsTheErrorOfARunThatFails(t *testing.T) {
+	database := &pgconn.PgError{Code: "23505", Message: "never-sent"}
+	cases := []struct {
+		name     string
+		failure  RunFailure
+		err      error
+		category mgmtv1alpha1.RunErrorCategory
+		step     mgmtv1alpha1.RunErrorStep
+	}{
+		{
+			"the category an activity carried out, at the step the run was at",
+			RunFailure{Step: stepTableSync},
+			fmt.Errorf("table users: %w", runerror.Carry(fmt.Errorf("writing: %w", database))),
+			categoryConstraintViolated, stepTableSync,
+		},
+		{
+			"a refusal of the license raised in an activity",
+			RunFailure{Step: stepHooks},
+			fmt.Errorf("x: %w", runerror.License(errors.New("refused"))),
+			categoryLicense, stepHooks,
+		},
+		{
+			"a refusal the workflow tells by itself",
+			RunFailure{Category: categoryLicense},
+			errors.New("refused"),
+			categoryLicense, stepOther,
+		},
+		{
+			"what the workflow tells by itself comes before what its error carries",
+			RunFailure{Category: categoryLicense, Step: stepTableSync},
+			runerror.Carry(fmt.Errorf("writing: %w", database)),
+			categoryLicense, stepTableSync,
+		},
+		{
+			"an activity that timed out",
+			RunFailure{Step: stepTableSync},
+			fmt.Errorf("x: %w", temporal.NewTimeoutError(enumspb.TIMEOUT_TYPE_START_TO_CLOSE, nil)),
+			categoryTimeout, stepTableSync,
+		},
+		{"an error that tells nothing, at no step", RunFailure{}, errors.New("x"), categoryOther, stepOther},
+		{"a database error that was not carried tells nothing", RunFailure{}, database, categoryOther, stepOther},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			run := newTrackedRun()
+			run.execute(func(workflow.Context, *RunTotals) (*trackedResult, error) {
+				run.failure = tc.failure
+				return nil, tc.err
+			})
+
+			require.True(t, run.env.IsWorkflowCompleted())
+			require.Error(t, run.env.GetWorkflowError())
+			assert.True(t, run.same, "the error returned is the one of fn")
+			require.Len(t, run.ended, 1)
+			assert.Equal(t, runusage.OutcomeFailed, run.ended[0].Outcome)
+			assert.Equal(t, tc.category, run.ended[0].ErrorCategory)
+			assert.Equal(t, tc.step, run.ended[0].ErrorStep)
+		})
+	}
+}
+
+func Test_TrackRunUsage_ACompletedRunTellsNoError(t *testing.T) {
+	run := newTrackedRun()
+	run.execute(func(workflow.Context, *RunTotals) (*trackedResult, error) {
+		// The step the run was last at, and a category it would have told had it failed.
+		run.failure = RunFailure{Step: stepHooks, Category: categoryLicense}
+		return &trackedResult{Value: "done"}, nil
+	})
+
+	require.NoError(t, run.env.GetWorkflowError())
+	require.Len(t, run.ended, 1)
+	assert.Equal(t, runusage.OutcomeCompleted, run.ended[0].Outcome)
+	assert.Equal(t, categoryUnspecified, run.ended[0].ErrorCategory)
+	assert.Equal(t, stepUnspecified, run.ended[0].ErrorStep)
+}
+
+func Test_TrackRunUsage_ACanceledRunIsCanceledWhateverItsError(t *testing.T) {
+	t.Run("fn returns the cancellation", func(t *testing.T) {
+		run := newTrackedRun()
+		run.env.RegisterDelayedCallback(run.env.CancelWorkflow, time.Minute)
+		run.execute(func(ctx workflow.Context, _ *RunTotals) (*trackedResult, error) {
+			run.failure = RunFailure{Step: stepTableSync}
+			return nil, workflow.Sleep(ctx, time.Hour)
+		})
+
+		require.Len(t, run.ended, 1)
+		assert.Equal(t, runusage.OutcomeCanceled, run.ended[0].Outcome)
+		assert.Equal(t, categoryCanceled, run.ended[0].ErrorCategory)
+		assert.Equal(t, stepTableSync, run.ended[0].ErrorStep)
+	})
+
+	t.Run("fn returns another error of a canceled run", func(t *testing.T) {
+		run := newTrackedRun()
+		run.env.RegisterDelayedCallback(run.env.CancelWorkflow, time.Minute)
+		run.execute(func(ctx workflow.Context, _ *RunTotals) (*trackedResult, error) {
+			_ = workflow.Sleep(ctx, time.Hour)
+			// A table that was stopped by the cancellation may fail on a constraint all the
+			// same, and a run may tell a category of its own: the run was canceled.
+			run.failure = RunFailure{Category: categoryLicense}
+			return nil, runerror.Carry(fmt.Errorf("writing: %w", &pgconn.PgError{Code: "23505"}))
+		})
+
+		require.Len(t, run.ended, 1)
+		assert.Equal(t, runusage.OutcomeCanceled, run.ended[0].Outcome)
+		assert.Equal(t, categoryCanceled, run.ended[0].ErrorCategory)
+		assert.Equal(t, stepOther, run.ended[0].ErrorStep)
+	})
+
+	// A run that canceled a context of its own has failed: nothing forces its category. The
+	// one it gets is the one its error tells, which here is the cancellation it returns.
+	t.Run("a run that canceled itself is told by its error", func(t *testing.T) {
+		for name, tc := range map[string]struct {
+			wrap     func(canceled error) error
+			category mgmtv1alpha1.RunErrorCategory
+		}{
+			"returning the cancellation it caused": {
+				func(canceled error) error { return fmt.Errorf("workflow canceled due to error: %w", canceled) },
+				categoryCanceled,
+			},
+			"returning the error that made it cancel": {
+				func(error) error { return runerror.Carry(fmt.Errorf("x: %w", &pgconn.PgError{Code: "23505"})) },
+				categoryConstraintViolated,
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				run := newTrackedRun()
+				run.execute(func(ctx workflow.Context, _ *RunTotals) (*trackedResult, error) {
+					inner, cancel := workflow.WithCancel(ctx)
+					cancel()
+					return nil, tc.wrap(workflow.Sleep(inner, time.Hour))
+				})
+
+				require.Len(t, run.ended, 1)
+				assert.Equal(t, runusage.OutcomeFailed, run.ended[0].Outcome)
+				assert.Equal(t, tc.category, run.ended[0].ErrorCategory)
+			})
+		}
+	})
+}
+
+// Telling the error asks nothing more of Temporal: the same two reports around fn, and the
+// run ends on the very error of fn.
+func Test_TrackRunUsage_TellsTheErrorWithoutSchedulingMore(t *testing.T) {
+	run := newTrackedRun()
+	scheduled := []string{}
+	run.env.SetOnActivityStartedListener(func(info *activity.Info, _ context.Context, _ converter.EncodedValues) {
+		run.mu.Lock()
+		defer run.mu.Unlock()
+		scheduled = append(scheduled, info.ActivityType.Name)
+	})
+	timers := 0
+	run.env.SetOnTimerScheduledListener(func(string, time.Duration) { timers++ })
+	run.execute(func(workflow.Context, *RunTotals) (*trackedResult, error) {
+		run.failure = RunFailure{Step: stepHooks}
+		return nil, fmt.Errorf("x: %w", runerror.License(errors.New("refused")))
+	})
+
+	require.True(t, run.env.IsWorkflowCompleted())
+	require.ErrorContains(t, run.env.GetWorkflowError(), "x: refused")
+	assert.True(t, run.same)
+	require.Equal(t, []string{"started", "fn", "ended"}, run.steps)
+	assert.Equal(t, []string{"RecordRunStarted", "RecordRunEnded"}, scheduled)
+	assert.Zero(t, timers)
+	assert.Equal(t, categoryLicense, run.ended[0].ErrorCategory)
+}
+
+// runError is all that decides what is told, and reads nothing but what it is given.
+func Test_runError(t *testing.T) {
+	licensed := runerror.License(errors.New("refused"))
+	for name, tc := range map[string]struct {
+		outcome  string
+		err      error
+		failure  RunFailure
+		category mgmtv1alpha1.RunErrorCategory
+		step     mgmtv1alpha1.RunErrorStep
+	}{
+		"completed":            {runusage.OutcomeCompleted, nil, RunFailure{Step: stepHooks}, categoryUnspecified, stepUnspecified},
+		"canceled":             {runusage.OutcomeCanceled, licensed, RunFailure{Step: stepHooks}, categoryCanceled, stepHooks},
+		"canceled, at no step": {runusage.OutcomeCanceled, licensed, RunFailure{}, categoryCanceled, stepOther},
+		"failed":               {runusage.OutcomeFailed, licensed, RunFailure{Step: stepTableSync}, categoryLicense, stepTableSync},
+		"failed, nothing told": {runusage.OutcomeFailed, errors.New("x"), RunFailure{}, categoryOther, stepOther},
+	} {
+		t.Run(name, func(t *testing.T) {
+			category, step := runError(tc.outcome, tc.err, tc.failure)
+			assert.Equal(t, tc.category, category)
+			assert.Equal(t, tc.step, step)
+		})
+	}
 }
 
 // The id of the change is written in the histories of the runs that met it: it stays.

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runerror"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared/runusage"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -23,12 +25,29 @@ type RunTotals struct {
 	SourceVersionMajor string
 }
 
+// RunFailure is what the workflow of a run knows by itself of the error the run may end on,
+// beyond the error. It is plain data the workflow sets as it goes, from workflow code only,
+// and it is read when the run does not complete: nothing of it changes what the run does,
+// nor the error it ends on.
+type RunFailure struct {
+	// Step is the step the run is at, set as the run enters it. Unspecified is "other": a
+	// workflow that has no steps to tell sets nothing.
+	Step mgmtv1alpha1.RunErrorStep
+	// Category is the category of the error, when the workflow knows it by itself: a refusal
+	// it returns. Unspecified, the category is read in the error (runerror.CategoryOf).
+	Category mgmtv1alpha1.RunErrorCategory
+}
+
 const runUsageReportedChangeId = "run-usage-reported"
 
 // TrackRunUsage reports the start of the run, runs fn, then reports its end whatever became of it.
 //
 // A run does not depend on its count: a report that does not leave is logged, and the run
-// ends on exactly what fn returned. totals is read once fn is done.
+// ends on exactly what fn returned. totals and failure are read once fn is done.
+//
+// A run that does not complete tells the category and the step of its error (runError). Both
+// are read from what the run already holds, in workflow code: telling them schedules nothing,
+// and adds two members to the argument of the report of the end, left out when empty.
 //
 // Runs started before their usage was reported hold no report in their history: they replay
 // as they ran, fn and nothing else. The version is read first, before anything fn does, so
@@ -38,6 +57,7 @@ func TrackRunUsage[T any](
 	jobId,
 	runId string, // typically the temporal workflow execution id
 	totals func() RunTotals,
+	failure func() RunFailure,
 	fn func(ctx workflow.Context) (*T, error),
 ) (*T, error) {
 	if workflow.GetVersion(ctx, runUsageReportedChangeId, workflow.DefaultVersion, 1) == workflow.DefaultVersion {
@@ -59,6 +79,8 @@ func TrackRunUsage[T any](
 	resp, fnErr := fn(ctx)
 
 	counted := totals()
+	outcome := runOutcome(ctx, fnErr)
+	errorCategory, errorStep := runError(outcome, fnErr, failure())
 	// The run may be failing or canceled: its context may be done already.
 	detachedCtx, _ := workflow.NewDisconnectedContext(ctx)
 	err = workflow.ExecuteActivity(
@@ -69,13 +91,16 @@ func TrackRunUsage[T any](
 			RunId:         runId,
 			StartedAt:     startedAt,
 			EndedAt:       workflow.Now(ctx),
-			Outcome:       runOutcome(ctx, fnErr),
+			Outcome:       outcome,
 			RowsRead:      counted.RowsRead,
 			RowsDiscarded: counted.RowsDiscarded,
 			Retries:       counted.Retries,
 
 			TablesUncounted:    counted.TablesUncounted,
 			SourceVersionMajor: counted.SourceVersionMajor,
+
+			ErrorCategory: errorCategory,
+			ErrorStep:     errorStep,
 		},
 	).Get(detachedCtx, nil)
 	if err != nil {
@@ -100,6 +125,34 @@ func runOutcome(ctx workflow.Context, err error) string {
 		return runusage.OutcomeCanceled
 	default:
 		return runusage.OutcomeFailed
+	}
+}
+
+// runError gives the category and the step of the error of a run, for the report of its end.
+// A run that completed tells neither. A canceled run is canceled whatever error it returns.
+// A run that failed tells the category its workflow knows by itself, else the one read in
+// its error. The step is the one the run was at, "other" when it told none.
+//
+// It reads what it is given and nothing else: the same answer on every replay.
+func runError(
+	outcome string,
+	err error,
+	failure RunFailure,
+) (mgmtv1alpha1.RunErrorCategory, mgmtv1alpha1.RunErrorStep) {
+	if outcome == runusage.OutcomeCompleted {
+		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED, mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED
+	}
+	step := failure.Step
+	if step == mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_UNSPECIFIED {
+		step = mgmtv1alpha1.RunErrorStep_RUN_ERROR_STEP_OTHER
+	}
+	switch {
+	case outcome == runusage.OutcomeCanceled:
+		return mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_CANCELED, step
+	case failure.Category != mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_UNSPECIFIED:
+		return failure.Category, step
+	default:
+		return runerror.CategoryOf(err), step
 	}
 }
 
