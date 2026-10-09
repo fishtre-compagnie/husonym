@@ -30,10 +30,13 @@ it is placed in a `Report`. The schema has `additionalProperties: false` at each
   time from the start of a run to its end.
 - `errors` holds, per category and step, the runs whose end the instance recorded on the day and
   that did not complete: the same runs as `runs` counts under a status other than `completed`, so
-  the rows of `errors` add up to them. A run counts once. A canceled run counts under `canceled`.
-  A run the instance settled itself, having heard nothing of its end, counts as `timeout` or
-  `other` at the step `other`. The category comes from the type of the error and the code of the
-  database, never from its message.
+  the rows of `errors` add up to them. A run counts once. A canceled run counts under `canceled`,
+  and so does a run recorded as failed that ended on a cancellation it caused itself: the
+  `canceled` errors of a day can exceed its runs of status `canceled`. A run the instance settled
+  itself, having heard nothing of its end, counts as `timeout` or `other` at the step `other`. The
+  category comes from the type of the error and the code of the database, from the kind of a
+  pre-flight finding, from a license refusal of the workflow itself, or from the status of a run
+  that ended without telling one; never from the message of an error.
 - `transformers.system[].columns` is the number of columns a transformer runs on. A column whose
   transformer is a PII text counts under that transformer and under each transformer it hands its
   findings to, so these counts can sum to more than `jobs.columns`.
