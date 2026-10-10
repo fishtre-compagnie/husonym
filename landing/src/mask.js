@@ -1,11 +1,11 @@
 // The page anonymizes itself as you scroll.
 //
-// A field of drifting data fragments sits behind the content. Near the top they are
-// legible personal data drawn in the PII colour; each one carries its own depth
-// threshold, and once the scroll passes that threshold the fragment is redrawn as a
-// solid block in the masked colour. By the bottom of the page the field is entirely
-// masked, and the gutter readout reports the real proportion — it counts fragments,
-// it does not fake a number.
+// A field of drifting data fragments sits behind the content. At the top of the page
+// they are legible personal data drawn in the PII colour. Each one carries its own
+// depth window: as the scroll crosses it, redaction bars in the masked colour cover the
+// fragment one segment after another, until a single bar is left. By the bottom of the
+// page the field is entirely redacted, and the gutter readout reports the real
+// proportion — it counts covered characters, it does not fake a number.
 //
 // The background gradient (mask.css) does the rest, with no JS at all.
 (function () {
@@ -14,11 +14,15 @@
   var ctx = canvas.getContext('2d');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Density curve: nothing before FIELD_START (top of page), then a gentle rise to
-  // the FIELD_MAX ceiling further down.
-  var FIELD_START = 0.16;
-  var FIELD_MAX = 0.5;
-  var opacity = 0;
+  // Density curve: the field is already there at the top of the page, at FIELD_MIN so
+  // the data in the clear can be read, then rises gently to the FIELD_MAX ceiling.
+  var FIELD_MIN = 0.4;
+  var FIELD_MAX = 0.55;
+  var TEXT_ALPHA = 0.75;
+  // Nothing is redacted before REDACT_START, everything is by REDACT_END.
+  var REDACT_START = 0.05;
+  var REDACT_END = 0.94;
+  var opacity = FIELD_MIN;
   var progress = 0;
 
   // Fictional samples, shaped like the data Husonym actually masks.
@@ -54,6 +58,9 @@
   // The readout label is authored in the page (data-mask-label), so this script never
   // needs the content catalogue — same trick as the contact form status messages.
   var probeLabel = (probe && probe.getAttribute('data-mask-label')) || 'PII masked';
+  // Track of the readout, in % of the viewport height: it never leaves the viewport.
+  var PROBE_TOP = 6;
+  var PROBE_TRAVEL = 88;
   var scrollTimer = null;
 
   function markScrolling() {
@@ -85,45 +92,137 @@
 
   function makeBit(y) {
     var text = SAMPLES[Math.floor(Math.random() * SAMPLES.length)];
+    var w = ctx.measureText(text).width;
+    // Own redaction window: the field turns over gradually rather than all at once,
+    // and each fragment takes a stretch of scroll to go from clear to fully covered.
+    var span = 0.2 + Math.random() * 0.25;
+    var from = REDACT_START + Math.random() * (REDACT_END - REDACT_START - span);
     return {
       x: Math.random() * window.innerWidth,
       y: y,
       text: text,
-      w: ctx.measureText(text).width,
+      w: w,
+      cw: w / text.length, // the font is monospace: one cell per character
       vy: 0.12 + Math.random() * 0.38,
       drift: (Math.random() - 0.5) * 0.2,
       a: 0.35 + Math.random() * 0.65,
-      // Own masking threshold: the field turns over gradually rather than all at once.
-      threshold: 0.12 + Math.random() * 0.72,
+      from: from,
+      to: from + span,
+      order: redactionOrder(text),
+      covered: -1, // count the bars were last computed for
+      bars: [],
     };
+  }
+
+  // The order in which the characters of a fragment get covered: one segment (a run
+  // between separators) after another, left to right inside a segment, the segments
+  // themselves shuffled. Separators go last, which is what fuses the bars into one.
+  // Drawn once per fragment, so the bars only ever grow as the scroll advances.
+  function redactionOrder(text) {
+    var segments = [];
+    var separators = [];
+    var current = null;
+    for (var i = 0; i < text.length; i++) {
+      if (/[\s.@_+-]/.test(text.charAt(i))) {
+        separators.push(i);
+        current = null;
+      } else {
+        if (!current) { current = []; segments.push(current); }
+        current.push(i);
+      }
+    }
+    for (var j = segments.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var swap = segments[j]; segments[j] = segments[k]; segments[k] = swap;
+    }
+    return [].concat.apply([], segments).concat(separators);
+  }
+
+  // The bars covering the first `count` characters of the order, as [first cell, cells]
+  // pairs with adjacent cells merged so that a bar has no seam.
+  function redactionBars(b, count) {
+    var hidden = [];
+    for (var i = 0; i < count; i++) hidden[b.order[i]] = true;
+    var bars = [];
+    var start = -1;
+    for (var c = 0; c <= b.text.length; c++) {
+      if (hidden[c]) {
+        if (start < 0) start = c;
+      } else if (start >= 0) {
+        bars.push([start, c - start]);
+        start = -1;
+      }
+    }
+    return bars;
   }
 
   function draw() {
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    // The count runs even when the field is still fully transparent: the readout is
-    // revealed by any scroll, and would otherwise flash an empty pill near the top.
-    var visible = opacity > 0.001;
-    var maskedCount = 0;
+    var coveredChars = 0;
+    var totalChars = 0;
     for (var i = 0; i < bits.length; i++) {
       var b = bits[i];
-      if (progress >= b.threshold) {
-        maskedCount++;
-        if (visible) {
-          ctx.fillStyle = rgba(maskedRgb, b.a * opacity * 0.55);
-          ctx.fillRect(b.x, b.y - 5, b.w, 10);
-        }
-      } else if (visible) {
-        ctx.fillStyle = rgba(piiRgb, b.a * opacity);
+      var len = b.text.length;
+      var ratio = Math.min(1, Math.max(0, (progress - b.from) / (b.to - b.from)));
+      var count = Math.round(ratio * len);
+      if (count !== b.covered) {
+        b.covered = count;
+        b.bars = redactionBars(b, count);
+      }
+      coveredChars += count;
+      totalChars += len;
+      if (count < len) {
+        // Not scaled by the field opacity, unlike the bars: the canvas already is, and
+        // the data in the clear has to stay readable at the top of the page.
+        ctx.fillStyle = rgba(piiRgb, b.a * TEXT_ALPHA);
         ctx.fillText(b.text, b.x, b.y);
       }
+      ctx.fillStyle = rgba(maskedRgb, b.a * opacity * 0.55);
+      for (var j = 0; j < b.bars.length; j++) {
+        var x = b.x + b.bars[j][0] * b.cw;
+        var w = b.bars[j][1] * b.cw;
+        // The bar is translucent: wipe the glyphs under it first, or they show through.
+        ctx.clearRect(x, b.y - 7, w, 14);
+        ctx.fillRect(x, b.y - 5, w, 10);
+      }
     }
-    updateProbe(maskedCount / (bits.length || 1));
+    updateProbe(coveredChars / (totalChars || 1));
   }
 
   function updateProbe(ratio) {
     if (!probe) return;
-    probe.style.top = (6 + progress * 88) + '%'; // keeps the label inside the viewport
+    probe.style.top = (PROBE_TOP + progress * PROBE_TRAVEL) + '%';
     probeVal.textContent = probeLabel + ' · ' + Math.round(ratio * 100) + ' %';
+  }
+
+  // The readout doubles as a scroll handle: dragging it moves the page along the very
+  // track updateProbe() places it on, so it stays under the pointer.
+  function armProbeDrag() {
+    if (!probe) return;
+    var grab = 0; // pointer offset from the centre of the readout, kept during the drag
+
+    function onMove(e) {
+      var at = ((e.clientY - grab) / window.innerHeight * 100 - PROBE_TOP) / PROBE_TRAVEL;
+      // 'instant': html{scroll-behavior:smooth} would otherwise lag behind the pointer.
+      window.scrollTo({ top: Math.min(1, Math.max(0, at)) * scrollMax(), behavior: 'instant' });
+    }
+
+    function onRelease(e) {
+      probe.releasePointerCapture(e.pointerId);
+      probe.removeEventListener('pointermove', onMove);
+      root.classList.remove('is-probe-dragging');
+    }
+
+    probe.addEventListener('pointerdown', function (e) {
+      var box = probe.getBoundingClientRect();
+      grab = e.clientY - (box.top + box.height / 2);
+      probe.setPointerCapture(e.pointerId);
+      probe.addEventListener('pointermove', onMove);
+      root.classList.add('is-probe-dragging');
+      e.preventDefault(); // no text selection while dragging
+    });
+    probe.addEventListener('pointerup', onRelease);
+    probe.addEventListener('pointercancel', onRelease);
   }
 
   function step() {
@@ -144,19 +243,25 @@
 
   function loop() { step(); draw(); requestAnimationFrame(loop); }
 
+  // body{overflow-x:hidden} makes <body> the scrolling element rather than <html>,
+  // so read scrollingElement — documentElement would report no progress at all.
+  function scrollingElement() {
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function scrollMax() {
+    return scrollingElement().scrollHeight - window.innerHeight;
+  }
+
   function scrollProgress() {
-    // body{overflow-x:hidden} makes <body> the scrolling element rather than <html>,
-    // so read scrollingElement — documentElement would report no progress at all.
-    var se = document.scrollingElement || document.documentElement;
-    var max = se.scrollHeight - window.innerHeight;
-    var top = window.scrollY || se.scrollTop || 0;
+    var max = scrollMax();
+    var top = window.scrollY || scrollingElement().scrollTop || 0;
     return max > 0 ? Math.min(1, Math.max(0, top / max)) : 0;
   }
 
   function onScroll() {
     progress = scrollProgress();
-    var t = Math.max(0, (progress - FIELD_START) / (1 - FIELD_START));
-    opacity = Math.pow(t, 1.4) * FIELD_MAX;
+    opacity = FIELD_MIN + Math.pow(progress, 1.4) * (FIELD_MAX - FIELD_MIN);
     canvas.style.opacity = String(opacity);
     markScrolling();
     if (reduce) draw(); // no animation loop in reduced motion: repaint on scroll only
@@ -165,6 +270,7 @@
   sizeCanvas();
   seedBits();
   onScroll();
+  armProbeDrag();
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', function () { sizeCanvas(); seedBits(); if (reduce) draw(); });
 

@@ -1,8 +1,9 @@
 /* "The page anonymizes itself as you scroll."
 
    Three layers, all optional: a background that deepens with scroll depth (pure CSS),
-   a canvas of drifting data fragments that turn from legible PII into solid blocks
-   (mask.js), and a masking counter in the gutter. Loaded last so it can override the
+   a canvas of drifting data fragments, legible PII at the top, covered by redaction
+   bars segment after segment on the way down (mask.js), and a masking counter in the
+   gutter. Loaded last so it can override the
    solid section backgrounds and let the gradient through.
 
    The whole effect is deliberately isolated in this file plus mask.js: deleting both,
@@ -35,18 +36,19 @@ body{
   .mask-field{transition:none}
 }
 
-/* Masking counter: a discreet readout that only surfaces while scrolling. Anchored in
-   the gutter just outside the content column, and hidden as soon as there is no gutter
-   left for it, so it never overlaps the text on a narrow screen. */
+/* Masking counter: a readout riding along the scrollbar, which it doubles: dragging it
+   scrolls the page (mask.js). Dimmed at rest, lit while scrolling or under the pointer.
+   Hidden as soon as there is no gutter left for it, so it never overlaps the text on a
+   narrow screen. */
 .mask-probe{
-  position:fixed;
-  right:max(.75rem, calc((100vw - var(--container)) / 2 - 6.5rem));
-  top:0;z-index:56;
+  position:fixed;right:.3rem;top:0;z-index:56;
   transform:translateY(-50%);display:flex;align-items:center;gap:.45rem;
-  pointer-events:none;font-family:var(--font-mono);
-  opacity:0;transition:opacity .45s ease;
+  font-family:var(--font-mono);
+  cursor:grab;user-select:none;touch-action:none;
+  opacity:.5;transition:opacity .45s ease;
 }
-html.is-scrolling .mask-probe{opacity:1}
+html.is-scrolling .mask-probe,.mask-probe:hover{opacity:1}
+html.is-probe-dragging,html.is-probe-dragging .mask-probe{cursor:grabbing}
 .mask-probe .tick{width:14px;height:1px;background:rgba(var(--accent-rgb),.5)}
 .mask-probe .val{
   font-size:.7rem;color:var(--accent-strong);

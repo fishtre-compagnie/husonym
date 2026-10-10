@@ -66,6 +66,13 @@ A key missing from both catalogues prints `[build] clé manquante "…"`, leaves
 visible in the output, and fails the build under `--strict`. A key present in French but
 not in the other locale falls back to French and is reported separately.
 
+### No source comment is published
+
+Comment the sources freely: the build removes every comment before inlining — HTML
+ones in `build.mjs`, CSS and JS ones in `scripts/strip-comments.mjs`. Nothing else is
+rewritten (this is not a minifier), and the stripped script is compiled once so that a
+mis-scanned literal fails the build instead of shipping.
+
 ### Editing copy
 
 Edit `content/fr.json` and `content/en.json`. Both must hold exactly the same keys —
@@ -114,9 +121,12 @@ dark surfaces, and `og.png` is composed for the 1200×630 social card.
 
 ## The scroll effect
 
-`src/styles/mask.css` and `src/mask.js` render a field of drifting data fragments that
-start as legible PII and turn into solid blocks as you scroll: the page anonymizes
-itself on the way down, and the gutter readout counts the real proportion.
+`src/styles/mask.css` and `src/mask.js` render a field of drifting data fragments. At
+the top of the page they are legible (fictional) PII; as you scroll, redaction bars
+cover each fragment one segment after another until a single bar is left. The page
+anonymizes itself on the way down, and the readout riding along the scrollbar counts the
+real proportion of covered characters. That readout is also a handle: dragging it
+scrolls the page.
 
 Both files are self-contained. Deleting them, their two entries in the `PAGE_STYLES` /
 `PAGE_SCRIPTS` lists, and the `.mask-field` / `.mask-probe` elements in `page.html`
