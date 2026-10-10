@@ -18,6 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { stripCssComments, stripJsComments } from './strip-comments.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
@@ -114,8 +116,8 @@ function resolveIncludes(html) {
 }
 
 // Strips HTML comments from the markup. Applied to the shell AFTER includes are
-// resolved but BEFORE {{__styles__}} and {{__script__}} are substituted, so CSS and JS
-// comments survive untouched — only the markup ones go.
+// resolved but BEFORE {{__styles__}} and {{__script__}} are substituted: the inlined
+// CSS and JS have their own comment syntax and are stripped by strip-comments.mjs.
 //
 // This is not about saving bytes. Source comments explain the machinery to whoever
 // views the page source, and at least one of them gives away the contact form's
@@ -124,12 +126,13 @@ function stripHtmlComments(html) {
   return html.replace(/<!--[\s\S]*?-->\n?/g, '');
 }
 
+// Same reason for the two below: no source comment reaches the published page.
 function concatStyles(names) {
-  return names.map((n) => readSrc(path.join('styles', `${n}.css`)).trimEnd()).join('\n\n');
+  return stripCssComments(names.map((n) => readSrc(path.join('styles', `${n}.css`))).join('\n'));
 }
 
 function concatScripts(names) {
-  return names.map((n) => readSrc(`${n}.js`).trimEnd()).join('\n\n');
+  return stripJsComments(names.map((n) => readSrc(`${n}.js`)).join('\n'));
 }
 
 // Single quotes are escaped too: catalogue values also land inside attributes
