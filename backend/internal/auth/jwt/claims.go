@@ -2,6 +2,7 @@ package auth_jwt
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
@@ -30,6 +31,51 @@ type CustomClaims struct {
 	Email         *string           `json:"email,omitempty"`
 	EmailVerified utils.LenientBool `json:"email_verified,omitempty"`
 	Picture       string            `json:"picture,omitempty"`
+
+	// EmailDomainOwnerVerified is Entra's xms_edov optional claim: the domain of the address
+	// belongs to the tenant, which is what Entra says in place of email_verified, a claim it
+	// never emits. Absent everywhere else.
+	EmailDomainOwnerVerified entraFlag `json:"xms_edov,omitempty"`
+}
+
+// entraFlag reads the boolean Entra writes in its own claims, which comes as true, "true",
+// 1 or "1" depending on the token. Anything else is false, and never an error: the validator
+// rejects the whole token on one, and a sign-in must not hang on the shape of a claim.
+//
+// It is not utils.LenientBool on purpose: that one reads email_verified, and "1" there is
+// not a statement of a provider that means it.
+type entraFlag bool
+
+func (f *entraFlag) UnmarshalJSON(data []byte) error {
+	*f = false
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case bool:
+		*f = entraFlag(v)
+	case float64:
+		*f = entraFlag(v == 1)
+	case string:
+		*f = entraFlag(v == "1" || strings.EqualFold(v, "true"))
+	}
+	return nil
+}
+
+// IsEmailVerified reports whether the provider vouches for the address of the token: the
+// standard email_verified claim, or, for Entra, the ownership of the domain of the address by
+// the tenant (xms_edov).
+//
+// The address has to be there: a statement about an address nobody gave is not one. And it
+// vouches for the address, never for the person -- identity stays the pair (issuer, subject).
+// Entra tells nothing about an address it does not own the domain of, which is what keeps out
+// the guests of other organizations.
+func (c *CustomClaims) IsEmailVerified() bool {
+	if !c.HasProfileClaims() {
+		return false
+	}
+	return bool(c.EmailVerified) || bool(c.EmailDomainOwnerVerified)
 }
 
 // Validate does nothing for this example, but we need

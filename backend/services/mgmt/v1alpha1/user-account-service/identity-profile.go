@@ -72,7 +72,7 @@ func (s *Service) resolveIdentityProfile(
 		return &authmgmt.User{
 			Name:          claims.Name,
 			Email:         *claims.Email,
-			EmailVerified: bool(claims.EmailVerified),
+			EmailVerified: claims.IsEmailVerified(),
 			Picture:       claims.Picture,
 		}
 	}
