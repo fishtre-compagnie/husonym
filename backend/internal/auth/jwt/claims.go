@@ -17,7 +17,7 @@ import (
 //
 // The validator unmarshals the whole token payload into this struct and rejects the token
 // on any error, so every field added here has to read whatever a provider may write.
-// That is what utils.LenientBool is for.
+// That is what utils.LenientBool and entraFlag are for.
 type CustomClaims struct {
 	Scope       string   `json:"scope"`
 	Permissions []string `json:"permissions,omitempty"`
@@ -67,10 +67,15 @@ func (f *entraFlag) UnmarshalJSON(data []byte) error {
 // standard email_verified claim, or, for Entra, the ownership of the domain of the address by
 // the tenant (xms_edov).
 //
-// The address has to be there: a statement about an address nobody gave is not one. And it
-// vouches for the address, never for the person -- identity stays the pair (issuer, subject).
-// Entra tells nothing about an address it does not own the domain of, which is what keeps out
-// the guests of other organizations.
+// The address has to be in the token: a statement about an address nobody gave is not one, and
+// Entra only returns xms_edov next to email, which its application therefore has to ask for as
+// well. Without it the profile comes from the userinfo endpoint, which says nothing of the kind.
+//
+// It vouches for the address, never for the person -- identity stays the pair (issuer,
+// subject), and an invitation is only accepted from the issuer it was made under. Entra
+// tells nothing about an address whose domain the tenant does not own, which keeps out the
+// guests of other organizations. Whoever administers the tenant, or its directory
+// synchronisation, can still write an address of a verified domain: that trust is the tenant's.
 func (c *CustomClaims) IsEmailVerified() bool {
 	if !c.HasProfileClaims() {
 		return false

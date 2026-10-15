@@ -123,6 +123,10 @@ func Test_CustomClaims_IsEmailVerified(t *testing.T) {
 		{"a statement without an address", `{"xms_edov":1}`, false},
 		{"an empty address", `{"email":"","xms_edov":1}`, false},
 		{"entra, in a shape nobody wrote", `{"email":"ada@example.com","xms_edov":{"value":1}}`, false},
+		{"entra, null", `{"email":"ada@example.com","xms_edov":null}`, false},
+		{"entra, empty string", `{"email":"ada@example.com","xms_edov":""}`, false},
+		{"entra, in upper case", `{"email":"ada@example.com","xms_edov":"TRUE"}`, true},
+		{"entra, a number that is not 1", `{"email":"ada@example.com","xms_edov":1.5}`, false},
 		{"1 is not email_verified", `{"email":"ada@example.com","email_verified":"1"}`, false},
 	}
 	for _, c := range cases {

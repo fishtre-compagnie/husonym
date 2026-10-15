@@ -560,7 +560,9 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 		} else if err != nil && IsNoRows(err) {
 			return husonymerrors.NewBadRequest("invalid invite. unable to accept invite")
 		}
-		if invite.Email != userEmail {
+		// The case of an address is the case its owner or its directory wrote: Entra gives
+		// Jean.Dupont@example.com for an invitation sent to jean.dupont@example.com.
+		if !strings.EqualFold(invite.Email, userEmail) {
 			return husonymerrors.NewBadRequest("invalid invite email. unable to accept invite")
 		}
 		if err := invitationAcceptableFrom(invite.ProviderIss, identity); err != nil {

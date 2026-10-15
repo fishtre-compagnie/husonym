@@ -1,6 +1,7 @@
 package v1alpha1_useraccountservice
 
 import (
+	"context"
 	"testing"
 
 	authjwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
@@ -142,4 +143,29 @@ func Test_isDeploymentIssuerOrLegacy(t *testing.T) {
 		require.False(t, none.isDeploymentIssuerOrLegacy("https://account.example.com/"))
 		require.True(t, none.isDeploymentIssuerOrLegacy(""))
 	})
+}
+
+// The profile of a token that carries an address is read from its claims, with no second
+// request. What it says of the address being verified is what an invitation is accepted on.
+func Test_resolveIdentityProfile_fromClaims(t *testing.T) {
+	address := "ada@example.com"
+	s := &Service{}
+
+	cases := []struct {
+		name   string
+		claims *authjwt.CustomClaims
+		want   bool
+	}{
+		{"the provider vouches through email_verified", &authjwt.CustomClaims{Email: &address, EmailVerified: true}, true},
+		{"the tenant owns the domain (Entra)", &authjwt.CustomClaims{Email: &address, EmailDomainOwnerVerified: true}, true},
+		{"nothing vouches for the address", &authjwt.CustomClaims{Email: &address}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			profile := s.resolveIdentityProfile(context.Background(), &authjwt.TokenContextData{Claims: c.claims})
+			require.NotNil(t, profile)
+			require.Equal(t, address, profile.Email)
+			require.Equal(t, c.want, profile.EmailVerified)
+		})
+	}
 }
