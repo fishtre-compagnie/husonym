@@ -653,6 +653,30 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 		requireNoErrResp(t, accountId, err)
 	})
 
+	t.Run("accept invite when the address differs by case only", func(t *testing.T) {
+		invite, err := s.db.CreateTeamAccountInvite(
+			s.ctx,
+			account.ID,
+			user.ID,
+			"jean.dupont@example.com",
+			getFutureTs(t, 24*time.Hour),
+			dbViewerRole,
+			testIssuer,
+		)
+		requireNoErrResp(t, invite, err)
+
+		userCase := s.setUser(t, s.ctx, "jean-dupont")
+
+		accountId, err := s.db.ValidateInviteAddUserToAccount(
+			s.ctx,
+			userCase.ID,
+			invite.Token,
+			"Jean.Dupont@example.com",
+			testIdentity(""),
+		)
+		requireNoErrResp(t, accountId, err)
+	})
+
 	t.Run("expired invite", func(t *testing.T) {
 		invite, err := s.db.CreateTeamAccountInvite(
 			s.ctx,

@@ -2,6 +2,7 @@ package auth_jwt
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
@@ -16,7 +17,7 @@ import (
 //
 // The validator unmarshals the whole token payload into this struct and rejects the token
 // on any error, so every field added here has to read whatever a provider may write.
-// That is what utils.LenientBool is for.
+// That is what utils.LenientBool and entraFlag are for.
 type CustomClaims struct {
 	Scope       string   `json:"scope"`
 	Permissions []string `json:"permissions,omitempty"`
@@ -30,6 +31,56 @@ type CustomClaims struct {
 	Email         *string           `json:"email,omitempty"`
 	EmailVerified utils.LenientBool `json:"email_verified,omitempty"`
 	Picture       string            `json:"picture,omitempty"`
+
+	// EmailDomainOwnerVerified is Entra's xms_edov optional claim: the domain of the address
+	// belongs to the tenant, which is what Entra says in place of email_verified, a claim it
+	// never emits. Absent everywhere else.
+	EmailDomainOwnerVerified entraFlag `json:"xms_edov,omitempty"`
+}
+
+// entraFlag reads the boolean Entra writes in its own claims, which comes as true, "true",
+// 1 or "1" depending on the token. Anything else is false, and never an error: the validator
+// rejects the whole token on one, and a sign-in must not hang on the shape of a claim.
+//
+// It is not utils.LenientBool on purpose: that one reads email_verified, and "1" there is
+// not a statement of a provider that means it.
+type entraFlag bool
+
+func (f *entraFlag) UnmarshalJSON(data []byte) error {
+	*f = false
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case bool:
+		*f = entraFlag(v)
+	case float64:
+		*f = entraFlag(v == 1)
+	case string:
+		*f = entraFlag(v == "1" || strings.EqualFold(v, "true"))
+	}
+	return nil
+}
+
+// IsEmailVerified reports whether the provider vouches for the address of the token: the
+// standard email_verified claim, or, for Entra, the ownership of the domain of the address by
+// the tenant (xms_edov).
+//
+// The address has to be in the token: a statement about an address nobody gave is not one, and
+// Entra only returns xms_edov next to email, which its application therefore has to ask for as
+// well. Without it the profile comes from the userinfo endpoint, which says nothing of the kind.
+//
+// It vouches for the address, never for the person -- identity stays the pair (issuer,
+// subject), and an invitation is only accepted from the issuer it was made under. Entra
+// tells nothing about an address whose domain the tenant does not own, which keeps out the
+// guests of other organizations. Whoever administers the tenant, or its directory
+// synchronisation, can still write an address of a verified domain: that trust is the tenant's.
+func (c *CustomClaims) IsEmailVerified() bool {
+	if !c.HasProfileClaims() {
+		return false
+	}
+	return bool(c.EmailVerified) || bool(c.EmailDomainOwnerVerified)
 }
 
 // Validate does nothing for this example, but we need

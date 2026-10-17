@@ -103,3 +103,42 @@ func Test_TokenContextData_Identity(t *testing.T) {
 	require.Equal(t, "https://idp.example.com/", issuer)
 	require.Equal(t, "sub-1", subject)
 }
+
+// Entra never emits email_verified. It says instead, in an optional claim, that the tenant owns
+// the domain of the address: that is what an invitation may be accepted on there.
+func Test_CustomClaims_IsEmailVerified(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+		want    bool
+	}{
+		{"the standard claim", `{"email":"ada@example.com","email_verified":true}`, true},
+		{"the standard claim as a string", `{"email":"ada@example.com","email_verified":"true"}`, true},
+		{"entra, as a number", `{"email":"ada@example.com","xms_edov":1}`, true},
+		{"entra, as a string", `{"email":"ada@example.com","xms_edov":"1"}`, true},
+		{"entra, as a boolean", `{"email":"ada@example.com","xms_edov":true}`, true},
+		{"entra says the domain is not verified", `{"email":"ada@example.com","xms_edov":0}`, false},
+		{"entra, as a false string", `{"email":"ada@example.com","xms_edov":"0"}`, false},
+		{"no statement at all", `{"email":"ada@example.com"}`, false},
+		{"a statement without an address", `{"xms_edov":1}`, false},
+		{"an empty address", `{"email":"","xms_edov":1}`, false},
+		{"entra, in a shape nobody wrote", `{"email":"ada@example.com","xms_edov":{"value":1}}`, false},
+		{"entra, null", `{"email":"ada@example.com","xms_edov":null}`, false},
+		{"entra, empty string", `{"email":"ada@example.com","xms_edov":""}`, false},
+		{"entra, in upper case", `{"email":"ada@example.com","xms_edov":"TRUE"}`, true},
+		{"entra, a number that is not 1", `{"email":"ada@example.com","xms_edov":1.5}`, false},
+		{"1 is not email_verified", `{"email":"ada@example.com","email_verified":"1"}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var claims CustomClaims
+			require.NoError(t, json.Unmarshal([]byte(c.payload), &claims))
+			require.Equal(t, c.want, claims.IsEmailVerified())
+		})
+	}
+
+	t.Run("a nil claims value vouches for nothing", func(t *testing.T) {
+		var claims *CustomClaims
+		require.False(t, claims.IsEmailVerified())
+	})
+}
