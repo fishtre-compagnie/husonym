@@ -110,9 +110,10 @@ Tagging is therefore outward-facing: the version you tag is the one customers pi
 
 ### Release signing
 
-The CLI release is signed: GoReleaser signs `checksums.txt`, so a user can verify a
-download came from us. See [Installing the CLI](./docs/docs/cli/installing.md) for the
-verification steps we ask of them.
+The CLI release is signed: GoReleaser signs the `husonym_<version>_SHA256SUMS` file, so a
+user can verify a download came from us. See
+[Installing the CLI](./docs/docs/cli/installing.md) for the verification steps we ask of
+them.
 
 Two halves have to stay in sync, and this is the part that is easy to get wrong:
 
