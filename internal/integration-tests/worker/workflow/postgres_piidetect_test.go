@@ -150,9 +150,10 @@ func test_postgres_pii_detect(
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestWorkflowEnvironment()
 	config := &piidetect.Config{}
+	conndataclient := husonymApi.OSSUnauthenticatedLicensedClients.ConnectionData()
 	piidetect.Register(
 		env, license,
-		piidetect.NewActivities(jobclient, connclient, data, nil, classifier, config),
+		piidetect.NewActivities(jobclient, connclient, conndataclient, data, nil, classifier, config),
 		runusage.New(husonymApi.OSSUnauthenticatedLicensedClients.Usage()),
 		config,
 	)
@@ -203,10 +204,13 @@ func test_postgres_pii_detect(
 	var tableReport piidetect_report.TableReport
 	require.NoError(t, json.Unmarshal(stored.Msg.GetValue(), &tableReport))
 	require.Equal(t, []string{"id", "courriel", "c17", "note", "photo", "created_at"}, tableReport.ScannedColumns)
+	// "note" is free text the rules found nothing in: the API is asked to analyze its
+	// content, and has no analyzer here.
 	require.Equal(t, &piidetect_report.Scan{
 		SampledRows: 4, Input: piidetect_report.InputValues, Model: "local-model",
-		ModelStatus: piidetect_report.ModelAnswered,
-		Sources:     []string{piidetect_report.SourceRules, piidetect_report.SourceModel},
+		ModelStatus:    piidetect_report.ModelAnswered,
+		Sources:        []string{piidetect_report.SourceRules, piidetect_report.SourceModel},
+		AnalyzerStatus: piidetect_report.AnalyzerNone,
 	}, tableReport.Scan)
 	for _, column := range tableReport.ColumnReports {
 		if column.ColumnName == "c17" {

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math"
 	"net/http"
 	"strings"
 
@@ -32,6 +33,18 @@ func AllElementsEqual[T comparable](slice []T, value T) bool {
 		}
 	}
 	return true
+}
+
+// ClampUint32 brings a count within the bounds of a uint32: a negative count is 0 and a
+// count above the type's maximum is that maximum.
+func ClampUint32(n int) uint32 {
+	if n < 0 {
+		return 0
+	}
+	if int64(n) > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(n)
 }
 
 func AnyElementEqual[T comparable](slice []T, value T) bool {

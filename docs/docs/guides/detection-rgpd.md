@@ -214,6 +214,17 @@ Deux ajustements maison :
   construire et aucun pour tourner ; elle est un peu plus lourde et plus lente
   que l'image officielle, surtout sur un texte pauvre en espaces (voir son
   `README.md` pour les poids et les durées mesurés).
+- **Texte libre en français.** Une colonne de phrases (en moyenne trois mots ou plus
+  par valeur) où aucune entité ne couvre un tiers des valeurs est tout de même signalée,
+  à relire, dès que l'IA désigne une **personne** dans au moins deux valeurs
+  échantillonnées. Les lieux, les numéros, les références et les sociétés cités dans les
+  phrases ne comptent pas. La catégorie est `free_text_pii` et le transformer
+  `TransformPiiText` est suggéré. La règle n'est appliquée que dans une langue où elle a
+  été mesurée, aujourd'hui le français : sur des textes métier inventés, elle signale
+  0 colonne sans personne sur 6, sur deux jeux, et trouve les 6 colonnes qui en
+  contiennent. En anglais, le moteur prend des villes, des sociétés et des références pour
+  des personnes (3 colonnes sans personne sur 6) : la règle n'y est pas appliquée. Une
+  langue rejoint la liste avec sa propre mesure.
 - **Affinage local.** Presidio dit `PERSON` pour un prénom, un nom ou un nom complet
   indifféremment, et `LOCATION` pour une ville comme pour une adresse. Husonym
   tranche ensuite sur la forme des valeurs : plusieurs mots → nom complet ; numéro en
@@ -339,6 +350,12 @@ python3 scripts/testdata/bench-presidio.py
 
 - **Texte libre multi-PII** — une colonne de commentaires contenant à la fois un nom
   et un téléphone ne remonte qu'une seule catégorie, la plus fréquente.
+- **Texte libre et règle du tiers** — la règle du tiers passe avant celle des
+  personnes. Une colonne de notes où une phrase sur trois cite un lieu ou un numéro est
+  signalée sous cette entité (« ville », « téléphone ») et se voit suggérer le
+  générateur de cette entité, qui remplacerait les phrases ; elle est à relire. Les
+  valeurs sont lues sur leurs 200 premiers caractères : une personne nommée plus loin
+  n'est pas vue.
 - **Personnes, ce que l'IA rate ou désigne à tort** — sur des textes métier inventés
   (12 colonnes de 50 valeurs par jeu, valeurs coupées à 200 caractères, seuil 0,35),
   et sur un jeu français qui n'a pas servi à régler l'image, celle-ci a désigné

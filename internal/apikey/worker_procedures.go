@@ -16,6 +16,8 @@ var WorkerProcedures = []string{
 	mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
 	mgmtv1alpha1connect.ConnectionDataServiceGetConnectionInitStatementsProcedure,
 	mgmtv1alpha1connect.ConnectionDataServiceGetConnectionDataStreamProcedure,
+	// The PII detection job asks the API to analyze the content of the free-text columns of a table.
+	mgmtv1alpha1connect.ConnectionDataServiceDetectPiiInConnectionDataProcedure,
 	mgmtv1alpha1connect.TransformersServiceGetUserDefinedTransformerByIdProcedure,
 	mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
 	mgmtv1alpha1connect.UserAccountServiceGetBillingAccountsProcedure,

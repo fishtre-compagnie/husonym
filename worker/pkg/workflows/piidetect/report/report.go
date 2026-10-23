@@ -21,6 +21,16 @@ const (
 const (
 	SourceRules = "rules"
 	SourceModel = "model"
+	// SourceAnalyzer is the analysis of the values of a column by the content analyzer.
+	SourceAnalyzer = "analyzer"
+)
+
+// What became of the analyzer step of a table, as stored in Scan.AnalyzerStatus.
+const (
+	AnalyzerAnswered = "answered" // every column was analyzed
+	AnalyzerPartial  = "partial"  // some columns were not analyzed
+	AnalyzerFailed   = "failed"   // the analyzer could not be asked
+	AnalyzerNone     = "none"     // no analyzer is configured
 )
 
 // What became of the model step of a table, as stored in Scan.ModelStatus.
@@ -46,8 +56,8 @@ type TableEntry struct {
 	TableName       string                      `json:"tableName"`
 	ReportKey       *mgmtv1alpha1.RunContextKey `json:"reportKey"`
 	ScanFingerprint string                      `json:"scanFingerprint"`
-	// Incomplete says that the model could not be asked about the table: its report holds
-	// the findings of the rules only.
+	// Incomplete says that the model or the analyzer could not be asked about the table:
+	// its report holds the findings of the other detections only.
 	Incomplete bool `json:"incomplete,omitempty"`
 }
 
@@ -71,11 +81,13 @@ type ColumnReport struct {
 	Report     Combined `json:"report"`
 }
 
-// Combined holds what each of the two detections found for a column, side by side. They
-// are not merged into one verdict.
+// Combined holds what each detection found for a column, side by side. They are not
+// merged into one verdict.
 type Combined struct {
 	Regex *RuleFinding  `json:"regex"`
 	LLM   *ModelFinding `json:"llm"`
+	// Analyzer is what the content analyzer found in the values of the column.
+	Analyzer *AnalyzerFinding `json:"analyzer,omitempty"`
 }
 
 type RuleFinding struct {
@@ -107,6 +119,22 @@ type Scan struct {
 	// that rests on the rules alone finds no personal data under a neutral column name
 	// unless the values have a format the rules check.
 	Sources []string `json:"sources,omitempty"`
+	// AnalyzerStatus is what became of the analyzer step: one of the Analyzer constants.
+	// Empty when the table was scanned without a step for the analyzer.
+	AnalyzerStatus string `json:"analyzer_status,omitempty"`
+	// NotAnalyzed are the columns the analyzer did not analyze.
+	NotAnalyzed []string `json:"not_analyzed,omitempty"`
+}
+
+// AnalyzerFinding is what the content analyzer found in the sampled values of a column.
+type AnalyzerFinding struct {
+	Category Category `json:"category"`
+	// Entity is the kind of entity the analyzer recognized most in the values.
+	Entity string `json:"entity,omitempty"`
+	// Matches is the number of sampled values in which the entity was found.
+	Matches int `json:"matches"`
+	// Sampled is the number of values the analyzer was given.
+	Sampled int `json:"sampled"`
 }
 
 type Dismissed struct {

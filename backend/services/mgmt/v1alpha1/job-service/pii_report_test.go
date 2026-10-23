@@ -3,6 +3,7 @@ package v1alpha1_jobservice
 import (
 	"errors"
 	"log/slog"
+	"math"
 	"testing"
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -70,6 +71,34 @@ func Test_PiiDetectionReport_ReadsAStoredTableReport(t *testing.T) {
 			require.InDelta(t, 7, columns[2].GetLlmReport().GetConfidence(), 1e-6)
 		})
 	}
+}
+
+// What the content analyzer found in a column is returned with the counts it rests on, also
+// for a column the rules and the model found nothing in.
+func Test_PiiDetectionReport_ReturnsWhatTheAnalyzerFound(t *testing.T) {
+	reports, err := getReportsFromTableContexts([]*db_queries.HusonymApiRuncontext{{Value: []byte(`{
+		"table_schema": "public", "table_name": "notes",
+		"column_reports": [
+			{"column_name": "body", "report": {"regex": null, "llm": null,
+				"analyzer": {"category": "contact", "entity": "EMAIL_ADDRESS", "matches": 12, "sampled": 50}}},
+			{"column_name": "odd", "report": {"regex": null, "llm": null,
+				"analyzer": {"category": "contact", "matches": -3, "sampled": 5000000000}}}
+		]
+	}`)}})
+	require.NoError(t, err)
+	columns := getTableReportDtos(reports)[0].GetColumns()
+	require.Len(t, columns, 2)
+
+	require.Equal(t, "body", columns[0].GetColumn())
+	require.Nil(t, columns[0].GetRegexReport())
+	require.Nil(t, columns[0].GetLlmReport())
+	require.Equal(t, "contact", columns[0].GetAnalyzerReport().GetCategory())
+	require.EqualValues(t, 12, columns[0].GetAnalyzerReport().GetMatchCount())
+	require.EqualValues(t, 50, columns[0].GetAnalyzerReport().GetSampledCount())
+
+	// A count outside the range of the field is clamped to it.
+	require.EqualValues(t, 0, columns[1].GetAnalyzerReport().GetMatchCount())
+	require.EqualValues(t, math.MaxUint32, columns[1].GetAnalyzerReport().GetSampledCount())
 }
 
 func Test_PiiDetectionReport_ATableInWhichNothingWasFound(t *testing.T) {

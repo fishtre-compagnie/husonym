@@ -18,9 +18,9 @@ const (
 	sampledRows = 200
 	// samplingTimeout bounds the reading of those rows.
 	samplingTimeout = 30 * time.Second
-	// heartbeatEvery is how often the model activity says that it is alive. The workflow
-	// gives it minutes between two heartbeats: several fit, so that one that is late
-	// does not end the attempt.
+	// heartbeatEvery is how often the model activity and the content activity say that
+	// they are alive. The workflow gives them minutes between two heartbeats: several
+	// fit, so that one that is late does not end the attempt.
 	heartbeatEvery = 30 * time.Second
 )
 
@@ -58,10 +58,20 @@ type ConnectionAPI interface {
 	) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error)
 }
 
-// Activities are the eight activities of the two workflows.
+// ContentAPI is what the activities call on the connection data service of the API.
+// mgmtv1alpha1connect.ConnectionDataServiceClient is one.
+type ContentAPI interface {
+	DetectPiiInConnectionData(
+		context.Context,
+		*connect.Request[mgmtv1alpha1.DetectPiiInConnectionDataRequest],
+	) (*connect.Response[mgmtv1alpha1.DetectPiiInConnectionDataResponse], error)
+}
+
+// Activities are the nine activities of the package, which the two workflows run.
 type Activities struct {
 	jobs        JobAPI
 	connections ConnectionAPI
+	content     ContentAPI
 	data        connectiondata.ConnectionDataBuilder
 	schedules   client.ScheduleClient
 	// classifier asks the model; nil when no model is configured.
@@ -69,7 +79,8 @@ type Activities struct {
 
 	tablesAtOnce    int
 	samplingTimeout time.Duration
-	// The model activity says that it is alive every heartbeatEvery, through heartbeat.
+	// The model activity and the content activity say that they are alive every
+	// heartbeatEvery, through heartbeat.
 	heartbeatEvery time.Duration
 	heartbeat      func(ctx context.Context, details ...any)
 }
@@ -77,6 +88,7 @@ type Activities struct {
 func NewActivities(
 	jobs JobAPI,
 	connections ConnectionAPI,
+	content ContentAPI,
 	data connectiondata.ConnectionDataBuilder,
 	schedules client.ScheduleClient,
 	classifier *model.Classifier,
@@ -90,6 +102,7 @@ func NewActivities(
 	return &Activities{
 		jobs:            jobs,
 		connections:     connections,
+		content:         content,
 		data:            data,
 		schedules:       schedules,
 		classifier:      classifier,

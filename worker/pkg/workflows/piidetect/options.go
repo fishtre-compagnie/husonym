@@ -93,6 +93,23 @@ func modelOptions(sendsValues bool) workflow.ActivityOptions {
 	return options
 }
 
+// The content activity is long too: a call to the API per 20 columns, for each of which
+// the API reads 50 values and has them analyzed one by one. It reports that it is alive
+// every 30 seconds, while a call is answered and between two calls; that report is also
+// how a cancellation reaches it. Another attempt asks every column again.
+func contentOptions() workflow.ActivityOptions {
+	return workflow.ActivityOptions{
+		StartToCloseTimeout: 30 * time.Minute,
+		HeartbeatTimeout:    3 * time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    5 * time.Second,
+			BackoffCoefficient: 2,
+			MaximumAttempts:    3,
+		},
+		Summary: "Asks the API to analyze the content of the free-text columns of the table",
+	}
+}
+
 // The run of a table is attempted once, on the task queue of the job run, and ends with
 // it.
 func tableChildOptions(id string) workflow.ChildWorkflowOptions {
