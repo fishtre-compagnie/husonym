@@ -11,7 +11,6 @@ import (
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	mysqldriver "github.com/go-sql-driver/mysql"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -181,7 +180,6 @@ func Test_BuildTableCol_MysqlAttributes(t *testing.T) {
 // The table of a job is created from what SHOW CREATE TABLE gives of it, without its foreign
 // keys, which are added by the statements built from the catalog.
 func Test_GetTableInitStatements_FromShowCreateTable(t *testing.T) {
-	querier := mysql_queries.NewMockQuerier(t)
 	columns := []*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{}
 	for _, name := range []string{"id", "a", "b", "c", "d", "p_id"} {
 		columns = append(columns, &mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
@@ -189,12 +187,7 @@ func Test_GetTableInitStatements_FromShowCreateTable(t *testing.T) {
 			ColumnDefault: []uint8(""), GenerationExp: []uint8(""),
 		})
 	}
-	querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-		Return(columns, nil)
-	querier.EXPECT().GetTableConstraints(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetTableConstraintsRow{}, nil)
-	querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetIndicesBySchemasAndTablesRow{}, nil)
+	querier := newStubQuerier(t, columns, false)
 
 	db, sqlMock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -240,17 +233,11 @@ func Test_GetTableInitStatements_FromTheCatalog(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			querier := mysql_queries.NewMockQuerier(t)
-			querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-				Return([]*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
-					SchemaName: "db", TableName: "t", ColumnName: "a", DataType: "varchar(5)",
-					ColumnDefault: []uint8(""), GenerationExp: []uint8(""),
-					IdentityGeneration: sql.NullString{Valid: true},
-				}}, nil)
-			querier.EXPECT().GetTableConstraints(mock.Anything, mock.Anything, mock.Anything).
-				Return([]*mysql_queries.GetTableConstraintsRow{}, nil)
-			querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-				Return([]*mysql_queries.GetIndicesBySchemasAndTablesRow{}, nil)
+			querier := newStubQuerier(t, []*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
+				SchemaName: "db", TableName: "t", ColumnName: "a", DataType: "varchar(5)",
+				ColumnDefault: []uint8(""), GenerationExp: []uint8(""),
+				IdentityGeneration: sql.NullString{Valid: true},
+			}}, false)
 			db, sqlMock, err := sqlmock.New()
 			require.NoError(t, err)
 			defer db.Close()
@@ -364,16 +351,10 @@ func Test_WithImplicitRowFormat(t *testing.T) {
 // DYNAMIC, is created COMPACT on the destination.
 func Test_GetTableInitStatements_ImplicitRowFormat(t *testing.T) {
 	const shown = "CREATE TABLE `t` (\n  `id` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=latin1"
-	querier := mysql_queries.NewMockQuerier(t)
-	querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
-			SchemaName: "db", TableName: "t", ColumnName: "id", DataType: "int",
-			ColumnDefault: []uint8(""), GenerationExp: []uint8(""),
-		}}, nil)
-	querier.EXPECT().GetTableConstraints(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetTableConstraintsRow{}, nil)
-	querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetIndicesBySchemasAndTablesRow{}, nil)
+	querier := newStubQuerier(t, []*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
+		SchemaName: "db", TableName: "t", ColumnName: "id", DataType: "int",
+		ColumnDefault: []uint8(""), GenerationExp: []uint8(""),
+	}}, false)
 
 	db, sqlMock, err := sqlmock.New()
 	require.NoError(t, err)

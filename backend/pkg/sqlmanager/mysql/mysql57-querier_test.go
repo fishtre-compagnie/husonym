@@ -116,7 +116,6 @@ func Test_NormalizeMysql57Default(t *testing.T) {
 // CURRENT_TIMESTAMP bare, a zero date quoted, whether or not the column is updated on
 // CURRENT_TIMESTAMP.
 func Test_GetTableInitStatements_Mysql57Defaults(t *testing.T) {
-	inner := mysql_queries.NewMockQuerier(t)
 	column := func(name, columnType, columnDefault, extra string, nullable int32) *mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow {
 		return &mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
 			SchemaName: "db", TableName: "t", ColumnName: name, DataType: columnType, ColumnType: columnType,
@@ -124,14 +123,13 @@ func Test_GetTableInitStatements_Mysql57Defaults(t *testing.T) {
 			IdentityGeneration: sql.NullString{String: extra, Valid: true},
 		}
 	}
-	inner.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
-		Return([]*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
-			column("created_at", "timestamp", "CURRENT_TIMESTAMP", "", 0),
-			column("updated_at", "timestamp", "CURRENT_TIMESTAMP", "on update CURRENT_TIMESTAMP", 0),
-			column("precise_at", "datetime(3)", "CURRENT_TIMESTAMP(3)", "", 0),
-			column("legacy_at", "timestamp", "0000-00-00 00:00:00", "on update CURRENT_TIMESTAMP", 0),
-			column("label", "varchar(40)", "CURRENT_TIMESTAMP", "", 1),
-		}, nil)
+	inner := newStubQuerier(t, []*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
+		column("created_at", "timestamp", "CURRENT_TIMESTAMP", "", 0),
+		column("updated_at", "timestamp", "CURRENT_TIMESTAMP", "on update CURRENT_TIMESTAMP", 0),
+		column("precise_at", "datetime(3)", "CURRENT_TIMESTAMP(3)", "", 0),
+		column("legacy_at", "timestamp", "0000-00-00 00:00:00", "on update CURRENT_TIMESTAMP", 0),
+		column("label", "varchar(40)", "CURRENT_TIMESTAMP", "", 1),
+	}, true)
 
 	db, sqlMock, err := sqlmock.New()
 	require.NoError(t, err)

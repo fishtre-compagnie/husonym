@@ -397,9 +397,10 @@ func clientTlsConfig(cfg *mysqlTestContainerConfig, serverHost string) (*tls.Con
 	}
 	if IsMysql57(cfg.image) {
 		tlsConfig.MaxVersion = tls.VersionTLS12
+		// The only suites the 5.7 image and Go share.
 		tlsConfig.CipherSuites = []uint16{
-			tls.TLS_RSA_WITH_AES_128_GCM_SHA256, //nolint:gosec // the only suites the 5.7 image and Go share
-			tls.TLS_RSA_WITH_AES_256_GCM_SHA384, //nolint:gosec // the only suites the 5.7 image and Go share
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 		}
 	}
 	return tlsConfig, nil
