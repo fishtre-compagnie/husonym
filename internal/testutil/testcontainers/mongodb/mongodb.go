@@ -84,7 +84,9 @@ func (m *MongoDBTestContainer) Setup(
 	ctx context.Context,
 	t *testing.T,
 ) (*MongoDBTestContainer, error) {
-	container, err := testmongodb.Run(ctx, "mongo:8.0.32")
+	// MongoDB 8.0 refuses to start on a Linux kernel 6.19 or newer (its TCMalloc breaks the rseq
+	// ABI, SERVER-121912), the kernel of the CI runners: 7.0 is not affected.
+	container, err := testmongodb.Run(ctx, "mongo:7.0.45")
 	if err != nil {
 		return nil, err
 	}
