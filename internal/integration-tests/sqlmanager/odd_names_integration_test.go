@@ -219,8 +219,9 @@ func (f *sampleFixture) oddChecks() []oddCheck {
 		checkRefusingText("text with the capital letters of Latin-1", `'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß'`),
 		checkRefusingText("text with the small letters of Latin-1", `'àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'`),
 	}
-	if f.engine.name != "mariadb" {
-		// The catalog of MariaDB does not hold a character of four bytes.
+	if f.engine.name != "mariadb" && !f.engine.isMysql57() {
+		// The catalogs of MariaDB and of MySQL 5.7 (utf8, of three bytes) do not hold a character
+		// of four bytes.
 		checks = append(checks, checkRefusingText("text with a character of four bytes", `'😀'`))
 	}
 	return checks
@@ -260,6 +261,11 @@ func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 				require.NotEmpty(t, want)
 				require.Equal(t, want, destination.describe(t, []string{database}))
 				destination.requireCanaryIntact(t)
+				if f.engine.isMysql57() {
+					// MySQL 5.7 parses the CHECK clause and ignores it: what is left to check is
+					// that the table and its odd column names reach the destination.
+					return
+				}
 
 				// The constraints of a schema are listed with the same characters.
 				if len(check.holds) > 0 {

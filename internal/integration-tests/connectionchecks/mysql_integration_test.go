@@ -20,14 +20,14 @@ func Test_ConnectionChecks_Mysql(t *testing.T) {
 		return
 	}
 	t.Parallel()
-	for name, image := range map[string]string{"mysql": "", "mariadb": "mariadb:11.4"} {
+	for name, opts := range map[string][]tcmysql.Option{
+		"mysql":   nil,
+		"mariadb": {tcmysql.WithImage("mariadb:11.4")},
+		"mysql57": {tcmysql.WithMysql57()},
+	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			var opts []tcmysql.Option
-			if image != "" {
-				opts = append(opts, tcmysql.WithImage(image))
-			}
 			server, err := tcmysql.NewMysqlTestContainer(ctx, opts...)
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = server.TearDown(ctx) })
@@ -105,10 +105,14 @@ func Test_ConnectionChecks_Mysql(t *testing.T) {
 			require.Len(t, findings, 1)
 			require.Equal(t, connectionchecks.CheckTriggerDefiner, findings[0].Check)
 			require.Empty(t, findings[0].Remedy)
-			// MySQL 8.4 has SET_ANY_DEFINER in place of SET_USER_ID; MariaDB, SET USER.
+			// MySQL 8.4 has SET_ANY_DEFINER in place of SET_USER_ID; MariaDB, SET USER; MySQL
+			// 5.7 has neither, only SUPER.
 			definer := "SET_ANY_DEFINER"
-			if name == "mariadb" {
+			switch name {
+			case "mariadb":
 				definer = "SET USER"
+			case "mysql57":
+				definer = "SUPER"
 			}
 			_, err = admin.ExecContext(ctx, fmt.Sprintf("GRANT %s ON *.* TO 'bare'@'%%'", definer))
 			require.NoError(t, err)

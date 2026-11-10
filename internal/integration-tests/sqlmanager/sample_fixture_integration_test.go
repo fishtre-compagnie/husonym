@@ -34,8 +34,8 @@ const (
 	familyMssql    = "mssql"
 )
 
-// sampleEngine is a database server a sample is drawn from. MariaDB shares the MySQL family:
-// the same tests run against both.
+// sampleEngine is a database server a sample is drawn from. MariaDB and MySQL 5.7 share the
+// MySQL family: the same tests run against all three.
 type sampleEngine struct {
 	name   string
 	family string
@@ -66,8 +66,18 @@ var sampleEngines = []sampleEngine{
 	{name: "mariadb", family: familyMysql, start: func(ctx context.Context) (*sampleFixture, error) {
 		return startMysqlFixture(ctx, tcmysql.WithImage("mariadb:11.4"))
 	}},
+	// MySQL 5.7 configured like the legacy production servers
+	{name: "mysql57", family: familyMysql, start: func(ctx context.Context) (*sampleFixture, error) {
+		return startMysqlFixture(ctx, tcmysql.WithMysql57())
+	}},
 	{name: "mssql", family: familyMssql, start: startMssqlFixture},
 }
+
+// isMysql57 tells whether the engine is MySQL 5.7, which has neither expression defaults
+// (DEFAULT (expr), 8.0.13) nor CHECK constraints (parsed and ignored before 8.0.16, with no
+// information_schema.CHECK_CONSTRAINTS). The destination server of an engine is named after it
+// ("mysql57 destination").
+func (e sampleEngine) isMysql57() bool { return strings.HasPrefix(e.name, "mysql57") }
 
 var (
 	fixturesMu sync.Mutex

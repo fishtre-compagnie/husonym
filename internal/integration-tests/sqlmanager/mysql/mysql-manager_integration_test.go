@@ -14,6 +14,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcmysql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mysql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -22,10 +23,16 @@ type testFlavor struct {
 	name string
 	// container options (e.g. image override); empty uses the default mysql image
 	containerOpts []tcmysql.Option
-	// flavor-specific setup files executed on the source after setup.sql
+	// setup file executed first on the source; empty means setup.sql
+	setupFile string
+	// flavor-specific setup files executed on the source after the setup file
 	extraSetupFiles []string
 	// flavor-specific tables included in the GetTableInitStatements round trip
 	extraInitTables []*sqlmanager_shared.SchemaTable
+	// the server has no expression default (DEFAULT (UUID())): MySQL 5.7
+	noExpressionDefaults bool
+	// flavor-specific checks run on the target after the GetTableInitStatements round trip
+	extraInitChecks func(t *testing.T, source, target *sql.DB, schema string)
 }
 
 func Test_MysqlManager(t *testing.T) {
@@ -47,6 +54,20 @@ func Test_MysqlManager(t *testing.T) {
 		{
 			name:          "mariadb",
 			containerOpts: []tcmysql.Option{tcmysql.WithImage("mariadb:11.4")},
+		},
+		{
+			// MySQL 5.7 configured like the legacy production servers (tcmysql.WithMysql57)
+			name:                 "mysql57",
+			containerOpts:        []tcmysql.Option{tcmysql.WithMysql57()},
+			setupFile:            "setup-mysql57.sql",
+			extraSetupFiles:      []string{"setup-mysql57-legacy.sql"},
+			noExpressionDefaults: true,
+			extraInitTables: []*sqlmanager_shared.SchemaTable{
+				{Schema: "sqlmanagermysql4", Table: "Commande_Statut"},
+				{Schema: "sqlmanagermysql4", Table: "Commande"},
+				{Schema: "sqlmanagermysql4", Table: "Journal_MyISAM"},
+			},
+			extraInitChecks: checkMysql57LegacyTables,
 		},
 	}
 
@@ -72,7 +93,7 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 	target := containers.Target
 	t.Log("Successfully created source and target test containers")
 
-	err = setup(ctx, containers, flavor.extraSetupFiles)
+	err = setup(ctx, containers, flavor.setupFile, flavor.extraSetupFiles)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +449,11 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 		require.Equal(t, "ABC", s1, "string default should round trip")
 		require.False(t, s2.Valid, "DEFAULT NULL should round trip as NULL")
 		require.Equal(t, 42, n1, "numeric default should round trip")
-		require.Len(t, u, 36, "uuid() default should produce a uuid, not a literal string")
+		if flavor.noExpressionDefaults {
+			require.Empty(t, u, "the empty string default should round trip")
+		} else {
+			require.Len(t, u, 36, "uuid() default should produce a uuid, not a literal string")
+		}
 
 		// functional check: index prefix lengths must round trip. A lost prefix is not a
 		// degraded index, it is a statement the target rejects once the key passes 3072
@@ -475,6 +500,10 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 		// onto either of them is rejected outright rather than degraded.
 		require.Contains(t, subParts, "test_prefix_index.sp_prefix_geom.geom", "spatial index missing from the target")
 		require.Contains(t, subParts, "test_prefix_index.ft_prefix_body.body", "fulltext index missing from the target")
+
+		if flavor.extraInitChecks != nil {
+			flavor.extraInitChecks(t, sourceDB, target.DB, schema)
+		}
 	})
 
 	t.Run("Exec", func(t *testing.T) {
@@ -632,13 +661,17 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 func setup(
 	ctx context.Context,
 	containers *tcmysql.MysqlTestSyncContainer,
+	setupFile string,
 	extraSetupFiles []string,
 ) error {
 	baseDir := "testdata"
+	if setupFile == "" {
+		setupFile = "setup.sql"
+	}
 
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
-		files := append([]string{"setup.sql"}, extraSetupFiles...)
+		files := append([]string{setupFile}, extraSetupFiles...)
 		err := containers.Source.RunSqlFiles(errctx, &baseDir, files)
 		if err != nil {
 			return fmt.Errorf("encountered error when executing source setup statement: %w", err)
@@ -670,4 +703,112 @@ func containsSubset[T any](t testing.TB, array, subset []T) {
 
 func buildTable(schema, tableName string) string {
 	return fmt.Sprintf("%s.%s", schema, tableName)
+}
+
+// legacyColumn is a column of the tables of setup-mysql57-legacy.sql as information_schema
+// describes it.
+type legacyColumn struct {
+	Table, Column, Type, Nullable string
+	Default                       sql.NullString
+	Extra                         string
+	CharacterSet                  sql.NullString
+}
+
+func legacyColumns(t *testing.T, db *sql.DB, schema string) []legacyColumn {
+	t.Helper()
+	rows, err := db.QueryContext(context.Background(), `
+		SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, CHARACTER_SET_NAME
+		FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN ('Commande_Statut', 'Commande', 'Journal_MyISAM')
+		ORDER BY TABLE_NAME, ORDINAL_POSITION`, schema)
+	require.NoError(t, err)
+	defer rows.Close()
+	var columns []legacyColumn
+	for rows.Next() {
+		var c legacyColumn
+		require.NoError(t, rows.Scan(&c.Table, &c.Column, &c.Type, &c.Nullable, &c.Default, &c.Extra, &c.CharacterSet))
+		columns = append(columns, c)
+	}
+	require.NoError(t, rows.Err())
+	return columns
+}
+
+// checkMysql57LegacyTables checks the tables of setup-mysql57-legacy.sql once recreated on the
+// target: the names keep their capitals, every column keeps its type, nullability and default
+// (CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, zero dates, the implicit TIMESTAMP defaults of
+// explicit_defaults_for_timestamp=OFF), and the defaults behave on an insert and an update.
+func checkMysql57LegacyTables(t *testing.T, source, target *sql.DB, schema string) {
+	t.Helper()
+	ctx := context.Background()
+
+	want, got := legacyColumns(t, source, schema), legacyColumns(t, target, schema)
+	require.NotEmpty(t, want)
+	strip := func(columns []legacyColumn) []legacyColumn {
+		out := make([]legacyColumn, len(columns))
+		for i, c := range columns {
+			c.CharacterSet = sql.NullString{}
+			out[i] = c
+		}
+		return out
+	}
+	// assert, not require: the functional checks below tell what the difference breaks
+	assert.Equal(t, strip(want), strip(got),
+		"the columns of the legacy tables (type, nullability, default, extra) differ on the target")
+	// The product creates a table from its columns, without its engine nor the character sets
+	// of the source: the target has those of its server. Logged, not asserted.
+	for i := range want {
+		if i < len(got) && want[i].CharacterSet != got[i].CharacterSet {
+			t.Logf("character set of %s.%s: %q on the source, %q on the target",
+				want[i].Table, want[i].Column, want[i].CharacterSet.String, got[i].CharacterSet.String)
+		}
+	}
+	engines := map[string]string{}
+	rows, err := target.QueryContext(ctx,
+		"SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Journal_MyISAM'",
+		schema)
+	require.NoError(t, err)
+	for rows.Next() {
+		var table, engine string
+		require.NoError(t, rows.Scan(&table, &engine))
+		engines[table] = engine
+	}
+	require.NoError(t, rows.Close())
+	t.Logf("engine of Journal_MyISAM on the target: %q (MyISAM on the source)", engines["Journal_MyISAM"])
+
+	// The defaults behave like the source ones.
+	for _, statement := range []string{
+		fmt.Sprintf("INSERT INTO `%s`.`Commande_Statut` (`Libelle`) VALUES ('Créée')", schema),
+		fmt.Sprintf("INSERT INTO `%s`.`Commande` (`Statut_id`, `Reference`) SELECT MAX(`id`), 'CMD-T' FROM `%s`.`Commande_Statut`", schema, schema),
+		fmt.Sprintf("INSERT INTO `%s`.`Journal_MyISAM` (`Commande_id`, `Message`) VALUES (1, 'créée')", schema),
+	} {
+		_, err := target.ExecContext(ctx, statement)
+		require.NoError(t, err, statement)
+	}
+	var creation, delivery, birth string
+	var updatedRecently bool
+	require.NoError(t, target.QueryRowContext(ctx, fmt.Sprintf(
+		"SELECT CAST(`Date_Creation` AS CHAR), CAST(`Date_Livraison` AS CHAR), CAST(`Date_Naissance` AS CHAR), "+
+			"`Date_Maj` > NOW() - INTERVAL 1 HOUR FROM `%s`.`Commande` WHERE `Reference` = 'CMD-T'", schema)).
+		Scan(&creation, &delivery, &birth, &updatedRecently))
+	require.Equal(t, "0000-00-00 00:00:00", creation, "the zero date default of a TIMESTAMP column")
+	require.Equal(t, "0000-00-00 00:00:00", delivery, "the implicit default of a second TIMESTAMP column")
+	require.Equal(t, "0000-00-00", birth, "the zero date default of a DATE column")
+	require.True(t, updatedRecently, "DEFAULT CURRENT_TIMESTAMP gives the time of the insert")
+
+	_, err = target.ExecContext(ctx, fmt.Sprintf(
+		"UPDATE `%s`.`Commande` SET `Date_Maj` = '2001-01-01 00:00:00' WHERE `Reference` = 'CMD-T'", schema))
+	require.NoError(t, err)
+	_, err = target.ExecContext(ctx, fmt.Sprintf(
+		"UPDATE `%s`.`Commande` SET `Client_Nom` = 'Noël' WHERE `Reference` = 'CMD-T'", schema))
+	require.NoError(t, err)
+	require.NoError(t, target.QueryRowContext(ctx, fmt.Sprintf(
+		"SELECT `Date_Maj` > '2001-01-01 00:00:00' FROM `%s`.`Commande` WHERE `Reference` = 'CMD-T'", schema)).
+		Scan(&updatedRecently))
+	require.True(t, updatedRecently, "ON UPDATE CURRENT_TIMESTAMP sets the column on an update")
+
+	var stamped bool
+	require.NoError(t, target.QueryRowContext(ctx, fmt.Sprintf(
+		"SELECT `Horodatage` > NOW() - INTERVAL 1 HOUR FROM `%s`.`Journal_MyISAM` WHERE `Message` = 'créée'", schema)).
+		Scan(&stamped))
+	require.True(t, stamped, "the implicit DEFAULT CURRENT_TIMESTAMP of a first TIMESTAMP column")
 }

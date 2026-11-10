@@ -251,6 +251,10 @@ func (d *oddDatabase) describe(t *testing.T, schemas []string) []string {
 	}
 	lines := []string{}
 	for _, query := range descriptionQueries[d.f.engine.family] {
+		if d.f.engine.isMysql57() && strings.Contains(query, "CHECK_CONSTRAINTS") {
+			// MySQL 5.7 has no CHECK constraint to describe, nor the table that lists them.
+			continue
+		}
 		for _, row := range d.queryTexts(t, query) {
 			if wanted[row[0]] {
 				lines = append(lines, fmt.Sprintf("%q: %s", row[0], strings.TrimSpace(row[1])))

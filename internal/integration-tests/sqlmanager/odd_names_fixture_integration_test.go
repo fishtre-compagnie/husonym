@@ -435,8 +435,11 @@ func (f *sampleFixture) oddDestination(t *testing.T) *oddDatabase {
 			name:   f.engine.name + " destination",
 			family: familyMysql,
 			start: func(ctx context.Context) (*sampleFixture, error) {
-				if f.engine.name == "mariadb" {
+				switch f.engine.name {
+				case "mariadb":
 					return startMysqlFixture(ctx, tcmysql.WithImage("mariadb:11.4"))
+				case "mysql57":
+					return startMysqlFixture(ctx, tcmysql.WithMysql57())
 				}
 				return startMysqlFixture(ctx)
 			},

@@ -586,6 +586,7 @@ func Test_OddNames_Sync(t *testing.T) {
 	for engine, options := range map[string][]tcmysql.Option{
 		"mysql":   nil,
 		"mariadb": {tcmysql.WithImage("mariadb:11.4.13")},
+		"mysql57": {tcmysql.WithMysql57()},
 	} {
 		t.Run(engine, func(t *testing.T) {
 			t.Parallel()
