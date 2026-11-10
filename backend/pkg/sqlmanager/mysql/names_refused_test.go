@@ -209,7 +209,7 @@ func Test_IdempotentIndex_NamesRefused(t *testing.T) {
 
 func Test_IdempotentTrigger_NamesRefused(t *testing.T) {
 	build := func(schema, table, trigger, triggerSchema string) (string, error) {
-		return buildIdempotentTriggerStatement(schema, table, trigger, triggerSchema,
+		return buildIdempotentTriggerStatement(flavorMysql, schema, table, trigger, triggerSchema,
 			"BEFORE", "INSERT", "ROW", "SET NEW.id = 1")
 	}
 	statement, err := build("db", "t", "trg", "db")
@@ -232,7 +232,7 @@ func Test_IdempotentTrigger_NamesRefused(t *testing.T) {
 
 func Test_IdempotentFunction_NamesRefused(t *testing.T) {
 	build := func(schema, function string) (string, error) {
-		return buildIdempotentFunctionStatement(schema, function, "a int", "int", "RETURN a + 1", true)
+		return buildIdempotentFunctionStatement(flavorMysql, schema, function, "a int", "int", "RETURN a + 1", true)
 	}
 	statement, err := build("db", "fn")
 	require.NoError(t, err)
