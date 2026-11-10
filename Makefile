@@ -11,7 +11,8 @@
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
 				generate/backend generate/mocks \
-				bench bench/up bench/up-lower-case bench/down bench/correctness bench/perf bench/perf-up bench/pg-perf-up
+				bench bench/up bench/up-lower-case bench/down bench/correctness bench/perf bench/perf-up bench/pg-perf-up \
+				bench-mysql57 bench/mysql57-up bench/mysql57-down bench/mysql57-correctness
 default: help
 
 help:
@@ -143,6 +144,14 @@ compose/dev/auth/down: ## Composes down the development environment with auth
 BENCH_COMPOSE_FILE = bench/compose.bench.yml
 BENCH_SERVICES = bench-source bench-dest-benthos bench-dest-athanor
 BENCH_PG_SERVICES = bench-pg-source bench-pg-dest-benthos bench-pg-dest-athanor
+BENCH_MYSQL57_SERVICES = bench-mysql57-source bench-mysql57-dest-benthos bench-mysql57-dest-athanor
+# The MySQL 5.7 servers answer on their own ports and names; their known gaps are kept apart
+# from those of MySQL 8.0, which share the "mysql" dialect of the baseline.
+BENCH_MYSQL57_ENV = \
+	BENCH_SOURCE_ADDR=127.0.0.1:3315 BENCH_SOURCE_WORKER_HOST=husonym-bench-mysql57-source \
+	BENCH_DEST_BENTHOS_ADDR=127.0.0.1:3316 BENCH_DEST_BENTHOS_WORKER_HOST=husonym-bench-mysql57-dest-benthos \
+	BENCH_DEST_ATHANOR_ADDR=127.0.0.1:3317 BENCH_DEST_ATHANOR_WORKER_HOST=husonym-bench-mysql57-dest-athanor
+BENCH_MYSQL57_BASELINE = bench/baseline.mysql57.json
 
 bench: bench/up bench/correctness ## Stands up the engine test bench and runs it
 
@@ -159,6 +168,19 @@ bench/down: ## Removes the bench MySQL servers and gives the dev worker its page
 
 bench/correctness: ## Runs every bench case on both engines and checks them against their expectation
 	go run ./bench/cmd/enginebench run
+
+bench-mysql57: bench/mysql57-up bench/mysql57-correctness ## Stands up the MySQL 5.7 bench (legacy production settings) and runs it
+
+bench/mysql57-up: ## Starts the bench MySQL 5.7 servers and restarts the dev worker with a small page size
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_MYSQL57_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
+
+bench/mysql57-down: ## Removes the bench MySQL 5.7 servers and gives the dev worker its page size back
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) rm -sfv $(BENCH_MYSQL57_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/mysql57-correctness: ## Runs every MySQL bench case against the 5.7 servers, checked against bench/baseline.mysql57.json (record it with ARGS=-update-baseline)
+	$(BENCH_MYSQL57_ENV) go run ./bench/cmd/enginebench run -baseline $(BENCH_MYSQL57_BASELINE) $(ARGS)
 
 bench/pg-up: ## Starts the bench PostgreSQL servers and restarts the dev worker with a small page size
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_PG_SERVICES)

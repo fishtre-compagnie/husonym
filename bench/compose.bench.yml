@@ -23,6 +23,16 @@ x-bench-mysql: &bench-mysql
     timeout: 5s
     retries: 20
 
+# MySQL 5.7 configured like the legacy production servers (allopneus, 5.7.42): no SQL mode,
+# explicit_defaults_for_timestamp=OFF and a utf8 server character set, as
+# tcmysql.WithMysql57 does for the integration tests. `make bench/mysql57-up`.
+x-bench-mysql57: &bench-mysql57
+  <<: *bench-mysql
+  image: mysql:5.7.42
+  command: >-
+    --max-connections=1000 --sql-mode= --explicit-defaults-for-timestamp=OFF
+    --character-set-server=utf8 --collation-server=utf8_general_ci
+
 x-bench-postgres: &bench-postgres
   image: postgres:16
   # One database holds every case, as a schema each, so a pass opens far fewer connections
@@ -87,3 +97,21 @@ services:
     container_name: husonym-bench-pg-dest-athanor
     ports:
       - 127.0.0.1:3314:5432
+
+  bench-mysql57-source:
+    <<: *bench-mysql57
+    container_name: husonym-bench-mysql57-source
+    ports:
+      - 127.0.0.1:3315:3306
+
+  bench-mysql57-dest-benthos:
+    <<: *bench-mysql57
+    container_name: husonym-bench-mysql57-dest-benthos
+    ports:
+      - 127.0.0.1:3316:3306
+
+  bench-mysql57-dest-athanor:
+    <<: *bench-mysql57
+    container_name: husonym-bench-mysql57-dest-athanor
+    ports:
+      - 127.0.0.1:3317:3306
