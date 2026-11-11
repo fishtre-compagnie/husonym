@@ -85,9 +85,9 @@ export function getPermissionColumns(
             return (
               <div>
                 {getValue<boolean>() ? (
-                  <CheckCircledIcon className="text-green-500" />
+                  <CheckCircledIcon className="text-ok" />
                 ) : (
-                  <CircleBackslashIcon className="text-red-500" />
+                  <CircleBackslashIcon className="text-danger" />
                 )}
               </div>
             );
@@ -103,9 +103,9 @@ export function getPermissionColumns(
             return (
               <div>
                 {getValue<boolean>() ? (
-                  <CheckCircledIcon className="text-green-500" />
+                  <CheckCircledIcon className="text-ok" />
                 ) : (
-                  <CircleBackslashIcon className="text-red-500" />
+                  <CircleBackslashIcon className="text-danger" />
                 )}
               </div>
             );
@@ -121,9 +121,9 @@ export function getPermissionColumns(
             return (
               <div>
                 {getValue<boolean>() ? (
-                  <CheckCircledIcon className="text-green-500" />
+                  <CheckCircledIcon className="text-ok" />
                 ) : (
-                  <CircleBackslashIcon className="text-red-500" />
+                  <CircleBackslashIcon className="text-danger" />
                 )}
               </div>
             );
@@ -141,9 +141,9 @@ export function getPermissionColumns(
             return (
               <div>
                 {getValue<boolean>() ? (
-                  <CheckCircledIcon className="text-green-500" />
+                  <CheckCircledIcon className="text-ok" />
                 ) : (
-                  <CircleBackslashIcon className="text-red-500" />
+                  <CircleBackslashIcon className="text-danger" />
                 )}
               </div>
             );

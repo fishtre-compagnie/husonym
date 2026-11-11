@@ -34,9 +34,9 @@ export default function ColumnHeader<TData extends RowData, TValue>({
               value={(column.getFilterValue() ?? '') as string}
               onChange={(e) => column.setFilterValue(e.target.value)}
               placeholder={placeholder ? placeholder : 'Search ...'}
-              className="border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-transparent text-xs h-8 pl-8"
+              className="border border-border rounded-lg bg-card text-xs h-8 pl-8"
             />
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
       )}

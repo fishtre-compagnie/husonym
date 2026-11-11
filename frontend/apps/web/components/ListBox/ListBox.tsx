@@ -42,14 +42,14 @@ export default function ListBox<TData extends RowData>(
   return (
     <div
       className={cn(
-        'h-[164px] relative w-full rounded-md border border-gray-300 dark:border-gray-700 ',
+        'h-[164px] relative w-full rounded-xl border border-line-soft bg-card ',
         tableContainerClassName,
         rows.length > 0 && 'overflow-auto'
       )}
       ref={tableContainerRef}
     >
       <StickyHeaderTable>
-        <TableHeader className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 grid rounded-md">
+        <TableHeader className="bg-surface-2 sticky top-0 z-10 grid rounded-t-xl">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="flex flex-row px-2">
               {headerGroup.headers.map((header) => {
@@ -77,7 +77,7 @@ export default function ListBox<TData extends RowData>(
           }}
         >
           {rows.length === 0 && !!noDataMessage && (
-            <TableRow className="flex justify-center items-center py-10 text-gray-500">
+            <TableRow className="flex justify-center items-center py-10 text-muted-foreground">
               <td className="px-4">{noDataMessage}</td>
             </TableRow>
           )}

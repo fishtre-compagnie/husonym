@@ -18,7 +18,7 @@ export default function Config(props: Props): ReactElement {
         Configure your Schema, Transformers and Subsetting rules in order to
         anonymize and generate data to sync to lower level environments.
       </p>
-      <div className=" flex flex-col gap-4 p-4 border border-gray-300 dark:dark:border-[#0D47F0] rounded-lg text-xs shadow-lg">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-xs">
         <div className="flex flex-row gap-4 justify-between" id="header">
           <div className="w-[100px] font-semibold">Column</div>
           <div className="w-[100px] font-semibold">Constraints</div>
@@ -84,7 +84,7 @@ interface TransformerSelectorProps {
 function TransformerSelector(props: TransformerSelectorProps): ReactElement {
   const { text } = props;
   return (
-    <div className="flex justify-between border border-gray-300 dark:border-gray-600 p-2 rounded w-[100px]">
+    <div className="flex w-[100px] justify-between rounded-lg border border-border p-2">
       <div className="whitespace-nowrap truncate lg:w-[200px] text-left">
         {text}{' '}
       </div>

@@ -43,6 +43,67 @@
   --color-badge-foreground: var(--badge-foreground);
   --color-badge-border: var(--badge-border);
 
+  /* Husonym tokens beyond the shadcn set; see :root and .dark below. */
+  --color-sidebar: var(--sidebar);
+  --color-surface-2: var(--surface-2);
+  --color-line-soft: var(--line-soft);
+  --color-hi: var(--hi);
+  --color-link: var(--link);
+  --color-brand-soft: var(--brand-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-fg: var(--warn-fg);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+  --color-quiet: var(--quiet);
+  --color-quiet-fg: var(--quiet-fg);
+  --color-quiet-soft: var(--quiet-soft);
+  --color-overlay: var(--overlay);
+  --color-header: var(--header);
+  --color-hover: var(--hover);
+  --shadow-pop: var(--shadow-pop);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+  --animate-flow: flow 1.8s linear infinite;
+  --animate-step-in: step-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes flow {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes step-in {
+    from {
+      transform: translateX(16px);
+    }
+    to {
+      transform: none;
+    }
+  }
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -104,84 +165,137 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    border-color: var(--border, currentColor);
   }
 }
 
 :root {
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(222.2 84% 4.9%);
+  /* Husonym design tokens — light theme (mockups: "Thème clair"). */
+  --background: #f4f6f9;
+  --foreground: #16202b;
 
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222.2 84% 4.9%);
-  --card-border: hsl(213 4% 80%);
+  --card: #ffffff;
+  --card-foreground: #16202b;
+  --card-border: rgba(15, 23, 32, 0.08);
 
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222.2 84% 4.9%);
+  --popover: #ffffff;
+  --popover-foreground: #16202b;
 
-  --primary: hsl(222.2 47.4% 11.2%);
-  --primary-foreground: hsl(210 40% 98%);
+  --primary: #2f5f8f;
+  --primary-foreground: #ffffff;
 
-  --secondary: hsl(210 40% 96.1%);
-  --secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --secondary: #eef2f6;
+  --secondary-foreground: #16202b;
 
-  --muted: hsl(210 40% 96.1%);
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --muted: #eef2f6;
+  --muted-foreground: #566577;
 
-  --accent: hsl(210 40% 96.1%);
-  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --accent: #eef2f6;
+  --accent-foreground: #0b0f14;
 
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(210 40% 98%);
+  --destructive: #b4475a;
+  --destructive-foreground: #ffffff;
+  --destructive_alert: #b4475a;
 
-  --warning: hsl(47 69% 75%);
-  --warning-foreground: hsl(247 88% 17%);
+  --warning: #a8721f;
+  --warning-foreground: #ffffff;
 
-  --border: hsl(214.3 31.8% 91.4%);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(222.2 84% 4.9%);
+  --border: #d3dbe4;
+  --input: #d3dbe4;
+  --ring: #2f5f8f;
 
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
-  --badge: hsl(240 0% 96%);
-  --badge-border: hsl(213 0% 91%);
+  --badge: #eef2f6;
+  --badge-border: #d3dbe4;
+
+  /* Tokens the shadcn set has no name for. */
+  --sidebar: #ffffff;
+  --surface-2: #eef2f6;
+  --line-soft: rgba(15, 23, 32, 0.08);
+  --hi: #0b0f14;
+  --link: #2f5f8f;
+  --brand-soft: rgba(47, 95, 143, 0.09);
+  --ok: #2e7a4f;
+  --ok-soft: rgba(46, 122, 79, 0.1);
+  --warn: #a8721f;
+  --warn-fg: #8a5d14;
+  --warn-soft: rgba(168, 114, 31, 0.09);
+  --warn-line: rgba(168, 114, 31, 0.35);
+  --danger: #b4475a;
+  --danger-fg: #a23a4d;
+  --danger-soft: rgba(180, 71, 90, 0.09);
+  --danger-line: rgba(180, 71, 90, 0.35);
+  --quiet: #8aa3bf;
+  --quiet-fg: #3e5873;
+  --quiet-soft: rgba(91, 127, 165, 0.13);
+  --overlay: rgba(15, 23, 32, 0.28);
+  --header: rgba(244, 246, 249, 0.88);
+  --hover: rgba(15, 23, 32, 0.035);
+  --shadow-pop: 0 24px 60px rgba(15, 23, 32, 0.16);
 }
 
 .dark {
-  --background: hsl(240 9% 13%);
-  --foreground: hsl(210 40% 98%);
+  /* Husonym design tokens — dark theme (mockups: "Thème sombre"). */
+  --background: #0b0f14;
+  --foreground: #e6edf3;
 
-  --card: hsl(222.2 84% 4.9%);
-  --card-foreground: hsl(210 40% 98%);
-  --card-border: hsl(213 4% 30%);
+  --card: #141a22;
+  --card-foreground: #e6edf3;
+  --card-border: rgba(230, 237, 243, 0.07);
 
-  --popover: hsl(240 9% 13%);
-  --popover-foreground: hsl(210 40% 98%);
+  --popover: #141a22;
+  --popover-foreground: #e6edf3;
 
-  --primary: hsl(217.2 91.2% 49.8%);
-  --primary-foreground: hsl(210 40% 98%);
+  --primary: #a9c8e6;
+  --primary-foreground: #0b0f14;
 
-  --secondary: hsl(217.2 32.6% 17.5%);
-  --secondary-foreground: hsl(210 40% 98%);
+  --secondary: #1f2732;
+  --secondary-foreground: #e6edf3;
 
-  --muted: hsl(217.2 32.6% 17.5%);
-  --muted-foreground: hsl(215 20.2% 65.1%);
+  --muted: #1f2732;
+  --muted-foreground: #93a7bd;
 
-  --accent: hsl(217.2 32.6% 17.5%);
-  --accent-foreground: hsl(210 40% 98%);
+  --accent: #1f2732;
+  --accent-foreground: #ffffff;
 
-  --destructive: hsl(0 62.8% 30.6%);
-  --destructive-foreground: hsl(210 40% 98%);
+  --destructive: #c9737f;
+  --destructive-foreground: #0b0f14;
+  --destructive_alert: #c9737f;
 
-  --warning: hsl(37 87% 32%);
-  --warning-foreground: hsl(210 40% 98%);
+  --warning: #d4a259;
+  --warning-foreground: #0b0f14;
 
-  --border: hsl(217.2 32.6% 17.5%);
-  --input: hsl(217.2 11% 25%);
-  --ring: hsl(212.7 11.8% 40.9%);
+  --border: #2d3a48;
+  --input: #2d3a48;
+  --ring: #a9c8e6;
 
-  --badge: hsl(240 9% 20%);
-  --badge-border: hsl(212.7 11.8% 40.9%);
+  --badge: #1f2732;
+  --badge-border: #2d3a48;
+
+  --sidebar: #080b10;
+  --surface-2: #1f2732;
+  --line-soft: rgba(230, 237, 243, 0.07);
+  --hi: #ffffff;
+  --link: #a9c8e6;
+  --brand-soft: rgba(169, 200, 230, 0.1);
+  --ok: #7fb894;
+  --ok-soft: rgba(127, 184, 148, 0.14);
+  --warn: #d4a259;
+  --warn-fg: #e2bd84;
+  --warn-soft: rgba(212, 162, 89, 0.1);
+  --warn-line: rgba(212, 162, 89, 0.4);
+  --danger: #c9737f;
+  --danger-fg: #e8a3ad;
+  --danger-soft: rgba(201, 115, 127, 0.15);
+  --danger-line: rgba(201, 115, 127, 0.4);
+  --quiet: #5b7fa5;
+  --quiet-fg: #b8c9dc;
+  --quiet-soft: rgba(91, 127, 165, 0.18);
+  --overlay: rgba(8, 11, 16, 0.6);
+  --header: rgba(11, 15, 20, 0.85);
+  --hover: rgba(230, 237, 243, 0.04);
+  --shadow-pop: 0 24px 70px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {
@@ -191,6 +305,22 @@
   body {
     @apply bg-background text-foreground;
   }
+  :focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+  }
+}
+
+/* A moving sheen on a progress bar that is still filling. */
+@utility progress-flow {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-flow);
 }
 
 .monaco-editor .monaco-editor-overlaymessage {
@@ -209,5 +339,79 @@
 @keyframes dashdraw {
   to {
     stroke-dashoffset: -80;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Transitions between pages (View Transitions API, driven by React's
+ * <ViewTransition>). The browser animates snapshots on the compositor: only
+ * opacity and transform move, nothing is laid out again.
+ *
+ *   vt-page   the content of a page: the old one goes, the new one rises in.
+ * ------------------------------------------------------------------------- */
+
+/* The rest of the screen (sidebar, header) does not move, and shows its new state
+ * at once: the old snapshot on top would keep the previous section highlighted in
+ * the sidebar until the end of the transition. */
+::view-transition-group(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(root) {
+  display: none;
+}
+
+/* The header stays above the content while it moves, and does not move. */
+.vt-header {
+  view-transition-name: app-header;
+}
+::view-transition-group(app-header) {
+  z-index: 10;
+  animation: none;
+}
+/* Only the new header: its breadcrumb may be longer and wrap to a second line,
+ * and the two side by side would show twice. */
+::view-transition-old(app-header) {
+  display: none;
+}
+::view-transition-new(app-header) {
+  animation: none;
+}
+
+/* Never two pages on top of each other: the old one goes at once, the new one
+ * rises in. It starts already a little visible, so the screen is never empty. */
+::view-transition-old(.vt-page) {
+  display: none;
+}
+::view-transition-new(.vt-page) {
+  animation: vt-rise-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* The content changes size from a page to the next: no stretching of the box. */
+::view-transition-group(.vt-page) {
+  animation: none;
+}
+
+@keyframes vt-rise-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(6px);
+  }
+}
+
+/* Whoever asked their system for less motion gets none: the pages change at
+ * once, and the looping animations (live runs, progress) stop. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -111,8 +111,8 @@ export default function WelcomeRouter({
               className={cn(
                 'cursor-pointer p-2',
                 selectedJobType === jd.type
-                  ? 'border border-black shadow-xs dark:border-gray-500'
-                  : 'hover:border hover:border-gray-500 dark:border-gray-700 dark:hover:border-gray-600'
+                  ? 'border border-primary bg-brand-soft'
+                  : 'border border-border hover:bg-hover'
               )}
               onClick={() => handleJobSelection(jd.type, jd.href)}
             >
@@ -133,7 +133,11 @@ export default function WelcomeRouter({
                   <RadioGroupItem
                     value={jd.type}
                     id={jd.type}
-                    className={`${selectedJobType === jd.type ? 'bg-black text-white' : 'bg-white dark:bg-transparent text-black'}`}
+                    className={
+                      selectedJobType === jd.type
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card text-foreground'
+                    }
                   />
                 </div>
               </CardHeader>

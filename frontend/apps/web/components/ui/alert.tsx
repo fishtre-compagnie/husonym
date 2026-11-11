@@ -4,17 +4,17 @@ import * as React from 'react';
 import { cn } from '@/libs/utils';
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
+  'relative w-full rounded-xl border border-border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
   {
     variants: {
       variant: {
-        default: 'bg-background text-foreground',
-        success:
-          'bg-background text-foreground bg-green-100 dark:bg-green-800 border border-green-300 dark:border-green-400',
+        default: 'bg-card text-foreground',
+        success: 'border-ok/40 bg-ok-soft text-foreground [&>svg]:text-ok',
         destructive:
-          'border-destructive/50 dark:border-destructive bg-destructive text-destructive-foreground',
-        warning: 'border border-yellow-300 dark:border-orange-500 ',
-        info: 'border border-blue-300 shadow-xs bg-blue-50 dark:bg-gray-800 dark:border-gray-700',
+          'border-danger-line bg-danger-soft text-danger-fg [&>svg]:text-danger-fg',
+        warning:
+          'border-warn-line bg-warn-soft text-foreground [&>svg]:text-warn-fg',
+        info: 'border-line-soft bg-brand-soft text-foreground [&>svg]:text-link',
       },
     },
     defaultVariants: {

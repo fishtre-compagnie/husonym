@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@/components/ui/card';
+import { Panel } from '@/components/ds';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -10,21 +10,21 @@ interface Props {
   note?: string;
 }
 
-// A number and what it counts.
+// A number and what it counts: the look of the design system's StatCard, label on top.
 export default function StatTile(props: Props): ReactElement {
   const { label, value, accent, note } = props;
   return (
-    <Card className="transition-shadow hover:shadow-md">
-      <CardContent className="flex flex-col gap-1 pt-6">
-        <span
-          className="text-3xl font-semibold tabular-nums"
-          style={accent ? { color: accent } : undefined}
-        >
-          {value}
-        </span>
-        <span className="text-sm text-muted-foreground">{label}</span>
-        {note && <span className="text-xs text-muted-foreground">{note}</span>}
-      </CardContent>
-    </Card>
+    <Panel className="flex flex-col gap-2.5 p-5">
+      <span className="text-[13px] text-muted-foreground">{label}</span>
+      <span
+        className="font-display text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums"
+        style={accent ? { color: accent } : undefined}
+      >
+        {value}
+      </span>
+      {note && (
+        <span className="text-[13px] text-muted-foreground">{note}</span>
+      )}
+    </Panel>
   );
 }

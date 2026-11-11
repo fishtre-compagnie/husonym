@@ -34,7 +34,7 @@ export default function SupportDrawer(): ReactElement {
           href={link.href}
           target="_blank"
           rel="noreferrer"
-          className="border border-gray-300 dark:border-gray-700 bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground rounded-md px-8 py-2"
+          className="border border-border bg-card hover:bg-hover rounded-xl px-8 py-2"
         >
           <div className="flex flex-row justify-between items-center">
             <div className="flex flex-col gap-1">
@@ -42,7 +42,9 @@ export default function SupportDrawer(): ReactElement {
                 <div>{link.icon}</div>
                 <div>{link.name}</div>
               </div>
-              <div className="text-sm text-gray-500">{link.description}</div>
+              <div className="text-sm text-muted-foreground">
+                {link.description}
+              </div>
             </div>
             <ArrowTopRightIcon />
           </div>

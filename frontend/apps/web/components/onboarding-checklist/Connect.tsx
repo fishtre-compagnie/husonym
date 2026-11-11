@@ -42,7 +42,7 @@ export default function Connect(props: Props): ReactElement {
       <div className="grid grid-cols-3 gap-2">
         {integrations.map((item) => (
           <div
-            className="p-4 border border-gray-300 dark:border-[#0D47F0] flex flex-col items-center shadow-lg rounded-lg"
+            className="flex flex-col items-center rounded-xl border border-border bg-card p-4"
             key={item.name}
           >
             {item.icon}

@@ -165,10 +165,8 @@ export function FileUpload<T>({
     <div className="flex flex-col gap-2">
       <div
         className={cn(
-          'border-2 border-dashed rounded-lg bg-gray-100 dark:bg-transparent',
-          isDragging
-            ? 'border-blue-500 bg-blue-100 dark:bg-blue-700/10'
-            : 'border-gray-300 dark:border-gray-500'
+          'border-2 border-dashed rounded-2xl bg-surface-2',
+          isDragging ? 'border-primary bg-brand-soft' : 'border-border'
         )}
       >
         <div
@@ -178,11 +176,13 @@ export function FileUpload<T>({
           className="flex flex-col items-center justify-center p-8 text-center cursor-pointer"
           onClick={() => document.getElementById(fileUploadInputId)?.click()}
         >
-          <UploadIcon className="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" />
+          <UploadIcon className="w-12 h-12 mb-4 text-muted-foreground" />
           <h3 className="mb-2 text-lg font-semibold">Drop Files Here</h3>
-          <p className="mb-4 text-sm text-gray-500">or click to browse</p>
+          <p className="mb-4 text-sm text-muted-foreground">
+            or click to browse
+          </p>
           {validation.maxSizeDisplay && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Maximum file size: {validation.maxSizeDisplay}
             </p>
           )}
@@ -235,16 +235,16 @@ function UploadedFiles<T>(props: UploadedFilesProps<T>): ReactElement {
         <div className="mt-4 space-y-2">
           {files.map((file, index) => (
             <div key={index} className="flex flex-col space-y-2">
-              <div className="flex items-center justify-between p-3 dark:bg-gray-700 rounded-lg border dark:border-0">
+              <div className="flex items-center justify-between p-3 bg-surface-2 rounded-xl border border-line-soft">
                 <div className="flex items-center">
                   <LuFileJson className="w-6 h-6" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">{file.name}</p>
                     <div className="flex flex-row gap-2">
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {filesize(file.size)}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(file.lastModified), 'PPpp')}
                       </p>
                     </div>

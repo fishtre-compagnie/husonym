@@ -74,13 +74,13 @@ export default function PermissionsDataTable<TData extends RowData>({
       </div>
       <div
         className={cn(
-          'rounded-md border min-h-[145px] max-h-[500px] relative border-gray-300 dark:border-gray-700 overflow-hidden',
+          'rounded-2xl border min-h-[145px] max-h-[500px] relative border-line-soft bg-card overflow-hidden',
           rows.length > 0 && 'overflow-auto'
         )}
         ref={tableContainerRef}
       >
         <StickyHeaderTable>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 grid">
+          <TableHeader className="bg-card sticky top-0 z-10 grid [&_th]:text-xs [&_th]:font-normal [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
@@ -110,7 +110,7 @@ export default function PermissionsDataTable<TData extends RowData>({
             }}
           >
             {rows.length === 0 && (
-              <TableRow className="flex justify-center items-center py-10 text-gray-500 text-sm">
+              <TableRow className="flex justify-center items-center py-10 text-muted-foreground text-sm">
                 <td>No permissions found for the connection or filter(s).</td>
               </TableRow>
             )}

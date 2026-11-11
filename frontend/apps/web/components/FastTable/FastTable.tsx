@@ -99,13 +99,13 @@ export default function FastTable<TData extends RowData>(
   return (
     <div
       className={cn(
-        'rounded-md border min-h-[145px] max-h-[1000px] relative border-gray-300 dark:border-gray-700 overflow-hidden',
+        'rounded-2xl border min-h-[145px] max-h-[1000px] relative border-line-soft bg-card overflow-hidden',
         rows.length > 0 && 'overflow-auto'
       )}
       ref={tableContainerRef}
     >
       <StickyHeaderTable>
-        <TableHeader className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 px-2 grid">
+        <TableHeader className="bg-surface-2 sticky top-0 z-10 px-2 grid">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow
               key={headerGroup.id}

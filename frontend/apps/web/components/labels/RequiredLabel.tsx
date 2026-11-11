@@ -5,5 +5,5 @@ interface Props {}
 
 export default function RequiredLabel(props: Props): ReactElement {
   const {} = props;
-  return <Label className="text-red-400">* </Label>;
+  return <Label className="text-danger-fg">* </Label>;
 }

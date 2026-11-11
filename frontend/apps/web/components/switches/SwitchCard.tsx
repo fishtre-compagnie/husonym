@@ -26,8 +26,7 @@ export default function SwitchCard({
   return (
     <div
       className={cn(
-        'flex flex-row items-center justify-between rounded-lg border p-4 shadow-xs',
-        'dark:border-gray-700',
+        'flex flex-row items-center justify-between gap-4 rounded-xl border border-line-soft bg-card p-4',
         containerClassName
       )}
     >

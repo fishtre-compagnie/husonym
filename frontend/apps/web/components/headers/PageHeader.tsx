@@ -1,7 +1,6 @@
 import { cn } from '@/libs/utils';
 import { ReactNode, type JSX } from 'react';
 import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
 
 interface Props {
   header: string;
@@ -34,10 +33,10 @@ export default function PageHeader(props: Props) {
       )}
     >
       <div className="flex flex-col xl:flex-row xl:items-center items-start justify-between gap-2">
-        <div className="flex flex-col md:flex-row items-center gap-3">
+        <div className="flex min-w-0 flex-col items-start gap-3 md:flex-row md:items-center">
           {leftIcon ? leftIcon : null}
-          <div className="flex flex-row items-center gap-4">
-            <h1 className="text-2xl font-bold tracking-tight truncate max-w-[300px] lg:max-w-[600px]">
+          <div className="flex min-w-0 flex-row flex-wrap items-center gap-3">
+            <h1 className="m-0 max-w-full truncate font-display text-[26px] font-semibold leading-tight tracking-[-0.02em] text-hi sm:text-[30px] lg:max-w-[720px]">
               {header}
             </h1>
             {leftBadgeValue && (
@@ -53,11 +52,10 @@ export default function PageHeader(props: Props) {
         {extraHeading ? <div>{extraHeading}</div> : null}
       </div>
       {subHeadings.map((subheading, ind) => (
-        <div key={ind} className="text-sm">
+        <div key={ind} className="text-sm text-muted-foreground">
           {subheading}
         </div>
       ))}
-      <Separator className="dark:bg-gray-600" />
     </div>
   );
 }

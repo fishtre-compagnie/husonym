@@ -32,7 +32,15 @@ export function TableHeader({
   className,
   ...props
 }: React.ComponentPropsWithRef<'thead'>) {
-  return <thead className={cn('[&_tr]:border-b', className)} {...props} />;
+  return (
+    <thead
+      className={cn(
+        '[&_tr]:border-b [&_tr]:border-line-soft [&_tr]:hover:bg-transparent',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
 export function TableBody({
@@ -66,7 +74,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        'border-b dark:border-gray-700 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+        'border-b border-line-soft transition-colors hover:bg-hover data-[state=selected]:bg-brand-soft',
         className
       )}
       {...props}
@@ -81,7 +89,7 @@ export function TableHead({
   return (
     <th
       className={cn(
-        'h-10 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'h-10 text-left align-middle text-[12.5px] font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className
       )}
       {...props}

@@ -15,7 +15,7 @@ export function Command({
   return (
     <CommandPrimitive
       className={cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground',
+        'flex h-full w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground',
         className
       )}
       {...props}
@@ -45,8 +45,11 @@ export function CommandInput({
   ...props
 }: React.ComponentPropsWithRef<typeof CommandPrimitive.Input>) {
   return (
-    <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-      <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <div
+      className="flex items-center border-b border-border px-3"
+      cmdk-input-wrapper=""
+    >
+      <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
       <CommandPrimitive.Input
         className={cn(
           'flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
@@ -101,7 +104,7 @@ export function CommandGroup({
   return (
     <CommandPrimitive.Group
       className={cn(
-        'overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground',
+        'overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-muted-foreground',
         className
       )}
       {...props}
@@ -115,7 +118,7 @@ export function CommandSeparator({
 }: React.ComponentPropsWithRef<typeof CommandPrimitive.Separator>) {
   return (
     <CommandPrimitive.Separator
-      className={cn('-mx-1 h-px bg-border', className)}
+      className={cn('-mx-1 h-px bg-line-soft', className)}
       {...props}
     />
   );
@@ -129,7 +132,7 @@ export function CommandItem({
     <CommandPrimitive.Item
       className={cn(
         // https://github.com/shadcn-ui/ui/issues/4442
-        'relative flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
+        'relative flex cursor-default items-center rounded-lg px-2 py-1.5 text-sm outline-hidden aria-selected:bg-brand-soft aria-selected:text-hi data-[selected=true]:bg-brand-soft data-[selected=true]:text-hi data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
         className
       )}
       {...props}
