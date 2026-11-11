@@ -1,5 +1,4 @@
-import Spinner from '@/components/Spinner';
-import { Badge } from '@/components/ui/badge';
+import { Pill, StatusDot, Tone } from '@/components/ds';
 import {
   Tooltip,
   TooltipContent,
@@ -8,12 +7,6 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/libs/utils';
 import { JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
-import {
-  CheckIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
-  QuestionMarkCircledIcon,
-} from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -22,142 +15,65 @@ interface Props {
   badgeClassName?: string;
 }
 
-const sharedContainerClassName = 'flex flex-row gap-3 px-2 max-w-28';
-const sharedBadgeClassName = 'flex flex-row gap-3';
+export interface JobRunStatusMeta {
+  label: string;
+  tone: Tone;
+  // the run is still going: its dot breathes
+  live: boolean;
+}
+
+/** How a run's status reads: its words, its tone, whether it is still going. */
+export function getJobRunStatusMeta(
+  status?: JobRunStatusEnum
+): JobRunStatusMeta {
+  switch (status) {
+    case JobRunStatusEnum.COMPLETE:
+      return { label: 'Complete', tone: 'ok', live: false };
+    case JobRunStatusEnum.RUNNING:
+      return { label: 'Running', tone: 'brand', live: true };
+    case JobRunStatusEnum.PENDING:
+      return { label: 'Pending', tone: 'quiet', live: true };
+    case JobRunStatusEnum.ERROR:
+      return { label: 'Error', tone: 'danger', live: false };
+    case JobRunStatusEnum.FAILED:
+      return { label: 'Failed', tone: 'danger', live: false };
+    case JobRunStatusEnum.TIMED_OUT:
+      return { label: 'Timed out', tone: 'warn', live: false };
+    case JobRunStatusEnum.CANCELED:
+      return { label: 'Canceled', tone: 'muted', live: false };
+    case JobRunStatusEnum.TERMINATED:
+      return { label: 'Terminated', tone: 'muted', live: false };
+    default:
+      return { label: 'Unknown', tone: 'muted', live: false };
+  }
+}
 
 export default function JobRunStatus(props: Props): ReactElement {
   const { status, containerClassName, badgeClassName } = props;
+  const meta = getJobRunStatusMeta(status);
 
-  switch (status) {
-    case JobRunStatusEnum.ERROR:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            variant="destructive"
-            className={cn(sharedBadgeClassName, badgeClassName)}
-          >
-            <div className="flex flex-row items-center gap-1">
-              <ExclamationTriangleIcon className="w-3 h-3" />
-              <p>Error</p>
-            </div>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.COMPLETE:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            variant="success"
-            className={cn(sharedBadgeClassName, badgeClassName)}
-          >
-            <CheckIcon className="w-3 h-3" /> <p>Complete</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.FAILED:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            variant="destructive"
-            className={cn(sharedBadgeClassName, badgeClassName)}
-          >
-            <ExclamationTriangleIcon className="w-3 h-3" /> <p>Failed</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.RUNNING:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            className={cn(
-              'bg-blue-600 hover:bg-blue-500',
-              sharedBadgeClassName,
-              badgeClassName
-            )}
-          >
-            <Spinner className="w-3 h-3" /> <p>Running</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.PENDING:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            className={cn(
-              'bg-purple-600  hover:bg-purple-500',
-              sharedBadgeClassName,
-              badgeClassName
-            )}
-          >
-            <Spinner className="w-3 h-3" /> <p>Pending</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.TERMINATED:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            className={cn(
-              'bg-gray-600  hover:bg-gray-500',
-              sharedBadgeClassName,
-              badgeClassName
-            )}
-          >
-            <ExclamationTriangleIcon className="w-3 h-3" /> <p>Terminated</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.CANCELED:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            className={cn(
-              'bg-gray-600  hover:bg-gray-500',
-              sharedBadgeClassName,
-              badgeClassName
-            )}
-          >
-            <ExclamationTriangleIcon className="w-3 h-3" /> <p>Canceled</p>
-          </Badge>
-        </div>
-      );
-    case JobRunStatusEnum.TIMED_OUT:
-      return (
-        <div className={cn(sharedContainerClassName, containerClassName)}>
-          <Badge
-            className={cn(
-              'bg-yellow-600  hover:bg-yellow-500',
-              sharedBadgeClassName,
-              badgeClassName
-            )}
-          >
-            <ClockIcon className="w-3 h-3" /> <p>Timed Out</p>
-          </Badge>
-        </div>
-      );
-    default:
-      return (
-        <TooltipProvider>
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              <div className={cn(sharedContainerClassName, containerClassName)}>
-                <Badge
-                  variant="outline"
-                  className={cn(sharedBadgeClassName, badgeClassName)}
-                >
-                  <QuestionMarkCircledIcon className="w-3 h-3" />
-                  <p>Unknown</p>
-                </Badge>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                This run is un-started, archived by the system, or has been
-                deleted.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
+  const pill = (
+    <div className={cn('flex', containerClassName)}>
+      <Pill tone={meta.tone} className={badgeClassName}>
+        <StatusDot tone={meta.tone} pulse={meta.live} />
+        {meta.label}
+      </Pill>
+    </div>
+  );
+
+  if (meta.label !== 'Unknown') {
+    return pill;
   }
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>{pill}</TooltipTrigger>
+        <TooltipContent>
+          <p>
+            This run is un-started, archived by the system, or has been deleted.
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }

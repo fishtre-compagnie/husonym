@@ -2,12 +2,15 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 
+import { StatusDot, toneTextClass } from '@/components/ds';
 import { AppTableFeatures } from '@/components/table/features';
+import { cn } from '@/libs/utils';
 import { formatDateTime } from '@/util/util';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRun } from '@husonym/sdk';
 import NextLink from 'next/link';
-import JobRunStatus from '../JobRunStatus';
+import { ReactElement } from 'react';
+import { getJobRunStatusMeta } from '../JobRunStatus';
+import { formatAgo, formatSpan, runSpan, toDate, useNow } from '../run-format';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
 
@@ -28,10 +31,14 @@ export function getColumns(
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => {
+        const meta = getJobRunStatusMeta(row.original.status);
         return (
-          <div className="flex w-[100px] items-center">
-            <JobRunStatus status={row.getValue('status')} />
-          </div>
+          <span className="flex min-w-[104px] items-center gap-2.5">
+            <StatusDot tone={meta.tone} pulse={meta.live} />
+            <span className={cn('text-[13px]', toneTextClass(meta.tone))}>
+              {meta.label}
+            </span>
+          </span>
         );
       },
       filterFn: (row, id, value) => {
@@ -39,38 +46,81 @@ export function getColumns(
       },
     },
     {
-      accessorKey: 'id',
+      accessorKey: 'jobName',
+      accessorFn: (row) => jobNameMap[row.jobId] ?? '',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Job Run" />
+        <DataTableColumnHeader column={column} title="Job" />
       ),
       cell: ({ row }) => {
+        const name = jobNameMap[row.original.jobId];
         return (
-          <div className="font-medium">
-            <NextLink
-              className="hover:underline"
-              href={`/${accountName}/runs/${row.getValue('id')}`}
-            >
-              <span>{row.getValue('id')}</span>
-            </NextLink>
-          </div>
+          <NextLink
+            className="font-medium text-foreground hover:text-link"
+            href={`/${accountName}/runs/${row.original.id}`}
+          >
+            {name || <span className="text-muted-foreground">Unknown job</span>}
+          </NextLink>
         );
       },
-      enableSorting: false,
       enableHiding: false,
     },
     {
-      accessorKey: 'jobName',
-      accessorFn: (row) => jobNameMap[row.jobId],
+      accessorKey: 'id',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Job Name" />
+        <DataTableColumnHeader column={column} title="Run" />
       ),
       cell: ({ row }) => {
+        const id = row.original.id;
         return (
-          <div>
-            <span className="font-medium">
-              {jobNameMap[row.original.jobId]}
-            </span>
-          </div>
+          <NextLink
+            className="font-mono text-xs text-muted-foreground hover:text-link"
+            href={`/${accountName}/runs/${id}`}
+            title={id}
+          >
+            {shortRunId(id, row.original.jobId)}
+          </NextLink>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: 'duration',
+      accessorFn: (row) => runSpan(row.startedAt, row.completedAt) ?? -1,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Duration" />
+      ),
+      cell: ({ row }) => <DurationCell run={row.original} />,
+    },
+    {
+      accessorKey: 'startedAt',
+      accessorFn: (row) => toDate(row.startedAt)?.getTime() ?? 0,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Started" />
+      ),
+      cell: ({ row }) => {
+        const started = toDate(row.original.startedAt);
+        return (
+          <span
+            className="whitespace-nowrap text-[13px] text-muted-foreground"
+            title={formatDateTime(started)}
+          >
+            {formatAgo(started)}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'completedAt',
+      accessorFn: (row) => toDate(row.completedAt)?.getTime() ?? 0,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Completed" />
+      ),
+      cell: ({ row }) => {
+        const completed = toDate(row.original.completedAt);
+        return (
+          <span className="whitespace-nowrap text-[13px] text-muted-foreground">
+            {completed ? formatDateTime(completed) : '–'}
+          </span>
         );
       },
     },
@@ -81,59 +131,52 @@ export function getColumns(
       ),
       cell: ({ row }) => {
         return (
-          <div className="font-medium">
-            <NextLink
-              className="hover:underline"
-              href={`/${accountName}/jobs/${row.getValue('jobId')}`}
-            >
-              <span>{row.getValue('jobId')}</span>
-            </NextLink>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'startedAt',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Started At" />
-      ),
-      cell: ({ row }) => {
-        return (
-          <div>
-            <span className="font-medium">
-              {formatDateTime(timestampDate(row.getValue('startedAt')))}
-            </span>
-          </div>
-        );
-      },
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
-      },
-    },
-    {
-      accessorKey: 'completedAt',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Completed At" />
-      ),
-      cell: ({ row }) => {
-        const completedAt = row.getValue('completedAt')
-          ? formatDateTime(timestampDate(row.getValue('completedAt')))
-          : undefined;
-        return (
-          <div>
-            <span className="font-medium">{completedAt}</span>
-          </div>
+          <NextLink
+            className="font-mono text-xs text-muted-foreground hover:text-link"
+            href={`/${accountName}/jobs/${row.original.jobId}`}
+          >
+            {row.original.jobId}
+          </NextLink>
         );
       },
     },
     {
       id: 'actions',
       cell: ({ row }) => (
-        <DataTableRowActions
-          row={row}
-          onDeleted={() => onDeleted(row.original.id)}
-        />
+        <div className="flex justify-end">
+          <DataTableRowActions
+            row={row}
+            onDeleted={() => onDeleted(row.original.id)}
+          />
+        </div>
       ),
     },
   ];
+}
+
+/**
+ * A run id short enough for a list. A run Temporal started on a schedule is named
+ * after its job and its time (`<job id>-2026-11-10T14:58:54Z`): what follows the job id
+ * tells it apart. Any other id is cut to its first block.
+ */
+export function shortRunId(id: string, jobId?: string): string {
+  if (jobId && id.startsWith(`${jobId}-`) && id.length > jobId.length + 1) {
+    return id.slice(jobId.length + 1);
+  }
+  return id.length > 13 ? `${id.slice(0, 8)}…` : id;
+}
+
+function DurationCell({ run }: { run: JobRun }): ReactElement {
+  const live =
+    !run.completedAt && !!run.startedAt && getJobRunStatusMeta(run.status).live;
+  const now = useNow(live);
+  const span =
+    run.completedAt || live
+      ? runSpan(run.startedAt, run.completedAt, now)
+      : undefined;
+  return (
+    <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+      {span === undefined ? '–' : formatSpan(span)}
+    </span>
+  );
 }

@@ -34,7 +34,7 @@ function ConfidenceBadge(props: ConfidenceBadgeProps): ReactElement {
   return (
     <Badge
       variant="outline"
-      className="text-xs bg-blue-100 text-gray-800 cursor-default dark:bg-blue-200 dark:text-gray-900"
+      className="cursor-default border-transparent bg-brand-soft text-xs text-link"
     >
       {confidence}
     </Badge>

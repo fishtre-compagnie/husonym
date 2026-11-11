@@ -4,8 +4,6 @@ import { ColumnDef, Row } from '@tanstack/react-table';
 
 import { SchemaColumnHeader } from '@/components/jobs/SchemaTable/SchemaColumnHeader';
 import { AppTableFeatures } from '@/components/table/features';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { formatDateTimeMilliseconds } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRunEvent, JobRunEventTaskError } from '@husonym/sdk';
@@ -42,7 +40,7 @@ export function getColumns(
         )?.eventTime;
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
               {scheduledTime &&
                 formatDateTimeMilliseconds(timestampDate(scheduledTime))}
             </span>
@@ -60,7 +58,7 @@ export function getColumns(
         const startTime = row.getValue<Timestamp>('startTime');
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
               {startTime &&
                 formatDateTimeMilliseconds(timestampDate(startTime))}
             </span>
@@ -93,7 +91,7 @@ export function getColumns(
 
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
               {closeTime
                 ? formatDateTimeMilliseconds(timestampDate(closeTime))
                 : 'N/A'}
@@ -110,7 +108,7 @@ export function getColumns(
       cell: ({ row }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-[13px]">
               {row.getValue('type')}
             </span>
           </div>
@@ -131,7 +129,7 @@ export function getColumns(
           <div className="flex space-x-2">
             <span className="font-medium">
               {metadata?.schema && (
-                <Badge variant="outline">{metadata.schema}</Badge>
+                <span className="font-mono text-xs">{metadata.schema}</span>
               )}
             </span>
           </div>
@@ -153,7 +151,7 @@ export function getColumns(
           <div className="flex space-x-2">
             <span className="font-medium">
               {metadata?.table && (
-                <Badge variant="outline">{metadata.table}</Badge>
+                <span className="font-mono text-xs">{metadata.table}</span>
               )}
             </span>
           </div>
@@ -173,22 +171,18 @@ export function getColumns(
       cell: ({ row }) => {
         const err = row.getValue<JobRunEventTaskError>('error');
         return (
-          <div className={`flex space-x-2`}>
-            <span className="truncate font-medium">
-              {err && (
-                <Alert variant="destructive">
-                  <AlertTitle className="flex flex-row space-x-2 justify-center">
-                    <ExclamationTriangleIcon />
-                    <p>Error</p>
-                  </AlertTitle>
-                  <AlertDescription>
-                    <pre className="whitespace-pre-wrap">
-                      {JSON.stringify(err, undefined, 2)}
-                    </pre>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </span>
+          <div className="min-w-[220px] max-w-[420px]">
+            {err && (
+              <div className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-xs text-danger-fg">
+                <p className="mb-1 flex items-center gap-1.5 font-medium">
+                  <ExclamationTriangleIcon aria-hidden="true" />
+                  Error
+                </p>
+                <pre className="whitespace-pre-wrap break-words font-mono">
+                  {JSON.stringify(err, undefined, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         );
       },

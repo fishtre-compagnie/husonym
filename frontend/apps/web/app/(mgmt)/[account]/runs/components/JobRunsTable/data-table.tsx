@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useLocalStorage } from 'usehooks-ts';
-import { DataTableToolbar } from './data-table-toolbar';
+import { DataTableToolbar, RunStatusGroup } from './data-table-toolbar';
 
 interface DataTableProps<
   TData extends RowData,
@@ -37,6 +37,7 @@ interface DataTableProps<
   autoRefreshIntervalOptions: string[];
   onAutoRefreshIntervalChange(interval: string): void;
   isRefreshing: boolean;
+  statusCounts: Record<RunStatusGroup, number>;
 }
 
 export function DataTable<
@@ -50,10 +51,14 @@ export function DataTable<
   autoRefreshIntervalOptions,
   onAutoRefreshIntervalChange,
   isRefreshing,
+  statusCounts,
 }: DataTableProps<TData, TAutoRefreshInterval>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
-    React.useState<ColumnVisibilityState>({ jobId: false });
+    React.useState<ColumnVisibilityState>({
+      jobId: false,
+      completedAt: false,
+    });
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
@@ -84,7 +89,7 @@ export function DataTable<
   });
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col">
       <DataTableToolbar
         table={table}
         onRefreshClick={onRefreshClick}
@@ -92,56 +97,60 @@ export function DataTable<
         autoRefreshIntervalOptions={autoRefreshIntervalOptions}
         onAutoRefreshIntervalChange={onAutoRefreshIntervalChange}
         isRefreshing={isRefreshing}
+        statusCounts={statusCounts}
       />
-      <div className="rounded-md border overflow-hidden dark:border-gray-700 ">
-        <Table>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} className="pl-2">
-                      {header.isPlaceholder ? null : (
-                        <table.FlexRender header={header} />
-                      )}
-                    </TableHead>
-                  );
-                })}
+      <Table className="min-w-[640px]">
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                return (
+                  <TableHead
+                    key={header.id}
+                    className="h-10 px-5 text-xs font-medium text-muted-foreground"
+                  >
+                    {header.isPlaceholder ? null : (
+                      <table.FlexRender header={header} />
+                    )}
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && 'selected'}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="px-5 py-2.5">
+                    <table.FlexRender cell={cell} />
+                  </TableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      <table.FlexRender cell={cell} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No active runs found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground"
+              >
+                No run matches these filters.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div className="border-t border-line-soft px-5 py-3">
+        <DataTablePagination
+          table={table}
+          setPagination={setPagination}
+          setPageSize={setPageSize}
+        />
       </div>
-      <DataTablePagination
-        table={table}
-        setPagination={setPagination}
-        setPageSize={setPageSize}
-      />
     </div>
   );
 }

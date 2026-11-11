@@ -1,3 +1,4 @@
+import { Panel, PanelHeader } from '@/components/ds';
 import FastTable from '@/components/FastTable/FastTable';
 import { useAccount } from '@/components/providers/account-provider';
 import { unpaginatedTableFeatures } from '@/components/table/features';
@@ -66,29 +67,39 @@ export default function JobRunPiiDetectionTable(props: Props): ReactElement {
   const onDownloadClick = useOnDownloadClick(jobRunId, data);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-row gap-2 items-center">
-        <div className="text-xl font-semibold tracking-tight">
-          PII Detection Report
-        </div>
-        <div className="flex flex-row gap-1">
-          <Button variant="ghost" size="icon" onClick={() => onRefreshClick()}>
-            <ReloadIcon
-              className={cn('h-4 w-4', isFetchingReport && 'animate-spin')}
-            />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDownloadClick()}
-            disabled={!data.length}
-          >
-            <DownloadIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+    <Panel aria-label="PII detection report">
+      <PanelHeader
+        title="PII detection report"
+        actions={
+          <>
+            <span className="text-muted-foreground">
+              {data.length} {data.length === 1 ? 'column' : 'columns'}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Refresh the report"
+              onClick={() => onRefreshClick()}
+            >
+              <ReloadIcon
+                className={cn('h-4 w-4', isFetchingReport && 'animate-spin')}
+              />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadClick()}
+              disabled={!data.length}
+            >
+              <DownloadIcon className="h-3.5 w-3.5" />
+              CSV
+            </Button>
+          </>
+        }
+      />
       <FastTable table={table} estimateRowSize={() => 53} rowOverscan={50} />
-    </div>
+    </Panel>
   );
 }
 
