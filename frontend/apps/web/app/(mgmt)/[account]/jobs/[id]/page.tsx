@@ -38,26 +38,18 @@ export default function Page(props: PageProps): ReactElement {
   const queryclient = useQueryClient();
 
   if (isLoading) {
-    return (
-      <div className="pt-10">
-        <JobIdSkeletonForm />
-      </div>
-    );
+    return <JobIdSkeletonForm />;
   }
 
   if (!data?.job) {
-    return (
-      <div className="mt-10">
-        <JobNotFoundAlert />
-      </div>
-    );
+    return <JobNotFoundAlert />;
   }
 
   return (
     <div className="job-details-container">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-row gap-5">
-          <div className="grow basis-3/4">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
+          <div className="min-w-0">
             <JobScheduleCard
               job={data.job}
               mutate={(newjob) => {
@@ -72,21 +64,22 @@ export default function Page(props: PageProps): ReactElement {
               }}
             />
           </div>
-          <div className="grow basis-1/4 overflow-y-auto rounded-xl border border-card-border">
+          <div className="min-w-0">
             <JobNextRuns jobId={id} status={jobStatus?.status} />
           </div>
         </div>
         {hasPreflight(data.job) ? <PreflightCard job={data.job} /> : null}
         <JobRecentRuns jobId={id} />
         <Accordion type="single" collapsible>
-          <AccordionItem value="advanced-settings">
-            <AccordionTrigger className="-ml-2">
-              <div className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg">
-                Advanced Settings
-              </div>
+          <AccordionItem
+            value="advanced-settings"
+            className="rounded-2xl border border-line-soft bg-card px-5"
+          >
+            <AccordionTrigger className="font-display text-base font-semibold hover:no-underline">
+              Advanced settings
             </AccordionTrigger>
             <AccordionContent>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 pb-2">
                 <div>
                   <WorkflowSettingsCard
                     job={data.job}

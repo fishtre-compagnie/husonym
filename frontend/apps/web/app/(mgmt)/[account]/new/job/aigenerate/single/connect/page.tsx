@@ -5,8 +5,11 @@ import {
   getDefaultDestinationFormValueOptionsFromConnectionCase,
   getNewJobSessionKeys,
 } from '@/app/(mgmt)/[account]/jobs/util';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import {
+  WizardFooter,
+  WizardPanel,
+  WizardSection,
+} from '@/components/progress-steps/Wizard';
 import DestinationOptionsForm from '@/components/jobs/Form/DestinationOptionsForm';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
@@ -18,13 +21,6 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getSingleOrUndefined, splitConnections } from '@/libs/utils';
 import { create } from '@bufbuild/protobuf';
@@ -35,11 +31,16 @@ import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
-import JobsProgressSteps, {
+import {
+  getJobProgressStepLabels,
   getJobProgressSteps,
 } from '../../../JobsProgressSteps';
-import ConnectionSelectContent from '../../../connect/ConnectionSelectContent';
-import { SingleTableAiConnectFormValues } from '../../../job-form-validations';
+import NewJobWizard from '../../../NewJobWizard';
+import ConnectionPicker from '../../../connect/ConnectionPicker';
+import {
+  DefineFormValues,
+  SingleTableAiConnectFormValues,
+} from '../../../job-form-validations';
 
 const NEW_CONNECTION_VALUE = 'new-connection';
 
@@ -92,228 +93,166 @@ export default function Page(props: PageProps): ReactElement {
     form.control
   );
 
+  const [defineFormValues] = useSessionStorage<DefineFormValues>(
+    getNewJobSessionKeys(sessionPrefix).global.define,
+    { jobName: '' }
+  );
+  const nameOf = (id: string | undefined) =>
+    connections.find((c) => c.id === id)?.name;
+  const modelName = nameOf(form.watch('sourceId'));
+  const destinationName = nameOf(form.watch('destination.connectionId'));
+
   return (
-    <div
+    <NewJobWizard
       id="newjobflowcontainer"
-      className="px-12 md:px-24 lg:px-32 flex flex-col gap-5"
+      steps={getJobProgressSteps('ai-generate-table')}
+      stepLabels={getJobProgressStepLabels('ai-generate-table')}
+      stepName="connect"
+      title="Which model, and where should its data go?"
+      description="An OpenAI-compatible connection writes the rows; a database connection gives the shape of the table and receives the result."
     >
       <FormPersist formKey={formKey} form={form} />
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Connect"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('ai-generate-table')}
-                stepName={'connect'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-9"
+        >
+          <WizardSection
+            id="aigenerate-source"
+            title="Model connection"
+            description="An OpenAI-compatible API to generate data from."
           >
-            <div>
-              <div>
-                <div className="space-y-0.5">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    Source
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    Choose an OpenAI Compatible SDK to generate data from.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4 col-span-2">
-              <FormField
-                control={form.control}
-                name="sourceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      {isConnectionsLoading ? (
-                        <Skeleton className="w-full h-12 rounded-lg" />
-                      ) : (
-                        <Select
-                          name={field.name}
-                          disabled={field.disabled}
-                          onValueChange={(value: string) => {
-                            if (!value) {
-                              return;
-                            }
-                            if (value === NEW_CONNECTION_VALUE) {
-                              const urlParams = new URLSearchParams({
-                                returnTo: `/${account?.name}/new/job/aigenerate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
-                                connectionType: 'openaiConfig',
-                              });
-                              router.push(
-                                `/${account?.name}/new/connection?${urlParams.toString()}`
-                              );
-                              return;
-                            }
-                            field.onChange(value);
-                          }}
-                          value={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              ref={field.ref}
-                              placeholder="Select a source ..."
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <ConnectionSelectContent
-                              openai={openai}
-                              newConnectionValue={NEW_CONNECTION_VALUE}
-                            />
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-          <Separator className="my-6" />
-
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
+            <FormField
+              control={form.control}
+              name="sourceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    {isConnectionsLoading ? (
+                      <Skeleton className="w-full h-12 rounded-lg" />
+                    ) : (
+                      <ConnectionPicker
+                        ariaLabel="Model connection"
+                        openai={openai}
+                        newConnectionValue={NEW_CONNECTION_VALUE}
+                        value={field.value}
+                        onChange={(value: string) => {
+                          if (!value) {
+                            return;
+                          }
+                          if (value === NEW_CONNECTION_VALUE) {
+                            const urlParams = new URLSearchParams({
+                              returnTo: `/${account?.name}/new/job/aigenerate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
+                              connectionType: 'openaiConfig',
+                            });
+                            router.push(
+                              `/${account?.name}/new/connection?${urlParams.toString()}`
+                            );
+                            return;
+                          }
+                          field.onChange(value);
+                        }}
+                      />
+                    )}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </WizardSection>
+          <WizardSection
+            id="aigenerate-schema-connection"
+            title="Table schema connection"
+            description="The connection whose table gives the shape of the data to generate. It can be the destination itself."
           >
-            <div>
-              <div>
-                <div className="space-y-0.5">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    Table Schema Connection
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    Choose a connection that will be used as a basis for the
-                    shape of data that is to be generated. This can be the same
-                    value as the destination.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4 col-span-2">
-              <FormField
-                control={form.control}
-                name="fkSourceConnectionId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      {isConnectionsLoading ? (
-                        <Skeleton className="w-full h-12 rounded-lg" />
-                      ) : (
-                        <Select
-                          onValueChange={(value: string) => {
-                            if (value === NEW_CONNECTION_VALUE) {
-                              const destId = form.getValues(
-                                'destination.connectionId'
-                              );
-
-                              const urlParams = new URLSearchParams({
-                                returnTo: `/${account?.name}/new/job/aigenerate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
-                              });
-                              const connection = connections.find(
-                                (c) => c.id === destId
-                              );
-                              const connType = getConnectionType(
-                                connection?.connectionConfig ??
-                                  create(ConnectionConfigSchema, {})
-                              );
-                              if (connType) {
-                                urlParams.append('connectionType', connType);
-                              }
-                              if (
-                                urlParams.getAll('connectionType').length === 0
-                              ) {
-                                urlParams.append('connectionType', 'pgConfig');
-                                urlParams.append(
-                                  'connectionType',
-                                  'mysqlConfig'
-                                );
-                              }
-                              router.push(
-                                `/${account?.name}/new/connection?${urlParams.toString()}`
-                              );
-                              return;
-                            }
-                            field.onChange(value);
+            <FormField
+              control={form.control}
+              name="fkSourceConnectionId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    {isConnectionsLoading ? (
+                      <Skeleton className="w-full h-12 rounded-lg" />
+                    ) : (
+                      <ConnectionPicker
+                        ariaLabel="Table schema connection"
+                        postgres={postgres}
+                        mysql={mysql}
+                        newConnectionValue={NEW_CONNECTION_VALUE}
+                        value={field.value}
+                        onChange={(value: string) => {
+                          if (value === NEW_CONNECTION_VALUE) {
                             const destId = form.getValues(
                               'destination.connectionId'
                             );
-                            if (!destId) {
-                              form.setValue('destination.connectionId', value);
-                              const destConnection = connections.find(
-                                (c) => c.id === value
-                              );
-                              const destConnType = getConnectionType(
-                                destConnection?.connectionConfig ??
-                                  create(ConnectionConfigSchema, {})
-                              );
-                              const newOpts =
-                                getDefaultDestinationFormValueOptionsFromConnectionCase(
-                                  destConnType,
-                                  () => new Set()
-                                );
-                              form.setValue(
-                                'destination.destinationOptions',
-                                newOpts,
-                                {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                }
-                              );
-                            }
-                          }}
-                          value={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a connection ..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <ConnectionSelectContent
-                              postgres={postgres}
-                              mysql={mysql}
-                              newConnectionValue={NEW_CONNECTION_VALUE}
-                            />
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-          <Separator className="my-6" />
 
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
+                            const urlParams = new URLSearchParams({
+                              returnTo: `/${account?.name}/new/job/aigenerate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
+                            });
+                            const connection = connections.find(
+                              (c) => c.id === destId
+                            );
+                            const connType = getConnectionType(
+                              connection?.connectionConfig ??
+                                create(ConnectionConfigSchema, {})
+                            );
+                            if (connType) {
+                              urlParams.append('connectionType', connType);
+                            }
+                            if (
+                              urlParams.getAll('connectionType').length === 0
+                            ) {
+                              urlParams.append('connectionType', 'pgConfig');
+                              urlParams.append('connectionType', 'mysqlConfig');
+                            }
+                            router.push(
+                              `/${account?.name}/new/connection?${urlParams.toString()}`
+                            );
+                            return;
+                          }
+                          field.onChange(value);
+                          const destId = form.getValues(
+                            'destination.connectionId'
+                          );
+                          if (!destId) {
+                            form.setValue('destination.connectionId', value);
+                            const destConnection = connections.find(
+                              (c) => c.id === value
+                            );
+                            const destConnType = getConnectionType(
+                              destConnection?.connectionConfig ??
+                                create(ConnectionConfigSchema, {})
+                            );
+                            const newOpts =
+                              getDefaultDestinationFormValueOptionsFromConnectionCase(
+                                destConnType,
+                                () => new Set()
+                              );
+                            form.setValue(
+                              'destination.destinationOptions',
+                              newOpts,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              }
+                            );
+                          }
+                        }}
+                      />
+                    )}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </WizardSection>
+          <WizardSection
+            id="aigenerate-destination"
+            title="Destination"
+            description="Where the generated rows are written."
           >
-            <div>
-              <div>
-                <div className="space-y-0.5">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    Destination
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    The location the generated data will be synced to.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4 col-span-2">
+            <div className="flex flex-col gap-4">
               <FormField
                 control={form.control}
                 name="destination.connectionId"
@@ -323,8 +262,13 @@ export default function Page(props: PageProps): ReactElement {
                       {isConnectionsLoading ? (
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
-                        <Select
-                          onValueChange={(value: string) => {
+                        <ConnectionPicker
+                          ariaLabel="Destination connection"
+                          postgres={postgres}
+                          mysql={mysql}
+                          newConnectionValue={NEW_CONNECTION_VALUE}
+                          value={field.value}
+                          onChange={(value: string) => {
                             if (value === NEW_CONNECTION_VALUE) {
                               const fkSourceConnId = form.getValues(
                                 'fkSourceConnectionId'
@@ -380,19 +324,7 @@ export default function Page(props: PageProps): ReactElement {
                               }
                             );
                           }}
-                          value={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a connection ..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <ConnectionSelectContent
-                              postgres={postgres}
-                              mysql={mysql}
-                              newConnectionValue={NEW_CONNECTION_VALUE}
-                            />
-                          </SelectContent>
-                        </Select>
+                        />
                       )}
                     </FormControl>
                     <FormMessage />
@@ -400,29 +332,41 @@ export default function Page(props: PageProps): ReactElement {
                 )}
               />
 
-              <DestinationOptionsForm
-                connection={connections.find(
-                  (c) => c.id === form.getValues().destination.connectionId
-                )}
-                hideInitTableSchema={shouldHideInitTableSchema}
-                value={destOpts}
-                setValue={(newOpts) => {
-                  form.setValue('destination.destinationOptions', newOpts, {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                    shouldValidate: true,
-                  });
-                }}
-                hideDynamoDbTableMappings={true}
-                destinationDetailsRecord={{}} // not used because we are hiding dynamodb table mappings
-                errors={form.formState.errors?.destination?.destinationOptions}
-              />
+              {destinationName && (
+                <WizardPanel title={`Before writing to ${destinationName}`}>
+                  <DestinationOptionsForm
+                    connection={connections.find(
+                      (c) => c.id === form.getValues().destination.connectionId
+                    )}
+                    hideInitTableSchema={shouldHideInitTableSchema}
+                    value={destOpts}
+                    setValue={(newOpts) => {
+                      form.setValue('destination.destinationOptions', newOpts, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    hideDynamoDbTableMappings={true}
+                    destinationDetailsRecord={{}} // not used because we are hiding dynamodb table mappings
+                    errors={
+                      form.formState.errors?.destination?.destinationOptions
+                    }
+                  />
+                </WizardPanel>
+              )}
             </div>
-          </div>
-          <Separator className="my-6" />
+          </WizardSection>
 
-          <div className="flex flex-row gap-1 justify-between">
+          <WizardFooter
+            summary={[
+              defineFormValues.jobName,
+              modelName,
+              destinationName && `→ ${destinationName}`,
+            ]}
+          >
             <Button
+              variant="outline"
               type="button"
               onClick={() => {
                 if (searchParams?.from === 'new-connection') {
@@ -436,11 +380,11 @@ export default function Page(props: PageProps): ReactElement {
             >
               Back
             </Button>
-            <Button type="submit">Next</Button>
-          </div>
+            <Button type="submit">Continue</Button>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }
 

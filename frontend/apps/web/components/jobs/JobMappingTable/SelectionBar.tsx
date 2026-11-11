@@ -58,26 +58,19 @@ export default function SelectionBar(props: Props): ReactElement | null {
   return (
     <>
       <div className="sticky bottom-4 z-20 flex justify-center pointer-events-none">
-        <div className="pointer-events-auto flex flex-row items-center gap-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-gray-50 px-4 py-2 shadow-lg">
+        <div
+          role="region"
+          aria-label="Selected columns"
+          className="pointer-events-auto flex flex-row items-center gap-3 rounded-2xl border border-border bg-card py-2 pl-4 pr-2 shadow-pop"
+        >
           <span className="text-sm font-medium">
             {count} column{count === 1 ? '' : 's'} selected
           </span>
-          <span className="h-5 w-px bg-gray-600" />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => setOpen(true)}
-          >
+          <span className="h-5 w-px bg-border" aria-hidden="true" />
+          <Button type="button" size="sm" onClick={() => setOpen(true)}>
             Set transformer…
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-gray-300 hover:text-gray-50 hover:bg-gray-700"
-            onClick={onClear}
-          >
+          <Button type="button" size="sm" variant="ghost" onClick={onClear}>
             Clear
           </Button>
         </div>
@@ -127,7 +120,7 @@ export default function SelectionBar(props: Props): ReactElement | null {
             placeholder="Choose a transformer for them all"
           />
           {!applicable && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-danger-fg">
               The columns selected have no transformer in common with this one.
               Narrow the selection, or choose another transformer.
             </p>

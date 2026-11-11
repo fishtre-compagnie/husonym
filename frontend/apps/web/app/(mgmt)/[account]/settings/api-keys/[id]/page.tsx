@@ -1,4 +1,5 @@
 'use client';
+import { Pill } from '@/components/ds';
 import { ApiKeyValueSessionStore } from '@/app/(mgmt)/[account]/new/api-key/NewApiKeyForm';
 import { permissionLabel } from '@/app/(mgmt)/[account]/new/api-key/permissions';
 import ButtonText from '@/components/ButtonText';
@@ -8,7 +9,6 @@ import SkeletonForm from '@/components/skeleton/SkeletonForm';
 import TruncatedText from '@/components/TruncatedText';
 import { PageProps } from '@/components/types';
 import { Alert, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatDateTime } from '@/util/util';
@@ -68,17 +68,19 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
   }
   return (
     <div>
-      <div className="flex flex-row items-center justify-between">
-        <div className="flex flex-col justify-start">
-          <h1>
+      <div className="flex flex-row flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col justify-start gap-1">
+          <h2 className="m-0">
             <TruncatedText
               text={`API Key: ${data.apiKey.name}`}
               align="start"
               maxWidth={500}
-              truncatedContainerClassName="text-xl font-bold tracking-tight"
+              truncatedContainerClassName="font-display text-xl font-semibold tracking-[-0.01em]"
             />
-          </h1>
-          <h3 className="text-muted-foreground text-sm">{data.apiKey.id}</h3>
+          </h2>
+          <span className="font-mono text-xs text-muted-foreground">
+            {data.apiKey.id}
+          </span>
         </div>
         <div className="flex flex-row gap-2">
           <RemoveAccountApiKeyButton
@@ -95,7 +97,7 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
           </Link>
         </div>
       </div>
-      <div className="mt-10">
+      <div className="mt-6">
         <ApiKeyDetails apiKey={data.apiKey} keyValue={apiKeyValue} />
       </div>
     </div>
@@ -122,7 +124,7 @@ function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
           </div>
         </Alert>
       )}
-      <div className="flex flex-col gap-6 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+      <div className="flex flex-col gap-6 rounded-2xl border border-line-soft bg-card p-5">
         {keyValue && (
           <div className="flex flex-row gap-3">
             <Input value={keyValue} disabled={true} />
@@ -134,52 +136,40 @@ function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
             />
           </div>
         )}
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-row gap-2">
-            <p className=" text-sm tracking-tight w-[100px]">Created At:</p>
-            <Badge variant="outline">
-              {formatDateTime(
-                apiKey.createdAt ? timestampDate(apiKey.createdAt) : new Date()
-              )}
-            </Badge>
-          </div>
-          <div className="flex flex-row gap-2">
-            <p className="text-sm tracking-tight w-[100px]">Updated At:</p>
-            <Badge variant="outline">
-              {formatDateTime(
-                apiKey.updatedAt ? timestampDate(apiKey.updatedAt) : new Date()
-              )}
-            </Badge>
-          </div>
-          <div className="flex flex-row gap-2">
-            <p className=" text-sm tracking-tight w-[100px]">Expires At:</p>
-            <Badge variant="outline">
-              {formatDateTime(
-                apiKey.expiresAt ? timestampDate(apiKey.expiresAt) : new Date()
-              )}
-            </Badge>
-          </div>
-          <div className="flex flex-row gap-2">
-            <p className="text-sm tracking-tight w-[100px]">User ID:</p>
-            <Badge variant="outline">{apiKey.userId}</Badge>
-          </div>
-          <div className="flex flex-row gap-2">
-            <p className="text-sm tracking-tight w-[100px] shrink-0">
-              Permissions:
-            </p>
-            <div className="flex flex-row flex-wrap gap-2">
-              {apiKey.permissions.length === 0 ? (
-                <Badge variant="outline">None: the key can do nothing</Badge>
-              ) : (
-                apiKey.permissions.map((p) => (
-                  <Badge key={p} variant="outline">
-                    {permissionLabel(p)}
-                  </Badge>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-[140px_1fr]">
+          <dt className="text-muted-foreground">Created</dt>
+          <dd className="m-0 tabular-nums">
+            {formatDateTime(
+              apiKey.createdAt ? timestampDate(apiKey.createdAt) : new Date()
+            )}
+          </dd>
+          <dt className="text-muted-foreground">Updated</dt>
+          <dd className="m-0 tabular-nums">
+            {formatDateTime(
+              apiKey.updatedAt ? timestampDate(apiKey.updatedAt) : new Date()
+            )}
+          </dd>
+          <dt className="text-muted-foreground">Expires</dt>
+          <dd className="m-0 tabular-nums">
+            {formatDateTime(
+              apiKey.expiresAt ? timestampDate(apiKey.expiresAt) : new Date()
+            )}
+          </dd>
+          <dt className="text-muted-foreground">User ID</dt>
+          <dd className="m-0 break-all font-mono text-xs">{apiKey.userId}</dd>
+          <dt className="text-muted-foreground">Permissions</dt>
+          <dd className="m-0 flex flex-row flex-wrap gap-1.5">
+            {apiKey.permissions.length === 0 ? (
+              <Pill tone="warn">None: the key can do nothing</Pill>
+            ) : (
+              apiKey.permissions.map((p) => (
+                <Pill key={p} className="font-mono">
+                  {permissionLabel(p)}
+                </Pill>
+              ))
+            )}
+          </dd>
+        </dl>
       </div>
     </div>
   );

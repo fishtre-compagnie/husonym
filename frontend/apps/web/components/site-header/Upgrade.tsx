@@ -78,7 +78,7 @@ function UpgradeInfoDialog(props: UpgradeInfoDialogProps): ReactElement {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" size="sm">
-          <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mr-2" />
+          <ExclamationTriangleIcon className="w-4 h-4 text-warn-fg mr-2" />
           Upgrade <ArrowUpIcon className="ml-2" />
         </Button>
       </DialogTrigger>

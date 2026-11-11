@@ -2,8 +2,7 @@
 
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import FormPersist from '@/app/(mgmt)/FormPersist';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { WizardFooter } from '@/components/progress-steps/Wizard';
 import NosqlTable from '@/components/jobs/NosqlTable/NosqlTable';
 import { OnTableMappingUpdateRequest } from '@/components/jobs/NosqlTable/TableMappings/Columns';
 import {
@@ -77,7 +76,8 @@ import {
   toJobSource,
   validateJobMapping,
 } from '../../../jobs/util';
-import JobsProgressSteps, { getJobProgressSteps } from '../JobsProgressSteps';
+import { getJobProgressSteps } from '../JobsProgressSteps';
+import NewJobWizard from '../NewJobWizard';
 import { ConnectFormValues, DefineFormValues } from '../job-form-validations';
 
 export interface ColumnMetadata {
@@ -525,33 +525,28 @@ export default function Page(props: PageProps): ReactElement {
     });
   }
 
+  const isSubsettable = isConnectionSubsettable(
+    source ?? create(ConnectionSchema, {})
+  );
+  const destinationNames = connectFormValues.destinations
+    .map((d) => connectionsRecord[d.connectionId]?.name)
+    .filter((name): name is string => !!name);
+
   return (
-    <div className="flex flex-col gap-5">
+    <NewJobWizard
+      steps={getJobProgressSteps('data-sync', isSubsettable)}
+      stepName="schema"
+      title="Which tables, and what becomes of each column?"
+      description="Check the tables to copy. Columns detected as personal start with an anonymizing transformer; review them, then adjust any column one by one."
+      wide
+    >
       <FormPersist formKey={schemaFormKey} form={form} />
       {checksDialog}
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Schema"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps(
-                  'data-sync',
-                  isConnectionSubsettable(
-                    source ?? create(ConnectionSchema, {})
-                  )
-                )}
-                stepName={'schema'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-8"
+        >
           {isNosqlSource(source ?? create(ConnectionSchema, {})) && (
             <NosqlTable
               data={formMappings}
@@ -770,19 +765,37 @@ export default function Page(props: PageProps): ReactElement {
               onRemoveMissingSourceColumnMappings={() => {}}
             />
           )}
-          <div className="flex flex-row gap-1 justify-between">
-            <Button key="back" type="button" onClick={() => router.back()}>
+          <WizardFooter
+            summary={[
+              defineFormValues.jobName,
+              source &&
+                `${source.name} → ${
+                  destinationNames.length > 0
+                    ? destinationNames.join(', ')
+                    : '…'
+                }`,
+              `${new Set(formMappings.map((m) => `${m.schema}.${m.table}`)).size} tables · ${formMappings.length} columns`,
+            ]}
+          >
+            <Button
+              key="back"
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
               Back
             </Button>
-            <Button key="submit" type="submit">
-              {isConnectionSubsettable(source ?? create(ConnectionSchema, {}))
-                ? 'Next'
-                : 'Submit'}
+            <Button
+              key="submit"
+              type="submit"
+              disabled={form.formState.isSubmitting}
+            >
+              {isSubsettable ? 'Continue' : 'Create job'}
             </Button>
-          </div>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }
 

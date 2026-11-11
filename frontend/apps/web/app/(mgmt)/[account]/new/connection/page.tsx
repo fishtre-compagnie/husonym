@@ -1,6 +1,5 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import { useSearchParams } from 'next/navigation';
 import { ReactElement } from 'react';
 import { useGetConnectionsMetadata } from '../../connections/util';
@@ -12,20 +11,22 @@ export default function NewConnectionPage(): ReactElement {
 
   const connections = useGetConnectionsMetadata(connectionTypes);
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header="Create a new Connection"
-          subHeadings="Connect a new datasource to use in sync or generate jobs."
-          pageHeaderContainerClassName="mx-24"
-        />
-      }
-    >
-      <div className="gap-6 rounded-lg md:grid lg:grid-cols-2 xl:grid-cols-3 content-stretch mx-24">
+    <PageBody>
+      <PageHeader
+        title="New connection"
+        description="Connect a new datasource to use in sync or generate jobs."
+      />
+      <div
+        role="list"
+        aria-label="Connection types"
+        className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3"
+      >
         {connections.map((connection) => (
-          <ConnectionCard key={connection.urlSlug} connection={connection} />
+          <div role="listitem" key={connection.urlSlug}>
+            <ConnectionCard connection={connection} />
+          </div>
         ))}
       </div>
-    </OverviewContainer>
+    </PageBody>
   );
 }

@@ -1,8 +1,7 @@
 'use client';
 import ButtonText from '@/components/ButtonText';
-import OverviewContainer from '@/components/containers/OverviewContainer';
+import { PageBody, PageHeader } from '@/components/ds';
 import EmptyState, { EmptyStateLinkButton } from '@/components/EmptyState';
-import PageHeader from '@/components/headers/PageHeader';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { Button } from '@/components/ui/button';
@@ -17,17 +16,14 @@ import { DataTable } from './components/ConnectionsTable/data-table';
 
 export default function Connections(): ReactElement {
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header="Connections"
-          extraHeading={<NewConnectionButton />}
-        />
-      }
-      containerClassName="connections-page"
-    >
+    <PageBody className="connections-page">
+      <PageHeader
+        title="Connections"
+        description="The databases and storages your jobs read from and write to."
+        actions={<NewConnectionButton />}
+      />
       <ConnectionTable />
-    </OverviewContainer>
+    </PageBody>
   );
 }
 

@@ -19,7 +19,7 @@ export default function PreflightReportView(props: Props): ReactElement {
   const groups = groupReport(props.report, props.connections);
   if (groups.length === 0) {
     return (
-      <div className="flex flex-row items-center gap-2 text-sm text-green-800 dark:text-green-400">
+      <div className="flex flex-row items-center gap-2 text-sm text-ok">
         <CheckCircledIcon className="h-4 w-4 shrink-0" />
         <span>Nothing to report.</span>
       </div>

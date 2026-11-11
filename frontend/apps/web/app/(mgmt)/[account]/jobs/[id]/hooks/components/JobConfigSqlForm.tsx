@@ -101,7 +101,7 @@ function EditSqlQuery(props: EditSqlQueryProps): ReactElement {
 
   return (
     <div
-      className="monaco-editor-container border border-gray-700 p-2 rounded-lg"
+      className="monaco-editor-container rounded-lg border border-border p-2"
       ref={ref}
     >
       <Editor

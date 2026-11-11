@@ -1,7 +1,6 @@
 'use client';
 import ResourceId from '@/components/ResourceId';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import { useAccount } from '@/components/providers/account-provider';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { cn } from '@/libs/utils';
@@ -25,29 +24,26 @@ export default function SettingsLayout({
 }) {
   const { account } = useAccount();
   return (
-    <div>
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Settings"
-            subHeadings={
-              <ResourceId
-                labelText={`${toTitleCase(account?.name ?? '')} - ${account?.id}`}
-                copyText={account?.id ?? ''}
-                onHoverText="Copy account Id"
-              />
-            }
+    <PageBody>
+      <div className="flex flex-col gap-1.5">
+        <PageHeader
+          title="Settings"
+          description={toTitleCase(account?.name ?? '')}
+        />
+        {/* The id holds a copy button, which a paragraph cannot hold. */}
+        <div className="font-mono text-xs">
+          <ResourceId
+            labelText={account?.id ?? ''}
+            copyText={account?.id ?? ''}
+            onHoverText="Copy account Id"
           />
-        }
-      >
-        <div className="flex flex-row gap-20">
-          <div className="flex flex-col gap-2 w-1/6">
-            <NavSettings />
-          </div>
-          <div className="w-5/6">{children}</div>
         </div>
-      </OverviewContainer>
-    </div>
+      </div>
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
+        <NavSettings />
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </PageBody>
   );
 }
 
@@ -55,24 +51,29 @@ function NavSettings(): ReactElement {
   const pathname = usePathname();
   const items = useGetNavSettings();
   return (
-    <>
+    <nav
+      aria-label="Settings"
+      className="-mx-4 flex shrink-0 gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:w-52 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+    >
       {items.map((item) => {
+        const isActive = refInPathName(item.ref, pathname);
         return (
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'rounded p-2 text-sm',
-              refInPathName(item.ref, pathname)
-                ? 'bg-gray-200/70 hover:bg-gray-200/70 font-bold dark:bg-gray-700'
-                : 'hover:bg-gray-200/70 hover:no-underline dark:hover:bg-gray-700'
+              'whitespace-nowrap rounded-lg px-2.5 py-2 text-sm transition-colors hover:no-underline',
+              isActive
+                ? 'bg-brand-soft font-medium text-hi'
+                : 'text-muted-foreground hover:bg-hover hover:text-foreground'
             )}
           >
             {item.title}
           </Link>
         );
       })}
-    </>
+    </nav>
   );
 }
 

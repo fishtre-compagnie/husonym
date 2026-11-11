@@ -1,6 +1,10 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { Segmented } from '@/components/ds';
+import {
+  SelectCard,
+  WizardFooter,
+  WizardSection,
+} from '@/components/progress-steps/Wizard';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
@@ -15,13 +19,16 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
-import JobsProgressSteps, { getJobProgressSteps } from '../JobsProgressSteps';
+import {
+  getJobProgressStepLabels,
+  getJobProgressSteps,
+} from '../JobsProgressSteps';
+import NewJobWizard from '../NewJobWizard';
 import { DefineFormValues, NewJobType } from '../job-form-validations';
 
 import FormPersist from '@/app/(mgmt)/FormPersist';
@@ -31,8 +38,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation } from '@connectrpc/connect-query';
@@ -123,40 +128,50 @@ export default function Page(props: PageProps): ReactElement {
     }
   }
 
+  const jobName = form.watch('jobName');
+  const jobNameState = form.getFieldState('jobName', form.formState);
+  const isJobNameAvailable =
+    !!jobName &&
+    !jobNameState.invalid &&
+    !form.formState.isValidating &&
+    jobNameState.isDirty;
+
   return (
-    <div
+    <NewJobWizard
       id="newjobdefine"
-      className="px-12 md:px-24 lg:px-48 xl:px-64 flex flex-col gap-5"
+      steps={getJobProgressSteps(newJobType)}
+      stepLabels={getJobProgressStepLabels(newJobType)}
+      stepName="define"
+      title="Name the job"
+      description="A unique name, then when it should run."
     >
       <FormPersist formKey={formKey} form={form} />
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Define"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps(newJobType)}
-                stepName={'define'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-7"
+        >
           <FormField
             control={form.control}
             name="jobName"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormDescription>The unique name of the job.</FormDescription>
+              <FormItem className="max-w-[420px]">
+                <FormLabel>Job name</FormLabel>
                 <FormControl>
-                  <Input placeholder="prod-to-stage" {...field} />
+                  <Input
+                    placeholder="prod-to-stage"
+                    className="h-11 font-mono"
+                    autoComplete="off"
+                    spellCheck={false}
+                    {...field}
+                  />
                 </FormControl>
+                <FormDescription>
+                  Lowercase letters, numbers and hyphens.
+                  {isJobNameAvailable && (
+                    <span className="text-ok"> Available.</span>
+                  )}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -166,76 +181,100 @@ export default function Page(props: PageProps): ReactElement {
             name="cronSchedule"
             render={({ field }) => (
               <FormItem>
-                <div className="flex flex-row items-center gap-2">
-                  <FormLabel>Schedule</FormLabel>
-                  <Switch
-                    checked={isScheduleEnabled}
-                    // Turning a schedule off stays possible without the feature.
-                    disabled={!isSchedulingAllowed && !isScheduleEnabled}
-                    onCheckedChange={(isChecked) => {
-                      setIsScheduleEnabled(isChecked);
-                      if (!isChecked) {
+                <WizardSection
+                  id="define-schedule"
+                  title="When should it run?"
+                  description="Without a schedule, the job is paused and runs only when you trigger it; a default cron is stored."
+                >
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="define-schedule"
+                    className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5"
+                  >
+                    <SelectCard
+                      selected={!isScheduleEnabled}
+                      onClick={() => {
+                        setIsScheduleEnabled(false);
                         form.resetField('cronSchedule', {
                           keepError: false,
                         });
-                      }
-                    }}
-                  />
-                </div>
-                <LicenseFeatureNotice feature="scheduling" />
-                <FormDescription>
-                  Define a cron schedule to run this job. If disabled, the job
-                  will be paused and a default cron will be set
-                </FormDescription>
-                <FormControl>
-                  <Input
-                    placeholder={DEFAULT_CRON_STRING}
-                    {...field}
-                    disabled={!isScheduleEnabled || !isSchedulingAllowed}
-                  />
-                </FormControl>
-                <FormMessage />
+                      }}
+                      className="flex-col gap-1.5 px-4 py-3.5"
+                    >
+                      <span className="font-semibold">When I decide</span>
+                      <span className="text-[13px] text-muted-foreground">
+                        From the interface, the CLI or the API.
+                      </span>
+                    </SelectCard>
+                    <SelectCard
+                      selected={isScheduleEnabled}
+                      // Turning a schedule off stays possible without the feature.
+                      disabled={!isSchedulingAllowed && !isScheduleEnabled}
+                      onClick={() => setIsScheduleEnabled(true)}
+                      className="flex-col gap-1.5 px-4 py-3.5"
+                    >
+                      <span className="font-semibold">On a schedule</span>
+                      <span className="text-[13px] text-muted-foreground">
+                        A cron expression, such as {DEFAULT_CRON_STRING}.
+                      </span>
+                    </SelectCard>
+                  </div>
+                  <LicenseFeatureNotice feature="scheduling" />
+                  {isScheduleEnabled && (
+                    <div className="flex max-w-[420px] flex-col gap-2">
+                      <FormLabel>Cron schedule</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={DEFAULT_CRON_STRING}
+                          className="font-mono"
+                          {...field}
+                          disabled={!isScheduleEnabled || !isSchedulingAllowed}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </div>
+                  )}
+                </WizardSection>
               </FormItem>
             )}
           />
-          <div>
-            <FormField
-              name="initiateJobRun"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Initiate Job Run</FormLabel>
-                  <FormDescription>
-                    Initiates a single job run immediately after the job is
-                    created.
-                  </FormDescription>
+          <FormField
+            name="initiateJobRun"
+            render={({ field }) => (
+              <FormItem>
+                <WizardSection
+                  id="define-initiate"
+                  title="Once it is created"
+                  description="Start a single run right after the job is created, or keep it for later."
+                >
                   <FormControl>
-                    <ToggleGroup
-                      type="single"
-                      className="flex justify-start"
-                      onValueChange={(value) =>
-                        field.onChange(value === 'true')
-                      }
+                    <Segmented
+                      ariaLabel="Initiate a job run after creation"
+                      className="self-start"
                       value={field.value ? 'true' : 'false'}
-                    >
-                      <ToggleGroupItem value="false">No</ToggleGroupItem>
-                      <ToggleGroupItem value="true">Yes</ToggleGroupItem>
-                    </ToggleGroup>
+                      onChange={(value) => field.onChange(value === 'true')}
+                      options={[
+                        { value: 'false', label: 'Create only' },
+                        { value: 'true', label: 'Create and run' },
+                      ]}
+                    />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="settings">
-              <AccordionTrigger className="-ml-2">
-                <div className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg">
-                  Advanced Settings
-                </div>
+                </WizardSection>
+              </FormItem>
+            )}
+          />
+          <Accordion
+            type="single"
+            collapsible
+            className="w-full rounded-[14px] border border-line-soft bg-card px-[18px]"
+          >
+            <AccordionItem value="settings" className="border-b-0">
+              <AccordionTrigger className="py-4 font-semibold hover:no-underline">
+                Advanced settings
               </AccordionTrigger>
               <AccordionContent>
-                <Separator />
-                <div className="flex flex-col pt-6 p-2">
+                <div className="flex flex-col gap-4 border-t border-line-soft pt-5">
                   <FormField
                     control={form.control}
                     name="workflowSettings.runTimeout"
@@ -265,7 +304,7 @@ export default function Page(props: PageProps): ReactElement {
                     control={form.control}
                     name="workflowSettings.engine"
                     render={({ field }) => (
-                      <FormItem className="pt-4">
+                      <FormItem>
                         <FormLabel>Engine</FormLabel>
                         <FormDescription>
                           Transformation engine used to run this job.{' '}
@@ -300,7 +339,7 @@ export default function Page(props: PageProps): ReactElement {
                     control={form.control}
                     name="workflowSettings.consistencyScope"
                     render={({ field }) => (
-                      <FormItem className="pt-4">
+                      <FormItem>
                         <FormLabel>Consistency scope</FormLabel>
                         <FormDescription>
                           Deterministic consistency (Athanor engine only): the
@@ -330,7 +369,14 @@ export default function Page(props: PageProps): ReactElement {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-          <div className="flex flex-row justify-between pt-10 ">
+          <WizardFooter
+            summary={[
+              jobName,
+              isScheduleEnabled
+                ? `Scheduled: ${form.watch('cronSchedule') || DEFAULT_CRON_STRING}`
+                : 'Run on demand',
+            ]}
+          >
             <Button
               variant="outline"
               type="reset"
@@ -339,12 +385,12 @@ export default function Page(props: PageProps): ReactElement {
               Back
             </Button>
             <Button type="submit" disabled={!form.formState.isValid}>
-              Next
+              Continue
             </Button>
-          </div>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }
 

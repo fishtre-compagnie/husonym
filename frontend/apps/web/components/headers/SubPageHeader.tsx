@@ -26,10 +26,12 @@ export default function SubPageHeader(props: Props) {
       <div className="flex flex-col md:flex-row flex-wrap justify-between gap-4 md:gap-0">
         <div className="flex flex-col gap-0.5">
           <div className="flex flex-row gap-2 items-center">
-            <h2 className="text-xl font-semibold tracking-tight">{header}</h2>
+            <h2 className="m-0 font-display text-lg font-semibold tracking-[-0.01em] text-hi">
+              {header}
+            </h2>
             {rightHeaderIcon ? rightHeaderIcon : null}
           </div>
-          <p className="text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         {extraHeading ? <div>{extraHeading}</div> : null}
       </div>
@@ -38,7 +40,7 @@ export default function SubPageHeader(props: Props) {
           {subheading}
         </div>
       ))}
-      <Separator className="dark:bg-gray-700" />
+      <Separator className="bg-line-soft" />
     </div>
   );
 }

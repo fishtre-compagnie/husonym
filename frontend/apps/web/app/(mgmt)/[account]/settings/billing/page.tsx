@@ -5,7 +5,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import { useGetOnCreateTeamSubmit } from '@/components/site-header/AccountSwitcher';
 import { CreateNewTeamDialog } from '@/components/site-header/CreateNewTeamDialog';
 import Spinner from '@/components/Spinner';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
@@ -228,7 +228,9 @@ function Plans({
       <div className="flex flex-row gap-3 justify-between items-center ">
         <div className="flex flex-row items-center gap-2 text-sm py-6">
           <p className="font-semibold">Current Plan:</p>
-          <Badge>{toTitleCase(UserAccountType[account.type])} Plan</Badge>
+          <Pill tone="brand">
+            {toTitleCase(UserAccountType[account.type])} plan
+          </Pill>
         </div>
         {isStripeEnabled && (
           <div>
@@ -236,39 +238,38 @@ function Plans({
           </div>
         )}
       </div>
-      <div className="grid grid-cols1 md:grid-cols-3 grid-rows-1 w-full border border-gray-300 dark:border-gray-700 bg-transparent rounded-lg mt-4 h-full shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-3 grid-rows-1 w-full overflow-hidden rounded-2xl border border-line-soft bg-card mt-4 h-full">
         {plans.map((plan, index) => (
           <div
-            className={cn(
-              index == 1 && 'bg-gray-100 dark:bg-gray-800',
-              'flex flex-col'
-            )}
+            className={cn(index == 1 && 'bg-surface-2', 'flex flex-col')}
             key={plan.name}
           >
             <div
               className={cn(
-                index == 1 && 'border-x border-gray-300 dark:border-gray-700',
+                index == 1 && 'md:border-x border-line-soft',
                 'h-1/2 px-6 pt-6 flex flex-col justify-between gap-20 w-full'
               )}
             >
               <div className="space-y-2">
                 <div className=" items-center flex flex-row gap-4">
-                  <div className="text-2xl font-semibold">{plan.name}</div>
+                  <div className="font-display text-2xl font-semibold">
+                    {plan.name}
+                  </div>
                   {plan.name == 'Team' && (
-                    <Badge className="bg-blue-700 hover:bg-blue-700">
-                      Most Popular
-                    </Badge>
+                    <Pill tone="brand">Most popular</Pill>
                   )}
                 </div>
-                <div className="text-sm text-foreground">
+                <div className="text-sm text-muted-foreground">
                   {plan.description}
                 </div>
               </div>
               <div className="flex flex-col gap-6 w-full">
-                <div className="text-2xl md:text-3xl flex flex-row gap-2 items-end">
+                <div className="font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] flex flex-row gap-2 items-end">
                   {plan.price}{' '}
                   {plan.name == 'Team' && (
-                    <div className="text-sm  text-foreground">per month</div>
+                    <div className="font-sans text-sm font-normal text-muted-foreground">
+                      per month
+                    </div>
                   )}
                 </div>
                 <div></div>
@@ -288,8 +289,8 @@ function Plans({
             </div>
             <div
               className={cn(
-                index == 1 && 'border-x border-gray-300 dark:border-gray-700',
-                'border-t border-gray-300 dark:border-gray-700 h-1/2 p-6 flex flex-col gap-6'
+                index == 1 && 'md:border-x border-line-soft',
+                'border-t border-line-soft h-1/2 p-6 flex flex-col gap-6'
               )}
             >
               <div className="font-bold">
@@ -301,7 +302,7 @@ function Plans({
                 {plan.features.map((item, index) => (
                   <div key={index}>
                     <div className="flex flex-row items-center gap-2">
-                      <CheckIcon className="w-6 h-6" />
+                      <CheckIcon className="size-5 shrink-0 text-ok" />
                       <div>{item}</div>
                     </div>
                   </div>

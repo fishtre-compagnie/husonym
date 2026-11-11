@@ -2,7 +2,7 @@
 
 import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import {
   formatDateTime,
   getTransformerDataTypesString,
@@ -38,7 +38,7 @@ export function getUserDefinedTransformerColumns(
             <span className="max-w-[500px] truncate font-medium">
               <div>
                 <NextLink
-                  className="hover:underline"
+                  className="font-semibold text-foreground hover:text-hi"
                   href={`/${accountName}/transformers/${row.original.id}`}
                 >
                   <TruncatedText text={row.original.name} align="start" />
@@ -59,7 +59,7 @@ export function getUserDefinedTransformerColumns(
       cell: ({ getValue }) => {
         return (
           <div className="flex space-x-2">
-            <Badge variant="outline">{getValue<string>()}</Badge>
+            <Pill className="font-mono">{getValue<string>()}</Pill>
           </div>
         );
       },
@@ -73,7 +73,7 @@ export function getUserDefinedTransformerColumns(
       cell: ({ getValue }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground">
               {getValue<string>()}
             </span>
           </div>
@@ -88,7 +88,7 @@ export function getUserDefinedTransformerColumns(
       cell: ({ row }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {row.original.createdAt &&
                 formatDateTime(
                   timestampDate(row.getValue<Timestamp>('createdAt'))
@@ -109,7 +109,7 @@ export function getUserDefinedTransformerColumns(
       cell: ({ row }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {row.original.updatedAt &&
                 formatDateTime(
                   timestampDate(row.getValue<Timestamp>('updatedAt'))

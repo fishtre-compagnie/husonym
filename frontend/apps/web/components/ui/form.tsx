@@ -152,7 +152,7 @@ export function FormMessage({
       {...props}
     >
       {body && (
-        <div className="inline-flex flex-row items-center gap-2 text-red-900 dark:text-red-100 border border-red-700 bg-red-100 dark:bg-red-950 rounded-xl p-1 px-2">
+        <div className="inline-flex flex-row items-center gap-2 rounded-lg border border-danger-line bg-danger-soft p-1 px-2 text-danger-fg">
           <MdErrorOutline />
           <p className="text-xs font-medium">{body}</p>
         </div>

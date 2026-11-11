@@ -54,61 +54,61 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-row items-center justify-between">
-        <div className="text-xl font-semibold">Activity Table</div>
-      </div>
-
-      <div className="space-y-2 rounded-md border overflow-hidden dark:border-gray-700">
-        <Table>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} className="pl-2">
-                      {header.isPlaceholder ? null : (
-                        <table.FlexRender header={header} />
-                      )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+    <div className="flex flex-col">
+      <Table className="min-w-[860px]">
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
                 return (
-                  <React.Fragment key={row.id}>
-                    <TableRow data-state={row.getIsSelected() && 'selected'}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          <table.FlexRender cell={cell} />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </React.Fragment>
+                  <TableHead
+                    key={header.id}
+                    className="h-10 px-4 text-xs font-medium text-muted-foreground"
+                  >
+                    {header.isPlaceholder ? null : (
+                      <table.FlexRender header={header} />
+                    )}
+                  </TableHead>
                 );
-              })
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              return (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
                 >
-                  No activities found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="px-4 py-2 align-top">
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground"
+              >
+                No activities found
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div className="border-t border-line-soft px-5 py-3">
+        <DataTablePagination
+          table={table}
+          setPagination={setPagination}
+          setPageSize={setPageSize}
+        />
       </div>
-      <DataTablePagination
-        table={table}
-        setPagination={setPagination}
-        setPageSize={setPageSize}
-      />
     </div>
   );
 }

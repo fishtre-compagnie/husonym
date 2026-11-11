@@ -6,7 +6,7 @@ import NextLink from 'next/link';
 
 import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
-import { Badge, BadgeProps } from '@/components/ui/badge';
+import { Pill, StatusDot } from '@/components/ds';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { AccountApiKey } from '@husonym/sdk';
@@ -31,7 +31,7 @@ export function getColumns(
       cell: ({ row }) => (
         <div>
           <NextLink
-            className="hover:underline"
+            className="font-semibold text-foreground hover:text-hi"
             href={`/${accountName}/settings/api-keys/${row.getValue('id')}`}
           >
             <span>{row.getValue('id')}</span>
@@ -67,14 +67,14 @@ export function getColumns(
           : undefined;
         const text =
           !!expiresAt && expiresAt > Date.now() ? 'active' : 'expired';
-        const badgeVariant: BadgeProps['variant'] =
-          text === 'active' ? 'success' : 'destructive';
+        const tone = text === 'active' ? 'ok' : 'danger';
 
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
-              <Badge variant={badgeVariant}>{text}</Badge>
-            </span>
+            <Pill tone={tone}>
+              <StatusDot tone={tone} />
+              {text === 'active' ? 'Active' : 'Expired'}
+            </Pill>
           </div>
         );
       },
@@ -88,7 +88,7 @@ export function getColumns(
         const expiresAt = row.getValue<Timestamp>('expiresAt');
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {formatDateTime(
                 expiresAt ? timestampDate(expiresAt) : new Date()
               )}
@@ -109,7 +109,7 @@ export function getColumns(
         const createdAt = row.getValue<Timestamp>('createdAt');
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {formatDateTime(
                 createdAt ? timestampDate(createdAt) : new Date()
               )}
@@ -130,7 +130,7 @@ export function getColumns(
         const updatedAt = row.getValue<Timestamp>('updatedAt');
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {formatDateTime(
                 updatedAt ? timestampDate(updatedAt) : new Date()
               )}

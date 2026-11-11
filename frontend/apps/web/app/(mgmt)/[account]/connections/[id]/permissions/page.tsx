@@ -2,7 +2,7 @@
 import ResourceId from '@/components/ResourceId';
 import Spinner from '@/components/Spinner';
 import { SubNav } from '@/components/SubNav';
-import OverviewContainer from '@/components/containers/OverviewContainer';
+import { PageBody } from '@/components/ds';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
 import PermissionsDataTable from '@/components/permissions/PermissionsDataTable';
 import { TestConnectionResult } from '@/components/permissions/PermissionsDialog';
@@ -126,10 +126,8 @@ export default function PermissionsPage(props: PageProps) {
   ];
 
   return (
-    <OverviewContainer
-      Header={connectionComponent.header}
-      containerClassName="px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      {connectionComponent.header}
       <div className="connection-details-container">
         <div className="flex flex-col gap-8">
           <SubNav items={subnav} />
@@ -147,7 +145,7 @@ export default function PermissionsPage(props: PageProps) {
           </div>
         </div>
       </div>
-    </OverviewContainer>
+    </PageBody>
   );
 }
 
@@ -201,7 +199,12 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
           />
         }
         TestConnectionButton={
-          <Button type="button" variant="outline" onClick={handleMutate}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleMutate}
+            aria-label="Check the permissions again"
+          >
             {isRechecking ? <Spinner /> : <UpdateIcon />}
           </Button>
         }

@@ -42,9 +42,9 @@ export default function FormErrorsCard(props: Props): ReactElement {
         <div className="flex flex-row items-center justify-between h-8">
           <div className="flex flex-row items-center gap-2">
             {errors.length != 0 ? (
-              <ExclamationTriangleIcon className="h-4 w-4 text-destructive dark:text-red-400 text-red-600" />
+              <ExclamationTriangleIcon className="h-4 w-4 text-danger-fg" />
             ) : (
-              <CheckCircledIcon className="w-4 h-4" />
+              <CheckCircledIcon className="h-4 w-4 text-ok" />
             )}
             <CardTitle>Validations</CardTitle>
             {errors.length != 0 && (
@@ -55,7 +55,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
               </Badge>
             )}
             {warnings.length != 0 && (
-              <Badge className="bg-yellow-200 dark:bg-yellow-800/70 text-yellow-900 dark:text-yellow-200">
+              <Badge className="border-transparent bg-warn-soft text-warn-fg">
                 {warnings.length == 1
                   ? `${warnings.length} Warning`
                   : `${warnings.length} Warnings`}
@@ -66,18 +66,18 @@ export default function FormErrorsCard(props: Props): ReactElement {
             {onValidate && (
               <Button
                 variant="ghost"
-                className="h-4 w-4"
+                className="size-8"
                 size="icon"
                 key="validate"
                 type="button"
+                aria-label="Validate the mapping again"
+                disabled={isValidating}
+                onClick={() => onValidate()}
               >
                 {isValidating ? (
                   <Spinner className="h-4 w-4" />
                 ) : (
-                  <ReloadIcon
-                    className="h-4 w-4"
-                    onClick={() => onValidate()}
-                  />
+                  <ReloadIcon className="h-4 w-4" />
                 )}
               </Button>
             )}
@@ -89,7 +89,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
       </CardHeader>
       <CardContent className="flex flex-col flex-1">
         {formErrors.length === 0 && warnings.length === 0 ? (
-          <div className="flex flex-col flex-1 items-center justify-center bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-200 rounded-xl">
+          <div className="flex flex-col flex-1 items-center justify-center rounded-xl bg-ok-soft py-4 text-ok">
             <div className="text-sm flex flex-row items-center gap-2 px-1">
               <div className="flex">
                 <CheckIcon />
@@ -103,7 +103,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
               {errors.map((message, index) => (
                 <div
                   key={message + index}
-                  className="text-xs bg-red-200 dark:bg-red-800/70 rounded-sm p-2 text-wrap"
+                  className="text-wrap rounded-lg bg-danger-soft p-2 text-xs text-danger-fg"
                 >
                   {message}
                 </div>
@@ -111,7 +111,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
               {warnings.map((message, index) => (
                 <div
                   key={message + index}
-                  className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap"
+                  className="text-wrap rounded-lg bg-warn-soft p-2 text-xs text-warn-fg"
                 >
                   {message}
                 </div>

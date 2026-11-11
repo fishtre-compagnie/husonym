@@ -2,14 +2,8 @@
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Panel } from '@/components/ds';
+import { MainLogo } from '@/components/site-header/MainLogo';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { signOutEverywhere } from '@/libs/sign-out';
 import { getErrorMessage } from '@/util/util';
@@ -57,11 +51,16 @@ export default function AccountLogin(props: Props): ReactElement {
       : null;
 
   return (
-    <div className="flex justify-center pt-24">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Sign in to {slug}</CardTitle>
-          <CardDescription>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-4 py-12 text-foreground">
+      <div className="text-hi" aria-label="Husonym" role="img">
+        <MainLogo bg="currentColor" />
+      </div>
+      <Panel className="w-full max-w-lg shadow-pop">
+        <div className="flex flex-col gap-2 px-6 pt-6">
+          <h1 className="m-0 font-display text-2xl font-semibold tracking-[-0.02em]">
+            Sign in to <span className="font-mono text-[0.85em]">{slug}</span>
+          </h1>
+          <p className="text-sm text-muted-foreground">
             {ownProvider ? (
               <>
                 This account signs in with its own provider:{' '}
@@ -73,16 +72,16 @@ export default function AccountLogin(props: Props): ReactElement {
             ) : (
               <>This account signs in with {provider}.</>
             )}
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
         {signedInAs ? (
-          <CardContent className="text-sm">
+          <div className="mx-6 mt-5 rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn-fg">
             You are signed in as{' '}
             <span className="font-semibold">{signedInAs}</span>. Signing in to{' '}
             {slug} ends that session first.
-          </CardContent>
+          </div>
         ) : null}
-        <CardFooter className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 p-6">
           {status === 'loading' ? (
             <Spinner />
           ) : signedInAs ? (
@@ -129,8 +128,8 @@ export default function AccountLogin(props: Props): ReactElement {
               />
             </Button>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </Panel>
     </div>
   );
 }

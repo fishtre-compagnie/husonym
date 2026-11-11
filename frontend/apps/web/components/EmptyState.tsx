@@ -15,12 +15,14 @@ interface Props {
 export default function EmptyState(props: Props): ReactElement {
   const { title, description, icon, extra } = props;
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center bg-gray-50 dark:bg-gray-900/20 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
-      <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+    <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+      <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-link">
         {icon}
       </div>
-      <h2 className="text-2xl font-semibold  mb-2">{title}</h2>
-      <p className="text-gray-500 mb-6 max-w-sm">{description}</p>
+      <h2 className="mb-2 font-display text-xl font-semibold text-hi">
+        {title}
+      </h2>
+      <p className="mb-6 max-w-sm text-muted-foreground">{description}</p>
       {extra ? extra : null}
     </div>
   );

@@ -105,7 +105,14 @@ export default function RgpdCell({
   const nonTraite = state === 'not_anonymized';
 
   if (state === 'none') {
-    return <span className="text-muted-foreground/40 text-xs">—</span>;
+    return (
+      <span
+        className="text-xs text-muted-foreground"
+        aria-label="No personal data detected"
+      >
+        —
+      </span>
+    );
   }
   if (state === 'not_analyzed') {
     const notAnalyzed =
@@ -114,11 +121,7 @@ export default function RgpdCell({
       <span
         title={notAnalyzed}
         aria-label={notAnalyzed}
-        className={cn(
-          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold',
-          'border-slate-500/40 bg-slate-50 text-slate-700',
-          'dark:border-slate-400/40 dark:bg-slate-900/40 dark:text-slate-300'
-        )}
+        className="inline-flex items-center gap-1 rounded-full bg-quiet-soft px-2 py-0.5 text-xs font-medium text-quiet-fg"
       >
         <QuestionMarkCircledIcon className="h-3.5 w-3.5" />
         Not analyzed
@@ -147,30 +150,30 @@ export default function RgpdCell({
     <span
       title={tooltip}
       aria-label={category ? `${tooltip} (${category})` : tooltip}
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold',
-        needsReview
-          ? [
-              'border-amber-600/40 bg-amber-50 text-amber-700',
-              'dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-400',
-            ]
-          : nonTraite
-            ? [
-                'border-red-600/40 bg-red-50 text-red-700',
-                'dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400',
-              ]
-            : [
-                'border-green-600/40 bg-green-50 text-green-700',
-                'dark:border-green-500/40 dark:bg-green-950/40 dark:text-green-400',
-              ]
-      )}
+      className="flex min-w-0 flex-col items-start gap-0.5"
     >
-      {needsReview || nonTraite ? (
-        <ExclamationTriangleIcon className="h-3.5 w-3.5" />
-      ) : (
-        <CheckCircledIcon className="h-3.5 w-3.5" />
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+          needsReview
+            ? 'bg-warn-soft text-warn-fg'
+            : nonTraite
+              ? 'bg-danger-soft text-danger-fg'
+              : 'bg-ok-soft text-ok'
+        )}
+      >
+        {needsReview || nonTraite ? (
+          <ExclamationTriangleIcon className="h-3.5 w-3.5" />
+        ) : (
+          <CheckCircledIcon className="h-3.5 w-3.5" />
+        )}
+        {needsReview ? 'Review' : nonTraite ? 'Not anonymized' : 'GDPR'}
+      </span>
+      {category && (
+        <span className="max-w-full truncate text-xs text-muted-foreground">
+          {category}
+        </span>
       )}
-      {needsReview ? 'Review' : nonTraite ? 'Not anonymized' : 'GDPR'}
     </span>
   );
 }

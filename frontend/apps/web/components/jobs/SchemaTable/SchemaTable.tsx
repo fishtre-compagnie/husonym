@@ -1,17 +1,7 @@
 'use client';
 import { SingleTableSchemaFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
-import DualListBox, {
-  Action,
-  Option,
-} from '@/components/DualListBox/DualListBox';
+import { Action, Option } from '@/components/DualListBox/DualListBox';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { Transformer } from '@/shared/transformers';
@@ -36,7 +26,6 @@ import {
   TransformerSource,
   ValidateJobMappingsResponse,
 } from '@husonym/sdk';
-import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -50,7 +39,7 @@ import { JobMappingRow, SQL_COLUMNS } from '../JobMappingTable/Columns';
 import { ColumnDecisionTarget } from '../JobMappingTable/MappingDecisionPanel';
 import JobMappingTable from '../JobMappingTable/JobMappingTable';
 import { rgpdState } from '../JobMappingTable/rgpd-state';
-import FormErrorsCard, { ErrorLevel, FormError } from './FormErrorsCard';
+import { ErrorLevel, FormError } from './FormErrorsCard';
 import { ImportMappingsConfig } from './ImportJobMappingsButton';
 import { getVirtualForeignKeysColumns } from './VirtualFkColumns';
 import VirtualFkPageTable from './VirtualFkPageTable';
@@ -58,6 +47,8 @@ import { VirtualForeignKeyForm } from './VirtualForeignKeyForm';
 import { JobType, SchemaConstraintHandler } from './schema-constraint-handler';
 import { TransformerResult } from './transformer-handler';
 import { useOnExportMappings } from './useOnExportMappings';
+import MappingScopeBar from './MappingScopeBar';
+import MappingExplorer from '../JobMappingTable/MappingExplorer';
 import { handleDataTypeBadge } from './util';
 
 interface Props {
@@ -639,80 +630,91 @@ export function SchemaTable(props: Props): ReactElement {
     return <SkeletonTable />;
   }
 
+  // A job that reads a source gets the mapping drawn table by table; the jobs that
+  // generate their data keep the flat list of columns.
+  const mapping =
+    jobType === 'sync' ? (
+      <MappingExplorer
+        rows={tableData}
+        onTransformerUpdate={onTransformerUpdate}
+        getAvailableTransformers={getAvailableTransformers}
+        getTransformerFromField={getTransformerFromField}
+        getTransformerFromFieldValue={getTransformerFromFieldValue}
+        getAvailableTransformersForBulk={getAvailableTransformersForBulk}
+        onTransformerBulkUpdate={onTransformerBulkUpdate}
+        getColumnDecision={getColumnDecision}
+        onApplyDefaultClick={onApplyDefaultClick}
+        onExport={(indices, shouldFormat) =>
+          onExportMappingsClick(
+            indices.map(
+              (index) => ({ index }) as Row<AppTableFeatures, JobMappingRow>
+            ),
+            shouldFormat
+          )
+        }
+        onImport={onImportMappingsClick}
+        hasMissingSourceColumnMappings={hasMissingSourceColumnMappings}
+        onRemoveMissingSourceColumnMappings={
+          onRemoveMissingSourceColumnMappings
+        }
+        {...piiScanProps}
+      />
+    ) : (
+      <JobMappingTable
+        data={tableData}
+        columns={SQL_COLUMNS}
+        displayApplyDefaultTransformersButton={false}
+        onTransformerUpdate={onTransformerUpdate}
+        getAvailableTransformers={getAvailableTransformers}
+        getTransformerFromField={getTransformerFromField}
+        onExportMappingsClick={onExportMappingsClick}
+        onImportMappingsClick={onImportMappingsClick}
+        isApplyDefaultTransformerButtonDisabled={data.length === 0}
+        getAvalableTransformersForBulk={getAvailableTransformersForBulk}
+        getTransformerFromFieldValue={getTransformerFromFieldValue}
+        onTransformerBulkUpdate={onTransformerBulkUpdate}
+        onApplyDefaultClick={onApplyDefaultClick}
+        onDeleteRow={() => console.warn('on delete row is not implemented')}
+        onDuplicateRow={() =>
+          console.warn('on duplicate row is not implemented')
+        }
+        canRenameColumn={() => false}
+        onRowUpdate={() => console.warn('onRowUpdate is not implemented')}
+        getAvailableCollectionsByRow={() => {
+          console.warn('getAvailableCollections is not implemented');
+          return [];
+        }}
+        hasMissingSourceColumnMappings={hasMissingSourceColumnMappings}
+        onRemoveMissingSourceColumnMappings={
+          onRemoveMissingSourceColumnMappings
+        }
+        getColumnDecision={getColumnDecision}
+        {...piiScanProps}
+      />
+    );
+
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col md:flex-row gap-3">
-        <Card className="w-full">
-          <CardHeader className="flex flex-col gap-2">
-            <div className="flex flex-row items-center gap-2">
-              <div className="flex">
-                <TableIcon className="h-4 w-4" />
-              </div>
-              <CardTitle>Table Selection</CardTitle>
-            </div>
-            <CardDescription>
-              Select the tables that you want to transform and move them from
-              the source to destination table.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DualListBox
-              options={dualListBoxOpts}
-              selected={selectedTables}
-              onChange={onSelectedTableToggle}
-              mode={jobType === 'generate' ? 'single' : 'many'}
-            />
-          </CardContent>
-        </Card>
-        <FormErrorsCard
-          formErrors={formErrors}
-          isValidating={isJobMappingsValidating}
-          onValidate={onValidate}
-        />
-      </div>
+    <div className="flex flex-col gap-6">
+      <MappingScopeBar
+        options={dualListBoxOpts}
+        selected={selectedTables}
+        onChange={onSelectedTableToggle}
+        mode={jobType === 'generate' ? 'single' : 'many'}
+        formErrors={formErrors}
+        isValidating={isJobMappingsValidating}
+        onValidate={onValidate}
+      />
 
       {virtualForeignKeys && addVirtualForeignKey ? (
         <Tabs defaultValue="mappings">
           <TabsList>
-            <TabsTrigger value="mappings">Transformer Mappings</TabsTrigger>
+            <TabsTrigger value="mappings">Transformer mapping</TabsTrigger>
             <TabsTrigger value="virtualforeignkeys">
-              Virtual Foreign Keys
+              Virtual foreign keys
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="mappings">
-            <JobMappingTable
-              data={tableData}
-              columns={SQL_COLUMNS}
-              displayApplyDefaultTransformersButton={jobType === 'sync'}
-              onTransformerUpdate={onTransformerUpdate}
-              getAvailableTransformers={getAvailableTransformers}
-              getTransformerFromField={getTransformerFromField}
-              onExportMappingsClick={onExportMappingsClick}
-              onImportMappingsClick={onImportMappingsClick}
-              isApplyDefaultTransformerButtonDisabled={data.length === 0}
-              getAvalableTransformersForBulk={getAvailableTransformersForBulk}
-              getTransformerFromFieldValue={getTransformerFromFieldValue}
-              onTransformerBulkUpdate={onTransformerBulkUpdate}
-              onApplyDefaultClick={onApplyDefaultClick}
-              onDeleteRow={() =>
-                console.warn('on delete row is not implemented')
-              }
-              onDuplicateRow={() =>
-                console.warn('on duplicate row is not implemented')
-              }
-              canRenameColumn={() => false}
-              onRowUpdate={() => console.warn('onRowUpdate is not implemented')}
-              getAvailableCollectionsByRow={() => {
-                console.warn('getAvailableCollections is not implemented');
-                return [];
-              }}
-              hasMissingSourceColumnMappings={hasMissingSourceColumnMappings}
-              onRemoveMissingSourceColumnMappings={
-                onRemoveMissingSourceColumnMappings
-              }
-              getColumnDecision={getColumnDecision}
-              {...piiScanProps}
-            />
+          <TabsContent value="mappings" className="pt-4">
+            {mapping}
           </TabsContent>
           <TabsContent value="virtualforeignkeys">
             <div className="flex flex-col gap-6 pt-4">
@@ -730,37 +732,7 @@ export function SchemaTable(props: Props): ReactElement {
           </TabsContent>
         </Tabs>
       ) : (
-        <JobMappingTable
-          data={tableData}
-          columns={SQL_COLUMNS}
-          displayApplyDefaultTransformersButton={jobType === 'sync'}
-          onTransformerUpdate={onTransformerUpdate}
-          getAvailableTransformers={getAvailableTransformers}
-          getTransformerFromField={getTransformerFromField}
-          onExportMappingsClick={onExportMappingsClick}
-          onImportMappingsClick={onImportMappingsClick}
-          isApplyDefaultTransformerButtonDisabled={data.length === 0}
-          getAvalableTransformersForBulk={getAvailableTransformersForBulk}
-          getTransformerFromFieldValue={getTransformerFromFieldValue}
-          onTransformerBulkUpdate={onTransformerBulkUpdate}
-          onApplyDefaultClick={onApplyDefaultClick}
-          onDeleteRow={() => console.warn('on delete row is not implemented')}
-          onDuplicateRow={() =>
-            console.warn('on duplicate row is not implemented')
-          }
-          canRenameColumn={() => false}
-          onRowUpdate={() => console.warn('onRowUpdate is not implemented')}
-          getAvailableCollectionsByRow={() => {
-            console.warn('getAvailableCollections is not implemented');
-            return [];
-          }}
-          hasMissingSourceColumnMappings={hasMissingSourceColumnMappings}
-          onRemoveMissingSourceColumnMappings={
-            onRemoveMissingSourceColumnMappings
-          }
-          getColumnDecision={getColumnDecision}
-          {...piiScanProps}
-        />
+        mapping
       )}
     </div>
   );

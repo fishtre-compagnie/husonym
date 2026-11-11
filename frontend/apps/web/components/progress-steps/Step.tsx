@@ -8,55 +8,48 @@ interface Props {
   isActive: boolean;
   isLastStep: boolean;
   name: string;
+  /** What the step reads as; defaults to the name in title case. */
+  label?: string;
+  /** The 1-based position shown in the dot while the step is not done. */
+  position?: number;
 }
 
+/**
+ * One step of a wizard's indicator: a pill with a numbered dot, a check once
+ * the step is done, and the brand tint on the current one.
+ */
 export default function Step(props: Props): ReactElement {
-  const { isActive, isCompleted, isLastStep, name } = props;
+  const { isActive, isCompleted, name, label, position } = props;
 
   return (
-    <div className={cn(isLastStep ? 'flex' : 'flex-none')}>
-      <StepCircle
-        isCompleted={isCompleted}
-        isLastStep={isLastStep}
-        name={name}
-        isActive={isActive}
-      />
-    </div>
-  );
-}
-
-interface StepCircleProps {
-  isCompleted: boolean;
-  isLastStep: boolean;
-  name: string;
-  isActive: boolean;
-}
-
-function StepCircle(props: StepCircleProps): ReactElement {
-  const { isCompleted, isLastStep, name, isActive } = props;
-  return (
-    <div className="flex flex-row">
-      <div className="flex flex-col gap-2 items-center">
-        <div
+    <li>
+      <span
+        aria-current={isActive ? 'step' : undefined}
+        className={cn(
+          'flex items-center gap-2 rounded-full border py-1.5 pl-[7px] pr-[11px] text-[13px] transition-colors',
+          isActive
+            ? 'border-primary bg-brand-soft text-foreground'
+            : 'border-border bg-transparent',
+          !isActive &&
+            (isCompleted ? 'text-foreground' : 'text-muted-foreground')
+        )}
+      >
+        <span
+          aria-hidden="true"
           className={cn(
-            isActive || isCompleted ? 'bg-black ' : 'border border-gray-400',
-            isActive || isCompleted
-              ? 'dark:bg-gray-700'
-              : 'border dark:border-gray',
-            'w-[20px] h-[20px]',
-            'rounded-full',
-            'justify-center flex align-middle items-center'
+            'grid size-[22px] place-items-center rounded-full text-xs font-semibold',
+            isActive
+              ? 'bg-primary text-primary-foreground'
+              : isCompleted
+                ? 'bg-ok-soft text-ok'
+                : 'bg-surface-2 text-muted-foreground'
           )}
         >
-          {isCompleted && <CheckIcon className="text-white dark:text-white" />}
-        </div>
-        <div className="text-xs w-[50px] justify-center flex">
-          {toTitleCase(name)}
-        </div>
-      </div>
-      {!isLastStep && (
-        <div className=" w-[30px] h-[2px] mt-[10px] rounded-xl bg-gray-300 dark:bg-gray-700 dark:bg-gray" />
-      )}
-    </div>
+          {isCompleted ? <CheckIcon className="size-3.5" /> : position}
+        </span>
+        {label ?? toTitleCase(name)}
+        {isCompleted && <span className="sr-only">(done)</span>}
+      </span>
+    </li>
   );
 }

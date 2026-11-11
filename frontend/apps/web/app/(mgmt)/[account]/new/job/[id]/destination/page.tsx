@@ -10,7 +10,7 @@ import {
   getDefaultDestinationFormValueOptionsFromConnectionCase,
   toJobDestinationOptions,
 } from '@/app/(mgmt)/[account]/jobs/util';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import DestinationOptionsForm from '@/components/jobs/Form/DestinationOptionsForm';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
@@ -19,17 +19,10 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { splitConnections } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
 import { NewDestinationFormValues } from '@/yup-validations/jobs';
@@ -46,13 +39,14 @@ import {
   GetConnectionSchemaMapsResponseSchema,
   JobService,
 } from '@husonym/sdk';
-import { Cross1Icon, PlusIcon } from '@radix-ui/react-icons';
+import { ArrowLeftIcon, Cross1Icon, PlusIcon } from '@radix-ui/react-icons';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
-import ConnectionSelectContent from '../../connect/ConnectionSelectContent';
+import ConnectionPicker from '../../connect/ConnectionPicker';
 
 const FormValues = Yup.object({
   destinations: Yup.array(NewDestinationFormValues).required(
@@ -178,12 +172,25 @@ export default function Page(props: PageProps): ReactElement {
   const { postgres, mysql, s3, mongodb, gcpcs, dynamodb, mssql } =
     splitConnections(availableConnections);
 
+  const jobName = data?.job?.name;
+
   return (
-    <div className="job-details-container mx-24">
-      <div className="my-10">
+    <PageBody className="max-w-[960px]">
+      <div className="flex flex-col gap-3">
+        <Link
+          href={`/${account?.name}/jobs/${id}/destinations`}
+          className="inline-flex items-center gap-1.5 self-start text-[13px] text-link hover:text-foreground"
+        >
+          <ArrowLeftIcon aria-hidden="true" />
+          {jobName ? `Back to ${jobName}` : 'Back to the job'}
+        </Link>
         <PageHeader
-          header="Create new Destination Connections"
-          subHeadings={`Connect new destination datasources.`}
+          title="Add destinations"
+          description={
+            sourceConnectionId && connRecord[sourceConnectionId]
+              ? `Where else should the anonymized data from ${connRecord[sourceConnectionId].name} be written? Only connections compatible with the source are listed.`
+              : 'Where else should the anonymized data be written? Only connections compatible with the source are listed.'
+          }
         />
       </div>
 
@@ -192,8 +199,11 @@ export default function Page(props: PageProps): ReactElement {
       ) : (
         <Form {...form}>
           {checksDialog}
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-12">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-8"
+          >
+            <div className="flex flex-col gap-8">
               {fields.map((f, index) => {
                 // not using the field here because it doesn't seem to always update when it needs to
                 const connId = f.connectionId;
@@ -203,17 +213,56 @@ export default function Page(props: PageProps): ReactElement {
                 const destinationsErrors =
                   form.formState.errors.destinations ?? [];
                 return (
-                  <div key={index} className="space-y-4">
-                    <div className="flex flex-row space-x-8">
-                      <div className="basis-11/12">
+                  <div key={index} className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-medium text-muted-foreground">
+                        Destination {index + 1}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        className="ml-auto"
+                        aria-label={`Remove destination ${index + 1}`}
+                        onClick={() => {
+                          remove(index);
+                        }}
+                      >
+                        <Cross1Icon aria-hidden="true" />
+                        Remove
+                      </Button>
+                    </div>
+                    <div>
+                      <div>
                         <FormField
                           control={form.control}
                           name={`destinations.${index}.connectionId`}
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Select
-                                  onValueChange={(value: string) => {
+                                <ConnectionPicker
+                                  ariaLabel={`Destination ${index + 1}`}
+                                  postgres={postgres}
+                                  mysql={mysql}
+                                  mssql={mssql}
+                                  s3={s3}
+                                  mongodb={mongodb}
+                                  gcpcs={gcpcs}
+                                  dynamodb={dynamodb}
+                                  disabledReasons={Object.fromEntries(
+                                    fields
+                                      .filter(
+                                        (other, i) =>
+                                          i !== index && !!other.connectionId
+                                      )
+                                      .map((other) => [
+                                        other.connectionId,
+                                        'Already added above',
+                                      ])
+                                  )}
+                                  emptyLabel="No other connection can receive data from this source."
+                                  value={field.value}
+                                  onChange={(value: string) => {
                                     field.onChange(value);
                                     const newDest = connRecord[value];
                                     const newOpts =
@@ -236,90 +285,72 @@ export default function Page(props: PageProps): ReactElement {
                                       }
                                     );
                                   }}
-                                  value={field.value}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue
-                                      ref={field.ref}
-                                      placeholder="Select a destination ..."
-                                    />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <ConnectionSelectContent
-                                      postgres={postgres}
-                                      mysql={mysql}
-                                      mssql={mssql}
-                                      s3={s3}
-                                      mongodb={mongodb}
-                                      gcpcs={gcpcs}
-                                      dynamodb={dynamodb}
-                                    />
-                                  </SelectContent>
-                                </Select>
+                                />
                               </FormControl>
-                              <FormDescription>
-                                The location of the destination data set.
-                              </FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          remove(index);
-                        }}
-                      >
-                        <Cross1Icon />
-                      </Button>
                     </div>
 
-                    <DestinationOptionsForm
-                      connection={destConnection}
-                      value={destOpts}
-                      setValue={(newOpts) => {
-                        form.setValue(
-                          `destinations.${index}.destinationOptions`,
-                          newOpts,
-                          {
-                            shouldDirty: true,
-                            shouldTouch: true,
-                            shouldValidate: true,
-                          }
-                        );
-                      }}
-                      hideDynamoDbTableMappings={
-                        !isDynamoDBConnection(
-                          destConnection ?? create(ConnectionSchema, {})
-                        )
-                      }
-                      destinationDetailsRecord={getDestinationDetailsRecord(
-                        fields.map((field) => ({
-                          connectionId: field.connectionId,
-                          id: field.connectionId,
-                        })),
-                        connRecord,
-                        destinationConnectionSchemaMapsResp ??
-                          create(GetConnectionSchemaMapsResponseSchema, {})
+                    {destConnection &&
+                      destConnection.connectionConfig?.config.case !==
+                        'mongoConfig' &&
+                      destConnection.connectionConfig?.config.case !==
+                        'gcpCloudstorageConfig' && (
+                        <div className="rounded-[14px] border border-line-soft bg-card p-[18px]">
+                          <DestinationOptionsForm
+                            connection={destConnection}
+                            value={destOpts}
+                            setValue={(newOpts) => {
+                              form.setValue(
+                                `destinations.${index}.destinationOptions`,
+                                newOpts,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                }
+                              );
+                            }}
+                            hideDynamoDbTableMappings={
+                              !isDynamoDBConnection(
+                                destConnection ?? create(ConnectionSchema, {})
+                              )
+                            }
+                            destinationDetailsRecord={getDestinationDetailsRecord(
+                              fields.map((field) => ({
+                                connectionId: field.connectionId,
+                                id: field.connectionId,
+                              })),
+                              connRecord,
+                              destinationConnectionSchemaMapsResp ??
+                                create(
+                                  GetConnectionSchemaMapsResponseSchema,
+                                  {}
+                                )
+                            )}
+                            errors={
+                              destinationsErrors[index]?.destinationOptions
+                            }
+                          />
+                        </div>
                       )}
-                      errors={destinationsErrors[index]?.destinationOptions}
-                    />
                   </div>
                 );
               })}
-              <div className="flex flex-row items-center justify-between w-full mt-4">
+              <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-5">
                 <Button
-                  variant="outline"
+                  variant="link"
                   type="button"
+                  className="px-0"
                   onClick={() => {
                     append({ connectionId: '', destinationOptions: {} });
                   }}
                 >
-                  Add
-                  <PlusIcon className="ml-2" />
+                  <PlusIcon aria-hidden="true" />
+                  Add another destination
                 </Button>
                 <Button
                   disabled={
@@ -335,6 +366,6 @@ export default function Page(props: PageProps): ReactElement {
           </form>
         </Form>
       )}
-    </div>
+    </PageBody>
   );
 }

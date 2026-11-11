@@ -1,20 +1,15 @@
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import { ReactElement } from 'react';
 import NewApiKeyForm from './NewApiKeyForm';
 
 export default function NewAccountApiKey(): ReactElement {
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header="Create a new account API Key"
-          subHeadings="API Keys can be used to interact with Husonym programmatically"
-        />
-      }
-      containerClassName="mx-24"
-    >
+    <PageBody className="max-w-[1320px]">
+      <PageHeader
+        title="New API key"
+        description="API Keys can be used to interact with Husonym programmatically"
+      />
       <NewApiKeyForm />
-    </OverviewContainer>
+    </PageBody>
   );
 }

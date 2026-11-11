@@ -17,6 +17,7 @@ import {
 } from '@husonym/sdk';
 import { createColumnHelper, Row } from '@tanstack/react-table';
 import RgpdCell from './RgpdCell';
+import RgpdColumnHeader from './RgpdColumnHeader';
 import { rgpdRank, rgpdState } from './rgpd-state';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
@@ -72,7 +73,9 @@ export interface NosqlJobMappingRow {
 // Un transformer anonymise-t-il réellement la valeur ? « Passthrough » (ou aucun
 // choix) recopie la donnée d'origine vers la destination : une colonne
 // personnelle laissée ainsi part en clair.
-function isAnonymizingTransformer(t: JobMappingTransformerForm): boolean {
+export function isAnonymizingTransformer(
+  t: JobMappingTransformerForm
+): boolean {
   const c = t?.config?.case;
   return !!c && c !== 'passthroughConfig';
 }
@@ -200,7 +203,9 @@ function getJobMappingColumns() {
     // transformer. Sans `isSensitive` dans la clé, un scan de contenu reconstruisait la
     // ligne sans réveiller la cellule, et le point n'apparaissait jamais — même piège
     // que la colonne RGPD plus bas.
-    (row) => `${transformerRevision(row.transformer)}|${row.isSensitive}`,
+    // The state of the detection is in the key too: the pill takes its look from it.
+    (row) =>
+      `${transformerRevision(row.transformer)}|${row.isSensitive}|${row.piiConfidence ?? 0}|${row.contentNotAnalyzed ?? false}`,
     {
       id: 'transformer',
       size: 244,
@@ -219,6 +224,12 @@ function getJobMappingColumns() {
               isInvalidTransformer(transformer) ? '' : (transformer.name ?? '')
             }
             isSensitive={row.original.isSensitive}
+            state={rgpdState({
+              isSensitive: row.original.isSensitive,
+              confidence: row.original.piiConfidence,
+              isAnonymized: isAnonymizingTransformer(row.original.transformer),
+              contentNotAnalyzed: row.original.contentNotAnalyzed,
+            })}
             onOpen={() =>
               table.options.meta?.jmTable?.onOpenDecision?.(row.index)
             }
@@ -277,10 +288,12 @@ function getJobMappingColumns() {
     },
     {
       id: 'rgpd',
-      size: 112,
+      size: 150,
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="GDPR" />;
+        return <RgpdColumnHeader column={column} title="Personal data" />;
       },
+      // Filtered by what the column asks of the person, not by text: see rgpdFilterFn.
+      filterFn: rgpdFilterFn,
       cell({ row, table }) {
         return (
           // justify-start : centré, le badge ne tombait pas sous le libellé
@@ -316,7 +329,24 @@ function getJobMappingColumns() {
     }
   );
 
+  // Never shown: the list of tables above the mapping focuses it on one table through
+  // this column. The Schema and Table columns filter by a part of the name, which
+  // would also keep `users_archive` for `users`.
+  const tableKeyColumn = columnHelper.accessor(
+    (row) => tableKeyOf(row.schema, row.table),
+    {
+      id: TABLE_KEY_COLUMN,
+      enableHiding: false,
+      enableSorting: false,
+      filterFn: (row, columnId, filterValue) =>
+        row.getValue(columnId) === filterValue,
+      header: () => null,
+      cell: () => null,
+    }
+  );
+
   return columnHelper.columns([
+    tableKeyColumn,
     checkboxColumn,
     schemaColumn,
     tableColumn,
@@ -328,6 +358,35 @@ function getJobMappingColumns() {
     transformerColumn,
     openDecisionColumn,
   ]);
+}
+
+export const TABLE_KEY_COLUMN = 'tableKey';
+
+export function tableKeyOf(schema: string, table: string): string {
+  return `${schema}.${table}`;
+}
+
+// What the person may ask of the column list: the columns that need a decision, the
+// personal columns already protected, those with nothing personal.
+type RgpdFilter = 'decide' | 'protected' | 'none';
+
+function rgpdFilterFn(
+  row: Row<AppTableFeatures, JobMappingRow>,
+  columnId: string,
+  filterValue: RgpdFilter
+): boolean {
+  // The value of the column starts with the rank of its state.
+  const rank = Number(String(row.getValue(columnId)).charAt(0));
+  switch (filterValue) {
+    case 'decide':
+      return rank >= 2;
+    case 'protected':
+      return rank === 1;
+    case 'none':
+      return rank === 0;
+    default:
+      return true;
+  }
 }
 
 function transformerSortingFn(

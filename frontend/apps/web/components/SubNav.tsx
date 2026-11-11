@@ -1,7 +1,6 @@
 import { cn } from '@/libs/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { buttonVariants } from './ui/button';
 
 interface SubNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
@@ -21,7 +20,7 @@ export function SubNav({
   return (
     <nav
       className={cn(
-        'flex flex-col lg:flex-row gap-2 lg:gap-y-0 lg:gap-x-2',
+        'flex w-fit max-w-full flex-row flex-wrap gap-1 rounded-[10px] border border-border bg-card p-[3px]',
         className
       )}
       {...props}
@@ -31,14 +30,13 @@ export function SubNav({
           <Link
             key={item.href}
             href={item.href}
+            aria-current={pathname === item.href ? 'page' : undefined}
             className={cn(
-              buttonVariants({ variant: 'outline' }),
+              'inline-flex h-8 items-center rounded-[7px] px-3 text-sm font-medium transition-colors',
               pathname === item.href
-                ? 'bg-muted hover:bg-muted'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800',
-              'justify-start',
-              buttonClassName,
-              'px-6'
+                ? 'bg-surface-2 text-hi'
+                : 'text-muted-foreground hover:bg-hover hover:text-foreground',
+              buttonClassName
             )}
           >
             {item.title}

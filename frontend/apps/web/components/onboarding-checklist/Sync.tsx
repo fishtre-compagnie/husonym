@@ -26,12 +26,12 @@ export default function Sync(props: Props): ReactElement {
           <Input
             disabled={true}
             value="0 0 1 1 *"
-            className="shadow-lg border border-gray-400 dark:dark:border-[#0D47F0] w-[200px]"
+            className="w-[200px] border border-border"
           />
         </div>
         <div className=" flex flex-col gap-2 text-left">
           <p className="text-sm font-semibold">Job Runs</p>
-          <div className=" flex flex-col gap-4 p-4 border border-gray-300 dark:dark:border-[#0D47F0] rounded-lg text-xs shadow-lg">
+          <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-xs">
             <div className="flex flex-row gap-4 justify-between" id="header">
               <div className="w-[100px] font-semibold">Job</div>
               <div className="w-[100px] font-semibold">Start</div>

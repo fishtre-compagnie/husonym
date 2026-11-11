@@ -72,7 +72,7 @@ function ValidationResponseBadge(
             href={url}
             passHref
             target="_blank"
-            className="flex flex-row items-center gap-2 rounded-xl px-2 py-1 h-auto text-orange-900 dark:text-orange-100 border border-orange-700 bg-orange-100 dark:bg-orange-900 hover:bg-orange-200 dark:hover:bg-orange-950/90 transition-colors"
+            className="flex flex-row items-center gap-2 rounded-full px-2.5 py-1 h-auto text-warn-fg border border-warn-line bg-warn-soft hover:brightness-110 transition"
           >
             <TiWarningOutline />
             <div className="text-nowrap text-xs pl-2 font-medium">
@@ -85,7 +85,7 @@ function ValidationResponseBadge(
       );
     } else {
       return (
-        <div className="flex flex-row items-center gap-2 rounded-xl px-2 py-1 h-auto text-green-900 dark:text-green-100 border border-green-700 bg-green-100 dark:bg-green-900 transition-colors">
+        <div className="flex flex-row items-center gap-2 rounded-full px-2.5 py-1 h-auto text-ok bg-ok-soft transition-colors">
           <CheckCircledIcon />
           <div className="text-nowrap text-xs font-medium">
             Successfully connected
@@ -100,7 +100,7 @@ function ValidationResponseBadge(
         href={url}
         passHref
         target="_blank"
-        className="flex flex-row items-center gap-2 rounded-xl px-2 py-1 h-auto text-red-900 dark:text-red-100 border border-red-700 bg-red-100 dark:bg-red-950 dark:hover:bg-red-950/90 hover:bg-red-200 transition-colors"
+        className="flex flex-row items-center gap-2 rounded-xl px-2.5 py-1 h-auto text-danger-fg border border-danger-line bg-danger-soft hover:brightness-110 transition"
       >
         <MdErrorOutline />
         <div className="text-nowrap text-xs pl-2 font-medium">
@@ -130,14 +130,14 @@ function FindingsBadge(props: FindingsBadgeProps): ReactElement {
   ].filter((part) => !!part);
   const className =
     blocking > 0
-      ? 'text-red-900 dark:text-red-100 border-red-700 bg-red-100 dark:bg-red-950 hover:bg-red-200 dark:hover:bg-red-950/90'
-      : 'text-orange-900 dark:text-orange-100 border-orange-700 bg-orange-100 dark:bg-orange-900 hover:bg-orange-200 dark:hover:bg-orange-950/90';
+      ? 'text-danger-fg border-danger-line bg-danger-soft hover:brightness-110'
+      : 'text-warn-fg border-warn-line bg-warn-soft hover:brightness-110';
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex flex-row items-center gap-2 rounded-xl border px-2 py-1 h-auto transition-colors ${className}`}
+        className={`inline-flex flex-row items-center gap-2 rounded-full border px-2.5 py-1 h-auto transition ${className}`}
       >
         {blocking > 0 ? <MdErrorOutline /> : <TiWarningOutline />}
         <span className="text-nowrap text-xs font-medium">

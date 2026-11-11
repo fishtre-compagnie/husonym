@@ -29,23 +29,17 @@ export default function SampleTable(props: Props): ReactElement {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        <div>
-          <h2 className="font-semibold tracking-tight">
-            Synthetic Data Sample
-          </h2>
-        </div>
-        <div>
-          <p className="text-[0.8rem] text-muted-foreground tracking-tight">
-            A sample of synthetic data given the inputs above. Will return the
-            configured row count up to 10 records, whichever is smaller.
-          </p>
-        </div>
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <h2 className="m-0 text-[15px] font-semibold">Synthetic data sample</h2>
+        <p className="m-0 text-[13px] text-muted-foreground">
+          A sample of synthetic data given the inputs above: the configured row
+          count, up to 10 records.
+        </p>
       </div>
-      <div className="rounded-md border overflow-auto dark:border-gray-700">
+      <div className="overflow-auto rounded-[14px] border border-line-soft bg-card">
         <Table>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800">
+          <TableHeader className="bg-surface-2">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -78,7 +72,7 @@ export default function SampleTable(props: Props): ReactElement {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center text-muted-foreground"
                 >
                   Click Sample to generate a preview of synthetic data.
                 </TableCell>
@@ -87,6 +81,6 @@ export default function SampleTable(props: Props): ReactElement {
           </TableBody>
         </Table>
       </div>
-    </div>
+    </section>
   );
 }

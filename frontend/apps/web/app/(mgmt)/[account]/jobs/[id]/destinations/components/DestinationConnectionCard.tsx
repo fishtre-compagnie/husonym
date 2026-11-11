@@ -222,8 +222,8 @@ export default function DestinationConnectionCard({
               />
             </div>
           </CardContent>
-          <CardFooter>
-            <div className="flex flex-row items-center justify-between w-full mt-4">
+          <CardFooter className="border-t border-line-soft bg-surface-2 py-3">
+            <div className="flex w-full flex-row items-center justify-between">
               <DeleteButton isDisabled={isDeleteDisabled} onDelete={onDelete} />
               <Button disabled={!form.formState.isDirty} type="submit">
                 Save
@@ -257,7 +257,15 @@ function DeleteButton(props: DeleteButtonProps): ReactElement {
   return (
     <DeleteConfirmationDialog
       trigger={
-        <Button type="button" variant="destructive" disabled={isDisabled}>
+        <Button
+          type="button"
+          variant="outline"
+          className="text-danger-fg hover:bg-danger-soft"
+          disabled={isDisabled}
+          title={
+            isDisabled ? 'A job keeps at least one destination' : undefined
+          }
+        >
           <ButtonText leftIcon={<TrashIcon />} text="Delete" />
         </Button>
       }

@@ -19,8 +19,8 @@ export default function StepProgress(props: Props): ReactElement {
           className={cn(
             'rounded-2xl w-2 h-2',
             stepOrder.indexOf(step.name) <= stepOrder.indexOf(currentStep)
-              ? 'bg-gray-900 dark:bg-blue-600'
-              : 'bg-gray-300 dark:bg-gray-700' // Upcoming steps
+              ? 'bg-primary'
+              : 'bg-surface-2' // Upcoming steps
           )}
         ></div>
       ))}

@@ -47,7 +47,9 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
         <SheetHeader>
           <div className="flex flex-row items-center gap-2">
             {location && (
-              <span className="text-xs text-muted-foreground">{location}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {location}
+              </span>
             )}
             <div className="grow" />
             {navigation && (
@@ -80,7 +82,9 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
               </div>
             )}
           </div>
-          <SheetTitle className="font-mono text-base">{title}</SheetTitle>
+          <SheetTitle className="font-mono text-lg font-medium text-hi">
+            {title}
+          </SheetTitle>
           {badges && (
             <SheetDescription asChild>
               <div className="flex flex-wrap items-center gap-2">{badges}</div>
@@ -91,7 +95,7 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
 
         {children}
 
-        <SheetFooter className="flex flex-row justify-end gap-2">
+        <SheetFooter className="mt-auto flex flex-row justify-end gap-2 border-t border-line-soft pt-4">
           {footer}
         </SheetFooter>
       </SheetContent>

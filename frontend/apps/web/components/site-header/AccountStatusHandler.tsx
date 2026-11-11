@@ -1,5 +1,6 @@
 'use client';
 import { SystemAppConfig } from '@/app/config/app-config';
+import { StatusDot } from '@/components/ds';
 import { cn } from '@/libs/utils';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
@@ -24,7 +25,7 @@ export function AccountStatusHandler(props: Props) {
   );
 
   if (isLoading) {
-    return <Skeleton className="w-[100px] h-8" />;
+    return <Skeleton className="h-10 w-[100px] rounded-[10px]" />;
   }
 
   const showTrialCountdown =
@@ -64,41 +65,23 @@ interface TrialCountdownProps {
 
 function TrialCountdown(props: TrialCountdownProps) {
   const { isExpired, isAlmostExpired, daysRemaining } = props;
+  const tone = isExpired ? 'danger' : isAlmostExpired ? 'warn' : 'brand';
 
   return (
     <div
       className={cn(
-        isExpired
-          ? 'border-red-700'
-          : isAlmostExpired
-            ? 'border-yellow-500'
-            : ' border-blue-400 dark:border-blue-700',
-        'border flex items-center gap-2 h-8  rounded-md px-2 py-1'
+        'flex h-10 items-center gap-2 rounded-[10px] border px-3',
+        tone === 'danger' && 'border-danger-line bg-danger-soft text-danger-fg',
+        tone === 'warn' && 'border-warn-line bg-warn-soft text-warn-fg',
+        tone === 'brand' && 'border-border bg-brand-soft text-foreground'
       )}
     >
-      <div className="relative flex items-center">
-        <div
-          className={cn(
-            isExpired
-              ? 'bg-red-600'
-              : isAlmostExpired
-                ? 'bg-yellow-600'
-                : ' border-blue-400 dark:border-blue-700',
-            'absolute animate-ping h-2.5 w-2.5 rounded-full bg-blue-400 opacity-75'
-          )}
-        />
-        <div
-          className={cn(
-            isExpired
-              ? 'bg-red-600'
-              : isAlmostExpired
-                ? 'bg-yellow-600'
-                : 'bg-blue-700',
-            'relative h-2.5 w-2.5 rounded-full'
-          )}
-        />
-      </div>
-      <div className="text-xs ">
+      <StatusDot
+        tone={tone}
+        pulse
+        className={tone === 'brand' ? 'bg-link' : undefined}
+      />
+      <div className="text-xs font-medium whitespace-nowrap">
         {isExpired
           ? 'Trial Expired'
           : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left in your trial`}

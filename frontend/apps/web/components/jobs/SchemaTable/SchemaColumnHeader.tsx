@@ -58,9 +58,9 @@ export function SchemaColumnHeader<TData extends RowData, TValue>({
               }}
               placeholder={title}
               title={title}
-              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-transparent text-xs h-8 w-full pl-2 pr-6"
+              className="h-8 w-full border border-border bg-card pl-2 pr-6 text-xs"
             />
-            <FaSearch className="absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 transform text-gray-400" />
+            <FaSearch className="absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 transform text-muted-foreground" />
           </div>
         </div>
       )}

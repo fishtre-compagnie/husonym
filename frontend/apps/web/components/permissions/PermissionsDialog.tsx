@@ -159,10 +159,8 @@ function SuccessAlert(props: SuccessAlertProps): ReactElement {
   return (
     <Alert variant="success">
       <div className="flex flex-row items-center gap-2">
-        <CheckCircledIcon className="h-4 w-4 text-green-900 dark:text-green-400" />
-        <div className="font-normal text-green-900 dark:text-green-400">
-          {description}
-        </div>
+        <CheckCircledIcon className="h-4 w-4 text-ok" />
+        <div className="font-normal text-ok">{description}</div>
       </div>
     </Alert>
   );
@@ -177,10 +175,8 @@ function WarningAlert(props: WarningAlertProps): ReactElement {
   return (
     <Alert variant="warning">
       <div className="flex flex-row items-center gap-2">
-        <IoWarning className="h-4 w-4 text-orange-900 dark:text-orange-400" />
-        <div className="font-normal text-orange-900 dark:text-orange-400">
-          {description}
-        </div>
+        <IoWarning className="h-4 w-4 text-warn-fg" />
+        <div className="font-normal text-warn-fg">{description}</div>
       </div>
     </Alert>
   );

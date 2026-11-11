@@ -1,7 +1,6 @@
 'use client';
 
 import { useAccount } from '@/components/providers/account-provider';
-import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
@@ -10,7 +9,10 @@ import {
 import { isPassthrough } from '@/util/mapping-changes';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobMappingChangeKind, JobService } from '@husonym/sdk';
-import { BellIcon, CheckCircledIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon } from '@radix-ui/react-icons';
+import { cn } from '@/libs/utils';
+import { BellIcon } from '../shell/icons';
+import { topbarIconButtonClass } from '../shell/styles';
 import Link from 'next/link';
 import { ReactElement, useMemo, useState } from 'react';
 
@@ -31,12 +33,21 @@ interface JobPending {
 //
 // Failed runs are deliberately not here. They are events, and belong to notifications; this is
 // the list of decisions somebody has to make.
-export default function PendingReviewsBell(): ReactElement | null {
+export interface PendingReviews {
+  // Each job with changes waiting, the one shipping the most personal data in clear first
+  byJob: JobPending[];
+  total: number;
+  // True until the first answer: an empty list then says nothing yet.
+  isLoading: boolean;
+}
+
+// The changes waiting for review across the account's jobs. The sidebar and the bell
+// share it, and the queries behind it, so both always say the same number.
+export function usePendingReviews(): PendingReviews {
   const { account } = useAccount();
   const accountId = account?.id ?? '';
-  const [open, setOpen] = useState(false);
 
-  const { data: pendingData } = useQuery(
+  const { data: pendingData, isLoading } = useQuery(
     JobService.method.getPendingMappingChanges,
     { accountId },
     { enabled: !!accountId }
@@ -75,42 +86,52 @@ export default function PendingReviewsBell(): ReactElement | null {
     );
   }, [pendingData?.changes, jobsData?.jobs]);
 
+  return {
+    byJob,
+    total: byJob.reduce((sum, job) => sum + job.count, 0),
+    isLoading: isLoading || !accountId,
+  };
+}
+
+export default function PendingReviewsBell(): ReactElement | null {
+  const { account } = useAccount();
+  const [open, setOpen] = useState(false);
+  const { byJob, total } = usePendingReviews();
+
   if (!account) {
     return null;
   }
 
-  const total = byJob.reduce((sum, job) => sum + job.count, 0);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className="relative"
+        <button
+          type="button"
+          className={cn(topbarIconButtonClass, 'relative')}
           aria-label={
             total > 0
               ? `${total} change${total === 1 ? '' : 's'} to review`
               : 'Nothing to review'
           }
         >
-          <BellIcon className="w-4 h-4" />
+          <BellIcon size={18} />
           {total > 0 && (
-            <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+            <span className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] rounded-full bg-danger px-1 text-center text-[10px] font-semibold leading-[18px] text-background">
               {total > 99 ? '99+' : total}
             </span>
           )}
-        </Button>
+        </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
         {total === 0 ? (
           <div className="flex flex-row items-center gap-2 text-sm">
-            <CheckCircledIcon />
+            <CheckCircledIcon className="shrink-0 text-ok" />
             Nothing to review: every change your jobs&apos; runs made has been
             reviewed.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-medium">
+            <p className="font-display text-sm font-semibold text-hi">
               {total} change{total === 1 ? '' : 's'} to your jobs&apos;
               mappings, waiting for review
             </p>
@@ -120,13 +141,13 @@ export default function PendingReviewsBell(): ReactElement | null {
                   <Link
                     href={`/${account.name}/jobs/${job.jobId}/review`}
                     onClick={() => setOpen(false)}
-                    className="flex flex-row items-center justify-between gap-2 rounded-md px-2 py-1 text-sm hover:bg-muted"
+                    className="flex flex-row items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-hover"
                   >
                     <span className="truncate">{job.jobName}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {job.count}
                       {job.personalInClear > 0 && (
-                        <span className="text-red-600 dark:text-red-400">
+                        <span className="text-danger-fg">
                           {' '}
                           · {job.personalInClear} personal in clear
                         </span>

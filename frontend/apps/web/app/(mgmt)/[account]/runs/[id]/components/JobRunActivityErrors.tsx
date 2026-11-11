@@ -5,8 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Panel, PanelHeader } from '@/components/ds';
 import { useQuery } from '@connectrpc/connect-query';
 import { Code, Connection, ConnectionService, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
@@ -145,52 +144,60 @@ function JobRunInitSchemaErrorViewer(
       {} as Record<string, Connection>
     ) ?? {};
 
+  if (!filteredRunContext || filteredRunContext.length === 0) {
+    return <></>;
+  }
+
   return (
-    <div>
-      {filteredRunContext && filteredRunContext.length > 0 && (
-        <ScrollArea className="h-[400px] w-full rounded-md border">
-          {filteredRunContext.map((connectionError) => (
-            <div key={connectionError.ConnectionId} className="p-4">
-              <Alert className="border-red-500">
-                <div className="flex flex-row items-center gap-2">
-                  <IoAlertCircleOutline className="h-6 w-6" />
-                  <AlertTitle className="text-lg">
-                    Connection:{' '}
-                    {connectionsMap[connectionError.ConnectionId]?.name}
-                    <span className="text-muted-foreground text-sm pl-4">
-                      {connectionError.ConnectionId}
-                    </span>
-                  </AlertTitle>
-                </div>
-                <AlertDescription>
-                  <h2 className="text-md font-semibold text-muted-foreground mt-2">
-                    Schema Initialization Errors
-                  </h2>
-                  <Accordion type="single" collapsible className="w-full">
-                    {connectionError.Errors.map((error, errorIdx) => (
-                      <AccordionItem value={`item-${errorIdx}`} key={errorIdx}>
-                        <AccordionTrigger className="text-left">
-                          <div className="font-medium">{error.Error}</div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-2">
-                            <div className="rounded-md bg-muted p-3">
-                              <p className="font-medium">Statement:</p>
-                              <pre className="mt-2 whitespace-pre-wrap text-sm">
-                                {error.Statement}
-                              </pre>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </AlertDescription>
-              </Alert>
-            </div>
-          ))}
-        </ScrollArea>
-      )}
-    </div>
+    <Panel tone="danger" aria-label="Schema initialization errors">
+      <PanelHeader
+        leading={
+          <IoAlertCircleOutline
+            aria-hidden="true"
+            className="h-5 w-5 text-danger-fg"
+          />
+        }
+        title="Schema initialization errors"
+      />
+      <div className="max-h-[400px] overflow-y-auto">
+        {filteredRunContext.map((connectionError) => (
+          <div
+            key={connectionError.ConnectionId}
+            className="border-b border-line-soft px-5 py-4 last:border-b-0"
+          >
+            <p className="m-0 flex flex-wrap items-baseline gap-x-3 font-medium">
+              {connectionsMap[connectionError.ConnectionId]?.name ??
+                'Unknown connection'}
+              <span className="font-mono text-xs text-muted-foreground">
+                {connectionError.ConnectionId}
+              </span>
+            </p>
+            <Accordion type="single" collapsible className="w-full">
+              {connectionError.Errors.map((error, errorIdx) => (
+                <AccordionItem
+                  value={`item-${errorIdx}`}
+                  key={errorIdx}
+                  className="border-line-soft"
+                >
+                  <AccordionTrigger className="text-left text-[13px] text-danger-fg">
+                    {error.Error}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="rounded-lg bg-surface-2 p-3">
+                      <p className="m-0 text-xs text-muted-foreground">
+                        Statement
+                      </p>
+                      <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs">
+                        {error.Statement}
+                      </pre>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }

@@ -91,7 +91,7 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
       : '';
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="h-full overflow-hidden">
       <CardHeader>
         <CardTitle>Schedule</CardTitle>
         <LicenseFeatureNotice feature="scheduling" />
@@ -109,7 +109,8 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
                   </FormDescription>
                   <FormControl>
                     <Input
-                      placeholder="Cron Schedule"
+                      placeholder="Cron schedule, e.g. 0 3 * * *"
+                      className="font-mono"
                       value={field.value || ''}
                       onChange={field.onChange}
                     />
@@ -119,7 +120,7 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
               )}
             />
           </CardContent>
-          <CardFooter className="bg-muted flex py-2 justify-center">
+          <CardFooter className="flex justify-center border-t border-line-soft bg-surface-2 py-2">
             <div className="flex flex-row items-center justify-between w-full">
               <p className="text-muted-foreground text-sm">{msg}</p>
               {/* Without the feature a new or changed cron cannot be saved; a schedule is stopped with Pause. */}

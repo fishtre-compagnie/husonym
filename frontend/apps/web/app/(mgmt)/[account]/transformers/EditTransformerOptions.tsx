@@ -221,10 +221,10 @@ function EditTransformerConfig(
 
 function NoAdditionalTransformerConfigurations(): ReactElement {
   return (
-    <Alert className="border-gray-200 dark:border-gray-700 shadow-xs">
+    <Alert className="border-line-soft bg-card">
       <div className="flex flex-row items-center gap-4">
         <MixerHorizontalIcon className="h-4 w-4" />
-        <AlertDescription className="text-gray-500">
+        <AlertDescription className="text-muted-foreground">
           There are no additional configurations for this Transformer
         </AlertDescription>
       </div>

@@ -64,8 +64,8 @@ export default function Page(props: PageProps): ReactElement {
   return (
     <div className="job-details-container flex flex-col gap-5">
       <SubPageHeader
-        header="Destination Connections"
-        description={`Manage a job's destination connections`}
+        header="Destinations"
+        description="Where the anonymized data is written, and how."
         extraHeading={
           isDataGenJob(data?.job) || isAiDataGenJob(data?.job) ? null : (
             <NewDestinationButton jobId={id} />
@@ -74,9 +74,9 @@ export default function Page(props: PageProps): ReactElement {
       />
 
       {isLoading || isConnectionsLoading ? (
-        <Skeleton className="w-full h-96 rounded-lg" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
       ) : (
-        <div className="space-y-10">
+        <div className="flex flex-col gap-6">
           {data?.job?.destinations.map((destination) => {
             return (
               <DestinationConnectionCard
@@ -125,7 +125,7 @@ function NewDestinationButton(props: NewDestinationButtonProps): ReactElement {
   return (
     <NextLink href={`/${account?.name}/new/job/${jobId}/destination`}>
       <Button>
-        <ButtonText leftIcon={<PlusIcon />} text="New Destination" />
+        <ButtonText leftIcon={<PlusIcon />} text="New destination" />
       </Button>
     </NextLink>
   );

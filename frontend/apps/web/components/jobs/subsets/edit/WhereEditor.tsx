@@ -32,7 +32,7 @@ export default function WhereEditor(props: Props): ReactElement {
 
   return (
     <div
-      className="flex flex-col items-center justify-between rounded-lg border dark:border-gray-700 p-3 shadow-xs"
+      className="flex flex-col items-center justify-between rounded-xl border border-line-soft bg-card p-3"
       ref={ref}
     >
       <Editor

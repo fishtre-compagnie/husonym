@@ -1,8 +1,7 @@
 'use client';
 import ButtonText from '@/components/ButtonText';
-import OverviewContainer from '@/components/containers/OverviewContainer';
 import EmptyState, { EmptyStateLinkButton } from '@/components/EmptyState';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { Button } from '@/components/ui/button';
@@ -23,17 +22,14 @@ export default function Transformers(): ReactElement {
   const searchParams = useSearchParams();
   const defaultTab = getTableTabFromParams(searchParams);
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header="Transformers"
-          extraHeading={<NewTransformerButton />}
-        />
-      }
-      containerClassName="transformer-page"
-    >
+    <PageBody className="transformer-page">
+      <PageHeader
+        title="Transformers"
+        description="What a job does to each column: anonymize it, generate it or keep it."
+        actions={<NewTransformerButton />}
+      />
       <TransformersTable defaultTab={defaultTab} />
-    </OverviewContainer>
+    </PageBody>
   );
 }
 

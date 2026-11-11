@@ -5,7 +5,7 @@ import ColumnDecisionPanel, {
   PanelNavigation,
 } from '@/components/jobs/ColumnDecision/ColumnDecisionPanel';
 import { TransformerResult } from '@/components/jobs/SchemaTable/transformer-handler';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
@@ -64,17 +64,15 @@ export default function MappingDecisionPanel(props: Props): ReactElement {
       onClose={onClose}
       badges={
         <>
-          <Badge variant="outline" className="font-mono font-normal">
-            {target.dataType}
-          </Badge>
+          <Pill className="font-mono font-normal">{target.dataType}</Pill>
           {target.constraints && (
-            <Badge variant="outline">{target.constraints}</Badge>
+            <Pill className="font-mono">{target.constraints}</Pill>
           )}
           {target.isSensitive && (
-            <Badge variant="secondary">
+            <Pill tone="warn">
               Personal data
               {target.dataCategory ? `: ${target.dataCategory}` : ''}
-            </Badge>
+            </Pill>
           )}
         </>
       }

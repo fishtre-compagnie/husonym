@@ -1,7 +1,7 @@
 'use client';
 
+import { Pill } from '@/components/ds';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -109,11 +109,9 @@ function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
       </TableCell>
       <TableCell>
         {row.allowed ? (
-          <Badge variant="outline">Included</Badge>
+          <Pill tone="ok">Included</Pill>
         ) : (
-          <Badge variant={row.blocking ? 'destructive' : 'secondary'}>
-            Not included
-          </Badge>
+          <Pill tone={row.blocking ? 'danger' : 'quiet'}>Not included</Pill>
         )}
       </TableCell>
       <TableCell className="text-muted-foreground">

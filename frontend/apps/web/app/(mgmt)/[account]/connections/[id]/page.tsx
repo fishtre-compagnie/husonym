@@ -1,5 +1,5 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
+import { PageBody } from '@/components/ds';
 import { useAccount } from '@/components/providers/account-provider';
 import ResourceId from '@/components/ResourceId';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
@@ -71,16 +71,14 @@ export default function ConnectionPage(props: PageProps): ReactElement {
     data?.connection?.connectionConfig?.config.case === 'mongoConfig';
 
   return (
-    <OverviewContainer
-      Header={connectionComponent.header}
-      containerClassName="px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      {connectionComponent.header}
       <div className="connection-details-container">
         <div className="flex flex-col gap-8">
           {showSubNav && <SubNav items={subnav} buttonClassName="" />}
           <div>{connectionComponent.body}</div>
         </div>
       </div>
-    </OverviewContainer>
+    </PageBody>
   );
 }

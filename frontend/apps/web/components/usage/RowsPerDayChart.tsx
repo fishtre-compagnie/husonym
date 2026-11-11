@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Panel, PanelHeader } from '@/components/ds';
 import { dayPoints } from '@/libs/usage/days';
 import { countFormat, formatCount } from '@/libs/usage/numbers';
 import { UsageDay } from '@husonym/sdk';
@@ -39,11 +39,9 @@ export default function RowsPerDayChart(props: Props): ReactElement {
   // browser to tell its languages.
   const axisNumbers = countFormat({ maximumFractionDigits: 1 });
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rows read per day</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Panel>
+      <PanelHeader title="Rows read per day" />
+      <div className="p-5">
         {emptyLine ? (
           <p className="text-sm text-muted-foreground">{emptyLine}</p>
         ) : (
@@ -80,7 +78,7 @@ export default function RowsPerDayChart(props: Props): ReactElement {
                     }
                   />
                   <Tooltip
-                    cursor={{ fill: 'var(--muted)' }}
+                    cursor={{ fill: 'var(--hover)' }}
                     content={DayTooltip}
                   />
                   <Bar
@@ -114,8 +112,8 @@ export default function RowsPerDayChart(props: Props): ReactElement {
             </table>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Panel>
   );
 }
 
@@ -128,7 +126,7 @@ function DayTooltip({ active, payload }: TooltipContentProps): ReactNode {
     return null;
   }
   return (
-    <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-pop">
       <div className="font-medium">{point.label}</div>
       <div className="tabular-nums">
         Rows read: {formatCount(point.rowsRead)}

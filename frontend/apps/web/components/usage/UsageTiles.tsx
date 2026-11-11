@@ -1,4 +1,4 @@
-import StatTile from '@/components/StatTile';
+import { StatCard } from '@/components/ds';
 import { usageNotes, usageTiles } from '@/libs/usage/totals';
 import { ReactElement } from 'react';
 
@@ -11,7 +11,7 @@ export default function UsageTiles(props: Props): ReactElement {
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {usageTiles(props).map((tile) => (
-          <StatTile
+          <StatCard
             key={tile.label}
             label={tile.label}
             value={tile.value}

@@ -64,7 +64,7 @@ export default function DynamoDBSourceOptionsForm(props: Props): ReactElement {
                 target="_blank"
               >
                 AWS Docs
-                <ExternalLinkIcon className="text-gray-800 w-4 h-4" />
+                <ExternalLinkIcon className="w-4 h-4 text-muted-foreground" />
               </NextLink>
             </p>
           </div>

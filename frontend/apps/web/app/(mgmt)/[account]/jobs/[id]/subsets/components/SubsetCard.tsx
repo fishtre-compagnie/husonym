@@ -12,10 +12,7 @@ import useOnBulkEditItemSave, {
   BulkEditItem,
 } from '@/components/jobs/subsets/edit/useOnBulkEditItemSave';
 import useOnEditItemSave from '@/components/jobs/subsets/edit/useOnEditItemSave';
-import {
-  SUBSET_TABLE_COLUMNS,
-  SubsetTableRow,
-} from '@/components/jobs/subsets/SubsetTable/Columns';
+import { SubsetTableRow } from '@/components/jobs/subsets/SubsetTable/Columns';
 import SubsetTable from '@/components/jobs/subsets/SubsetTable/SubsetTable';
 import {
   addsWhereClause,
@@ -329,7 +326,6 @@ export default function SubsetCard(props: Props): ReactElement {
             <div>
               <SubsetTable
                 data={Object.values(tableRowData)}
-                columns={SUBSET_TABLE_COLUMNS}
                 onEdit={onEdit}
                 onBulkEdit={onBulkEdit}
                 hasLocalChange={hasLocalChange}
@@ -381,7 +377,7 @@ export default function SubsetCard(props: Props): ReactElement {
                 />
               }
             />
-            <div className="flex flex-row pt-10 justify-end">
+            <div className="sticky bottom-4 z-10 flex justify-end pt-6">
               {/* Saving subsets with no WHERE clause is what clears them: it stays possible. */}
               <Button
                 key="submit"

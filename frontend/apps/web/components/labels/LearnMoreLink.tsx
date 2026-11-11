@@ -16,11 +16,11 @@ export default function LearnMoreLink(props: Props): ReactElement {
       href={href}
       target="_blank"
       className={cn(
-        'underline inline-flex items-center gap-1 text-gray-600 text-sm',
+        'inline-flex items-center gap-1 text-sm text-link underline-offset-2 hover:underline',
         classNames
       )}
     >
-      <span className="text-muted-foreground">Learn more</span>
+      <span>Learn more</span>
       <ArrowTopRightIcon className="w-3 h-3" />
     </Link>
   );

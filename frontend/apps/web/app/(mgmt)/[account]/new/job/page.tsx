@@ -1,25 +1,14 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { Pill } from '@/components/ds';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
+import { SelectCard, WizardFooter } from '@/components/progress-steps/Wizard';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
-import { cn } from '@/libs/utils';
 import { MagicWandIcon, SymbolIcon } from '@radix-ui/react-icons';
 import { nanoid } from 'nanoid';
-import { useTheme } from 'next-themes';
-import Image from 'next/image';
 import {
   ReadonlyURLSearchParams,
   useRouter,
@@ -28,7 +17,12 @@ import {
 import { ReactElement, ReactNode, use, useState } from 'react';
 import { AiOutlineExperiment } from 'react-icons/ai';
 import { PiDetective } from 'react-icons/pi';
+import {
+  getJobProgressStepLabels,
+  getJobProgressSteps,
+} from './JobsProgressSteps';
 import { NewJobType } from './job-form-validations';
+import NewJobWizard from './NewJobWizard';
 
 export default function NewJob(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -54,87 +48,59 @@ export default function NewJob(props: PageProps): ReactElement {
   };
 
   const router = useRouter();
-  const theme = useTheme();
+  const selected = jobData.find((jd) => jd.type === selectedJobType);
 
   return (
-    <div
+    <NewJobWizard
       id="newjobdefine"
-      className="px-12 sm:px-24 md:px-48 lg:px-60 flex flex-col pt-4 gap-16"
+      steps={getJobProgressSteps(selectedJobType)}
+      stepLabels={getJobProgressStepLabels(selectedJobType)}
+      stepName="type"
+      title="What do you want to do?"
+      description="Pick the kind of job. The next steps follow from it: a name, the connections, then what happens to each column."
+      mascot
     >
-      <OverviewContainer Header={<PageHeader header="Select a Job type" />}>
-        <RadioGroup
-          value={selectedJobType}
-          className="flex flex-col lg:flex-row flex-wrap justify-center items-center gap-6 pt-8"
-        >
-          {jobData.map((jd) => (
-            <Card
-              key={jd.name}
-              className={cn(
-                isLocked(jd.type)
-                  ? 'cursor-not-allowed opacity-50'
-                  : 'cursor-pointer',
-                selectedJobType === jd.type
-                  ? 'border border-black shadow-md dark:border-gray-400'
-                  : 'hover:border hover:border-gray-500 dark:border-gray-700 dark:hover:border-gray-600'
-              )}
+      <div
+        role="radiogroup"
+        aria-label="Job type"
+        className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5"
+      >
+        {jobData.map((jd) => {
+          const locked = isLocked(jd.type);
+          return (
+            <SelectCard
+              key={jd.type}
+              id={jd.type}
+              selected={selectedJobType === jd.type}
+              disabled={locked}
               onClick={() => {
-                if (!isLocked(jd.type)) {
+                if (!locked) {
                   handleJobSelection(jd.type, jd.href);
                 }
               }}
+              className="flex-col gap-2 p-4"
             >
-              <CardHeader className="w-[300px] relative">
-                <div className="flex flex-col items-center text-left">
-                  <div className="relative">
-                    <Image
-                      src={jd.image}
-                      alt="image"
-                      width="200"
-                      height="200"
-                    />
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          theme.resolvedTheme == 'light'
-                            ? 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 5%, rgba(255,255,255,0) 100%)'
-                            : 'linear-gradient(to top, rgba(30,30,36,1) 0%, rgba(30,30,36,1) 5%, rgba(30,30,36,0) 100%)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  </div>
-                  <div className="pt-8">
-                    <CardTitle>
-                      <div className="flex flex-row items-center gap-2 text-nowrap">
-                        <p>{jd.name}</p>
-                        <div>{jd.icon}</div>
-                        {jd.experimental ? <Badge>Experimental</Badge> : null}
-                      </div>
-                    </CardTitle>
-                    <CardDescription className="pt-2">
-                      {jd.description}
-                    </CardDescription>
-                    {jd.type === 'pii-detection' && (
-                      <div className="pt-2">
-                        <LicenseFeatureNotice feature="pii_detection" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="absolute top-0 right-2">
-                  <RadioGroupItem
-                    value={jd.type}
-                    id={jd.type}
-                    disabled={isLocked(jd.type)}
-                    className={`${selectedJobType === jd.type ? 'bg-black dark:bg-white text-white dark:text-gray-900' : 'bg-white dark:bg-transparent text-black'}`}
-                  />{' '}
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </RadioGroup>
-      </OverviewContainer>
-      <div className="flex flex-col md:flex-row justify-between gap-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="grid size-8 place-items-center rounded-lg bg-surface-2 text-link"
+                >
+                  {jd.icon}
+                </span>
+                <span className="text-[15px] font-semibold">{jd.name}</span>
+                {jd.experimental && <Pill tone="quiet">Experimental</Pill>}
+              </span>
+              <span className="text-[13px] leading-[1.45] text-muted-foreground">
+                {jd.description}
+              </span>
+            </SelectCard>
+          );
+        })}
+      </div>
+      {jobData.some((jd) => jd.type === 'pii-detection') && (
+        <LicenseFeatureNotice feature="pii_detection" />
+      )}
+      <WizardFooter summary={selected ? [selected.name] : []}>
         <Button
           variant="outline"
           type="reset"
@@ -152,10 +118,10 @@ export default function NewJob(props: PageProps): ReactElement {
             router.push(href);
           }}
         >
-          Next
+          Continue
         </Button>
-      </div>
-    </div>
+      </WizardFooter>
+    </NewJobWizard>
   );
 }
 
@@ -166,7 +132,6 @@ interface JobData {
   icon: ReactNode;
   type: NewJobType;
   experimental: boolean;
-  image: string;
 }
 
 function useGetJobData(
@@ -176,7 +141,6 @@ function useGetJobData(
   const [sessionToken] = useState<string>(params?.sessionId ?? nanoid());
   const { account } = useAccount();
   const { data: systemAppConfig } = useGetSystemAppConfig();
-  const { resolvedTheme } = useTheme();
 
   const dataSyncParams = new URLSearchParams(searchParams);
   dataSyncParams.set('jobType', 'data-sync');
@@ -203,58 +167,43 @@ function useGetJobData(
   }
   const jobData: JobData[] = [
     {
-      name: 'Data Synchronization',
+      name: 'Copy and anonymize',
       description:
-        'Synchronize and anonymize data between a source and destination. ',
+        'Real data, transformed column by column, written to a test database.',
       href: `/${account?.name}/new/job/define?${dataSyncParams.toString()}`,
       icon: <SymbolIcon />,
       type: 'data-sync',
       experimental: false,
-      image:
-        resolvedTheme === 'light'
-          ? '/images/jobsynclight.svg'
-          : '/images/prodsync-dark.svg',
     },
     {
-      name: 'Data Generation',
+      name: 'Generate data',
       description:
-        'Generate synthetic data from scratch for a chosen destination.',
+        'Fully synthetic rows for a chosen destination, from the schema only.',
       href: `/${account?.name}/new/job/define?${dataGenParams.toString()}`,
       icon: <AiOutlineExperiment />,
       type: 'generate-table',
       experimental: false,
-      image:
-        resolvedTheme === 'light'
-          ? '/images/gen-light.svg'
-          : '/images/datagen-dark.svg',
     },
     {
-      name: 'AI Data Generation',
-      description: 'Generate synthetic data from scratch with AI.',
+      name: 'Generate with AI',
+      description:
+        'Synthetic rows written by a model, shaped by a table schema and your prompt.',
       href: `/${account?.name}/new/job/define?${aiDataGenParams.toString()}`,
       icon: <MagicWandIcon />,
       type: 'ai-generate-table',
       experimental: true,
-      image:
-        resolvedTheme === 'light'
-          ? '/images/aigen.svg'
-          : '/images/aigen-dark.svg',
     },
   ];
 
   if (systemAppConfig?.isPiiDetectionJobEnabled) {
     jobData.push({
-      name: 'PII Detection',
+      name: 'Find personal data',
       description:
-        'Scan your database for PII and sensitive data to identify security risks.',
+        'A report of the sensitive columns in a database, without copying anything.',
       href: `/${account?.name}/new/job/define?${piiDetectionParams.toString()}`,
       icon: <PiDetective />,
       type: 'pii-detection',
       experimental: true,
-      image:
-        resolvedTheme === 'light'
-          ? '/images/pii-detect-light.svg'
-          : '/images/pii-detect-dark.svg',
     });
   }
 

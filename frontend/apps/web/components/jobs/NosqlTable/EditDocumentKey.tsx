@@ -35,9 +35,9 @@ export default function EditDocumentKey(props: Props): ReactElement {
           <Input
             value={inputValue}
             onChange={(e) => handleDocumentKeyChange(e.target.value)}
-            className={cn(duplicateError ? 'border border-red-400 ring-' : '')}
+            className={cn(duplicateError ? 'border border-danger' : '')}
           />
-          <div className="text-red-400 text-xs pl-2">
+          <div className="text-danger-fg text-xs pl-2">
             {duplicateError && 'Already exists'}
           </div>
         </>

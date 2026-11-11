@@ -540,10 +540,10 @@ function CheckSSHConnectionButton(
     <div className="flex flex-col gap-2">
       <div className="flex flex-row gap-2 items-center">
         {checkResponse?.isSuccessful && (
-          <CheckCircledIcon className="h-4 w-4 text-green-500" />
+          <CheckCircledIcon className="h-4 w-4 text-ok" />
         )}
         {checkResponse && !checkResponse.isSuccessful && (
-          <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+          <ExclamationTriangleIcon className="h-4 w-4 text-danger" />
         )}
 
         <Button variant="outline" onClick={onClick} type="button">

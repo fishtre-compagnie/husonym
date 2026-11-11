@@ -1,6 +1,6 @@
 'use client';
 import { CopyButton } from '@/components/CopyButton';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import {
   CrossCircledIcon,
   ExclamationTriangleIcon,
@@ -49,7 +49,7 @@ export default function FindingList(props: {
     (a, b) => levelOrder[a.level] - levelOrder[b.level]
   );
   return (
-    <ul className="flex flex-col divide-y rounded-lg border">
+    <ul className="flex flex-col divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft bg-card">
       {ordered.map((finding) => (
         <Finding key={finding.key} finding={finding} copyable={copyable} />
       ))}
@@ -63,7 +63,7 @@ function Finding(props: {
 }): ReactElement {
   const { level, table, columns, message, missing, remedy } = props.finding;
   return (
-    <li className="flex flex-row gap-3 p-3 text-sm">
+    <li className="flex flex-row gap-3 p-3.5 text-sm">
       <LevelIcon level={level} />
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-row flex-wrap items-center gap-2">
@@ -71,7 +71,7 @@ function Finding(props: {
             {levelLabels[level]}
           </span>
           {table ? (
-            <code className="rounded-sm bg-muted px-1 text-xs">
+            <code className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-hi">
               {columns && columns.length > 0
                 ? `${table} (${columns.join(', ')})`
                 : table}
@@ -82,16 +82,16 @@ function Finding(props: {
         {missing && missing.length > 0 ? (
           <div className="flex flex-row flex-wrap gap-1">
             {missing.map((item) => (
-              <Badge key={item} variant="darkOutline">
+              <Pill key={item} className="font-mono">
                 {item}
-              </Badge>
+              </Pill>
             ))}
           </div>
         ) : null}
         {remedy ? (
           <div className="flex flex-row items-start gap-2">
             {/* Wrapped: nothing of what would be copied is out of sight. */}
-            <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
+            <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-lg border border-border bg-surface-2 p-2.5 font-mono text-xs">
               {remedy}
             </pre>
             {props.copyable ? (
@@ -113,26 +113,24 @@ function LevelIcon(props: { level: FindingLevel }): ReactElement {
   switch (props.level) {
     case 'blocking':
       return (
-        <CrossCircledIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-700 dark:text-red-400" />
+        <CrossCircledIcon className="mt-0.5 h-4 w-4 shrink-0 text-danger-fg" />
       );
     case 'warning':
       return (
-        <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-700 dark:text-orange-400" />
+        <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-warn-fg" />
       );
     default:
-      return (
-        <InfoCircledIcon className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-400" />
-      );
+      return <InfoCircledIcon className="mt-0.5 h-4 w-4 shrink-0 text-link" />;
   }
 }
 
 function levelTextClass(level: FindingLevel): string {
   switch (level) {
     case 'blocking':
-      return 'text-red-800 dark:text-red-300';
+      return 'text-danger-fg';
     case 'warning':
-      return 'text-orange-800 dark:text-orange-300';
+      return 'text-warn-fg';
     default:
-      return 'text-blue-800 dark:text-blue-300';
+      return 'text-link';
   }
 }

@@ -7,6 +7,7 @@ import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { ReactNode } from 'react';
 import { JobMapping } from '@husonym/sdk';
 import {
   Cross2Icon,
@@ -38,6 +39,9 @@ interface DataTableToolbarProps<TData extends RowData> {
   showPiiScan?: boolean;
   onScanContent?(): void;
   isScanningPii?: boolean;
+
+  // Shown on the left of the actions: the filters of the list.
+  leading?: ReactNode;
 }
 
 export function SchemaTableToolbar<TData extends RowData>({
@@ -52,6 +56,7 @@ export function SchemaTableToolbar<TData extends RowData>({
   showPiiScan,
   onScanContent,
   isScanningPii,
+  leading,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.state.columnFilters.length > 0;
   // The content scan is the pii_detection feature: without it the API refuses every
@@ -60,8 +65,9 @@ export function SchemaTableToolbar<TData extends RowData>({
 
   return (
     <div className="flex flex-col items-start w-full gap-2">
-      <div className="flex flex-row justify-end pb-2 items-center w-full gap-3">
-        <div className="flex flex-col md:flex-row md:items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-3">
+        {leading}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {isFiltered && (
             <Button
               variant="outline"
@@ -69,7 +75,6 @@ export function SchemaTableToolbar<TData extends RowData>({
               onClick={() => {
                 table.resetColumnFilters();
               }}
-              className="h-8 px-2 lg:px-3"
             >
               <ButtonText
                 leftIcon={<Cross2Icon className="h-3 w-3" />}

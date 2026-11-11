@@ -1,7 +1,7 @@
 'use client';
 
+import { Pill, StatusDot, Tone } from '@/components/ds';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge, BadgeProps } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,23 +30,13 @@ const STATE_LABELS: Record<LicenseState, string> = {
   frozen: 'Expired',
 };
 
-// The badge has no warning tone of its own: the two states that call for one borrow
-// the border of the warning alert.
-const STATE_BADGES: Record<
-  LicenseState,
-  Pick<BadgeProps, 'variant' | 'className'>
-> = {
-  none: { variant: 'outline' },
-  valid: { variant: 'default' },
-  expiring: {
-    variant: 'outline',
-    className: 'border-yellow-300 dark:border-orange-500',
-  },
-  grace: {
-    variant: 'outline',
-    className: 'border-yellow-300 dark:border-orange-500',
-  },
-  frozen: { variant: 'destructive' },
+// The tone each state of the license is told in.
+const STATE_TONES: Record<LicenseState, Tone> = {
+  none: 'muted',
+  valid: 'ok',
+  expiring: 'warn',
+  grace: 'warn',
+  frozen: 'danger',
 };
 
 const ORIGIN_LABELS: Record<string, string> = {
@@ -70,7 +60,10 @@ export default function LicenseStatusCard(props: Props): ReactElement {
       <CardHeader>
         <div className="flex flex-row items-center gap-3">
           <CardTitle>Status</CardTitle>
-          <Badge {...STATE_BADGES[state]}>{STATE_LABELS[state]}</Badge>
+          <Pill tone={STATE_TONES[state]}>
+            <StatusDot tone={STATE_TONES[state]} />
+            {STATE_LABELS[state]}
+          </Pill>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

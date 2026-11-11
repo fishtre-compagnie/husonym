@@ -115,7 +115,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border dark:border-gray-700 p-3 mt-4">
+    <div className="flex flex-col gap-3 rounded-xl border border-line-soft bg-card p-3 mt-4">
       <div className="space-y-0.5">
         <Label>Try the rule</Label>
         <div className="text-sm text-muted-foreground">

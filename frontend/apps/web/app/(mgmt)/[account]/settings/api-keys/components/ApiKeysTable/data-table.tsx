@@ -69,9 +69,9 @@ export function DataTable<TData extends RowData>({
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} />
-      <div className="rounded-md border overflow-hidden dark:border-gray-700 ">
+      <div className="overflow-x-auto rounded-2xl border border-line-soft bg-card">
         <Table>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800">
+          <TableHeader className="[&_th]:text-xs [&_th]:font-normal [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {

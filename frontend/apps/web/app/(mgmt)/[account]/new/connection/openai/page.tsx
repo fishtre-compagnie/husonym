@@ -1,7 +1,6 @@
 'use client';
 import OpenAiConnectionForm from '@/components/connections/forms/openai/OpenAiConnectionForm';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import NewConnectionLayout from '../components/NewConnectionLayout';
 import { useTheme } from 'next-themes';
 import { ReactElement, useMemo } from 'react';
 import { useOnCreateSuccess } from '../components/useOnCreateSuccess';
@@ -16,17 +15,12 @@ export default function OpenAi(): ReactElement {
 
   const onSuccess = useOnCreateSuccess();
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header="OpenAI"
-          subHeadings="Configure an OpenAI SDK to be used for AI-focused data generation jobs."
-          leftIcon={<OpenAiLogo bg={logoBg} />}
-        />
-      }
-      containerClassName="px-12 md:px-24 lg:px-32"
+    <NewConnectionLayout
+      header="OpenAI"
+      subHeadings="Configure an OpenAI SDK to be used for AI-focused data generation jobs."
+      leftIcon={<OpenAiLogo bg={logoBg} />}
     >
       <OpenAiConnectionForm mode="create" onSuccess={onSuccess} />
-    </OverviewContainer>
+    </NewConnectionLayout>
   );
 }

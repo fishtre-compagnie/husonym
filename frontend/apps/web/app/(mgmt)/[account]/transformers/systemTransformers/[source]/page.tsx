@@ -1,8 +1,7 @@
 'use client';
 import TransformerForm from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/TransformerForm';
 import ButtonText from '@/components/ButtonText';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
@@ -75,17 +74,13 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
   const cfg = form.watch('config');
 
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header={systemTransformer?.name ?? 'System Transformer'}
-          extraHeading={
-            <CloneTransformerButton source={systemTransformer?.source ?? ''} />
-          }
-        />
-      }
-      containerClassName="px-12 md:px-24 lg:px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      <PageHeader
+        title={systemTransformer?.name ?? 'System Transformer'}
+        actions={
+          <CloneTransformerButton source={systemTransformer?.source ?? ''} />
+        }
+      />
       <Form {...form}>
         <form>
           <FormField
@@ -171,7 +166,7 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
           </div>
         </form>
       </Form>
-    </OverviewContainer>
+    </PageBody>
   );
 }
 

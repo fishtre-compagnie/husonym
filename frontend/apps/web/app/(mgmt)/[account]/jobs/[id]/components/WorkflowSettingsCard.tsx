@@ -187,7 +187,7 @@ export default function WorkflowSettingsCard({
               )}
             />
           </CardContent>
-          <CardFooter className="bg-muted flex py-2 justify-center">
+          <CardFooter className="flex justify-center border-t border-line-soft bg-surface-2 py-2">
             <div className="flex flex-row items-center justify-end w-full">
               <Button type="submit" disabled={!form.formState.isValid}>
                 Save
