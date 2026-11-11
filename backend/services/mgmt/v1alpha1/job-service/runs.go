@@ -21,6 +21,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/loki"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -1458,6 +1459,13 @@ func getTableReportDtos(
 				columnReportDto.LlmReport = &mgmtv1alpha1.PiiDetectionReport_TableReport_ColumnReport_LLM{
 					Category:   string(columnReport.Report.LLM.Category),
 					Confidence: columnReport.Report.LLM.Confidence,
+				}
+			}
+			if analyzer := columnReport.Report.Analyzer; analyzer != nil {
+				columnReportDto.AnalyzerReport = &mgmtv1alpha1.PiiDetectionReport_TableReport_ColumnReport_Analyzer{
+					Category:     string(analyzer.Category),
+					MatchCount:   utils.ClampUint32(analyzer.Matches),
+					SampledCount: utils.ClampUint32(analyzer.Sampled),
 				}
 			}
 			reportDtos[i].Columns = append(reportDtos[i].Columns, columnReportDto)

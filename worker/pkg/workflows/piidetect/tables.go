@@ -191,7 +191,7 @@ func (a *Activities) earlierEntries(ctx context.Context, req *GetTablesToPiiScan
 
 // fingerprintVersion names the way a fingerprint is computed. An index whose
 // fingerprints were computed another way matches none: its tables are scanned again.
-const fingerprintVersion = "v2"
+const fingerprintVersion = "v3"
 
 // fingerprint identifies how a table is scanned: its columns with their types, and what
 // of the job and of the worker changes what a scan finds. A table whose fingerprint is

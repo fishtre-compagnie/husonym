@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"math"
 	"regexp"
 	"slices"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -303,10 +303,14 @@ func (a *contentAnalysis) detection(
 	schema, table, column, dataType string,
 	values []string,
 ) *mgmtv1alpha1.ColumnPiiDetection {
-	entity, avgScore, matchCount, ok := a.column(ctx, column, values)
+	told, ok := a.detect(ctx, column, values)
 	if !ok {
 		return nil
 	}
+	if told.freeText {
+		return freeTextDetection(schema, table, column, dataType, values, told)
+	}
+	entity, avgScore, matchCount := told.entity, told.avgScore, told.matchCount
 	suggestion, ok := piidetect.SuggestionForEntity(entity, dataType)
 	if !ok {
 		return nil
@@ -325,7 +329,7 @@ func (a *contentAnalysis) detection(
 		Score:                      float32(avgScore),
 		SuggestedTransformerSource: suggestion.Suggested,
 		IsSensitive:                suggestion.Sensitive,
-		MatchCount:                 clampUint32(matchCount),
+		MatchCount:                 utils.ClampUint32(matchCount),
 		SampledCount:               sampleCount(values),
 		DataCategory:               suggestion.Category,
 		PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
@@ -336,21 +340,61 @@ func (a *contentAnalysis) detection(
 	}
 }
 
-// column tells what the analyzer finds in the values of a column: the dominant entity, its
-// mean score and how many values carry it. ok is false when no entity covers enough of the
-// values, and when the column could not be analyzed, which is kept.
+// columnVerdict is what the analyzer tells of a column: an entity, its mean score and how many
+// values carry it. For a free-text column told by its persons, the entity is PERSON and
+// matchCount the number of values that name a person.
+type columnVerdict struct {
+	entity     string
+	avgScore   float64
+	matchCount int
+	freeText   bool
+}
+
+// detect tells what the analyzer finds in the values of a column, which it analyzes once. ok is
+// false when nothing is told of the column, and when it could not be analyzed, which is kept.
+//
+// The rule of the third is tried on every column: an entity must cover a fraction of the values
+// sufficient. A column it tells nothing of, and which is free text, is judged on the persons
+// alone: it is told when piidetect.FreeTextMinPersons of its values name a person, whatever the
+// size of the sample, in a language where the rule was measured
+// (piidetect.FreeTextRuleApplies). No other entity makes a column of free text personal: the places, the
+// numbers and the references that sentences carry are found in sentences that name nobody.
 //
 // A column some values of which the analyzer refused is told by the values it took, when they
 // are enough to find an entity: what was found stands. When they are not, the column is not
 // told empty of personal data: the values refused may be the ones that hold some.
-func (a *contentAnalysis) column(
+func (a *contentAnalysis) detect(ctx context.Context, name string, values []string) (columnVerdict, bool) {
+	found, refused, ok := a.examine(ctx, name, values)
+	if !ok {
+		return columnVerdict{}, false
+	}
+	// Une entité doit couvrir une fraction suffisante des valeurs.
+	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
+		return columnVerdict{entity: found.entity, avgScore: found.avgScore, matchCount: found.matchCount}, true
+	}
+	if piidetect.FreeTextRuleApplies(a.language) &&
+		found.persons.count >= piidetect.FreeTextMinPersons && piidetect.IsFreeText(values) {
+		return columnVerdict{
+			entity: piidetect.PersonEntity, avgScore: found.persons.avgScore, matchCount: found.persons.count, freeText: true,
+		}, true
+	}
+	if refused != nil {
+		a.logger.Warn(fmt.Sprintf("presidio refused values of column %q: %v", name, refused))
+		a.notAnalyzed[name] = struct{}{}
+	}
+	return columnVerdict{}, false
+}
+
+// examine analyzes the values of a column, once. ok is false when the column could not be
+// analyzed, which is kept.
+func (a *contentAnalysis) examine(
 	ctx context.Context,
 	name string,
 	values []string,
-) (entity string, avgScore float64, matchCount int, ok bool) {
+) (found columnEntity, refused error, ok bool) {
 	if a.silent {
 		a.notAnalyzed[name] = struct{}{}
-		return "", 0, 0, false
+		return columnEntity{}, nil, false
 	}
 	found, refused, err := analyzeColumn(ctx, a.analyze, values, a.threshold, a.language)
 	if err != nil {
@@ -359,17 +403,37 @@ func (a *contentAnalysis) column(
 		a.logger.Warn(fmt.Sprintf("presidio did not answer on column %q: %v", name, err))
 		a.notAnalyzed[name] = struct{}{}
 		a.silent = true
-		return "", 0, 0, false
+		return columnEntity{}, nil, false
 	}
-	// Une entité doit couvrir une fraction suffisante des valeurs.
-	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
-		return found.entity, found.avgScore, found.matchCount, true
+	return found, refused, true
+}
+
+// freeTextDetection is the detection of a free-text column found to name persons. The
+// transformer that writes text is suggested for a column that takes one.
+func freeTextDetection(
+	schema, table, column, dataType string,
+	values []string,
+	told columnVerdict,
+) *mgmtv1alpha1.ColumnPiiDetection {
+	suggested := piidetect.SuggestionForText(
+		dataType, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT,
+	)
+	return &mgmtv1alpha1.ColumnPiiDetection{
+		Schema:                     schema,
+		Table:                      table,
+		Column:                     column,
+		EntityType:                 told.entity,
+		Score:                      float32(told.avgScore),
+		SuggestedTransformerSource: suggested,
+		IsSensitive:                true,
+		MatchCount:                 utils.ClampUint32(told.matchCount),
+		SampledCount:               sampleCount(values),
+		DataCategory:               piidetect.FreeTextCategory,
+		PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
+		PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+		PiiEvidence: fmt.Sprintf("texte libre : %d/%d valeurs désignent une personne",
+			told.matchCount, len(values)),
 	}
-	if refused != nil {
-		a.logger.Warn(fmt.Sprintf("presidio refused values of column %q: %v", name, refused))
-		a.notAnalyzed[name] = struct{}{}
-	}
-	return "", 0, 0, false
 }
 
 // minMatches is how many of the values sampled an entity must cover to be told of a column.
@@ -387,6 +451,15 @@ type columnEntity struct {
 	entity     string
 	avgScore   float64
 	matchCount int
+	// persons is how many values name a person, and their mean score, for the rule of free text.
+	persons personValues
+}
+
+// personValues is how many values of a column the analyzer found a person in, and the mean of
+// the best score of that person in each. The count is zero when it found none.
+type personValues struct {
+	count    int
+	avgScore float64
 }
 
 // analyzeTimeout is how long the analyzer is waited for, for one sampled value. A value is
@@ -464,11 +537,17 @@ func analyzeColumn(
 		}
 	}
 
+	var persons personValues
+	if tally := byEntity[piidetect.PersonEntity]; tally != nil {
+		persons = personValues{count: tally.count, avgScore: tally.mean()}
+	}
 	best := dominantEntity(byEntity)
 	if best == "" {
-		return columnEntity{}, refused, nil
+		return columnEntity{persons: persons}, refused, nil
 	}
-	return columnEntity{entity: best, avgScore: byEntity[best].mean(), matchCount: byEntity[best].count}, refused, nil
+	return columnEntity{
+		entity: best, avgScore: byEntity[best].mean(), matchCount: byEntity[best].count, persons: persons,
+	}, refused, nil
 }
 
 // entityTally is how many values an entity was found in, and the sum of its best scores in them.
@@ -513,18 +592,7 @@ func valueToText(v any) string {
 // sampleCount convertit une taille d'échantillon vers le type du proto. La borne
 // est explicite : l'échantillon vaut quelques dizaines de valeurs, mais une
 // conversion nue depuis un int laisserait un dépassement possible sans le dire.
-func sampleCount(values []string) uint32 { return clampUint32(len(values)) }
-
-// clampUint32 ramène un compteur positif dans les bornes du type du proto.
-func clampUint32(n int) uint32 {
-	if n < 0 {
-		return 0
-	}
-	if n > math.MaxUint32 {
-		return math.MaxUint32
-	}
-	return uint32(n)
-}
+func sampleCount(values []string) uint32 { return utils.ClampUint32(len(values)) }
 
 func truncateRunes(s string, limit int) string {
 	r := []rune(s)

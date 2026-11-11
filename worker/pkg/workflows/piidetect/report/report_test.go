@@ -111,6 +111,87 @@ func Test_TableReport_ReadsALabelOutsideTheSixNames(t *testing.T) {
 	require.Nil(t, read.Scan)
 }
 
+// A report without a finding of the analyzer is stored with the same bytes as before the
+// analyzer had a member.
+func Test_TableReport_WithoutAnalyzerFindingKeepsItsBytes(t *testing.T) {
+	stored, err := json.Marshal(&TableReport{
+		TableSchema: "public",
+		TableName:   "users",
+		ColumnReports: []ColumnReport{
+			{ColumnName: "email", Report: Combined{
+				Regex: &RuleFinding{Category: Contact, Evidence: "name"},
+				LLM:   &ModelFinding{Category: Contact, Confidence: 0.5},
+			}},
+		},
+		ScannedColumns: []string{"email"},
+		Scan: &Scan{
+			SampledRows: 10,
+			Input:       InputNames,
+			Model:       "local-model",
+			ModelStatus: ModelAnswered,
+			Sources:     []string{SourceRules, SourceModel},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t,
+		`{"table_schema":"public","table_name":"users","column_reports":[{"column_name":"email","report":`+
+			`{"regex":{"category":"contact","evidence":"name"},"llm":{"category":"contact","confidence":0.5}}}],`+
+			`"scanned_columns":["email"],"scan":{"sampled_rows":10,"input":"names","model":"local-model",`+
+			`"model_status":"answered","sources":["rules","model"]}}`,
+		string(stored))
+}
+
+// A report stored before the analyzer had a member reads back without one.
+func Test_TableReport_ReadsAReportWithoutAnalyzerMembers(t *testing.T) {
+	var read TableReport
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"table_schema": "public", "table_name": "users",
+		"column_reports": [{"column_name": "email", "report": {"regex": {"category": "contact"}, "llm": null}}],
+		"scan": {"sampled_rows": 10, "model_status": "none", "sources": ["rules"]}
+	}`), &read))
+	require.Nil(t, read.ColumnReports[0].Report.Analyzer)
+	require.Empty(t, read.Scan.AnalyzerStatus)
+	require.Nil(t, read.Scan.NotAnalyzed)
+}
+
+func Test_TableReport_StoredFormWithAnalyzerMembers(t *testing.T) {
+	stored, err := json.Marshal(&TableReport{
+		TableSchema: "public",
+		TableName:   "users",
+		ColumnReports: []ColumnReport{
+			{ColumnName: "note", Report: Combined{Analyzer: &AnalyzerFinding{
+				Category: Contact, Entity: "EMAIL_ADDRESS", Matches: 3, Sampled: 20,
+			}}},
+		},
+		Scan: &Scan{
+			ModelStatus:    ModelNone,
+			Sources:        []string{SourceRules, SourceAnalyzer},
+			AnalyzerStatus: AnalyzerPartial,
+			NotAnalyzed:    []string{"blob"},
+		},
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"table_schema": "public",
+		"table_name": "users",
+		"column_reports": [
+			{"column_name": "note", "report": {"regex": null, "llm": null,
+				"analyzer": {"category": "contact", "entity": "EMAIL_ADDRESS", "matches": 3, "sampled": 20}}}
+		],
+		"scan": {
+			"sampled_rows": 0,
+			"model_status": "none",
+			"sources": ["rules", "analyzer"],
+			"analyzer_status": "partial",
+			"not_analyzed": ["blob"]
+		}
+	}`, string(stored))
+
+	bare, err := json.Marshal(&AnalyzerFinding{Category: Personal, Matches: 0, Sampled: 5})
+	require.NoError(t, err)
+	require.JSONEq(t, `{"category":"personal","matches":0,"sampled":5}`, string(bare))
+}
+
 func Test_JobReport_StoredForm(t *testing.T) {
 	key := &mgmtv1alpha1.RunContextKey{JobRunId: "run-1", ExternalId: "public.users--table-pii-report", AccountId: "account-1"}
 

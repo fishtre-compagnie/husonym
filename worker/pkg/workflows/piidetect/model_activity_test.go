@@ -53,7 +53,7 @@ func manyColumns(count int) []*ColumnData {
 
 // Without a configured model nothing is asked, and the answer says so.
 func Test_DetectPiiLLM_WithoutAModel(t *testing.T) {
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, nil, &Config{}))
 
 	_, payload, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(3),
@@ -65,7 +65,7 @@ func Test_DetectPiiLLM_WithoutAModel(t *testing.T) {
 
 func Test_DetectPiiLLM_ATableWithoutColumnAsksNothing(t *testing.T) {
 	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("contact", 0.9))
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	_, payload, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{TableSchema: "public", TableName: "empty"})
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
 		}
 		return http.StatusOK, piitest.Answers(byId)
 	})
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "wide", ColumnData: manyColumns(60),
@@ -121,7 +121,7 @@ func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
 // What the model was given: names when no row was sampled, profiles when rows were.
 func Test_DetectPiiLLM_Input(t *testing.T) {
 	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users",
@@ -144,7 +144,7 @@ func Test_DetectPiiLLM_Input(t *testing.T) {
 // told them.
 func Test_DetectPiiLLM_SaysNothingOfASingleValue(t *testing.T) {
 	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	single := &profile.Profile{
 		Rows: 20, Distinct: 1, Kind: profile.KindText, Hits: []profile.Share{{Name: "email", Share: 1}},
@@ -172,7 +172,7 @@ func Test_DetectPiiLLM_AColumnAnsweredAtTheSecondRequest(t *testing.T) {
 	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		return http.StatusOK, piitest.Answers(map[string][2]any{"c1": {"contact", 0.9}, "c2": {"something else", 0.9}})
 	})
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(2),
@@ -193,7 +193,7 @@ func Test_DetectPiiLLM_AColumnThatStaysWithoutAnswer(t *testing.T) {
 		}
 		return http.StatusOK, piitest.Answers(map[string][2]any{"c1": {"contact", 12}})
 	})
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(2),
@@ -216,7 +216,7 @@ func Test_DetectPiiLLM_ASecondAttemptAsksOnlyTheMissingBatches(t *testing.T) {
 	})
 	request := &DetectPiiLLMRequest{TableSchema: "public", TableName: "wide", ColumnData: manyColumns(60)}
 
-	first := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	first := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	_, _, err := execute[DetectPiiLLMResponse](t, first, "DetectPiiLLM", request)
 	var appErr *temporal.ApplicationError
 	require.ErrorAs(t, err, &appErr)
@@ -224,7 +224,7 @@ func Test_DetectPiiLLM_ASecondAttemptAsksOnlyTheMissingBatches(t *testing.T) {
 	require.Len(t, bodies(endpoint), 2)
 	require.Len(t, first.heartbeats, 1)
 
-	second := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	second := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	recorded := modelProgress{Batches: 1, Findings: map[string]report.ModelFinding{}}
 	for i := range 25 {
 		recorded.Findings[fmt.Sprintf("column_%02d", i)] = report.ModelFinding{Category: report.Contact, Confidence: 0.9}
@@ -243,7 +243,7 @@ func Test_DetectPiiLLM_ARefusedRequestIsNotRetried(t *testing.T) {
 	endpoint, classifier := newModelEndpoint(t, func(*piitest.Request) (int, string) {
 		return http.StatusUnauthorized, `{"error":{"type":"invalid_request_error","code":"invalid_api_key","message":"bad key"}}`
 	})
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 
 	_, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(2),
@@ -260,7 +260,7 @@ func Test_DetectPiiLLM_ARefusedRequestIsNotRetried(t *testing.T) {
 // without quoting it.
 func Test_DetectPiiLLM_ALongUserPromptIsCut(t *testing.T) {
 	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	prompt := strings.Repeat("PROMPTMARKER ", 400)
 
 	_, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
@@ -289,7 +289,7 @@ func valueRequest() *DetectPiiLLMRequest {
 func valueSource(t *testing.T, classifier *model.Classifier) (*activityRun, *connectiondata.MockConnectionDataService) {
 	t.Helper()
 	builder, data := source(t)
-	return newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, classifier, &Config{})), data
+	return newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, classifier, &Config{})), data
 }
 
 // sentValues returns the values each column of a request carries, by column name.
@@ -370,7 +370,7 @@ func Test_DetectPiiLLM_ReadsRowsOnlyForTheValuesInput(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 			builder := connectiondata.NewMockConnectionDataBuilder(t) // never asked
-			run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, classifier, &Config{}))
+			run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, classifier, &Config{}))
 			request := valueRequest()
 			change(request)
 
@@ -583,7 +583,7 @@ func Test_DetectPiiLLM_HeartbeatsWhileTheModelAnswers(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		return piitest.EveryColumn("contact", 0.9)(request)
 	})
-	activities := NewActivities(nil, nil, nil, nil, classifier, &Config{})
+	activities := NewActivities(nil, nil, nil, nil, nil, classifier, &Config{})
 	require.Less(t, activities.heartbeatEvery, modelOptions(false).HeartbeatTimeout/2,
 		"several heartbeats fit in the time the workflow gives one")
 	activities.heartbeatEvery = 20 * time.Millisecond
@@ -634,7 +634,7 @@ func Test_DetectPiiLLM_MostColumnsUnansweredIsAFailure(t *testing.T) {
 	}
 
 	_, classifier := newModelEndpoint(t, answering(2))
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(4),
 	})
@@ -643,7 +643,7 @@ func Test_DetectPiiLLM_MostColumnsUnansweredIsAFailure(t *testing.T) {
 	require.Len(t, response.Unanswered, 2)
 
 	endpoint, classifier := newModelEndpoint(t, answering(1))
-	run = newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run = newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	_, _, err = execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(4),
 	})
@@ -653,7 +653,7 @@ func Test_DetectPiiLLM_MostColumnsUnansweredIsAFailure(t *testing.T) {
 
 	// Two of three is most of them.
 	_, classifier = newModelEndpoint(t, answering(1))
-	run = newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+	run = newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, classifier, &Config{}))
 	_, _, err = execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
 		TableSchema: "public", TableName: "users", ColumnData: manyColumns(3),
 	})

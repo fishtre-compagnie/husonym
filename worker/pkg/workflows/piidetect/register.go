@@ -13,7 +13,7 @@ type Registry interface {
 	RegisterActivityWithOptions(a any, options activity.RegisterOptions)
 }
 
-// Register registers the two workflows and their eight activities under the names of
+// Register registers the two workflows and their nine activities under the names of
 // their functions, and the two activities through which a run tells the API its start and
 // its end.
 func Register(r Registry, lic license.EEInterface, activities *Activities, usage *runusage.Activities, cfg *Config) {
@@ -28,6 +28,7 @@ func Register(r Registry, lic license.EEInterface, activities *Activities, usage
 	r.RegisterActivity(activities.GetColumnData)
 	r.RegisterActivity(activities.DetectPiiRegex)
 	r.RegisterActivity(activities.DetectPiiLLM)
+	r.RegisterActivity(activities.DetectPiiContent)
 	r.RegisterActivity(activities.SaveTablePiiDetectReport)
 
 	runusage.Register(r, usage)

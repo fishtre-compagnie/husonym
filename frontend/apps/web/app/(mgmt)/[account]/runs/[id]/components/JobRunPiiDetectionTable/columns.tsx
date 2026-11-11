@@ -4,9 +4,14 @@ import TruncatedText from '@/components/TruncatedText';
 import { createColumnHelper } from '@tanstack/react-table';
 import CategoryCell from './CategoryCell';
 import ConfidenceCell from './ConfidenceCell';
+import ContentCell, {
+  ContentFinding,
+  formatContentFinding,
+} from './ContentCell';
 import ReporterTypeCell from './ReporterTypeCell';
 
 export interface PiiDetectionRow {
+  contentFinding?: ContentFinding;
   schema: string;
   table: string;
   column: string;
@@ -100,6 +105,21 @@ function getPiiDetectionColumns() {
     }
   );
 
+  const contentColumn = columnHelper.accessor(
+    (row) => {
+      return formatContentFinding(row.contentFinding);
+    },
+    {
+      id: 'content',
+      header({ column }) {
+        return <SchemaColumnHeader column={column} title="Content" />;
+      },
+      cell({ row }) {
+        return <ContentCell finding={row.original.contentFinding} />;
+      },
+    }
+  );
+
   return columnHelper.columns([
     schemaColumn,
     tableColumn,
@@ -107,6 +127,7 @@ function getPiiDetectionColumns() {
     reporterTypeColumn,
     reporterConfidenceColumn,
     reporterCategoryColumn,
+    contentColumn,
   ]);
 }
 

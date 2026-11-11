@@ -26,6 +26,9 @@ type TablePiiDetectRequest struct {
 	ParentExecutionId *string
 	// ModelInput is "values" when the job sends sample values to the model.
 	ModelInput string `json:",omitempty"`
+	// AnalyzerAbsent says that a table of the run already learned that the API has no
+	// analyzer: the content of the columns of this one is not asked about.
+	AnalyzerAbsent bool `json:",omitempty"`
 }
 
 type TablePiiDetectResponse struct {
@@ -36,13 +39,17 @@ type TablePiiDetectResponse struct {
 	// Model is what became of the model step: one of the statuses of report.Scan, empty
 	// when the activity did not say.
 	Model string `json:",omitempty"`
+	// Analyzer is what became of the analyzer step: one of the statuses of report.Scan,
+	// empty when the table was scanned without that step.
+	Analyzer string `json:",omitempty"`
 }
 
 // TablePiiDetect scans one table: it reads its columns, asks the rules, asks the model,
-// and stores the report of the table. The four activities run in that order, one after
-// the other.
+// has the content of the free-text columns the rules found nothing in analyzed, and
+// stores the report of the table. The activities run in that order, one after the other;
+// the content activity is run only for a table that has such columns.
 //
-// Nothing is checked, dropped or weighed here: what the two detections return is stored
+// Nothing is checked, dropped or weighed here: what the three detections return is stored
 // side by side. A step added between them, or a finding filtered here, would change what
 // recorded runs replay to.
 func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePiiDetectResponse, error) {
@@ -117,16 +124,55 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 		modelStatus = byModel.Status
 	}
 
-	found := combine(byRules, byModel)
+	// The content of the free-text columns the rules found nothing in is analyzed, unless
+	// a table of the run already learned that the API has no analyzer. The version is
+	// only read for a table that has such columns and is to be asked about, so that any
+	// other run records nothing of it. A table without such columns has no step for the
+	// analyzer, and no status of it, whatever its run was told.
+	var byAnalyzer *DetectPiiContentResponse
+	analyzerStatus := ""
+	if doubtful := doubtfulColumns(columns.ColumnData, byRules); len(doubtful) > 0 {
+		switch {
+		case req.AnalyzerAbsent:
+			analyzerStatus = report.AnalyzerNone
+		case workflow.GetVersion(ctx, contentAnalysisChangeId, workflow.DefaultVersion, 1) != workflow.DefaultVersion:
+			err = workflow.ExecuteActivity(
+				workflow.WithActivityOptions(ctx, contentOptions()),
+				activities.DetectPiiContent,
+				&DetectPiiContentRequest{
+					ConnectionId: req.ConnectionId,
+					TableSchema:  req.TableSchema,
+					TableName:    req.TableName,
+					Columns:      doubtful,
+				},
+			).Get(ctx, &byAnalyzer)
+			if err != nil {
+				// An activity that ends canceled did not fail: the run is ending.
+				if temporal.IsCanceledError(err) {
+					return nil, err
+				}
+				// What the rules and the model found does not depend on the analyzer.
+				logger.Error("the content of the columns of the table could not be analyzed", "error", err)
+				byAnalyzer, analyzerStatus = nil, report.AnalyzerFailed
+			} else {
+				analyzerStatus = byAnalyzer.Status
+			}
+		}
+	}
+
+	found := combine(byRules, byModel, byAnalyzer)
 	scannedColumns := make([]string, 0, len(columns.ColumnData))
 	for _, column := range columns.ColumnData {
 		scannedColumns = append(scannedColumns, column.Column)
 	}
 	// The report says what it rests on: the rules alone when no model is configured or
-	// when it could not be asked.
+	// when it could not be asked, and the analyzer when it analyzed columns.
 	sources := []string{report.SourceRules}
 	if modelStatus != report.ModelFailed && modelStatus != report.ModelNone {
 		sources = append(sources, report.SourceModel)
+	}
+	if analyzerStatus == report.AnalyzerAnswered || analyzerStatus == report.AnalyzerPartial {
+		sources = append(sources, report.SourceAnalyzer)
 	}
 	scan := &report.Scan{
 		Sources:        sources,
@@ -136,6 +182,10 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 		ModelStatus:    modelStatus,
 		Unanswered:     byModel.Unanswered,
 		BelowThreshold: byModel.BelowThreshold,
+		AnalyzerStatus: analyzerStatus,
+	}
+	if byAnalyzer != nil {
+		scan.NotAnalyzed = byAnalyzer.NotAnalyzed
 	}
 	if scan.ModelStatus == "" {
 		// An activity that does not say how it went answered for every column it was
@@ -160,12 +210,17 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 	if err != nil {
 		return nil, err
 	}
-	return &TablePiiDetectResponse{PiiColumns: found, ResultKey: saved.Key, Model: modelStatus}, nil
+	return &TablePiiDetectResponse{PiiColumns: found, ResultKey: saved.Key, Model: modelStatus, Analyzer: analyzerStatus}, nil
 }
 
-// combine puts what the rules and the model found side by side: a column is there as
-// soon as one of the two named it, with each finding as it was returned.
-func combine(byRules *DetectPiiRegexResponse, byModel *DetectPiiLLMResponse) map[string]report.Combined {
+// combine puts what the rules, the model and the analyzer found side by side: a column is
+// there as soon as one of the three named it, with each finding as it was returned. The
+// analyzer's answer is nil when the table was scanned without it.
+func combine(
+	byRules *DetectPiiRegexResponse,
+	byModel *DetectPiiLLMResponse,
+	byAnalyzer *DetectPiiContentResponse,
+) map[string]report.Combined {
 	found := make(map[string]report.Combined, len(byRules.PiiColumns)+len(byModel.PiiColumns))
 	for column, category := range byRules.PiiColumns {
 		found[column] = report.Combined{
@@ -176,6 +231,13 @@ func combine(byRules *DetectPiiRegexResponse, byModel *DetectPiiLLMResponse) map
 		combined := found[column]
 		combined.LLM = &report.ModelFinding{Category: finding.Category, Confidence: finding.Confidence}
 		found[column] = combined
+	}
+	if byAnalyzer != nil {
+		for column, finding := range byAnalyzer.PiiColumns {
+			combined := found[column]
+			combined.Analyzer = &finding
+			found[column] = combined
+		}
 	}
 	return found
 }

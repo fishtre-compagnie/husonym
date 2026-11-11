@@ -2078,6 +2078,16 @@ func (msg *PiiDetectionReport_TableReport_ColumnReport_LLM) UnmarshalJSON(b []by
 }
 
 // MarshalJSON implements json.Marshaler
+func (msg *PiiDetectionReport_TableReport_ColumnReport_Analyzer) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *PiiDetectionReport_TableReport_ColumnReport_Analyzer) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
 func (msg *JobColumn) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }

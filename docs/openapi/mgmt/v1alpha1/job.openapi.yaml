@@ -3798,9 +3798,33 @@ components:
             - type: "null"
           title: llm_report
           description: The LLM report. Will be empty if the LLM determined the column name (and optionally the data) was not PII.
+        analyzerReport:
+          oneOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Analyzer'
+            - type: "null"
+          title: analyzer_report
+          description: The analyzer report. Will be empty if the content analyzer found nothing in the values of the column.
       title: ColumnReport
       additionalProperties: false
       description: The report for a column
+    mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Analyzer:
+      type: object
+      properties:
+        category:
+          type: string
+          title: category
+          description: The category of the column
+        matchCount:
+          type: integer
+          title: match_count
+          description: The number of sampled values in which the analyzer found an entity
+        sampledCount:
+          type: integer
+          title: sampled_count
+          description: The number of values the analyzer was given
+      title: Analyzer
+      additionalProperties: false
+      description: The analyzer report
     mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.LLM:
       type: object
       properties:

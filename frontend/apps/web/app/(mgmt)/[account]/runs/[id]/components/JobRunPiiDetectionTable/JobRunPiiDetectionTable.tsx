@@ -11,6 +11,7 @@ import { useTable } from '@tanstack/react-table';
 import Papa from 'papaparse';
 import { ReactElement, useCallback, useMemo } from 'react';
 import { PII_DETECTION_COLUMNS, PiiDetectionRow } from './columns';
+import { formatContentFinding } from './ContentCell';
 
 interface Props {
   jobRunId: string;
@@ -121,6 +122,7 @@ function useOnDownloadClick(
         categories: row.reporterCategory,
         confidence: row.reporterConfidence,
         reporters: row.reporterType,
+        content: formatContentFinding(row.contentFinding),
       };
     });
     const csvContent = Papa.unparse(csvRows, {
@@ -175,6 +177,13 @@ function tableReportToPiiDetectionRow(
       reporterCategory: categories,
       reporterConfidence: confidence,
       reporterType: reporters,
+      contentFinding: column.analyzerReport
+        ? {
+            category: column.analyzerReport.category,
+            matchCount: column.analyzerReport.matchCount,
+            sampledCount: column.analyzerReport.sampledCount,
+          }
+        : undefined,
     });
   }
 
