@@ -17,7 +17,7 @@ const barFill: Record<RunStatus, string> = {
   terminated: 'bg-muted-foreground/60',
 };
 
-export function percentAt(t: Date, start: Date, total: number): number {
+function percentAt(t: Date, start: Date, total: number): number {
   if (total <= 0) return 0;
   return Math.max(
     0,

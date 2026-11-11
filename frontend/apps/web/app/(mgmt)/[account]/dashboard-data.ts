@@ -288,7 +288,7 @@ function anonymizes(m: JobMapping): boolean {
   return !!c && c !== 'passthroughConfig';
 }
 
-export interface ClearColumn {
+interface ClearColumn {
   jobId: string;
   jobName: string;
   schema: string;

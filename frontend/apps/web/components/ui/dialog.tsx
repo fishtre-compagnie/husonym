@@ -4,7 +4,6 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import * as React from 'react';
 
-import { NotAPage } from '@/components/containers/OverviewContainer';
 import { cn } from '@/libs/utils';
 
 export const Dialog = DialogPrimitive.Root;
@@ -45,7 +44,7 @@ export function DialogContent({
         )}
         {...props}
       >
-        <NotAPage>{children}</NotAPage>
+        {children}
         <DialogPrimitive.Close className="absolute right-4 top-4 grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-link disabled:pointer-events-none">
           <Cross2Icon className="h-4 w-4" />
           <span className="sr-only">Close</span>

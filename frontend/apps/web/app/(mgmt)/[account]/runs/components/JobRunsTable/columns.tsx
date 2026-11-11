@@ -159,7 +159,7 @@ export function getColumns(
  * after its job and its time (`<job id>-2026-11-10T14:58:54Z`): what follows the job id
  * tells it apart. Any other id is cut to its first block.
  */
-export function shortRunId(id: string, jobId?: string): string {
+function shortRunId(id: string, jobId?: string): string {
   if (jobId && id.startsWith(`${jobId}-`) && id.length > jobId.length + 1) {
     return id.slice(jobId.length + 1);
   }

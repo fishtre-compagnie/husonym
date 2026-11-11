@@ -38,7 +38,7 @@ interface Props {
 }
 
 /** The steps a flow shows, with the job type choice always first. */
-export function withTypeStep(steps: JobProgressStep[]): JobProgressStep[] {
+function withTypeStep(steps: JobProgressStep[]): JobProgressStep[] {
   return steps[0] === 'type' ? steps : ['type', ...steps];
 }
 

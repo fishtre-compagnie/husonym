@@ -46,6 +46,7 @@ export function getScheduledTime(event: JobRunEvent): Timestamp | undefined {
 
 // handles getting the activity statuses by remaping the ActivityStatuses since (i think) we don't want to show all of them per activity
 // the event types in the types field are just the stringified Temporal types
+/** @internal Exported for its tests. */
 export function getTaskStatus(
   task: JobRunEvent,
   jobStatus: JobRunStatus | undefined
@@ -113,7 +114,7 @@ export function getTaskStatus(
 
 // calculates the last time if the job is not successful so we can give the timeline an end date
 // TODO: this should be revisited
-export function getCloseOrErrorOrCancelDate(
+function getCloseOrErrorOrCancelDate(
   jobRunEvent: JobRunEvent,
   runStatus: RunStatus
 ): Date {
@@ -153,7 +154,7 @@ export function getCloseOrErrorOrCancelDate(
       : convertTimestampToDate(jobRunEvent.closeTime);
 }
 
-export function isSyncActivity(task: JobRunEvent): boolean {
+function isSyncActivity(task: JobRunEvent): boolean {
   return task.metadata?.metadata.case == 'syncMetadata';
 }
 
@@ -212,7 +213,7 @@ export function getEventsSpan(
 }
 
 /** The state of several events taken together: one failure fails them all. */
-export function combineStatuses(statuses: RunStatus[]): RunStatus {
+function combineStatuses(statuses: RunStatus[]): RunStatus {
   if (statuses.includes('failed')) return 'failed';
   if (statuses.includes('running')) return 'running';
   if (statuses.includes('terminated')) return 'terminated';
@@ -270,7 +271,7 @@ export function getTableProgress(
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-export type PhaseKey =
+type PhaseKey =
   | 'prepare'
   | 'preflight'
   | 'hooksBefore'
@@ -280,7 +281,7 @@ export type PhaseKey =
   | 'hooksAfter'
   | 'wrapUp';
 
-export const PHASE_LABEL: Record<PhaseKey, string> = {
+const PHASE_LABEL: Record<PhaseKey, string> = {
   prepare: 'Preparation',
   preflight: 'Pre-flight',
   hooksBefore: 'Hooks before',

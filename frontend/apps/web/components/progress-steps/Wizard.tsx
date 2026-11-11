@@ -158,7 +158,7 @@ export function WizardPanel(
 }
 
 /** The classes of a selectable card, so a card can also be a link. */
-export function selectCardClass(selected: boolean, disabled?: boolean): string {
+function selectCardClass(selected: boolean, disabled?: boolean): string {
   return cn(
     'flex rounded-[14px] border text-left text-foreground transition-[border-color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link',
     selected
@@ -196,7 +196,7 @@ export const SelectCard = forwardRef<
 });
 
 /** A short label on the surface tint, for the footer's recap. */
-export function WizardChip(props: {
+function WizardChip(props: {
   children: ReactNode;
   className?: string;
 }): ReactElement {

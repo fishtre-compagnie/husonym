@@ -16,7 +16,7 @@ export function isSignInPage(pathname: string | null): boolean {
 // it: that page stays in the app.
 const WIZARD_PAGE = /^\/[^/]+\/new\/job(\/|$)/;
 
-export function isWizardPage(pathname: string | null): boolean {
+function isWizardPage(pathname: string | null): boolean {
   return (
     !!pathname &&
     WIZARD_PAGE.test(pathname) &&
@@ -40,7 +40,7 @@ interface Props {
  * none of them: without a session, their calls to the API fail, and they would stand
  * between the visitor and what the page asks.
  *
- * Pages lay out their own column (PageBody, or OverviewContainer): the shell gives
+ * Pages lay out their own column (PageBody): the shell gives
  * them the full width beside the sidebar.
  */
 export default function AppShell(props: Props): ReactElement {

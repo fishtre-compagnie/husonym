@@ -368,7 +368,7 @@ export function tableKeyOf(schema: string, table: string): string {
 
 // What the person may ask of the column list: the columns that need a decision, the
 // personal columns already protected, those with nothing personal.
-export type RgpdFilter = 'decide' | 'protected' | 'none';
+type RgpdFilter = 'decide' | 'protected' | 'none';
 
 function rgpdFilterFn(
   row: Row<AppTableFeatures, JobMappingRow>,
