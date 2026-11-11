@@ -65,6 +65,11 @@
     "driver": "mysql"
   },
   {
+    "folder": "mysql/mysql57-legacy",
+    "sql_file": "create-tables.sql",
+    "driver": "mysql"
+  },
+  {
     "folder": "mssql/alltypes",
     "sql_file": "create-tables.sql",
     "driver": "mssql"

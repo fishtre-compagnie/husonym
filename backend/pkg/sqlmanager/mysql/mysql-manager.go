@@ -34,6 +34,7 @@ type MysqlManager struct {
 	// flavor-resolved querier, lazily initialized by getQuerier
 	resolvedMu      sync.Mutex
 	resolvedQuerier mysql_queries.Querier
+	resolvedFlavor  serverFlavor
 }
 
 func NewManager(
@@ -45,26 +46,33 @@ func NewManager(
 }
 
 // getQuerier resolves the effective querier for the connected server flavor.
-// MariaDB reports schema metadata with different semantics than MySQL 8 (see
-// mariadb-querier.go), so its rows are normalized through mariadbQuerier.
+// MariaDB and MySQL 5.7 report schema metadata with different semantics than
+// MySQL 8 (see mariadb-querier.go and mysql57-querier.go), so their rows are
+// normalized through a flavor-specific querier.
 // The result is memoized; detection errors are not, so a transient connection
 // failure can be retried on the next call.
 func (m *MysqlManager) getQuerier(ctx context.Context) (mysql_queries.Querier, error) {
+	querier, _, err := m.getQuerierAndFlavor(ctx)
+	return querier, err
+}
+
+// getQuerierAndFlavor is getQuerier, with the flavor it was resolved for: a few statements
+// are written differently for a server that lacks the syntax MySQL 8 takes.
+func (m *MysqlManager) getQuerierAndFlavor(
+	ctx context.Context,
+) (mysql_queries.Querier, serverFlavor, error) {
 	m.resolvedMu.Lock()
 	defer m.resolvedMu.Unlock()
 	if m.resolvedQuerier != nil {
-		return m.resolvedQuerier, nil
+		return m.resolvedQuerier, m.resolvedFlavor, nil
 	}
 	var version string
 	if err := m.pool.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
-		return nil, fmt.Errorf("unable to detect mysql server flavor: %w", err)
+		return nil, flavorMysql, fmt.Errorf("unable to detect mysql server flavor: %w", err)
 	}
-	if strings.Contains(strings.ToLower(version), "mariadb") {
-		m.resolvedQuerier = newMariadbQuerier(m.querier)
-	} else {
-		m.resolvedQuerier = m.querier
-	}
-	return m.resolvedQuerier, nil
+	m.resolvedFlavor = detectServerFlavor(version)
+	m.resolvedQuerier = querierForFlavor(m.querier, m.resolvedFlavor)
+	return m.resolvedQuerier, m.resolvedFlavor, nil
 }
 
 func (m *MysqlManager) GetDatabaseSchema(
@@ -275,6 +283,21 @@ func (m *MysqlManager) GetColumnsByTables(
 	if err != nil {
 		return nil, err
 	}
+	schemaset := map[string][]string{}
+	for _, table := range tables {
+		schemaset[table.Schema] = append(schemaset[table.Schema], table.Table)
+	}
+	catalogAttributes, err := m.getColumnAttributes(ctx, schemaset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the attributes of the columns: %w", err)
+	}
+	// The rows carry the names the caller asked for, the attributes those of the server.
+	names := newRequestedNames(tables)
+	attributes := make(map[columnKey]*sqlmanager_shared.MysqlColumn, len(catalogAttributes))
+	for key, column := range catalogAttributes {
+		key.schema, key.table = names.table(key.schema, key.table)
+		attributes[key] = column
+	}
 	columns := []*sqlmanager_shared.TableColumn{}
 	for _, row := range rows {
 		col := &sqlmanager_shared.TableColumn{
@@ -290,6 +313,7 @@ func (m *MysqlManager) GetColumnsByTables(
 			GeneratedType:       row.GeneratedType,
 			GeneratedExpression: row.GeneratedExpression,
 			Comment:             row.Comment,
+			Mysql:               attributes[columnKey{row.TableSchema, row.TableName, row.ColumnName}],
 		}
 		shouldIncludeOrdinalPosition := false
 		col.Fingerprint = sqlmanager_shared.BuildTableColumnFingerprint(
@@ -564,7 +588,7 @@ func (m *MysqlManager) GetTableInitStatements(
 		schemaset[table.Schema] = append(schemaset[table.Schema], table.Table)
 	}
 
-	querier, err := m.getQuerier(ctx)
+	querier, flavor, err := m.getQuerierAndFlavor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -693,7 +717,22 @@ func (m *MysqlManager) GetTableInitStatements(
 		})
 	}
 
+	var attributes map[columnKey]*sqlmanager_shared.MysqlColumn
+	errgrp.Go(func() error {
+		read, err := m.getColumnAttributes(errctx, schemaset)
+		if err != nil {
+			return fmt.Errorf("failed to read the attributes of the columns: %w", err)
+		}
+		attributes = read
+		return nil
+	})
+
 	if err := errgrp.Wait(); err != nil {
+		return nil, err
+	}
+
+	shownTables, err := m.showCreateTables(ctx, tables, colDefMap)
+	if err != nil {
 		return nil, err
 	}
 
@@ -705,6 +744,8 @@ func (m *MysqlManager) GetTableInitStatements(
 			continue
 		}
 		columns := make([]string, 0, len(tableData))
+		columnNames := make([]string, 0, len(tableData))
+		generated := map[string]string{}
 		for _, record := range tableData {
 			record := record
 			if err := checkNames("column", record.ColumnName); err != nil {
@@ -744,17 +785,44 @@ func (m *MysqlManager) GetTableInitStatements(
 				IdentityType:        identityType,
 				GeneratedExpression: genExp,
 				Comment:             nullStringToPtr(record.Comment),
+				Mysql:               attributes[columnKey{record.SchemaName, record.TableName, record.ColumnName}],
 			}))
+			columnNames = append(columnNames, record.ColumnName)
+			generated[record.ColumnName] = genExp
 		}
 
-		createTable, err := buildCreateTableStatement(
-			tableData[0].SchemaName,
-			tableData[0].TableName,
-			columns,
-		)
-		if err != nil {
-			return nil, err
+		var createTable string
+		if shown, ok := shownTables[key]; ok && sameColumns(shown.columns(), columnNames) {
+			if flavor == flavorMysql {
+				checks := map[string]string{}
+				for _, constraint := range constraintmap[key] {
+					if constraint.ConstraintType != "CHECK" {
+						continue
+					}
+					clause, err := convertUInt8ToString(constraint.CheckClause)
+					if err != nil {
+						return nil, err
+					}
+					checks[constraint.ConstraintName] = clause
+				}
+				shown.useCatalogExpressions(checks, generated)
+			}
+			// The server's own statement, when it defines the columns the catalog shows: a
+			// user that sees some columns only is refused it anyway.
+			createTable = withDdlSqlMode(shown.createStatement(tableData[0].SchemaName, tableData[0].TableName), true)
+		} else {
+			createTable, err = buildCreateTableStatement(
+				tableData[0].SchemaName,
+				tableData[0].TableName,
+				columns,
+			)
+			if err != nil {
+				return nil, err
+			}
+			createTable = withDdlSqlMode(createTable, false)
 		}
+		// A table with a zero date default is altered under the sql_mode it was created in.
+		laxDates := zeroDateLiteral.MatchString(createTable)
 		info := &sqlmanager_shared.TableInitStatement{
 			CreateTableStatement: createTable,
 			AlterTableStatements: []*sqlmanager_shared.AlterTableStatement{},
@@ -768,6 +836,9 @@ func (m *MysqlManager) GetTableInitStatements(
 					err,
 				)
 			}
+			if laxDates {
+				stmt.Statement = wrapDdlSqlMode(stmt.Statement)
+			}
 			info.AlterTableStatements = append(info.AlterTableStatements, stmt)
 		}
 		if tableIndices, ok := indexmap[key]; ok {
@@ -779,6 +850,9 @@ func (m *MysqlManager) GetTableInitStatements(
 				)
 				if err != nil {
 					return nil, err
+				}
+				if laxDates {
+					indexStmt = wrapDdlSqlMode(indexStmt)
 				}
 				info.IndexStatements = append(info.IndexStatements, indexStmt)
 			}
@@ -938,6 +1012,7 @@ func buildColumnStatement(keyword string, column *sqlmanager_shared.TableColumn)
 		IdentityType:        identityType,
 		GeneratedExpression: *column.GeneratedExpression,
 		Comment:             column.Comment,
+		Mysql:               column.Mysql,
 	}
 
 	var col string
@@ -1031,10 +1106,15 @@ type buildTableColRequest struct {
 	GeneratedExpression string
 	IdentityType        *string
 	Comment             *string
+	// Mysql holds the character set, collation and ON UPDATE clause of the column, and tells a
+	// default to the empty string from no default; nil when they were not read.
+	Mysql *sqlmanager_shared.MysqlColumn
 }
 
 func buildTableCol(record *buildTableColRequest, isModifyColumn bool) string {
 	pieces := []string{EscapeMysqlColumn(record.ColumnName), record.DataType}
+	afterType, afterDefault := columnAttributeClauses(record.Mysql)
+	pieces = append(pieces, afterType...)
 
 	if record.GeneratedExpression != "" {
 		genType := ""
@@ -1053,7 +1133,10 @@ func buildTableCol(record *buildTableColRequest, isModifyColumn bool) string {
 
 	if record.ColumnDefault != "" {
 		pieces = append(pieces, fmt.Sprintf("DEFAULT %s", record.ColumnDefault))
+	} else if record.Mysql != nil && record.Mysql.EmptyStringDefault && record.GeneratedExpression == "" {
+		pieces = append(pieces, "DEFAULT ''")
 	}
+	pieces = append(pieces, afterDefault...)
 
 	if record.IdentityType != nil && *record.IdentityType == "auto_increment" {
 		if isModifyColumn {
@@ -1256,7 +1339,7 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 		schemaTableMap[t.Schema] = append(schemaTableMap[t.Schema], t.Table)
 	}
 
-	querier, err := m.getQuerier(ctx)
+	querier, flavor, err := m.getQuerierAndFlavor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1304,6 +1387,7 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 			row.SchemaName, row.TableName = names.table(row.SchemaName, row.TableName)
 			row.TriggerSchema = names.schema(row.TriggerSchema)
 			definition, err := buildIdempotentTriggerStatement(
+				flavor,
 				row.SchemaName,
 				row.TableName,
 				row.TriggerName,
@@ -1315,6 +1399,19 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 			)
 			if err != nil {
 				return nil, err
+			}
+			shown, err := m.showCreateTrigger(ctx, row.TriggerSchema, row.TriggerName)
+			if err != nil {
+				return nil, err
+			}
+			var originalStatement, characterSetClient string
+			if shown != nil {
+				if fromShown, ok := buildTriggerFromShowCreate(
+					row.SchemaName, row.TriggerSchema, row.TriggerName, shown,
+				); ok {
+					definition = fromShown
+					originalStatement, characterSetClient = shown.statement, shown.characterSetClient
+				}
 			}
 			trigger := &sqlmanager_shared.TableTrigger{
 				Schema:        row.SchemaName,
@@ -1331,6 +1428,8 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 					Definer:             row.Definer,
 					SqlMode:             row.SqlMode,
 					CollationConnection: row.CollationConnection,
+					CharacterSetClient:  characterSetClient,
+					OriginalStatement:   originalStatement,
 				},
 			}
 			trigger.Fingerprint = sqlmanager_shared.BuildTriggerFingerprint(trigger)
@@ -1354,7 +1453,7 @@ func (m *MysqlManager) GetSchemaInitStatements(
 			uniqueSchemas[table.Schema] = struct{}{}
 		}
 		for schema := range uniqueSchemas {
-			stmt, err := buildCreateSchemaStatement(schema)
+			stmt, err := m.buildCreateSchemaStatement(errctx, schema)
 			if err != nil {
 				return err
 			}
@@ -1427,7 +1526,7 @@ func (m *MysqlManager) getFunctionsBySchemas(
 	ctx context.Context,
 	schemas []string,
 ) ([]*sqlmanager_shared.DataType, error) {
-	querier, err := m.getQuerier(ctx)
+	querier, flavor, err := m.getQuerierAndFlavor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1447,6 +1546,7 @@ func (m *MysqlManager) getFunctionsBySchemas(
 			return nil, err
 		}
 		definition, err := buildIdempotentFunctionStatement(
+			flavor,
 			row.SchemaName,
 			row.FunctionName,
 			functionSignatureStr,
@@ -1456,6 +1556,15 @@ func (m *MysqlManager) getFunctionsBySchemas(
 		)
 		if err != nil {
 			return nil, err
+		}
+		shown, err := m.showCreateFunction(ctx, row.SchemaName, row.FunctionName)
+		if err != nil {
+			return nil, err
+		}
+		if shown != nil {
+			if fromShown, ok := buildFunctionFromShowCreate(flavor, row.SchemaName, row.FunctionName, shown); ok {
+				definition = fromShown
+			}
 		}
 		function := &sqlmanager_shared.DataType{
 			Schema:     row.SchemaName,
@@ -1660,8 +1769,10 @@ func buildIdempotentIndexStatement(schema, table string, idxInfo *indexInfo) (st
 	return wrapIdempotentIndex(schema, table, idxInfo), nil
 }
 
-// buildIdempotentFunctionStatement refuses the names no engine takes, then writes the function.
+// buildIdempotentFunctionStatement refuses the names no engine takes, then writes the function
+// in a form the flavor read from takes.
 func buildIdempotentFunctionStatement(
+	flavor serverFlavor,
 	schema,
 	funcName,
 	functionSignature,
@@ -1675,13 +1786,20 @@ func buildIdempotentFunctionStatement(
 	if err := checkNames("function", funcName); err != nil {
 		return "", err
 	}
+	if !flavor.createsRoutinesIfNotExists() {
+		return wrapReplacingFunction(
+			schema, funcName, functionSignature, returnDataType, definition, isDeterministic,
+		), nil
+	}
 	return wrapIdempotentFunction(
 		schema, funcName, functionSignature, returnDataType, definition, isDeterministic,
 	), nil
 }
 
-// buildIdempotentTriggerStatement refuses the names no engine takes, then writes the trigger.
+// buildIdempotentTriggerStatement refuses the names no engine takes, then writes the trigger
+// in a form the flavor read from takes.
 func buildIdempotentTriggerStatement(
+	flavor serverFlavor,
 	schema,
 	tableName,
 	triggerName,
@@ -1699,6 +1817,11 @@ func buildIdempotentTriggerStatement(
 	}
 	if err := checkNames("trigger", triggerName); err != nil {
 		return "", err
+	}
+	if !flavor.createsRoutinesIfNotExists() {
+		return wrapReplacingTrigger(
+			schema, tableName, triggerName, triggerSchema, timing, eventType, orientation, actionStmt,
+		), nil
 	}
 	return wrapIdempotentTrigger(
 		schema, tableName, triggerName, triggerSchema, timing, eventType, orientation, actionStmt,
@@ -1744,6 +1867,45 @@ FOR EACH %s
 `, EscapeMysqlColumn(triggerSchema), EscapeMysqlColumn(triggerName), timing, event_type,
 		EscapeMysqlColumn(schema), EscapeMysqlColumn(tableName), orientation, actionStmt)
 	return strings.TrimSpace(stmt)
+}
+
+// wrapReplacingFunction is wrapIdempotentFunction for a server without CREATE FUNCTION IF
+// NOT EXISTS (MySQL before 8.0.29): the function is dropped if it exists, then created. A
+// stored procedure cannot test for it first, as the other wrappers do: CREATE FUNCTION is
+// not allowed in one. The function ends up as the source defines it either way.
+func wrapReplacingFunction(
+	schema,
+	funcName,
+	functionSignature,
+	returnDataType,
+	definition string,
+	isDeterministic bool,
+) string {
+	created := strings.Replace(
+		wrapIdempotentFunction(schema, funcName, functionSignature, returnDataType, definition, isDeterministic),
+		"CREATE FUNCTION IF NOT EXISTS ", "CREATE FUNCTION ", 1,
+	)
+	return BuildDropFunctionStatement(schema, funcName) + "\n" + created
+}
+
+// wrapReplacingTrigger is wrapIdempotentTrigger for a server without CREATE TRIGGER IF NOT
+// EXISTS (MySQL before 8.0.29): the trigger is dropped if it exists, then created, for the
+// reason wrapReplacingFunction gives.
+func wrapReplacingTrigger(
+	schema,
+	tableName,
+	triggerName,
+	triggerSchema,
+	timing,
+	eventType,
+	orientation,
+	actionStmt string,
+) string {
+	created := strings.Replace(
+		wrapIdempotentTrigger(schema, tableName, triggerName, triggerSchema, timing, eventType, orientation, actionStmt),
+		"CREATE TRIGGER IF NOT EXISTS ", "CREATE TRIGGER ", 1,
+	)
+	return BuildDropTriggerStatement(&triggerSchema, triggerName) + "\n" + created
 }
 
 func (m *MysqlManager) BatchExec(

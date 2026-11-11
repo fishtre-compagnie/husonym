@@ -35,8 +35,9 @@ func newMariadbQuerier(inner mysql_queries.Querier) *mariadbQuerier {
 }
 
 // Same query as the generated GetIndicesBySchemasAndTables, with the
-// MySQL-only s.EXPRESSION column replaced by NULL.
-const mariadbGetIndicesBySchemasAndTables = `-- name: GetIndicesBySchemasAndTables :many
+// s.EXPRESSION column replaced by NULL: MariaDB has no such column, nor does
+// MySQL before 8.0.13 (functional key parts came with it).
+const getIndicesWithoutExpression = `-- name: GetIndicesBySchemasAndTables :many
 SELECT
     s.TABLE_SCHEMA as schema_name,
     s.TABLE_NAME as table_name,
@@ -67,17 +68,17 @@ func (q *mariadbQuerier) GetIndicesBySchemasAndTables(
 	db mysql_queries.DBTX,
 	arg *mysql_queries.GetIndicesBySchemasAndTablesParams,
 ) ([]*mysql_queries.GetIndicesBySchemasAndTablesRow, error) {
-	query := mariadbGetIndicesBySchemasAndTables
-	var queryParams []any
-	queryParams = append(queryParams, arg.Schema)
-	if len(arg.Tables) > 0 {
-		for _, v := range arg.Tables {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:tables*/?", strings.Repeat(",?", len(arg.Tables))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:tables*/?", "NULL", 1)
-	}
+	return queryIndicesWithoutExpression(ctx, db, arg)
+}
+
+// queryIndicesWithoutExpression runs getIndicesWithoutExpression and scans its rows the way
+// the generated GetIndicesBySchemasAndTables does.
+func queryIndicesWithoutExpression(
+	ctx context.Context,
+	db mysql_queries.DBTX,
+	arg *mysql_queries.GetIndicesBySchemasAndTablesParams,
+) ([]*mysql_queries.GetIndicesBySchemasAndTablesRow, error) {
+	query, queryParams := expandSlice(getIndicesWithoutExpression, "tables", []any{arg.Schema}, arg.Tables)
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -108,6 +109,20 @@ func (q *mariadbQuerier) GetIndicesBySchemasAndTables(
 		return nil, err
 	}
 	return items, nil
+}
+
+// expandSlice does what the code sqlc generates does for a sqlc.slice argument: the
+// /*SLICE:<name>*/? marker becomes one placeholder per value, appended to params, or NULL
+// when there is none, which matches no row.
+func expandSlice(query, name string, params []any, values []string) (expanded string, args []any) {
+	marker := "/*SLICE:" + name + "*/?"
+	if len(values) == 0 {
+		return strings.Replace(query, marker, "NULL", 1), params
+	}
+	for _, v := range values {
+		params = append(params, v)
+	}
+	return strings.Replace(query, marker, strings.Repeat(",?", len(values))[1:], 1), params
 }
 
 func (q *mariadbQuerier) GetDatabaseSchema(

@@ -20,7 +20,7 @@ func mysqlFound(name string, order int64, triggerSchema *string) *sqlmanager_sha
 // A MySQL trigger comes back as it was created: its definer, its sql_mode and collation,
 // on a session whose own settings are given back afterwards.
 func TestToTriggers_MysqlRestoresTheCreation(t *testing.T) {
-	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, []*sqlmanager_shared.TableTrigger{mysqlFound("trg-a`b", 1, nil)})
+	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, "8.0.36", []*sqlmanager_shared.TableTrigger{mysqlFound("trg-a`b", 1, nil)})
 	require.NoError(t, err)
 	require.Len(t, triggers, 1)
 	trigger := triggers[0]
@@ -37,7 +37,7 @@ func TestToTriggers_MysqlRestoresTheCreation(t *testing.T) {
 // Triggers of the same event come back in the order they fire in: the one created last
 // fires last.
 func TestToTriggers_MysqlKeepsTheFiringOrder(t *testing.T) {
-	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, []*sqlmanager_shared.TableTrigger{
+	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, "8.0.36", []*sqlmanager_shared.TableTrigger{
 		mysqlFound("second", 2, nil), mysqlFound("premier", 1, nil),
 	})
 	require.NoError(t, err)
@@ -49,13 +49,13 @@ func TestToTriggers_MysqlKeepsTheFiringOrder(t *testing.T) {
 // table it fires on.
 func TestToTriggers_TriggerSchema(t *testing.T) {
 	own := "autre"
-	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, &own)})
+	triggers, err := toTriggers(sqlmanager_shared.MysqlDriver, "8.0.36", []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, &own)})
 	require.NoError(t, err)
 	require.Equal(t, "DROP TRIGGER IF EXISTS `autre`.`t`", triggers[0].Suspend)
 
 	empty := ""
 	for _, schema := range []*string{nil, &empty} {
-		triggers, err = toTriggers(sqlmanager_shared.MysqlDriver, []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, schema)})
+		triggers, err = toTriggers(sqlmanager_shared.MysqlDriver, "8.0.36", []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, schema)})
 		require.NoError(t, err)
 		require.Equal(t, "web", triggers[0].Schema, "the table schema stands in for a missing trigger schema")
 	}
@@ -78,7 +78,7 @@ func TestToTriggers_Postgres(t *testing.T) {
 			Schema: "web", Table: "COMMANDE", TriggerName: name, EnabledState: state,
 		})
 	}
-	triggers, err := toTriggers(sqlmanager_shared.PostgresDriver, found)
+	triggers, err := toTriggers(sqlmanager_shared.PostgresDriver, "", found)
 	require.NoError(t, err)
 	restore := map[string][]string{}
 	for _, trigger := range triggers {
@@ -94,7 +94,7 @@ func TestToTriggers_Postgres(t *testing.T) {
 }
 
 func TestToTriggers_SqlServerLeftAlone(t *testing.T) {
-	triggers, err := toTriggers(sqlmanager_shared.MssqlDriver, []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, nil)})
+	triggers, err := toTriggers(sqlmanager_shared.MssqlDriver, "", []*sqlmanager_shared.TableTrigger{mysqlFound("t", 1, nil)})
 	require.NoError(t, err)
 	require.Empty(t, triggers)
 }

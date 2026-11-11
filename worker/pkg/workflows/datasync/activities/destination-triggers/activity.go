@@ -2,6 +2,7 @@ package destinationtriggers_activity
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
@@ -191,6 +193,25 @@ func restoreOne(ctx context.Context, db sqlio.TxBeginner, trigger *Trigger) erro
 	if err != nil {
 		return err
 	}
+	if trigger.Exists != "" {
+		var count int
+		if err := tx.QueryRowContext(ctx, trigger.Exists).Scan(&count); err != nil {
+			return errors.Join(err, tx.Rollback())
+		}
+		if count > 0 {
+			// Put back by an earlier attempt that failed after its CREATE.
+			return tx.Commit()
+		}
+	}
+	var previousDatabase sql.NullString
+	if trigger.Database != "" {
+		if err := tx.QueryRowContext(ctx, "SELECT DATABASE()").Scan(&previousDatabase); err != nil {
+			return errors.Join(err, tx.Rollback())
+		}
+		if _, err := tx.ExecContext(ctx, "USE "+quoteMysql(trigger.Database)); err != nil {
+			return errors.Join(err, tx.Rollback())
+		}
+	}
 	var restoreErr error
 	for _, stmt := range trigger.Restore {
 		if _, restoreErr = tx.ExecContext(ctx, stmt); restoreErr != nil {
@@ -204,6 +225,13 @@ func restoreOne(ctx context.Context, db sqlio.TxBeginner, trigger *Trigger) erro
 			if discard, ok := (sqlio.MySQLDialect{}).DiscardSessionStatement(); ok {
 				_, _ = tx.ExecContext(context.WithoutCancel(ctx), discard)
 			}
+		}
+	}
+	// The session goes back to its default database; one that had none keeps the trigger's,
+	// which no statement of the sessions of this package relies on: they name their tables.
+	if previousDatabase.Valid {
+		if _, err := tx.ExecContext(ctx, "USE "+quoteMysql(previousDatabase.String)); err != nil {
+			restoreErr = errors.Join(restoreErr, err)
 		}
 	}
 	if restoreErr != nil {
@@ -254,7 +282,35 @@ func (a *Activity) readTriggers(
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the triggers of the destination: %w", err)
 	}
-	return toTriggers(sqlconnection.Driver(), found)
+	var version string
+	if sqlconnection.Driver() == sqlmanager_shared.MysqlDriver && len(found) > 0 {
+		// What puts a trigger back depends on the version of the server, and is recorded
+		// before the trigger is dropped: a version that cannot be read stops the run here,
+		// rather than leave a trigger dropped that a statement the server refuses cannot
+		// put back.
+		db, err := a.open(ctx, session, accountID, connectionID, logger)
+		if err != nil {
+			return nil, err
+		}
+		if version, err = serverVersion(ctx, db); err != nil {
+			return nil, fmt.Errorf("unable to read the version of the destination: %w", err)
+		}
+	}
+	return toTriggers(sqlconnection.Driver(), version, found)
+}
+
+// serverVersion is what SELECT VERSION() answers.
+func serverVersion(ctx context.Context, db versionReader) (string, error) {
+	var version string
+	if err := db.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
+		return "", err
+	}
+	return version, nil
+}
+
+// versionReader runs the query of serverVersion.
+type versionReader interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 // open returns the plain connection statements run on in a destination.

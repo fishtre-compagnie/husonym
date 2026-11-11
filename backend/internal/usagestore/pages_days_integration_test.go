@@ -53,8 +53,10 @@ func Test_UsagePages_ADayIsTheSameDayInEveryRead(t *testing.T) {
 		// The runs of the two days before the change, of its day and of the two days after.
 		runs [5]int64
 	}{
-		// Midnight twice: 01:00 goes back to 00:00.
-		{"America/Havana", CalendarDay{Year: 2026, Month: time.November, Day: 1}, [5]int64{48, 48, 50, 48, 48}},
+		// Midnight twice: 01:00 goes back to 00:00. Not in 2026 for Havana: tzdata 2026f keeps
+		// Cuba on daylight time until the first Sunday of November 2027, the day the former rule
+		// gives too, so the case holds whichever tzdata the database image has.
+		{"America/Havana", CalendarDay{Year: 2027, Month: time.November, Day: 7}, [5]int64{48, 48, 50, 48, 48}},
 		{"Atlantic/Azores", CalendarDay{Year: 2026, Month: time.October, Day: 25}, [5]int64{48, 48, 50, 48, 48}},
 		// No midnight: 00:00 goes forward to 01:00.
 		{"America/Havana", CalendarDay{Year: 2026, Month: time.March, Day: 8}, [5]int64{48, 48, 46, 48, 48}},

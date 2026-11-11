@@ -79,11 +79,16 @@ func (d *oddDatabase) oddValuesStatements() []string {
 			fmt.Sprintf("choices SET%s DEFAULT %s", members, lit(oddValues["ending"])),
 			fmt.Sprintf("choice_escaped ENUM%s DEFAULT %s", members, lit(oddValues["escaped"])),
 			fmt.Sprintf("choices_trailing SET%s DEFAULT %s", members, lit(oddValues["trailing"])),
-			fmt.Sprintf("computed VARCHAR(40) DEFAULT (CONCAT(%s, ' sharp'))", lit(oddValues["apostrophe"])),
-			// The texts of this expression are written for a session that reads a backslash in a
-			// text as an escape, the default of both servers.
-			`computed_escaped VARCHAR(40) DEFAULT (CONCAT('it\\''s', ' and ', 'back\\slash'))`,
 		)
+		if !d.f.engine.isMysql57() {
+			// MySQL 5.7 has no expression default.
+			columns = append(columns,
+				fmt.Sprintf("computed VARCHAR(40) DEFAULT (CONCAT(%s, ' sharp'))", lit(oddValues["apostrophe"])),
+				// The texts of this expression are written for a session that reads a backslash in a
+				// text as an escape, the default of both servers.
+				`computed_escaped VARCHAR(40) DEFAULT (CONCAT('it\\''s', ' and ', 'back\\slash'))`,
+			)
+		}
 		return []string{
 			"CREATE DATABASE " + q(oddValuesSchema),
 			fmt.Sprintf("CREATE TABLE %s (%s)", table, strings.Join(columns, ", ")),
@@ -222,12 +227,16 @@ func Test_OddValues_SchemaInit(t *testing.T) {
 			require.Equal(t, value, row[name], "the default of column %q of the source", name)
 		}
 		require.Equal(t, oddValues["apostrophe"], row["choice"])
-		require.Equal(t, oddValues["apostrophe"]+" sharp", row["computed"])
+		if !f.engine.isMysql57() {
+			require.Equal(t, oddValues["apostrophe"]+" sharp", row["computed"])
+		}
 		require.Equal(t, oddValues["escaped"], strings.TrimRight(row["fixed_escaped"], " "))
 		if f.engine.family == familyMysql {
 			require.Equal(t, oddValues["escaped"], row["choice_escaped"])
 			require.Equal(t, oddValues["trailing"], row["choices_trailing"])
-			require.Equal(t, computedEscaped, row["computed_escaped"])
+			if !f.engine.isMysql57() {
+				require.Equal(t, computedEscaped, row["computed_escaped"])
+			}
 
 			// The columns of a database are listed with the same defaults.
 			listed := source.listedDefaults(t)
@@ -242,7 +251,9 @@ func Test_OddValues_SchemaInit(t *testing.T) {
 			} else {
 				require.Equal(t, oddValues["escaped"], listed["escaped"])
 				require.Equal(t, oddValues["trailing"], listed["choices_trailing"])
-				require.Equal(t, `concat(_utf8mb4'it\\\'s',_utf8mb4' and ',_utf8mb4'back\\slash')`, listed["computed_escaped"])
+				if !f.engine.isMysql57() {
+					require.Equal(t, `concat(_utf8mb4'it\\\'s',_utf8mb4' and ',_utf8mb4'back\\slash')`, listed["computed_escaped"])
+				}
 			}
 		}
 		require.Equal(t, row, destination.rowOfDefaults(t), "a row inserted with its defaults")

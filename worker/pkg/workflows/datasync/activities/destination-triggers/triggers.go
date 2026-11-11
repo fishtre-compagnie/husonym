@@ -54,6 +54,15 @@ type Trigger struct {
 	// Reset, when set, gives the session back the settings Restore changed. It runs after
 	// Restore whether it succeeded or not.
 	Reset string `json:"reset,omitempty"`
+	// Exists, when set, counts the triggers bearing the name of this one. It stands in for
+	// IF NOT EXISTS on a server without CREATE TRIGGER IF NOT EXISTS (MySQL before 8.0.29):
+	// run first, on the session of Restore, a count above zero says the trigger is back
+	// already, and Restore is not run.
+	Exists string `json:"exists,omitempty"`
+	// Database, when set, is made the default database of the session of Restore, which is
+	// given back its own afterwards when it had one: a MySQL trigger is created again from its
+	// original text, which names its table without its database.
+	Database string `json:"database,omitempty"`
 }
 
 // key identifies a trigger on a destination: a PostgreSQL trigger is named per table.
@@ -91,11 +100,12 @@ func merge(recorded []*suspended, connectionID string, found []*Trigger) []*susp
 }
 
 // toTriggers keeps, among the triggers of the destination, the ones a run must take out of
-// its way, and pairs each of them with what puts it back.
-func toTriggers(driver string, found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) {
+// its way, and pairs each of them with what puts it back. version is what SELECT VERSION()
+// answers on a MySQL destination: what puts a trigger back is written for it.
+func toTriggers(driver, version string, found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) {
 	switch driver {
 	case sqlmanager_shared.MysqlDriver:
-		return mysqlTriggers(found)
+		return mysqlTriggers(found, sqlmanager_mysql.CreatesTriggersIfNotExists(version))
 	case sqlmanager_shared.PostgresDriver:
 		return postgresTriggers(found), nil
 	default:
@@ -106,7 +116,13 @@ func toTriggers(driver string, found []*sqlmanager_shared.TableTrigger) ([]*Trig
 // mysqlTriggers drops each trigger and creates it again as MySQL describes it. They come
 // back in the order they fire in: a trigger created after the others of its event fires
 // after them, which is how the place of each is kept.
-func mysqlTriggers(found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) {
+//
+// A trigger is created again only if it is not there: a restore that ran its CREATE and
+// failed after it is run again. MySQL 8.0.29+ and MariaDB say so with CREATE TRIGGER IF NOT
+// EXISTS. An older server does not take it, and the trigger then carries an Exists query
+// checked first. Dropping the trigger before creating it would do too, but would drop one
+// the run did not take away, and move a trigger behind the others of its event.
+func mysqlTriggers(found []*sqlmanager_shared.TableTrigger, ifNotExists bool) ([]*Trigger, error) {
 	ordered := slices.Clone(found)
 	for _, t := range ordered {
 		if t.Mysql == nil {
@@ -132,10 +148,22 @@ func mysqlTriggers(found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) 
 		if err != nil {
 			return nil, fmt.Errorf("trigger %s of %s.%s: %w", t.TriggerName, t.Schema, t.Table, err)
 		}
+		if t.Mysql.OriginalStatement != "" {
+			triggers = append(triggers, mysqlTriggerFromOriginal(t, schema))
+			continue
+		}
+		create, exists := "CREATE DEFINER = %s TRIGGER IF NOT EXISTS %s.%s %s %s ON %s.%s FOR EACH %s %s", ""
+		if !ifNotExists {
+			create = "CREATE DEFINER = %s TRIGGER %s.%s %s %s ON %s.%s FOR EACH %s %s"
+			exists = fmt.Sprintf(
+				"SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = %s AND TRIGGER_NAME = %s",
+				quoteMysqlString(schema), quoteMysqlString(t.TriggerName))
+		}
 		triggers = append(triggers, &Trigger{
 			Schema:  schema,
 			Name:    t.TriggerName,
 			Table:   t.Table,
+			Exists:  exists,
 			Suspend: fmt.Sprintf("DROP TRIGGER IF EXISTS %s.%s", quoteMysql(schema), quoteMysql(t.TriggerName)),
 			Restore: []string{
 				// The session keeps its own settings, given back by Reset.
@@ -143,7 +171,7 @@ func mysqlTriggers(found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) 
 				// A trigger keeps the sql_mode and the collation of the session it is created in.
 				fmt.Sprintf("SET SESSION sql_mode = %s, collation_connection = %s",
 					quoteMysqlString(t.Mysql.SqlMode), quoteMysqlString(t.Mysql.CollationConnection)),
-				fmt.Sprintf("CREATE DEFINER = %s TRIGGER IF NOT EXISTS %s.%s %s %s ON %s.%s FOR EACH %s %s",
+				fmt.Sprintf(create,
 					definer, quoteMysql(schema), quoteMysql(t.TriggerName), t.Mysql.Timing, t.Mysql.Event,
 					quoteMysql(t.Schema), quoteMysql(t.Table), t.Mysql.Orientation, t.Mysql.Statement),
 			},
@@ -151,6 +179,39 @@ func mysqlTriggers(found []*sqlmanager_shared.TableTrigger) ([]*Trigger, error) 
 		})
 	}
 	return triggers, nil
+}
+
+// mysqlTriggerFromOriginal puts a trigger back from the statement it was created with, as SHOW
+// CREATE TRIGGER gives it, definer included: run in the database of its table, under its
+// sql_mode and character sets, it gives back the same trigger, down to SHOW CREATE TRIGGER. The
+// text is run as it is, without IF NOT EXISTS, which the server would keep in it: whether the
+// trigger is back already is asked first, on every server.
+func mysqlTriggerFromOriginal(t *sqlmanager_shared.TableTrigger, schema string) *Trigger {
+	settings := fmt.Sprintf("SET SESSION sql_mode = %s, collation_connection = %s",
+		quoteMysqlString(t.Mysql.SqlMode), quoteMysqlString(t.Mysql.CollationConnection))
+	switch strings.ToLower(t.Mysql.CharacterSetClient) {
+	case "utf8", "utf8mb3", "utf8mb4":
+		// The statement is sent as UTF-8: another client character set would misread it.
+		settings += ", character_set_client = " + quoteMysqlString(t.Mysql.CharacterSetClient)
+	}
+	return &Trigger{
+		Schema: schema,
+		Name:   t.TriggerName,
+		Table:  t.Table,
+		Exists: fmt.Sprintf(
+			"SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = %s AND TRIGGER_NAME = %s",
+			quoteMysqlString(schema), quoteMysqlString(t.TriggerName)),
+		Database: t.Schema,
+		Suspend:  fmt.Sprintf("DROP TRIGGER IF EXISTS %s.%s", quoteMysql(schema), quoteMysql(t.TriggerName)),
+		Restore: []string{
+			"SET @husonym_sql_mode = @@SESSION.sql_mode, @husonym_collation = @@SESSION.collation_connection, " +
+				"@husonym_character_set_client = @@SESSION.character_set_client",
+			settings,
+			t.Mysql.OriginalStatement,
+		},
+		Reset: "SET SESSION sql_mode = @husonym_sql_mode, collation_connection = @husonym_collation, " +
+			"character_set_client = @husonym_character_set_client",
+	}
 }
 
 // mysqlAccount quotes a definer as information_schema gives it, user@host. The host
@@ -200,8 +261,8 @@ var (
 )
 
 // quoteMysqlString writes a MySQL string literal for a setting value — mode names, a
-// collation — which holds neither a quote nor a backslash; a doubled quote reads the same
-// under every sql_mode, a backslash would not.
+// collation — or a name. A doubled quote reads the same under every sql_mode; a value
+// holding a backslash is written by its bytes, which does too.
 func quoteMysqlString(s string) string {
 	return sqlident.MySQL.Literal(s)
 }

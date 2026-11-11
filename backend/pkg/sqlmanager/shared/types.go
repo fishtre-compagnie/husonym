@@ -85,6 +85,23 @@ type TableColumn struct {
 	SequenceDefinition  *string
 	OrdinalPosition     int
 	Comment             *string
+	// Mysql holds what MySQL and MariaDB tell of a column besides the fields above, for the
+	// statements that add or modify it. It is left out of the fingerprint: a column is not
+	// told different, and modified, for what its fingerprint never covered.
+	Mysql *MysqlColumn
+}
+
+// MysqlColumn is what a MySQL or MariaDB column definition holds besides the fields of
+// TableColumn.
+type MysqlColumn struct {
+	// CharacterSet and Collation are those of a text column (CHAR, VARCHAR, TEXT, ENUM, SET).
+	CharacterSet *string
+	Collation    *string
+	// OnUpdate is the value of an ON UPDATE clause, such as CURRENT_TIMESTAMP(3).
+	OnUpdate *string
+	// EmptyStringDefault is set for a column that defaults to the empty string, which
+	// ColumnDefault cannot tell from no default at all.
+	EmptyStringDefault bool
 }
 
 func (c *TableColumn) GetFingerprint() string {
@@ -149,6 +166,13 @@ type MysqlTrigger struct {
 	Definer             string
 	SqlMode             string
 	CollationConnection string
+	// CharacterSetClient is the character set of the session the trigger was created in.
+	CharacterSetClient string
+	// OriginalStatement is the statement that created the trigger, as SHOW CREATE TRIGGER
+	// gives it (DEFINER included, names as written, unqualified): run in the database of
+	// the trigger, under its sql_mode and character sets, it creates the trigger again with
+	// the same SHOW CREATE TRIGGER. Empty when the session could not read it.
+	OriginalStatement string
 }
 
 func (t *TableTrigger) GetFingerprint() string {

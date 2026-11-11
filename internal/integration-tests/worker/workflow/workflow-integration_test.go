@@ -386,6 +386,20 @@ func Test_Workflow(t *testing.T) {
 		)
 	})
 
+	t.Run("mysql57", func(t *testing.T) {
+		t.Log("Starting mysql 5.7 tests")
+		t.Parallel()
+		runMysqlWorkflowTests(
+			t,
+			ctx,
+			husonymApi,
+			dbManagers,
+			accountId,
+			"mysql57",
+			[]tcmysql.Option{tcmysql.WithMysql57()},
+		)
+	})
+
 	t.Run("mssql", func(t *testing.T) {
 		t.Log("Starting mssql tests")
 		t.Parallel()
@@ -739,6 +753,22 @@ func runMysqlWorkflowTests(
 			destConn,
 		)
 	})
+
+	if mysql.Source.IsMysql57() {
+		t.Run("legacy", func(t *testing.T) {
+			t.Parallel()
+			test_mysql57_legacy(
+				t,
+				ctx,
+				mysql,
+				husonymApi,
+				dbManagers,
+				accountId,
+				sourceConn,
+				destConn,
+			)
+		})
+	}
 
 	t.Cleanup(func() {
 		err := mysql.TearDown(ctx)

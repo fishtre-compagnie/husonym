@@ -3,9 +3,14 @@ package integrationtest
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -22,6 +27,7 @@ import (
 	mysql_composite_keys "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/composite-keys"
 	mysql_edgecases "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/edgecases"
 	mysql_human_resources "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/humanresources"
+	mysql_mysql57legacy "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/mysql57-legacy"
 	mysql_schemainit "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/schema-init"
 	reconcileschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/reconcile-schema"
 	"github.com/stretchr/testify/assert"
@@ -32,6 +38,28 @@ import (
 const (
 	mysqlTestdataFolder string = "../../../testutil/testdata/mysql"
 )
+
+// mysqlFixtures gives the fixture files to run on a server: on MySQL 5.7, a file that has a
+// ".mysql57.sql" twin (written without what 5.7 lacks, such as expression defaults) is
+// replaced by it.
+func mysqlFixtures(t *testing.T, server *tcmysql.MysqlTestContainer, files ...string) []string {
+	t.Helper()
+	if !server.IsMysql57() {
+		return files
+	}
+	out := make([]string, len(files))
+	for i, file := range files {
+		out[i] = file
+		twin := strings.TrimSuffix(file, ".sql") + ".mysql57.sql"
+		_, err := os.Stat(filepath.Join(mysqlTestdataFolder, twin))
+		if err == nil {
+			out[i] = twin
+		} else {
+			require.ErrorIs(t, err, fs.ErrNotExist)
+		}
+	}
+	return out
+}
 
 func createMysqlSyncJob(
 	t *testing.T,
@@ -268,12 +296,13 @@ func test_mysql_edgecases(
 	schema := "mysqledgecases"
 	schema2 := "mysqledgecasesother"
 
+	fixtures := mysqlFixtures(t, mysql.Source, "edgecases/create-tables.sql")
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
 		return mysql.Source.RunCreateStmtsInDatabase(
 			errctx,
 			mysqlTestdataFolder,
-			[]string{"edgecases/create-tables.sql"},
+			fixtures,
 			schema,
 		)
 	})
@@ -281,7 +310,7 @@ func test_mysql_edgecases(
 		return mysql.Source.RunCreateStmtsInDatabase(
 			errctx,
 			mysqlTestdataFolder,
-			[]string{"edgecases/create-tables.sql"},
+			fixtures,
 			schema2,
 		)
 	})
@@ -891,7 +920,7 @@ func test_mysql_schema_reconciliation(
 	err := mysql.Source.RunCreateStmtsInDatabase(
 		ctx,
 		mysqlTestdataFolder,
-		[]string{"schema-init/create-tables.sql"},
+		mysqlFixtures(t, mysql.Source, "schema-init/create-tables.sql"),
 		schema,
 	)
 	require.NoError(t, err)
@@ -983,7 +1012,7 @@ func test_mysql_schema_reconciliation(
 	err = mysql.Source.RunCreateStmtsInDatabase(
 		ctx,
 		mysqlTestdataFolder,
-		[]string{"schema-init/alter-statements.sql"},
+		mysqlFixtures(t, mysql.Source, "schema-init/alter-statements.sql"),
 		schema,
 	)
 	require.NoError(t, err)
@@ -1309,6 +1338,120 @@ func test_mysql_schema_reconciliation_column_values(
 		sqlmanager_shared.MysqlDriver,
 		[]string{"name"},
 	)
+}
+
+// test_mysql57_legacy syncs, with schema initialization, tables modelled on the legacy MySQL
+// 5.7 production databases (see mysql57-legacy/create-tables.sql): zero dates, implicit
+// TIMESTAMP defaults, latin1 text with accents, a MyISAM table, tables without a primary key,
+// names with capitals. Every row must reach the destination unchanged, and the recreated
+// columns must keep their defaults.
+func test_mysql57_legacy(
+	t *testing.T,
+	ctx context.Context,
+	mysql *tcmysql.MysqlTestSyncContainer,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
+	dbManagers *TestDatabaseManagers,
+	accountId string,
+	sourceConn, destConn *mgmtv1alpha1.Connection,
+) {
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	schema := "Legacy57"
+
+	errgrp, errctx := errgroup.WithContext(ctx)
+	errgrp.Go(func() error {
+		return mysql.Source.RunCreateStmtsInDatabase(
+			errctx,
+			mysqlTestdataFolder,
+			[]string{"mysql57-legacy/create-tables.sql"},
+			schema,
+		)
+	})
+	errgrp.Go(func() error { return mysql.Target.CreateDatabases(errctx, []string{schema}) })
+	require.NoError(t, errgrp.Wait())
+
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
+
+	job := createMysqlSyncJob(t, ctx, jobclient, &createJobConfig{
+		AccountId:   accountId,
+		SourceConn:  sourceConn,
+		DestConn:    destConn,
+		JobName:     "mysql57_legacy",
+		JobMappings: mysql_mysql57legacy.GetDefaultSyncJobMappings(schema),
+		JobOptions: &TestJobOptions{
+			Truncate:   true,
+			InitSchema: true,
+		},
+	})
+
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
+	testworkflow.RequireActivitiesCompletedSuccessfully(t)
+	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
+	require.Truef(
+		t,
+		testworkflow.TestEnv.IsWorkflowCompleted(),
+		"Workflow did not complete. Test: mysql57_legacy",
+	)
+	err := testworkflow.TestEnv.GetWorkflowError()
+	require.NoError(t, err, "Received Temporal Workflow Error: mysql57_legacy")
+
+	for _, expected := range []struct {
+		table    string
+		rowCount int
+		idCols   []string
+	}{
+		{table: "Commande_Statut", rowCount: 3, idCols: []string{"id"}},
+		{table: "Commande", rowCount: 3, idCols: []string{"id"}},
+		{table: "Ligne_Commande", rowCount: 4, idCols: []string{"Commande_id", "Article"}},
+		{table: "Journal_MyISAM", rowCount: 3, idCols: []string{"Commande_id", "Message"}},
+	} {
+		rowCount, err := mysql.Target.GetTableRowCount(ctx, schema, expected.table)
+		require.NoError(t, err)
+		require.Equalf(t, expected.rowCount, rowCount, "Test: mysql57_legacy Table: %s", expected.table)
+		testutil_testdata.VerifySQLTableColumnValues(
+			t,
+			ctx,
+			mysql.Source.DB,
+			mysql.Target.DB,
+			schema,
+			expected.table,
+			sqlmanager_shared.MysqlDriver,
+			expected.idCols,
+		)
+	}
+
+	// Zero dates and accented latin1 text, read as text so that nothing converts them.
+	textOf := func(db *sql.DB) []string {
+		rows, err := db.QueryContext(ctx, fmt.Sprintf(
+			"SELECT CONCAT_WS('|', Client_Nom, CAST(Date_Creation AS CHAR), CAST(Date_Livraison AS CHAR), "+
+				"CAST(Date_Naissance AS CHAR), CAST(Date_Maj AS CHAR), IFNULL(Note, 'NULL')) FROM `%s`.`Commande` ORDER BY id",
+			schema))
+		require.NoError(t, err)
+		defer rows.Close()
+		var out []string
+		for rows.Next() {
+			var line string
+			require.NoError(t, rows.Scan(&line))
+			out = append(out, line)
+		}
+		require.NoError(t, rows.Err())
+		return out
+	}
+	assert.Equal(t, textOf(mysql.Source.DB), textOf(mysql.Target.DB), "the rows of Commande, read as text")
+
+	// The recreated columns keep their defaults: an inserted row takes the same ones.
+	_, err = mysql.Target.DB.ExecContext(ctx, fmt.Sprintf(
+		"INSERT INTO `%s`.`Commande` (Statut_id, Reference) VALUES (1, 'CMD-NEW')", schema))
+	require.NoError(t, err)
+	var defaults string
+	require.NoError(t, mysql.Target.DB.QueryRowContext(ctx, fmt.Sprintf(
+		"SELECT CONCAT_WS('|', Client_Nom, CAST(Date_Creation AS CHAR), CAST(Date_Livraison AS CHAR), "+
+			"CAST(Date_Naissance AS CHAR), CAST(Montant AS CHAR), Date_Maj > NOW() - INTERVAL 1 HOUR) "+
+			"FROM `%s`.`Commande` WHERE Reference = 'CMD-NEW'", schema)).Scan(&defaults))
+	require.Equal(t, "|0000-00-00 00:00:00|0000-00-00 00:00:00|0000-00-00|0.00|1", defaults,
+		"the defaults of a row inserted on the destination")
+
+	err = cleanupMysqlDatabases(ctx, mysql, []string{schema})
+	require.NoError(t, err)
 }
 
 func cleanupMysqlDatabases(

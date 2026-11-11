@@ -331,6 +331,17 @@ func (d *MysqlSchemaManager) BuildSchemaDiffStatements(
 		)
 	}
 
+	// On a strict server, an ALTER TABLE that copies a table with a zero date default is
+	// refused, whatever it changes: each one is run under a sql_mode that takes such defaults.
+	for _, statements := range [][]string{
+		addColumnStatements, updateColumnStatements, orderedForeignKeyDropStatements,
+		dropNonFkConstraintStatements, dropColumnStatements,
+	} {
+		for i, statement := range statements {
+			statements[i] = sqlmanager_mysql.WithAlterTableSqlMode(statement)
+		}
+	}
+
 	return []*sqlmanager_shared.InitSchemaStatements{
 		{
 			Label:      sqlmanager_shared.DropFunctionsLabel,

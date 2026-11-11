@@ -207,6 +207,26 @@ func TestDatabaseConnections(t *testing.T) {
 				requireDbConnects(t, connector)
 			})
 		})
+
+		// The TLS options of the test server (TLSv1.2 and TLSv1.3, required transport) hold on
+		// MySQL 5.7 too.
+		t.Run("with_tls_mysql57", func(t *testing.T) {
+			t.Parallel()
+			container, err := tcmysql.NewMysqlTestContainer(ctx, tcmysql.WithMysql57(), tcmysql.WithTls())
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = container.TearDown(context.Background()) })
+
+			tlsConfig, err := container.GetClientTlsConfig(ctx)
+			require.NoError(t, err)
+			connector, cleanup, err := mysqltunconnector.New(
+				container.URL,
+				mysqltunconnector.WithTLSConfig(tlsConfig),
+			)
+			require.NoError(t, err)
+			defer cleanup()
+
+			requireDbConnects(t, connector)
+		})
 	})
 
 	t.Run("mssql", func(t *testing.T) {
