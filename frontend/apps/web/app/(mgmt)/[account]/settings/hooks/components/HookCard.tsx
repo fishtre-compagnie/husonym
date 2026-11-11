@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import { Pill, StatusDot } from '@/components/ds';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountHook } from '@husonym/sdk';
 import { ReactElement } from 'react';
@@ -25,25 +25,28 @@ export default function HookCard(props: Props): ReactElement {
             <div className="flex grow flex-col gap-2">
               {/* Header Section */}
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-lg">{hook.name}</h3>
+                <h3 className="font-display text-base font-semibold">
+                  {hook.name}
+                </h3>
               </div>
 
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {hook.description}
               </p>
 
               <div className="flex items-center gap-4 pt-2 flex-wrap">
-                <Badge variant={hook.enabled ? 'success' : 'outline'}>
+                <Pill tone={hook.enabled ? 'ok' : 'quiet'}>
+                  <StatusDot tone={hook.enabled ? 'ok' : 'quiet'} />
                   {hook.enabled ? 'Enabled' : 'Disabled'}
-                </Badge>
+                </Pill>
                 {hook.config?.config.case && (
-                  <Badge variant="secondary">
+                  <Pill className="font-mono">
                     {isSlack ? 'Slack' : hook.config?.config.case}
-                  </Badge>
+                  </Pill>
                 )}
               </div>
               {isSlack && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Slack hooks are no longer supported and are not run. Replace
                   this hook with a webhook.
                 </p>

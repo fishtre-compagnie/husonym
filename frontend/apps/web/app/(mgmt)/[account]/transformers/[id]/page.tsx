@@ -1,7 +1,6 @@
 'use client';
 import { use } from 'react';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader, Pill } from '@/components/ds';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
 import { PageProps } from '@/components/types';
 import { getTransformerDataTypesString } from '@/util/util';
@@ -35,22 +34,20 @@ export default function UpdateUserDefinedTransformerPage(props: PageProps) {
   }
 
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header={data?.transformer?.name ?? 'Custom Transformer'}
-          leftBadgeValue={getTransformerDataTypesString(
-            data?.transformer?.dataTypes ?? []
-          )}
-          extraHeading={
-            <RemoveTransformerButton
-              transformerID={data?.transformer?.id ?? ''}
-            />
-          }
-        />
-      }
-      containerClassName="px-12 md:px-24 lg:px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      <PageHeader
+        title={data?.transformer?.name ?? 'Custom Transformer'}
+        description={
+          <Pill className="font-mono">
+            {getTransformerDataTypesString(data?.transformer?.dataTypes ?? [])}
+          </Pill>
+        }
+        actions={
+          <RemoveTransformerButton
+            transformerID={data?.transformer?.id ?? ''}
+          />
+        }
+      />
       <div className="transformer-details-container">
         <div>
           <div className="flex flex-col">
@@ -79,6 +76,6 @@ export default function UpdateUserDefinedTransformerPage(props: PageProps) {
           </div>
         </div>
       </div>
-    </OverviewContainer>
+    </PageBody>
   );
 }

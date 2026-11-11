@@ -2,7 +2,8 @@
 import Spinner from '@/components/Spinner';
 import { useAccount } from '@/components/providers/account-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Panel } from '@/components/ds';
+import { MainLogo } from '@/components/site-header/MainLogo';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useHusonymUser } from '@/libs/hooks/useHusonymUser';
 import { getErrorMessage } from '@/util/util';
@@ -67,26 +68,30 @@ export default function InvitePage(): ReactElement {
   }, [status, token, isUserLoading, userError, isSystemDataLoading]);
 
   return (
-    <div className="flex justify-center mt-24">
-      <Card className="w-1/2 h-/12 py-24">
-        <CardHeader className="space-y-1 items-center">
-          <CardTitle className="text-2xl">Welcome to the team!</CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-4 justify-center">
-          {error ? (
-            <Alert variant="destructive">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertTitle>Unable to accept invite</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : (
-            <div className="flex flex-row items-center gap-4">
-              <Spinner />
-              Please wait. You will be redirected in a moment
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-4 py-12 text-foreground">
+      <div className="text-hi" aria-label="Husonym" role="img">
+        <MainLogo bg="currentColor" />
+      </div>
+      <Panel className="flex w-full max-w-lg flex-col items-center gap-6 px-6 py-12 text-center shadow-pop">
+        <h1 className="m-0 font-display text-2xl font-semibold tracking-[-0.02em]">
+          Welcome to the team!
+        </h1>
+        {error ? (
+          <Alert variant="destructive" className="text-left">
+            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTitle>Unable to accept invite</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : (
+          <div
+            className="flex flex-row items-center gap-3 text-muted-foreground"
+            role="status"
+          >
+            <Spinner />
+            Please wait. You will be redirected in a moment
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

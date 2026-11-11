@@ -1,7 +1,6 @@
 'use client';
 
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, PageHeader } from '@/components/ds';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
@@ -172,10 +171,11 @@ export default function NewTransformer(): ReactElement {
   }, [isLoading, sourceIdToCloneQueryParam]);
 
   return (
-    <OverviewContainer
-      Header={<PageHeader header="Create a New Transformer" />}
-      containerClassName="px-12 md:px-24 lg:px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      <PageHeader
+        title="New transformer"
+        description="Start from a system transformer and save your own options."
+      />
       <LicenseFeatureNotice feature="custom_transformers" className="mb-4" />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -325,6 +325,6 @@ export default function NewTransformer(): ReactElement {
           </div>
         </form>
       </Form>
-    </OverviewContainer>
+    </PageBody>
   );
 }

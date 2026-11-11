@@ -1,6 +1,5 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAccount } from '@/components/providers/account-provider';
 import { useRouter } from 'next/navigation';
 import { ReactElement, useEffect } from 'react';
@@ -21,12 +20,6 @@ export default function Settings(): ReactElement {
     return router.push(`/${accountName}/settings/api-keys`);
   }, [accountName, isAccountLoading]);
 
-  return (
-    <OverviewContainer
-      Header={<PageHeader header="Settings" />}
-      containerClassName="settings-page"
-    >
-      <div />
-    </OverviewContainer>
-  );
+  // The layout draws the page; this only waits for the redirect.
+  return <Skeleton className="h-12 w-full" />;
 }

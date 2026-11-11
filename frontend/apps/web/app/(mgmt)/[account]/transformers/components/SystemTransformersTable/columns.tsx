@@ -1,7 +1,7 @@
 'use client';
 
 import { AppTableFeatures } from '@/components/table/features';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import {
   getTransformerDataTypesString,
   getTransformerJobTypesString,
@@ -34,7 +34,7 @@ export function getSystemTransformerColumns(
             <span className="max-w-[500px] truncate font-medium">
               <div>
                 <NextLink
-                  className="hover:underline"
+                  className="font-semibold text-foreground hover:text-hi"
                   href={`/${accountName}/transformers/systemTransformers/${row.original.source}`}
                 >
                   {row.original.name}
@@ -55,7 +55,7 @@ export function getSystemTransformerColumns(
       cell: ({ getValue }) => {
         return (
           <div className="flex space-x-2">
-            <Badge variant="outline">{getValue<string>()}</Badge>
+            <Pill className="font-mono">{getValue<string>()}</Pill>
           </div>
         );
       },
@@ -69,11 +69,11 @@ export function getSystemTransformerColumns(
       ),
       cell: ({ getValue }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-1.5">
             {getValue<string[]>().map((item) => (
-              <Badge variant="outline" key={item}>
+              <Pill className="font-mono" key={item}>
                 {item}
-              </Badge>
+              </Pill>
             ))}
           </div>
         );
@@ -88,7 +88,7 @@ export function getSystemTransformerColumns(
       cell: ({ getValue }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground">
               {getValue<string>()}
             </span>
           </div>
@@ -104,7 +104,7 @@ export function getSystemTransformerColumns(
       cell: ({ row }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground">
               {row.original.description}
             </span>
           </div>

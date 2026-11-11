@@ -1,8 +1,7 @@
 'use client';
 import { ApiKeyValueSessionStore } from '@/app/(mgmt)/[account]/new/api-key/NewApiKeyForm';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import SubPageHeader from '@/components/headers/SubPageHeader';
 import RequiredLabel from '@/components/labels/RequiredLabel';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
@@ -141,17 +140,13 @@ export default function RegenerateAccountApiKey(
     );
   }
   return (
-    <OverviewContainer
-      Header={
-        <PageHeader
-          header={`Regenerate API Key: ${data.apiKey.name}`}
-          subHeadings={
-            'Submitting this form will generate a new token. Be aware that any scripts or applications using this token will need to be updated.'
-          }
-        />
-      }
-      containerClassName="mx-24"
-    >
+    <div className="flex flex-col gap-5">
+      <SubPageHeader
+        header={`Regenerate API Key: ${data.apiKey.name}`}
+        description={
+          'Submitting this form will generate a new token. Be aware that any scripts or applications using this token will need to be updated.'
+        }
+      />
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -269,6 +264,6 @@ export default function RegenerateAccountApiKey(
           </div>
         </form>
       </Form>
-    </OverviewContainer>
+    </div>
   );
 }

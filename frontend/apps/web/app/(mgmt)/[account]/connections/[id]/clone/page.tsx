@@ -1,5 +1,5 @@
 'use client';
-import OverviewContainer from '@/components/containers/OverviewContainer';
+import { PageBody } from '@/components/ds';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
 import { PageProps } from '@/components/types';
@@ -56,15 +56,13 @@ function CloneForm(props: CloneFormProps): ReactElement {
   });
 
   return (
-    <OverviewContainer
-      Header={connectionComponent.header}
-      containerClassName="px-32"
-    >
+    <PageBody className="max-w-[1320px]">
+      {connectionComponent.header}
       <div className="connection-details-container">
         <div className="flex flex-col gap-8">
           <div>{connectionComponent.body}</div>
         </div>
       </div>
-    </OverviewContainer>
+    </PageBody>
   );
 }

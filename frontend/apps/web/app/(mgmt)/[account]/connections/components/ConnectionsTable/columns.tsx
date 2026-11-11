@@ -4,6 +4,8 @@ import { ColumnDef } from '@tanstack/react-table';
 
 import NextLink from 'next/link';
 
+import ConnectionIcon from '@/components/connections/ConnectionIcon';
+import { Pill } from '@/components/ds';
 import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { formatDateTime } from '@/util/util';
@@ -48,16 +50,26 @@ export function getColumns(
       ),
       cell: ({ row }) => {
         return (
-          <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
-              <NextLink
-                className="hover:underline"
-                href={`/${accountName}/connections/${row.getValue('id')}`}
-              >
-                <TruncatedText text={row.getValue('name')} align="start" />
-              </NextLink>
+          <NextLink
+            className="flex min-w-0 max-w-[500px] items-center gap-3 text-foreground hover:text-hi hover:no-underline"
+            href={`/${accountName}/connections/${row.getValue('id')}`}
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-surface-2 [&_svg]:size-5!">
+              {row.original.connectionConfig?.config.case && (
+                <ConnectionIcon
+                  connectionType={row.original.connectionConfig.config.case}
+                />
+              )}
             </span>
-          </div>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate font-semibold">
+                <TruncatedText text={row.getValue('name')} align="start" />
+              </span>
+              <span className="truncate font-mono text-xs text-muted-foreground">
+                {row.getValue('id')}
+              </span>
+            </span>
+          </NextLink>
         );
       },
     },
@@ -67,13 +79,7 @@ export function getColumns(
         <DataTableColumnHeader column={column} title="Category" />
       ),
       cell: ({ row }) => {
-        return (
-          <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
-              {getCategory(row.original.connectionConfig)}
-            </span>
-          </div>
-        );
+        return <Pill>{getCategory(row.original.connectionConfig)}</Pill>;
       },
       filterFn: (row, id, value) => {
         return value.includes(row.getValue(id));
@@ -91,7 +97,7 @@ export function getColumns(
         };
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {formatDateTime(timestampDate(ts))}
             </span>
           </div>
@@ -113,7 +119,7 @@ export function getColumns(
         };
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[500px] truncate font-medium">
+            <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
               {formatDateTime(timestampDate(ts))}
             </span>
           </div>

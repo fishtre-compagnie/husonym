@@ -8,10 +8,41 @@ import OpenAiConnectionForm from '@/components/connections/forms/openai/OpenAiCo
 import PostgresConnectionForm from '@/components/connections/forms/postgres/PostgresConnectionForm';
 import AwsS3ConnectionForm from '@/components/connections/forms/s3/AwsS3ConnectionForm';
 import SqlServerConnectionForm from '@/components/connections/forms/sql-server/SqlServerConnectionForm';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageHeader as DsPageHeader, Pill } from '@/components/ds';
 import { Connection, PostgresConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import ModeView from './ModeView';
+
+/** The head of a connection's page: its name, its engine and its id, and its actions. */
+function PageHeader(props: {
+  header: string;
+  name?: string;
+  leftIcon?: ReactElement;
+  extraHeading?: ReactElement;
+  subHeadings?: ReactElement;
+}): ReactElement {
+  const { header, name, leftIcon, extraHeading, subHeadings } = props;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <DsPageHeader
+        title={
+          <span className="flex min-w-0 items-center gap-3">
+            {leftIcon && (
+              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-surface-2 [&_svg]:size-6!">
+                {leftIcon}
+              </span>
+            )}
+            <span className="truncate">{name || header}</span>
+          </span>
+        }
+        description={name ? <Pill tone="brand">{header}</Pill> : undefined}
+        actions={extraHeading}
+      />
+      {/* The id holds a copy button, which a paragraph cannot hold. */}
+      {subHeadings && <div className="font-mono text-xs">{subHeadings}</div>}
+    </div>
+  );
+}
 
 interface ConnectionComponent {
   body: ReactElement;
@@ -90,6 +121,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header={headerType == 'neon' ? 'Neon' : 'PostgreSQL'}
             leftIcon={
               headerType == 'neon' ? (
@@ -134,6 +166,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="Mysql"
             leftIcon={<ConnectionIcon connectionType="mysqlConfig" />}
             extraHeading={extraPageHeading}
@@ -169,6 +202,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="AWS S3"
             leftIcon={<ConnectionIcon connectionType="awsS3Config" />}
             extraHeading={extraPageHeading}
@@ -202,6 +236,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="OpenAI"
             leftIcon={<ConnectionIcon connectionType="openaiConfig" />}
             extraHeading={extraPageHeading}
@@ -248,6 +283,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="MongoDB"
             leftIcon={<ConnectionIcon connectionType="mongoConfig" />}
             extraHeading={extraPageHeading}
@@ -281,6 +317,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="GCP Cloud Storage"
             leftIcon={<ConnectionIcon connectionType="gcpCloudstorageConfig" />}
             extraHeading={extraPageHeading}
@@ -318,6 +355,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="DynamoDB"
             leftIcon={<ConnectionIcon connectionType="dynamodbConfig" />}
             extraHeading={extraPageHeading}
@@ -352,6 +390,7 @@ export function useGetConnectionComponentDetails(
       return {
         header: (
           <PageHeader
+            name={connection.name}
             header="Microsoft SQL Server"
             leftIcon={<ConnectionIcon connectionType="mssqlConfig" />}
             extraHeading={extraPageHeading}

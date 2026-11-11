@@ -20,7 +20,7 @@ export default function ConnectionCheckList(props: Props): ReactElement {
 
   if (checks.length === 0 && !unreachable) {
     return (
-      <div className="flex flex-row items-center gap-2 text-sm text-green-800 dark:text-green-400">
+      <div className="flex flex-row items-center gap-2 text-sm text-ok">
         <CheckCircledIcon className="h-4 w-4 shrink-0" />
         <span>{allClearText}</span>
       </div>

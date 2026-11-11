@@ -26,7 +26,7 @@ export default function OptionRow(props: Props): ReactElement {
 
   if (stacked) {
     return (
-      <div className="flex flex-col w-full space-y-4 rounded-lg border dark:border-gray-700 p-3 shadow-xs">
+      <div className="flex flex-col w-full space-y-4 rounded-xl border border-line-soft bg-card p-3">
         {heading}
         <div className="flex flex-col items-start">
           {children}
@@ -37,7 +37,7 @@ export default function OptionRow(props: Props): ReactElement {
   }
 
   return (
-    <div className="flex flex-row items-center justify-between gap-4 rounded-lg border dark:border-gray-700 p-3 shadow-xs">
+    <div className="flex flex-row items-center justify-between gap-4 rounded-xl border border-line-soft bg-card p-3">
       {heading}
       <div className="flex flex-col">
         <div className="justify-end flex">{children}</div>

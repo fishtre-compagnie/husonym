@@ -58,7 +58,7 @@ interface Props {
   error: unknown;
 }
 
-const WARNING_BORDER = 'border-yellow-300 dark:border-orange-500';
+const WARNING_BORDER = 'border-warn-line';
 
 export default function UsageReportCard(props: Props): ReactElement {
   const { accountId, reporting, isLoading, error } = props;
