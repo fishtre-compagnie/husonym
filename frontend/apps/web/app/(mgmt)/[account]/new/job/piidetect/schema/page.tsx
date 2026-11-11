@@ -7,8 +7,7 @@ import {
   getNewJobSessionKeys,
 } from '@/app/(mgmt)/[account]/jobs/util';
 import ButtonText from '@/components/ButtonText';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { WizardFooter, WizardPanel } from '@/components/progress-steps/Wizard';
 import { useAccount } from '@/components/providers/account-provider';
 import Spinner from '@/components/Spinner';
 import { PageProps } from '@/components/types';
@@ -26,9 +25,11 @@ import {
   PiiDetectionConnectFormValues,
   PiiDetectionSchemaFormValues,
 } from '../../job-form-validations';
-import JobsProgressSteps, {
+import {
+  getJobProgressStepLabels,
   getJobProgressSteps,
 } from '../../JobsProgressSteps';
+import NewJobWizard from '../../NewJobWizard';
 import {
   DataSampling,
   Incremental,
@@ -162,23 +163,17 @@ export default function Page(props: PageProps): ReactElement {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <NewJobWizard
+      steps={getJobProgressSteps('pii-detection')}
+      stepLabels={getJobProgressStepLabels('pii-detection')}
+      stepName="schema"
+      title="How should the scan run?"
+      description="What to look for, how many rows to sample, and which tables to read. The analysis runs where your data is."
+      mascot
+    >
       {checksDialog}
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Schema"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('pii-detection')}
-                stepName={'schema'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="flex flex-1 flex-col gap-4">
+        <WizardPanel>
           <UserPrompt
             value={formData.userPrompt ?? ''}
             onChange={(value) =>
@@ -186,6 +181,8 @@ export default function Page(props: PageProps): ReactElement {
             }
             error={errors['userPrompt']}
           />
+        </WizardPanel>
+        <WizardPanel>
           <DataSampling
             value={formData.dataSampling}
             onChange={(value) =>
@@ -193,6 +190,8 @@ export default function Page(props: PageProps): ReactElement {
             }
             errors={errors}
           />
+        </WizardPanel>
+        <WizardPanel>
           <Incremental
             value={formData.incremental}
             onChange={(value) =>
@@ -200,6 +199,8 @@ export default function Page(props: PageProps): ReactElement {
             }
             errors={errors}
           />
+        </WizardPanel>
+        <WizardPanel className="[&>div]:flex [&>div]:flex-col [&>div]:gap-6">
           <TableScanFilterMode
             value={formData.tableScanFilter.mode}
             onChange={(value) =>
@@ -226,23 +227,30 @@ export default function Page(props: PageProps): ReactElement {
             errors={errors}
             mode={formData.tableScanFilter.mode}
           />
-          <div className="flex flex-row gap-1 justify-between">
-            <Button key="back" type="button" onClick={() => router.back()}>
-              Back
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full sm:w-auto"
-            >
-              <ButtonText
-                leftIcon={isSubmitting ? <Spinner /> : undefined}
-                text="Create"
-              />
-            </Button>
-          </div>
-        </form>
-      </OverviewContainer>
-    </div>
+        </WizardPanel>
+        <WizardFooter
+          className="mt-auto"
+          summary={[
+            defineFormValues.jobName,
+            connectionsRecord[connectFormValues.sourceId]?.name,
+          ]}
+        >
+          <Button
+            key="back"
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Back
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            <ButtonText
+              leftIcon={isSubmitting ? <Spinner /> : undefined}
+              text="Create job"
+            />
+          </Button>
+        </WizardFooter>
+      </form>
+    </NewJobWizard>
   );
 }

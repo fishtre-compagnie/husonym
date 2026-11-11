@@ -16,8 +16,7 @@ import {
   toSingleTableGenerateJobSource,
   validateJobMapping,
 } from '@/app/(mgmt)/[account]/jobs/util';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { WizardFooter } from '@/components/progress-steps/Wizard';
 import {
   getAllFormErrors,
   SchemaTable,
@@ -57,9 +56,11 @@ import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useSessionStorage } from 'usehooks-ts';
-import JobsProgressSteps, {
+import {
+  getJobProgressStepLabels,
   getJobProgressSteps,
 } from '../../../JobsProgressSteps';
+import NewJobWizard from '../../../NewJobWizard';
 import {
   DefineFormValues,
   SingleTableConnectFormValues,
@@ -359,32 +360,26 @@ export default function Page(props: PageProps): ReactElement {
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <NewJobWizard
+      steps={getJobProgressSteps('generate-table')}
+      stepLabels={getJobProgressStepLabels('generate-table')}
+      stepName="schema"
+      title="What should be generated?"
+      description="Pick the table to fill, how many rows, and the generator of each column."
+      wide
+    >
       <FormPersist formKey={formKey} form={form} />
       {checksDialog}
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Schema"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('generate-table')}
-                stepName={'schema'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-8"
+        >
           <FormField
             control={form.control}
             name="numRows"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="max-w-[420px]">
                 <FormLabel>Number of Rows</FormLabel>
                 <FormDescription>
                   The number of rows to generate.
@@ -457,16 +452,26 @@ export default function Page(props: PageProps): ReactElement {
               </AlertTitle>
             </Alert>
           )}
-          <div className="flex flex-row gap-1 justify-between pt-10">
-            <Button key="back" type="button" onClick={() => router.back()}>
+          <WizardFooter
+            summary={[
+              defineFormValues.jobName,
+              `${form.watch('numRows') ?? 0} rows`,
+            ]}
+          >
+            <Button
+              key="back"
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
               Back
             </Button>
             <Button key="submit" type="submit">
-              Submit
+              Create job
             </Button>
-          </div>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }

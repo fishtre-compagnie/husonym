@@ -5,11 +5,13 @@ import {
   getDefaultDestinationFormValueOptionsFromConnectionCase,
   getNewJobSessionKeys,
 } from '@/app/(mgmt)/[account]/jobs/util';
-import Spinner from '@/components/Spinner';
 import TestConnectionBadge from '@/components/connections/TestConnectionBadge';
 import { getServerScope } from '@/components/connections/checks/targets';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import {
+  WizardFooter,
+  WizardPanel,
+  WizardSection,
+} from '@/components/progress-steps/Wizard';
 import DestinationOptionsForm from '@/components/jobs/Form/DestinationOptionsForm';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
@@ -21,13 +23,6 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getSingleOrUndefined, splitConnections } from '@/libs/utils';
 import { create } from '@bufbuild/protobuf';
@@ -46,10 +41,12 @@ import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
-import JobsProgressSteps, {
+import {
+  getJobProgressStepLabels,
   getJobProgressSteps,
 } from '../../../JobsProgressSteps';
-import ConnectionSelectContent from '../../../connect/ConnectionSelectContent';
+import NewJobWizard from '../../../NewJobWizard';
+import ConnectionPicker from '../../../connect/ConnectionPicker';
 import {
   DefineFormValues,
   SingleTableConnectFormValues,
@@ -126,44 +123,34 @@ export default function Page(props: PageProps): ReactElement {
     ConnectionService.method.checkConnectionConfigById
   );
 
+  const schemaConnectionName = connections.find(
+    (c) => c.id === form.watch('fkSourceConnectionId')
+  )?.name;
+  const destinationName = connections.find(
+    (c) => c.id === form.watch('destination.connectionId')
+  )?.name;
+
   return (
-    <div
+    <NewJobWizard
       id="newjobflowcontainer"
-      className="px-12 md:px-24 lg:px-32 flex flex-col gap-5"
+      steps={getJobProgressSteps('generate-table')}
+      stepLabels={getJobProgressStepLabels('generate-table')}
+      stepName="connect"
+      title="Where should the generated data go?"
+      description="A connection gives the shape of the tables; the destination receives the synthetic rows. Both can be the same database."
     >
       <FormPersist formKey={formKey} form={form} />
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Connect"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('generate-table')}
-                stepName={'connect'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-9"
+        >
+          <WizardSection
+            id="generate-schema-connection"
+            title="Table schema connection"
+            description="The connection whose tables give the shape of the data to generate. It can be the destination itself."
           >
-            <div className="space-y-0.5">
-              <h2 className="text-xl font-semibold tracking-tight">
-                Table Schema Connection
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Choose a connection that will be used as a basis for the shape
-                of data that is to be generated. This can be the same value as
-                the destination.
-              </p>
-            </div>
-            <div className="space-y-4 col-span-2">
+            <div className="flex flex-col gap-4">
               <FormField
                 control={form.control}
                 name="fkSourceConnectionId"
@@ -173,193 +160,62 @@ export default function Page(props: PageProps): ReactElement {
                       {isConnectionsLoading ? (
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
-                        <div className="flex flex-row items-center gap-2">
-                          <Select
-                            onValueChange={async (value: string) => {
-                              if (value === NEW_CONNECTION_VALUE) {
-                                const destId = form.getValues(
-                                  'destination.connectionId'
-                                );
-
-                                const urlParams = new URLSearchParams({
-                                  returnTo: `/${account?.name}/new/job/generate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
-                                });
-                                const connection = connections.find(
-                                  (c) => c.id === destId
-                                );
-                                const connType = getConnectionType(
-                                  connection?.connectionConfig ??
-                                    create(ConnectionConfigSchema, {})
-                                );
-
-                                if (connType) {
-                                  urlParams.append('connectionType', connType);
-                                }
-                                if (
-                                  urlParams.getAll('connectionType').length ===
-                                  0
-                                ) {
-                                  urlParams.append(
-                                    'connectionType',
-                                    'pgConfig'
-                                  );
-                                  urlParams.append(
-                                    'connectionType',
-                                    'mysqlConfig'
-                                  );
-                                }
-                                router.push(
-                                  `/${account?.name}/new/connection?${urlParams.toString()}`
-                                );
-                                return;
-                              }
-                              field.onChange(value);
+                        <ConnectionPicker
+                          ariaLabel="Table schema connection"
+                          postgres={postgres}
+                          mysql={mysql}
+                          newConnectionValue={NEW_CONNECTION_VALUE}
+                          isChecking={isSourceValidating}
+                          selectedDetail={
+                            !isSourceValidating && (
+                              <TestConnectionBadge
+                                validationResponse={sourceValidationResponse}
+                                connectionId={field.value}
+                                accountName={account?.name ?? ''}
+                              />
+                            )
+                          }
+                          value={field.value}
+                          onChange={async (value: string) => {
+                            if (value === NEW_CONNECTION_VALUE) {
                               const destId = form.getValues(
                                 'destination.connectionId'
                               );
-                              if (!destId) {
-                                form.setValue(
-                                  'destination.connectionId',
-                                  value
-                                );
-                                const destConnection = connections.find(
-                                  (c) => c.id === value
-                                );
-                                const destConnType = getConnectionType(
-                                  destConnection?.connectionConfig ??
-                                    create(ConnectionConfigSchema, {})
-                                );
-                                const newOpts =
-                                  getDefaultDestinationFormValueOptionsFromConnectionCase(
-                                    destConnType,
-                                    () => new Set()
-                                  );
-                                form.setValue(
-                                  'destination.destinationOptions',
-                                  newOpts,
-                                  {
-                                    shouldDirty: true,
-                                    shouldTouch: true,
-                                    shouldValidate: true,
-                                  }
-                                );
-                              }
 
-                              setIsSourceValidating(true);
-                              try {
-                                const res = await checkConnectionConfig({
-                                  id: form.getValues('fkSourceConnectionId'),
-                                });
-                                setSourceValidationResponse(res);
-                              } catch (err) {
-                                if (
-                                  err instanceof ConnectError &&
-                                  err.code === Code.InvalidArgument &&
-                                  err.message.includes('unsupported operation')
-                                ) {
-                                  setSourceValidationResponse(undefined);
-                                } else {
-                                  setSourceValidationResponse(
-                                    create(
-                                      CheckConnectionConfigByIdResponseSchema,
-                                      {
-                                        isConnected: false,
-                                        connectionError:
-                                          err instanceof Error
-                                            ? err.message
-                                            : 'unknown error',
-                                      }
-                                    )
-                                  );
-                                }
-                              } finally {
-                                setIsSourceValidating(false);
+                              const urlParams = new URLSearchParams({
+                                returnTo: `/${account?.name}/new/job/generate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
+                              });
+                              const connection = connections.find(
+                                (c) => c.id === destId
+                              );
+                              const connType = getConnectionType(
+                                connection?.connectionConfig ??
+                                  create(ConnectionConfigSchema, {})
+                              );
+
+                              if (connType) {
+                                urlParams.append('connectionType', connType);
                               }
-                            }}
-                            value={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a connection ..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <ConnectionSelectContent
-                                postgres={postgres}
-                                mysql={mysql}
-                                newConnectionValue={NEW_CONNECTION_VALUE}
-                              />
-                            </SelectContent>
-                          </Select>
-                          <div className="relative pb-4">
-                            {form.getValues('fkSourceConnectionId') &&
-                              isSourceValidating && (
-                                <Spinner className="text-black dark:text-white absolute" />
-                              )}
-                          </div>
-                        </div>
-                      )}
-                    </FormControl>
-                    <div className="flex">
-                      {form.getValues('fkSourceConnectionId') &&
-                        !isSourceValidating && (
-                          <TestConnectionBadge
-                            validationResponse={sourceValidationResponse}
-                            connectionId={form.getValues(
-                              'fkSourceConnectionId'
-                            )}
-                            accountName={account?.name ?? ''}
-                          />
-                        )}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-          <Separator className="my-6" />
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
-          >
-            <div>
-              <div>
-                <div className="space-y-0.5">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    Destination
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    The location the generated data will be synced to.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4 col-span-2">
-              <FormField
-                control={form.control}
-                name="destination.connectionId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      {isConnectionsLoading ? (
-                        <Skeleton className="w-full h-12 rounded-lg" />
-                      ) : (
-                        <div className="flex flex-row items-center gap-2">
-                          <Select
-                            onValueChange={async (value: string) => {
-                              if (value === NEW_CONNECTION_VALUE) {
-                                const urlParams = new URLSearchParams({
-                                  returnTo: `/${account?.name}/new/job/generate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
-                                });
+                              if (
+                                urlParams.getAll('connectionType').length === 0
+                              ) {
                                 urlParams.append('connectionType', 'pgConfig');
                                 urlParams.append(
                                   'connectionType',
                                   'mysqlConfig'
                                 );
-                                router.push(
-                                  `/${account?.name}/new/connection?${urlParams.toString()}`
-                                );
-                                return;
                               }
-                              field.onChange(value);
+                              router.push(
+                                `/${account?.name}/new/connection?${urlParams.toString()}`
+                              );
+                              return;
+                            }
+                            field.onChange(value);
+                            const destId = form.getValues(
+                              'destination.connectionId'
+                            );
+                            if (!destId) {
+                              form.setValue('destination.connectionId', value);
                               const destConnection = connections.find(
                                 (c) => c.id === value
                               );
@@ -381,107 +237,194 @@ export default function Page(props: PageProps): ReactElement {
                                   shouldValidate: true,
                                 }
                               );
-                              setIsDestinationValidating(true);
-                              try {
-                                const res = await checkConnectionConfig({
-                                  id: form.getValues(
-                                    'destination.connectionId'
-                                  ),
-                                  scope: getServerScope(
-                                    ConnectionRole.DESTINATION,
-                                    defineFormValues.workflowSettings?.engine
-                                  ),
-                                });
-                                setDestinationValidationResponse(res);
-                              } catch (err) {
-                                if (
-                                  err instanceof ConnectError &&
-                                  err.code === Code.InvalidArgument &&
-                                  err.message.includes('unsupported operation')
-                                ) {
-                                  setDestinationValidationResponse(undefined);
-                                } else {
-                                  setDestinationValidationResponse(
-                                    create(
-                                      CheckConnectionConfigByIdResponseSchema,
-                                      {
-                                        isConnected: false,
-                                        connectionError:
-                                          err instanceof Error
-                                            ? err.message
-                                            : 'unknown error',
-                                      }
-                                    )
-                                  );
-                                }
-                              } finally {
-                                setIsDestinationValidating(false);
+                            }
+
+                            setIsSourceValidating(true);
+                            try {
+                              const res = await checkConnectionConfig({
+                                id: form.getValues('fkSourceConnectionId'),
+                              });
+                              setSourceValidationResponse(res);
+                            } catch (err) {
+                              if (
+                                err instanceof ConnectError &&
+                                err.code === Code.InvalidArgument &&
+                                err.message.includes('unsupported operation')
+                              ) {
+                                setSourceValidationResponse(undefined);
+                              } else {
+                                setSourceValidationResponse(
+                                  create(
+                                    CheckConnectionConfigByIdResponseSchema,
+                                    {
+                                      isConnected: false,
+                                      connectionError:
+                                        err instanceof Error
+                                          ? err.message
+                                          : 'unknown error',
+                                    }
+                                  )
+                                );
                               }
-                            }}
-                            value={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a connection ..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <ConnectionSelectContent
-                                postgres={postgres}
-                                mysql={mysql}
-                                newConnectionValue={NEW_CONNECTION_VALUE}
-                              />
-                            </SelectContent>
-                          </Select>
-                          <div className="relative pb-4">
-                            {form.getValues('destination.connectionId') &&
-                              isDestinationValidating && (
-                                <Spinner className="text-black dark:text-white absolute" />
-                              )}
-                          </div>
-                        </div>
+                            } finally {
+                              setIsSourceValidating(false);
+                            }
+                          }}
+                        />
                       )}
                     </FormControl>
-                    <div className="flex">
-                      {form.getValues('destination.connectionId') &&
-                        !isDestinationValidating && (
-                          <TestConnectionBadge
-                            validationResponse={
-                              !destinationValidationResponse
-                                ? sourceValidationResponse
-                                : destinationValidationResponse
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </WizardSection>
+          <WizardSection
+            id="generate-destination"
+            title="Destination"
+            description="Where the generated rows are written."
+          >
+            <div className="flex flex-col gap-4">
+              <FormField
+                control={form.control}
+                name="destination.connectionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      {isConnectionsLoading ? (
+                        <Skeleton className="w-full h-12 rounded-lg" />
+                      ) : (
+                        <ConnectionPicker
+                          ariaLabel="Destination connection"
+                          postgres={postgres}
+                          mysql={mysql}
+                          newConnectionValue={NEW_CONNECTION_VALUE}
+                          isChecking={isDestinationValidating}
+                          selectedDetail={
+                            !isDestinationValidating && (
+                              <TestConnectionBadge
+                                validationResponse={
+                                  !destinationValidationResponse
+                                    ? sourceValidationResponse
+                                    : destinationValidationResponse
+                                }
+                                connectionId={field.value}
+                                accountName={account?.name ?? ''}
+                              />
+                            )
+                          }
+                          value={field.value}
+                          onChange={async (value: string) => {
+                            if (value === NEW_CONNECTION_VALUE) {
+                              const urlParams = new URLSearchParams({
+                                returnTo: `/${account?.name}/new/job/generate/single/connect?sessionId=${sessionPrefix}&from=new-connection`,
+                              });
+                              urlParams.append('connectionType', 'pgConfig');
+                              urlParams.append('connectionType', 'mysqlConfig');
+                              router.push(
+                                `/${account?.name}/new/connection?${urlParams.toString()}`
+                              );
+                              return;
                             }
-                            connectionId={form.getValues(
-                              'destination.connectionId'
-                            )}
-                            accountName={account?.name ?? ''}
-                          />
-                        )}
-                    </div>
+                            field.onChange(value);
+                            const destConnection = connections.find(
+                              (c) => c.id === value
+                            );
+                            const destConnType = getConnectionType(
+                              destConnection?.connectionConfig ??
+                                create(ConnectionConfigSchema, {})
+                            );
+                            const newOpts =
+                              getDefaultDestinationFormValueOptionsFromConnectionCase(
+                                destConnType,
+                                () => new Set()
+                              );
+                            form.setValue(
+                              'destination.destinationOptions',
+                              newOpts,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              }
+                            );
+                            setIsDestinationValidating(true);
+                            try {
+                              const res = await checkConnectionConfig({
+                                id: form.getValues('destination.connectionId'),
+                                scope: getServerScope(
+                                  ConnectionRole.DESTINATION,
+                                  defineFormValues.workflowSettings?.engine
+                                ),
+                              });
+                              setDestinationValidationResponse(res);
+                            } catch (err) {
+                              if (
+                                err instanceof ConnectError &&
+                                err.code === Code.InvalidArgument &&
+                                err.message.includes('unsupported operation')
+                              ) {
+                                setDestinationValidationResponse(undefined);
+                              } else {
+                                setDestinationValidationResponse(
+                                  create(
+                                    CheckConnectionConfigByIdResponseSchema,
+                                    {
+                                      isConnected: false,
+                                      connectionError:
+                                        err instanceof Error
+                                          ? err.message
+                                          : 'unknown error',
+                                    }
+                                  )
+                                );
+                              }
+                            } finally {
+                              setIsDestinationValidating(false);
+                            }
+                          }}
+                        />
+                      )}
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <DestinationOptionsForm
-                connection={connections.find(
-                  (c) => c.id === form.getValues().destination.connectionId
-                )}
-                hideInitTableSchema={shouldHideInitTableSchema}
-                value={destOpts}
-                setValue={(newOpts) => {
-                  form.setValue('destination.destinationOptions', newOpts, {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                    shouldValidate: true,
-                  });
-                }}
-                hideDynamoDbTableMappings={true}
-                destinationDetailsRecord={{}} // not used because we are hiding dynamodb table mappings
-                errors={form.formState.errors?.destination?.destinationOptions}
-              />
+              {destinationName && (
+                <WizardPanel title={`Before writing to ${destinationName}`}>
+                  <DestinationOptionsForm
+                    connection={connections.find(
+                      (c) => c.id === form.getValues().destination.connectionId
+                    )}
+                    hideInitTableSchema={shouldHideInitTableSchema}
+                    value={destOpts}
+                    setValue={(newOpts) => {
+                      form.setValue('destination.destinationOptions', newOpts, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    hideDynamoDbTableMappings={true}
+                    destinationDetailsRecord={{}} // not used because we are hiding dynamodb table mappings
+                    errors={
+                      form.formState.errors?.destination?.destinationOptions
+                    }
+                  />
+                </WizardPanel>
+              )}
             </div>
-          </div>
-          <div className="flex flex-row gap-1 justify-between">
+          </WizardSection>
+          <WizardFooter
+            summary={[
+              defineFormValues.jobName,
+              schemaConnectionName &&
+                `${schemaConnectionName} → ${destinationName ?? '…'}`,
+            ]}
+          >
             <Button
+              variant="outline"
               type="button"
               onClick={() => {
                 if (searchParams?.from === 'new-connection') {
@@ -499,12 +442,12 @@ export default function Page(props: PageProps): ReactElement {
               type="submit"
               disabled={(errors?.root?.message?.length ?? 0) > 0}
             >
-              Next
+              Continue
             </Button>
-          </div>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }
 

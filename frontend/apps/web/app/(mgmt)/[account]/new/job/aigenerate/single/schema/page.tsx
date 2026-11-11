@@ -11,8 +11,7 @@ import {
 import ButtonText from '@/components/ButtonText';
 import { Action } from '@/components/DualListBox/DualListBox';
 import Spinner from '@/components/Spinner';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { WizardFooter } from '@/components/progress-steps/Wizard';
 import {
   AiSchemaTable,
   AiSchemaTableRecord,
@@ -50,9 +49,11 @@ import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useSessionStorage } from 'usehooks-ts';
-import JobsProgressSteps, {
+import {
+  getJobProgressStepLabels,
   getJobProgressSteps,
 } from '../../../JobsProgressSteps';
+import NewJobWizard from '../../../NewJobWizard';
 import {
   DefineFormValues,
   SingleTableAiConnectFormValues,
@@ -273,27 +274,21 @@ export default function Page(props: PageProps): ReactElement {
   }, [formSchema, formTable, isSchemaMapValidating]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <NewJobWizard
+      steps={getJobProgressSteps('ai-generate-table')}
+      stepLabels={getJobProgressStepLabels('ai-generate-table')}
+      stepName="schema"
+      title="What should the model generate?"
+      description="Pick the table to fill, the model and its prompt. Sample a few rows before creating the job."
+      wide
+    >
       <FormPersist formKey={formKey} form={form} />
       {checksDialog}
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Schema"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('ai-generate-table')}
-                stepName={'schema'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-1 flex-col gap-8"
+        >
           {isClient && (
             <AiSchemaTable
               data={tableData}
@@ -418,24 +413,36 @@ export default function Page(props: PageProps): ReactElement {
           )}
           <SampleTable columns={columns} records={aioutput} />
 
-          <div className="flex flex-row gap-1 justify-between">
-            <Button key="back" type="button" onClick={() => router.back()}>
+          <WizardFooter
+            summary={[
+              form.watch('model'),
+              `${form.watch('numRows') ?? 0} rows`,
+            ]}
+          >
+            <Button
+              key="back"
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
               Back
             </Button>
-            <div className="flex flex-row gap-4">
-              <Button type="button" onClick={() => onSampleClick()}>
-                <ButtonText
-                  leftIcon={isSampling ? <Spinner /> : undefined}
-                  text="Sample"
-                />
-              </Button>
-              <Button key="submit" type="submit">
-                Submit
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onSampleClick()}
+            >
+              <ButtonText
+                leftIcon={isSampling ? <Spinner /> : undefined}
+                text="Sample"
+              />
+            </Button>
+            <Button key="submit" type="submit">
+              Create job
+            </Button>
+          </WizardFooter>
         </form>
       </Form>
-    </div>
+    </NewJobWizard>
   );
 }
