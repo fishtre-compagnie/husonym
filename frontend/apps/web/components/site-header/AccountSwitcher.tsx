@@ -1,9 +1,5 @@
 'use client';
-import {
-  CaretSortIcon,
-  CheckIcon,
-  PlusCircledIcon,
-} from '@radix-ui/react-icons';
+import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
 
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
@@ -19,7 +15,6 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useAccount } from '../providers/account-provider';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Button } from '../ui/button';
 import {
   Command,
   CommandEmpty,
@@ -32,6 +27,7 @@ import {
 import { DialogTrigger } from '../ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Skeleton } from '../ui/skeleton';
+import { AccountCard } from '../shell/AccountCard';
 import { CreateNewTeamDialog } from './CreateNewTeamDialog';
 
 interface Props {}
@@ -66,13 +62,11 @@ export default function AccountSwitcher(_: Props): ReactElement | null {
   });
 
   if (isLoading || isSystemInfoLoading) {
-    return <Skeleton className=" h-full w-[200px]" />;
+    return <Skeleton className="h-[54px] w-full rounded-[10px]" />;
   }
   // With a single account there is nothing to switch to: its name stands alone.
   if (hasOrganization && accounts.length <= 1) {
-    return account ? (
-      <span className="px-2 text-sm font-medium">{account.name}</span>
-    ) : null;
+    return account ? <AccountCard account={account} /> : null;
   }
 
   return (
@@ -144,23 +138,18 @@ function AccountSwitcherPopover(
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+        <AccountCard
+          account={activeAccount}
           role="combobox"
           aria-expanded={open}
           aria-label="Select a team"
-          className="w-[200px] justify-between"
-        >
-          <Avatar className="mr-2 h-5 w-5">
-            <AvatarFallback>
-              {getAvatarFallback(activeAccount?.name)}
-            </AvatarFallback>
-          </Avatar>
-          {activeAccount?.name}
-          <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+          interactive
+        />
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[220px] p-0"
+      >
         <Command>
           <CommandInput placeholder="Search account..." />
           <CommandList>

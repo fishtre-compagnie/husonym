@@ -1,4 +1,7 @@
-function shouldHighlightPathName(href: string, pathname: string): boolean {
+export function shouldHighlightPathName(
+  href: string,
+  pathname: string
+): boolean {
   if (href === '/' && pathname === '/') {
     return true;
   }

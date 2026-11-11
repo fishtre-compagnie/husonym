@@ -1,14 +1,18 @@
 interface Props {
   bg: string;
+  className?: string;
 }
 
-export const MainLogo = ({ bg }: Props) => {
+export const MainLogo = ({ bg, className }: Props) => {
   return (
     <div>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="187"
         height="40"
+        className={className}
+        role="img"
+        aria-label="Husonym"
         viewBox="0 0 2210 474"
       >
         <g>

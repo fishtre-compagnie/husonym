@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import ConnectProvider from '@/components/providers/connect-provider';
 import TanstackQueryProvider from '@/components/providers/query-provider';
 import { SessionProvider } from '@/components/providers/session-provider';
+import Sidebar from '@/components/shell/Sidebar';
 import SiteHeader from '@/components/site-header/SiteHeader';
 import { Toaster } from '@/components/ui/sonner';
 import { ReactElement, ReactNode } from 'react';
@@ -16,13 +17,14 @@ interface Props {
 export default async function BaseLayout(props: Props): Promise<ReactElement> {
   const { children } = props;
   const session = await auth();
-  const { publicHusonymApiBaseUrl } = getSystemAppConfig();
+  const { publicHusonymApiBaseUrl, isAuthEnabled } = getSystemAppConfig();
 
   return (
     <ConnectProvider apiBaseUrl={publicHusonymApiBaseUrl}>
       <TanstackQueryProvider>
         <SessionProvider session={session}>
           <AppShell
+            sidebar={<Sidebar isAuthEnabled={isAuthEnabled} />}
             header={<SiteHeader />}
             footer={<SiteFooter />}
             extras={<WelcomeDialog />}
