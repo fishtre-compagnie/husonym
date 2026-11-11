@@ -2,8 +2,7 @@
 
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import FormPersist from '@/app/(mgmt)/FormPersist';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { WizardFooter } from '@/components/progress-steps/Wizard';
 import SubsetOptionsForm from '@/components/jobs/Form/SubsetOptionsForm';
 import EditItem from '@/components/jobs/subsets/edit/EditItem';
 import EditItemDialog from '@/components/jobs/subsets/edit/EditItemDialog';
@@ -12,10 +11,7 @@ import useOnBulkEditItemSave, {
   BulkEditItem,
 } from '@/components/jobs/subsets/edit/useOnBulkEditItemSave';
 import useOnEditItemSave from '@/components/jobs/subsets/edit/useOnEditItemSave';
-import {
-  SUBSET_TABLE_COLUMNS,
-  SubsetTableRow,
-} from '@/components/jobs/subsets/SubsetTable/Columns';
+import { SubsetTableRow } from '@/components/jobs/subsets/SubsetTable/Columns';
 import SubsetTable from '@/components/jobs/subsets/SubsetTable/SubsetTable';
 import {
   addsWhereClause,
@@ -62,7 +58,8 @@ import {
   DefineFormValues,
   SubsetFormValues,
 } from '../job-form-validations';
-import JobsProgressSteps, { getJobProgressSteps } from '../JobsProgressSteps';
+import { getJobProgressSteps } from '../JobsProgressSteps';
+import NewJobWizard from '../NewJobWizard';
 
 export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
@@ -351,128 +348,137 @@ export default function Page(props: PageProps): ReactElement {
     setIsBulkEditDialogOpen(true);
   }
 
+  const filteredTables = formSubsets.filter((s) => !!s.whereClause).length;
+
   return (
-    <div className="px-12 md:px-24 lg:px-32 flex flex-col gap-5">
+    <NewJobWizard
+      steps={getJobProgressSteps('data-sync', true)}
+      stepName="subset"
+      title="Reduce the volume?"
+      description="Filter a starting table with a WHERE clause; related tables follow through their keys. Leave every filter empty to copy everything."
+      wide
+    >
       <FormPersist formKey={formKey} form={form} />
       {checksDialog}
-      <OverviewContainer
-        Header={
-          <PageHeader
-            header="Subset"
-            progressSteps={
-              <JobsProgressSteps
-                steps={getJobProgressSteps('data-sync', true)}
-                stepName={'subset'}
-              />
-            }
-          />
-        }
-        containerClassName="connect-page"
-      >
-        <div />
-      </OverviewContainer>
       {!isValidSubsetType(connectionType) && (
-        <Alert variant="warning">
-          <ExclamationTriangleIcon className="h-4 w-4" />
-          <AlertTitle>Heads up!</AlertTitle>
-          <AlertDescription>
-            Subsetting is not currently enabled for this connection type. You
-            may proceed with the creation of this job while we continue to work
-            on subsetting for this connection.
-          </AlertDescription>
-        </Alert>
+        <>
+          <Alert variant="warning">
+            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTitle>Heads up!</AlertTitle>
+            <AlertDescription>
+              Subsetting is not currently enabled for this connection type. You
+              may proceed with the creation of this job while we continue to
+              work on subsetting for this connection.
+            </AlertDescription>
+          </Alert>
+          <WizardFooter summary={[defineFormValues.jobName]}>
+            <Button
+              key="back"
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
+              Back
+            </Button>
+          </WizardFooter>
+        </>
       )}
 
       {isValidSubsetType(connectionType) && (
-        <div className="flex flex-col gap-4">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-2"
-            >
-              <LicenseFeatureNotice feature="subsetting" />
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-1 flex-col gap-6"
+          >
+            <LicenseFeatureNotice feature="subsetting" />
+            {showSubsetOptions(connectionType) && (
+              <div className="max-w-[640px]">
+                <SubsetOptionsForm maxColNum={1} />
+              </div>
+            )}
+            <div className="flex flex-col">
               <div>
-                {showSubsetOptions(connectionType) && (
-                  <SubsetOptionsForm maxColNum={2} />
-                )}
+                <SubsetTable
+                  data={Object.values(tableRowData)}
+                  onEdit={onEdit}
+                  onBulkEdit={onBulkEdit}
+                  hasLocalChange={hasLocalChange}
+                  onReset={onLocalRowReset}
+                />
               </div>
-              <div className="flex flex-col">
-                <div>
-                  <SubsetTable
-                    data={Object.values(tableRowData)}
-                    columns={SUBSET_TABLE_COLUMNS}
-                    onEdit={onEdit}
-                    onBulkEdit={onBulkEdit}
-                    hasLocalChange={hasLocalChange}
-                    onReset={onLocalRowReset}
+              <EditItemDialog
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                body={
+                  <EditItem
+                    connectionId={connectFormValues.sourceId}
+                    item={itemToEdit}
+                    onItem={setItemToEdit}
+                    onCancel={() => {
+                      setItemToEdit(undefined);
+                      setIsDialogOpen(false);
+                    }}
+                    columns={sqlAutocompleteColumns}
+                    onSave={onEditItemSave}
+                    connectionType={connectionType}
                   />
-                </div>
-                <EditItemDialog
-                  open={isDialogOpen}
-                  onOpenChange={setIsDialogOpen}
-                  body={
-                    <EditItem
-                      connectionId={connectFormValues.sourceId}
-                      item={itemToEdit}
-                      onItem={setItemToEdit}
-                      onCancel={() => {
-                        setItemToEdit(undefined);
-                        setIsDialogOpen(false);
-                      }}
-                      columns={sqlAutocompleteColumns}
-                      onSave={onEditItemSave}
-                      connectionType={connectionType}
-                    />
-                  }
-                />
-                <EditItemDialog
-                  open={isBulkEditDialogOpen}
-                  onOpenChange={setIsBulkEditDialogOpen}
-                  body={
-                    <EditItems
-                      item={bulkItemEdit?.item ?? { where: '' }}
-                      onItem={(item) => {
-                        setBulkItemEdit((prev) => {
-                          if (!prev) {
-                            return undefined;
-                          }
-                          return {
-                            ...prev,
-                            item,
-                          };
-                        });
-                      }}
-                      onCancel={() => {
-                        setBulkItemEdit(undefined);
-                        setIsBulkEditDialogOpen(false);
-                      }}
-                      columns={bulkSqlAutocompleteColumns}
-                      onSave={onBulkEditItemSave}
-                    />
-                  }
-                />
-                <div className="flex flex-row gap-1 justify-between pt-10">
-                  <Button
-                    key="back"
-                    type="button"
-                    onClick={() => router.back()}
-                  >
-                    Back
-                  </Button>
-                  {/* Creating the job with no WHERE clause stays possible. */}
-                  <Button
-                    key="submit"
-                    type="submit"
-                    disabled={!allowed && addsWhereClause(formSubsets)}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Form>
-        </div>
+                }
+              />
+              <EditItemDialog
+                open={isBulkEditDialogOpen}
+                onOpenChange={setIsBulkEditDialogOpen}
+                body={
+                  <EditItems
+                    item={bulkItemEdit?.item ?? { where: '' }}
+                    onItem={(item) => {
+                      setBulkItemEdit((prev) => {
+                        if (!prev) {
+                          return undefined;
+                        }
+                        return {
+                          ...prev,
+                          item,
+                        };
+                      });
+                    }}
+                    onCancel={() => {
+                      setBulkItemEdit(undefined);
+                      setIsBulkEditDialogOpen(false);
+                    }}
+                    columns={bulkSqlAutocompleteColumns}
+                    onSave={onBulkEditItemSave}
+                  />
+                }
+              />
+            </div>
+            <WizardFooter
+              summary={[
+                defineFormValues.jobName,
+                filteredTables > 0
+                  ? `${filteredTables} filtered ${filteredTables > 1 ? 'tables' : 'table'}`
+                  : 'Everything copied',
+              ]}
+            >
+              <Button
+                key="back"
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+              >
+                Back
+              </Button>
+              {/* Creating the job with no WHERE clause stays possible. */}
+              <Button
+                key="submit"
+                type="submit"
+                disabled={!allowed && addsWhereClause(formSubsets)}
+              >
+                Create job
+              </Button>
+            </WizardFooter>
+          </form>
+        </Form>
       )}
-    </div>
+    </NewJobWizard>
   );
 }

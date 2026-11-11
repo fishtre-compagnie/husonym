@@ -161,7 +161,7 @@ export default function EditItem(props: Props): ReactElement {
             >
               <span className="font-semibold tracking-tight">Schema</span>
               <Badge
-                className="px-4 py-2 dark:border-gray-700"
+                className="px-4 py-2 font-mono"
                 variant={item?.schema ? 'outline' : 'secondary'}
               >
                 {item?.schema ?? ''}
@@ -172,7 +172,7 @@ export default function EditItem(props: Props): ReactElement {
             <div className="flex flex-row gap-2 items-center">
               <span className="font-semibold tracking-tight">Table</span>
               <Badge
-                className="px-4 py-2 dark:border-gray-700"
+                className="px-4 py-2 font-mono"
                 variant={item?.table ? 'outline' : 'secondary'}
               >
                 {item?.table ?? ''}
@@ -215,7 +215,7 @@ export default function EditItem(props: Props): ReactElement {
                       onClick={() => onGetRowCount()}
                     >
                       {calculatingRowCount ? (
-                        <Spinner className="text-black dark:text-white" />
+                        <Spinner className="text-foreground" />
                       ) : (
                         <ButtonText text={'Row Count'} />
                       )}
@@ -231,10 +231,7 @@ export default function EditItem(props: Props): ReactElement {
                 </Tooltip>
               </TooltipProvider>
               {tableRowCountResp && tableRowCountResp.count >= 0 ? (
-                <Badge
-                  variant="darkOutline"
-                  className="dark:bg-gray-800 dark:border-gray-800"
-                >
+                <Badge variant="outline" className="font-mono tabular-nums">
                   {tableRowCountResp.count.toString()}
                 </Badge>
               ) : null}
