@@ -3,30 +3,21 @@ import { ReactElement } from 'react';
 
 export default function JobIdSkeletonForm(): ReactElement {
   return (
-    <div>
-      <div className="space-y-4 pt-10">
-        <div className="flex flex-row items-center justify-between">
-          <Skeleton className="h-10 w-[200px]" />
-          <div className="flex flex-row items-center gap-4">
-            <Skeleton className="h-10 w-[200px]" />
-            <Skeleton className="h-10 w-[200px]" />
-            <Skeleton className="h-10 w-[200px]" />
-            <Skeleton className="h-10 w-[200px]" />
-          </div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Skeleton className="h-9 w-64" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-32" />
         </div>
-        <Skeleton className="h-10 w-full" />
-        <div className="flex flex-row items-center gap-4">
-          <Skeleton className="h-10 w-[600px]" />
-        </div>
-        <div className="flex flex-row items-center gap-4 pt-6">
-          <Skeleton className="h-40 w-3/4" />
-          <Skeleton className="h-40 w-1/4" />
-        </div>
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
       </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[3fr_1fr]">
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+      </div>
+      <Skeleton className="h-48 w-full rounded-2xl" />
     </div>
   );
 }

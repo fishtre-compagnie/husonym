@@ -10,11 +10,11 @@ export default function Page(props: PageProps): ReactElement {
   return (
     <div className="job-details-container flex flex-col gap-5">
       <SubPageHeader
-        header="Source Connection"
-        description="Manage a job's source connection. Click update at the bottom to persist any changes."
+        header="Source & mapping"
+        description="Where the data comes from, and what leaves each column. Changes are kept once you save them."
       />
 
-      <div className="space-y-10">
+      <div className="flex flex-col gap-10">
         <SourceConnectionCard jobId={id} />
       </div>
     </div>

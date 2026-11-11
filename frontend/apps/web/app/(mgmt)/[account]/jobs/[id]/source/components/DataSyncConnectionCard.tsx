@@ -15,7 +15,7 @@ import {
   splitCollection,
 } from '@/components/jobs/SchemaTable/util';
 import { useAccount } from '@/components/providers/account-provider';
-import { Button } from '@/components/ui/button';
+import { Panel } from '@/components/ds';
 import {
   Form,
   FormControl,
@@ -103,6 +103,7 @@ import {
   toDynamoDbSourceUnmappedOptionsFormValues,
   validateJobMapping,
 } from '../../../util';
+import SaveBar from './SaveBar';
 import SchemaPageSkeleton from './SchemaPageSkeleton';
 import { useOnApplyDefaultClick } from './useOnApplyDefaultClick';
 import { useOnImportMappings } from './useOnImportMappings';
@@ -706,60 +707,62 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     <Form {...form}>
       {checksDialog}
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="sourceId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Source</FormLabel>
-                <FormDescription>
-                  The location of the source data set.
-                </FormDescription>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={async (value) => {
-                      if (!value) {
-                        return;
-                      }
-                      field.onChange(value);
-                      await onSourceChange(value);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={source?.name} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <ConnectionSelectContent
-                        postgres={splitSourceConnections.postgres}
-                        mysql={splitSourceConnections.mysql}
-                        mongodb={splitSourceConnections.mongodb}
-                        dynamodb={splitSourceConnections.dynamodb}
-                        mssql={splitSourceConnections.mssql}
-                      />
-                    </SelectContent>
-                  </Select>
-                </FormControl>
+        <div className="flex flex-col gap-6">
+          <Panel className="flex flex-col gap-4 p-5">
+            <FormField
+              control={form.control}
+              name="sourceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Source</FormLabel>
+                  <FormDescription>
+                    The location of the source data set.
+                  </FormDescription>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={async (value) => {
+                        if (!value) {
+                          return;
+                        }
+                        field.onChange(value);
+                        await onSourceChange(value);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={source?.name} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <ConnectionSelectContent
+                          postgres={splitSourceConnections.postgres}
+                          mysql={splitSourceConnections.mysql}
+                          mongodb={splitSourceConnections.mongodb}
+                          dynamodb={splitSourceConnections.dynamodb}
+                          mssql={splitSourceConnections.mssql}
+                        />
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <SourceOptionsForm
-            connection={connections.find(
-              (c) => c.id === form.getValues().sourceId
-            )}
-            value={form.watch('sourceOptions')}
-            setValue={(newOpts) => {
-              form.setValue('sourceOptions', newOpts, {
-                shouldDirty: true,
-                shouldTouch: true,
-                shouldValidate: true,
-              });
-              validateMappings();
-            }}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <SourceOptionsForm
+              connection={connections.find(
+                (c) => c.id === form.getValues().sourceId
+              )}
+              value={form.watch('sourceOptions')}
+              setValue={(newOpts) => {
+                form.setValue('sourceOptions', newOpts, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true,
+                });
+                validateMappings();
+              }}
+            />
+          </Panel>
 
           {isNosqlSource(source ?? create(ConnectionSchema)) && (
             <NosqlTable
@@ -977,9 +980,10 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               onRemoveMissingSourceColumnMappings={onRemoveMissingSourceColumns}
             />
           )}
-          <div className="flex flex-row items-center justify-end w-full mt-4">
-            <Button type="submit">Update</Button>
-          </div>
+          <SaveBar
+            isDirty={form.formState.isDirty}
+            isSubmitting={form.formState.isSubmitting}
+          />
         </div>
       </form>
     </Form>

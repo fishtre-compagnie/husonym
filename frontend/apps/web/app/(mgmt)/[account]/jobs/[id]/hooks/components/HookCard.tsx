@@ -37,12 +37,12 @@ export default function HookCard(props: Props): ReactElement {
                 <h3 className="font-medium text-lg">{hook.name}</h3>
               </div>
 
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {hook.description}
               </p>
 
               <div className="flex items-center gap-4 pt-2 flex-wrap">
-                <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <ClockIcon className="shrink-0" />
                   <p>{hookTiming}</p>
                 </div>

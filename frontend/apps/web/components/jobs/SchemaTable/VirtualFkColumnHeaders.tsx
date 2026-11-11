@@ -36,7 +36,7 @@ export function VirtualForeignKeysColumnHeader<TData extends RowData, TValue>({
           <Button
             variant="ghost"
             size="sm"
-            className="-ml-3 data-[state=open]:bg-accent hover:border hover:border-gray-400 text-nowrap"
+            className="-ml-3 data-[state=open]:bg-accent hover:border hover:border-border text-nowrap"
           >
             <span>{title}</span>
             {column.getIsSorted() === 'desc' ? (

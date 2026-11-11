@@ -3,7 +3,6 @@ import {
   AppTableFeatures,
   unpaginatedTableFeatures,
 } from '@/components/table/features';
-import { CardDescription, CardTitle } from '@/components/ui/card';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { JobMapping } from '@husonym/sdk';
@@ -23,6 +22,7 @@ import MappingDecisionPanel, {
   ColumnDecisionTarget,
 } from './MappingDecisionPanel';
 import SelectionBar from './SelectionBar';
+import { TABLE_KEY_COLUMN } from './Columns';
 
 interface Props<TData extends RowData> {
   data: TData[];
@@ -136,6 +136,9 @@ export default function JobMappingTable<TData extends RowData>(
     features: unpaginatedTableFeatures,
     data,
     columns,
+    initialState: {
+      columnVisibility: { [TABLE_KEY_COLUMN]: false },
+    },
     meta: {
       jmTable: {
         onTransformerUpdate,
@@ -160,17 +163,21 @@ export default function JobMappingTable<TData extends RowData>(
   const target = opened === null ? undefined : getColumnDecision?.(opened);
 
   return (
-    <div>
-      <div className="flex flex-row items-center gap-2 pt-4 ">
-        <div className="flex">
-          <GoWorkflow className="h-4 w-4" />
-        </div>
-        <CardTitle>Transformer Mapping</CardTitle>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="m-0 flex items-center gap-2 font-display text-lg font-semibold">
+          <GoWorkflow
+            aria-hidden="true"
+            className="h-4 w-4 text-muted-foreground"
+          />
+          Transformer mapping
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Map transformers to every column below.
+        </p>
       </div>
-      <CardDescription className="pt-2">
-        Map Transformers to every column below.
-      </CardDescription>
-      <div className="z-50 pt-4">
+
+      <div className="z-50">
         <SchemaTableToolbar<TData>
           table={table}
           displayApplyDefaultTransformersButton={
@@ -195,10 +202,6 @@ export default function JobMappingTable<TData extends RowData>(
         />
       </div>
 
-      {/* useColumnSizes : par défaut FastTable impose 187px à chaque colonne, ce
-          qui dépasse la largeur de l'écran. L'option applique la `size` déclarée
-          par chaque colonne (cf. Columns.tsx), dimensionnées pour tenir sans
-          défilement horizontal, et aligne l'en-tête sur les valeurs. */}
       <FastTable
         table={table}
         estimateRowSize={() => 53}
@@ -251,9 +254,9 @@ export default function JobMappingTable<TData extends RowData>(
         />
       )}
 
-      <div className="text-xs text-gray-600 dark:text-gray-400 pt-4">
-        Total rows: ({getFormattedCount(data.length)}) Rows visible: (
-        {getFormattedCount(table.getRowModel().rows.length)})
+      <div className="text-xs text-muted-foreground tabular-nums">
+        {getFormattedCount(table.getRowModel().rows.length)} of{' '}
+        {getFormattedCount(data.length)} columns shown
       </div>
     </div>
   );

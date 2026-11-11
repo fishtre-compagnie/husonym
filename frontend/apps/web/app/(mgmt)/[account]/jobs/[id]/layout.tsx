@@ -2,9 +2,7 @@
 import ButtonText from '@/components/ButtonText';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import ResourceId from '@/components/ResourceId';
-import { SubNav } from '@/components/SubNav';
-import OverviewContainer from '@/components/containers/OverviewContainer';
-import PageHeader from '@/components/headers/PageHeader';
+import { PageBody, Pill, StatusDot, Tone } from '@/components/ds';
 import JobNotFoundAlert from '@/components/jobs/JobNotFoundAlert';
 import { hasPreflight } from '@/components/jobs/preflight/report';
 import { usePreflightThenRun } from '@/components/jobs/preflight/usePreflightThenRun';
@@ -16,19 +14,23 @@ import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { getErrorMessage } from '@/util/util';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import {
+  ConnectionService,
   Job,
   JobService,
   JobSourceOptions,
   JobStatus,
   JobTypeConfig,
 } from '@husonym/sdk';
-import { LightningBoltIcon, TrashIcon } from '@radix-ui/react-icons';
+import { PlayIcon, TrashIcon } from '@radix-ui/react-icons';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use } from 'react';
+import { use, useMemo } from 'react';
 import { toast } from 'sonner';
 import JobIdSkeletonForm from './JobIdSkeletonForm';
 import JobCloneButton from './components/JobCloneButton';
 import JobPauseButton from './components/JobPauseButton';
+import JobTabs, { JobTab } from './components/JobTabs';
+import { getConnectionIdFromSource } from './source/components/util';
 
 export default function JobIdLayout(props: LayoutProps) {
   const params = use(props.params);
@@ -57,6 +59,18 @@ export default function JobIdLayout(props: LayoutProps) {
     JobService.method.getJobRuns,
     { id: { case: 'jobId', value: id } },
     { enabled: !!id }
+  );
+
+  // The names of the connections, for the route of the job under its name.
+  const { data: connectionsData } = useQuery(
+    ConnectionService.method.getConnections,
+    { accountId: account?.id },
+    { enabled: !!account?.id }
+  );
+  const connectionNames = useMemo(
+    () =>
+      new Map((connectionsData?.connections ?? []).map((c) => [c.id, c.name])),
+    [connectionsData?.connections]
   );
 
   const { mutateAsync: removeJob } = useMutation(JobService.method.deleteJob);
@@ -124,85 +138,127 @@ export default function JobIdLayout(props: LayoutProps) {
 
   if (isLoading || isPending) {
     return (
-      <div>
+      <PageBody>
         <JobIdSkeletonForm />
-      </div>
+      </PageBody>
     );
   }
 
   if (!data?.job) {
     return (
-      <div className="mt-8">
+      <PageBody>
         <JobNotFoundAlert />
-      </div>
+      </PageBody>
     );
   }
 
-  const badgeValue = getBadgeText(data.job.jobType, data.job.source?.options);
+  const job = data.job;
+  const jobType = getLabeledJobType(job.jobType, job.source?.options);
+  const sourceConnectionId = getConnectionIdFromSource(job.source);
+  const sourceName = sourceConnectionId
+    ? connectionNames.get(sourceConnectionId)
+    : undefined;
+  const destinationNames = job.destinations
+    .map((d) => connectionNames.get(d.connectionId))
+    .filter((n): n is string => !!n);
+  const status = getStatusDisplay(jobStatus?.status);
 
   return (
-    <div>
-      <OverviewContainer
-        Header={
-          <div>
-            <PageHeader
-              pageHeaderContainerClassName="gap-2"
-              header={data?.job?.name || ''}
-              subHeadings={
-                <ResourceId
-                  labelText={data?.job?.id ?? ''}
-                  copyText={data?.job?.id ?? ''}
-                  onHoverText="Copy the Job ID"
-                />
-              }
-              leftBadgeValue={badgeValue}
-              extraHeading={
-                <div className="md:flex grid grid-cols-2 md:flex-row gap-4">
-                  <JobCloneButton job={data.job} />
-                  <DeleteConfirmationDialog
-                    trigger={
-                      <Button variant="destructive">
-                        <ButtonText
-                          leftIcon={<TrashIcon />}
-                          text="Delete Job"
-                        />
-                      </Button>
-                    }
-                    headerText="Are you sure you want to delete this job?"
-                    description="Deleting this job will also delete all job runs."
-                    onConfirm={async () => onDelete()}
-                  />
-                  <JobPauseButton
-                    jobId={id}
-                    status={jobStatus?.status}
-                    onNewStatus={onNewStatus}
-                  />
-                  <Button
-                    onClick={() =>
-                      hasPreflight(data.job)
-                        ? startWithPreflight()
-                        : onTriggerJobRun()
-                    }
-                  >
-                    <ButtonText
-                      leftIcon={<LightningBoltIcon />}
-                      text="Trigger Run"
-                    />
-                  </Button>
-                </div>
-              }
-            />
+    <PageBody className="gap-6">
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link
+                href={`/${account?.name}/jobs`}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Jobs
+              </Link>
+              <span aria-hidden="true" className="text-border">
+                /
+              </span>
+              <h1 className="m-0 min-w-0 break-all font-display text-2xl font-semibold tracking-[-0.01em]">
+                {job.name}
+              </h1>
+              <Pill tone="brand">{jobType}</Pill>
+              {status && (
+                <Pill tone={status.tone}>
+                  <StatusDot tone={status.tone} />
+                  {status.label}
+                </Pill>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {(sourceName || destinationNames.length > 0) && (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {sourceName ?? '—'}
+                  {destinationNames.length > 0 && (
+                    <>
+                      {' '}
+                      <span aria-label="to">→</span>{' '}
+                      {destinationNames.join(', ')}
+                    </>
+                  )}
+                </span>
+              )}
+              <ResourceId
+                labelText={job.id}
+                copyText={job.id}
+                onHoverText="Copy the Job ID"
+              />
+            </div>
           </div>
-        }
-      >
-        <div className="flex flex-col gap-12">
-          <SubNav items={sidebarNavItems} />
-          <div>{children}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <JobCloneButton job={job} />
+            <JobPauseButton
+              jobId={id}
+              status={jobStatus?.status}
+              onNewStatus={onNewStatus}
+            />
+            <DeleteConfirmationDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  className="text-danger-fg hover:bg-danger-soft"
+                >
+                  <ButtonText leftIcon={<TrashIcon />} text="Delete" />
+                </Button>
+              }
+              headerText="Are you sure you want to delete this job?"
+              description="Deleting this job will also delete all job runs."
+              onConfirm={async () => onDelete()}
+            />
+            <Button
+              onClick={() =>
+                hasPreflight(job) ? startWithPreflight() : onTriggerJobRun()
+              }
+            >
+              <ButtonText leftIcon={<PlayIcon />} text="Trigger run" />
+            </Button>
+          </div>
         </div>
-        {preflightDialog}
-      </OverviewContainer>
-    </div>
+        <JobTabs items={sidebarNavItems} />
+      </header>
+      <div className="min-w-0">{children}</div>
+      {preflightDialog}
+    </PageBody>
   );
+}
+
+function getStatusDisplay(
+  status?: JobStatus
+): { label: string; tone: Tone } | undefined {
+  switch (status) {
+    case JobStatus.ENABLED:
+      return { label: 'Enabled', tone: 'ok' };
+    case JobStatus.PAUSED:
+      return { label: 'Paused', tone: 'warn' };
+    case JobStatus.DISABLED:
+      return { label: 'Disabled', tone: 'quiet' };
+    default:
+      return undefined;
+  }
 }
 
 function getLabeledJobType(
@@ -226,13 +282,7 @@ function getLabeledJobType(
   }
 }
 
-const getBadgeText = getLabeledJobType;
-
-interface SidebarNav {
-  title: string;
-  href: string;
-}
-function useGetSidebarNavItems(job?: Job): SidebarNav[] {
+function useGetSidebarNavItems(job?: Job): JobTab[] {
   const { account } = useAccount();
   const { data: systemAppConfigData, isLoading: isSystemConfigLoading } =
     useGetSystemAppConfig();
@@ -245,7 +295,7 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
   const pendingCount = pendingData?.changes.length ?? 0;
 
   if (!account || !job) {
-    return [{ title: 'Overview', href: `` }];
+    return [{ title: 'Overview', href: '' }];
   }
   const badgeText = getLabeledJobType(job.jobType, job.source?.options);
   const basePath = `/${account.name}/jobs/${job.id}`;
@@ -256,14 +306,15 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
 
   switch (badgeText) {
     case 'Sync Job': {
-      const nav = [
+      const nav: JobTab[] = [
         { title: 'Overview', href: basePath },
-        { title: 'Source', href: `${basePath}/source` },
+        { title: 'Source & mapping', href: `${basePath}/source` },
         { title: 'Destinations', href: `${basePath}/destinations` },
         // Only sync jobs copy columns from a source, so only they can copy one in clear.
         {
-          title: pendingCount > 0 ? `Review (${pendingCount})` : 'Review',
+          title: 'Review',
           href: `${basePath}/review`,
+          count: pendingCount,
         },
       ];
       if (isJobSubsettable(job)) {

@@ -75,13 +75,13 @@ export default function AiSchemaPageTable<TData extends RowData>({
       </CardDescription>
       <div
         className={cn(
-          'rounded-md border min-h-[145px] max-h-[500px] relative border-gray-300 dark:border-gray-700 overflow-hidden',
+          'rounded-md border min-h-[145px] max-h-[500px] relative border-line-soft overflow-hidden rounded-2xl bg-card',
           rows.length > 0 && 'overflow-auto'
         )}
         ref={tableContainerRef}
       >
         <StickyHeaderTable>
-          <TableHeader className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 px-2 grid">
+          <TableHeader className="bg-surface-2 sticky top-0 z-10 px-2 grid">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
@@ -112,7 +112,7 @@ export default function AiSchemaPageTable<TData extends RowData>({
             }}
           >
             {rows.length === 0 && (
-              <TableRow className="flex justify-center items-center py-10 text-gray-500">
+              <TableRow className="flex justify-center items-center py-10 text-muted-foreground">
                 <td>No Schema(s) or Table(s) selected.</td>
               </TableRow>
             )}
@@ -151,7 +151,7 @@ export default function AiSchemaPageTable<TData extends RowData>({
           </TableBody>
         </StickyHeaderTable>
       </div>
-      <div className="text-xs text-gray-600 dark:text-300 pt-4">
+      <div className="text-xs text-muted-foreground pt-4">
         Total rows: ({new Intl.NumberFormat('en-US').format(data.length)}) Rows
         visible: (
         {new Intl.NumberFormat('en-US').format(table.getRowModel().rows.length)}

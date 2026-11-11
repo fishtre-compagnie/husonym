@@ -4,7 +4,7 @@ import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { useAccount } from '@/components/providers/account-provider';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Panel, PanelHeader } from '@/components/ds';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,165 +130,179 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Panel>
       {recentRunsError ? (
         <Alert variant="destructive">
           <AlertTitle>{`Error: Unable to retrieve recent runs`}</AlertTitle>
         </Alert>
       ) : (
         <div>
-          <div className="flex flex-row items-center px-6">
-            <CardTitle className="py-6">Recent Job Runs</CardTitle>
-            <Button
-              className={
-                isValidating || jobRunsValidating ? 'animate-spin' : ''
-              }
-              disabled={isValidating || jobRunsValidating}
-              variant="ghost"
-              size="icon"
-              onClick={() => onRefreshClick()}
-            >
-              <ReloadIcon className="h-4 w-4" />
-            </Button>
-          </div>
-          <Table>
-            <TableHeader className="bg-gray-100 dark:bg-gray-800 ">
-              <TableRow>
-                <TableHead className="px-6">Run Id</TableHead>
-                <TableHead className="px-6">Start At</TableHead>
-                <TableHead className="px-6">Completed At</TableHead>
-                <TableHead className="px-6">Status</TableHead>
-                <TableHead className="px-6">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentRuns.map((r) => {
-                const jobRun = jobRunsIdMap.get(r.jobRunId);
-                return (
-                  <TableRow key={r.jobRunId}>
-                    <TableCell className="px-6">
-                      {jobRun ? (
-                        <Link
-                          className="hover:underline"
-                          href={`/${account?.name}/runs/${r.jobRunId}`}
-                        >
-                          <span className="font-medium">{r.jobRunId}</span>
-                        </Link>
-                      ) : (
-                        <span className="font-medium">{r.jobRunId}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-6">
-                      <span className="font-medium">
-                        {formatDateTime(
-                          r.startTime ? timestampDate(r.startTime) : undefined
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-6">
-                      <span className="font-medium">
-                        {jobRun &&
-                          formatDateTime(
-                            jobRun.completedAt
-                              ? timestampDate(jobRun.completedAt)
-                              : undefined
-                          )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-6">
-                      <JobRunStatus status={jobRun?.status} />
-                    </TableCell>
-                    <TableCell className="px-6">
-                      {jobRun && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-                            >
-                              <DotsHorizontalIcon className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-[160px]"
+          <PanelHeader
+            title="Recent runs"
+            actions={
+              <Button
+                className={
+                  isValidating || jobRunsValidating ? 'animate-spin' : ''
+                }
+                disabled={isValidating || jobRunsValidating}
+                variant="ghost"
+                size="icon"
+                aria-label="Refresh the runs"
+                onClick={() => onRefreshClick()}
+              >
+                <ReloadIcon className="h-4 w-4" />
+              </Button>
+            }
+          />
+          {recentRuns.length === 0 && (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+              This job has not run yet.
+            </p>
+          )}
+          <div className="overflow-x-auto">
+            <Table className={recentRuns.length === 0 ? 'hidden' : undefined}>
+              <TableHeader className="bg-surface-2">
+                <TableRow>
+                  <TableHead className="px-6">Run ID</TableHead>
+                  <TableHead className="px-6">Started</TableHead>
+                  <TableHead className="px-6">Completed</TableHead>
+                  <TableHead className="px-6">Status</TableHead>
+                  <TableHead className="px-6">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentRuns.map((r) => {
+                  const jobRun = jobRunsIdMap.get(r.jobRunId);
+                  return (
+                    <TableRow key={r.jobRunId}>
+                      <TableCell className="px-6">
+                        {jobRun ? (
+                          <Link
+                            className="font-mono text-[13px] text-link hover:underline"
+                            href={`/${account?.name}/runs/${r.jobRunId}`}
                           >
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              onClick={() =>
-                                router.push(
-                                  `/${account?.name}/runs/${jobRun.id}`
-                                )
-                              }
-                            >
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {(jobRun.status === JobRunStatusEnum.RUNNING ||
-                              jobRun.status === JobRunStatusEnum.PENDING) && (
-                              <div>
-                                <ConfirmationDialog
-                                  trigger={
-                                    <DropdownMenuItem
-                                      className="cursor-pointer"
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      Cancel
-                                    </DropdownMenuItem>
-                                  }
-                                  headerText="Cancel Job Run?"
-                                  description="Are you sure you want to cancel this job run?"
-                                  onConfirm={async () => onCancel(jobRun.id)}
-                                  buttonText="Cancel"
-                                  buttonVariant="default"
-                                  buttonIcon={<Cross2Icon />}
-                                />
-                                <DropdownMenuSeparator />
-                                <ConfirmationDialog
-                                  trigger={
-                                    <DropdownMenuItem
-                                      className="cursor-pointer"
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      Terminate
-                                    </DropdownMenuItem>
-                                  }
-                                  headerText="Terminate Job Run?"
-                                  description="Are you sure you want to terminate this job run?"
-                                  onConfirm={async () => onTerminate(jobRun.id)}
-                                  buttonText="Terminate"
-                                  buttonVariant="default"
-                                  buttonIcon={<Cross2Icon />}
-                                />
-                                <DropdownMenuSeparator />
-                              </div>
+                            {r.jobRunId}
+                          </Link>
+                        ) : (
+                          <span className="font-mono text-[13px]">
+                            {r.jobRunId}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <span className="tabular-nums text-muted-foreground">
+                          {formatDateTime(
+                            r.startTime ? timestampDate(r.startTime) : undefined
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <span className="tabular-nums text-muted-foreground">
+                          {jobRun &&
+                            formatDateTime(
+                              jobRun.completedAt
+                                ? timestampDate(jobRun.completedAt)
+                                : undefined
                             )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <JobRunStatus status={jobRun?.status} />
+                      </TableCell>
+                      <TableCell className="px-6">
+                        {jobRun && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+                              >
+                                <DotsHorizontalIcon className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[160px]"
+                            >
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  router.push(
+                                    `/${account?.name}/runs/${jobRun.id}`
+                                  )
+                                }
+                              >
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {(jobRun.status === JobRunStatusEnum.RUNNING ||
+                                jobRun.status === JobRunStatusEnum.PENDING) && (
+                                <div>
+                                  <ConfirmationDialog
+                                    trigger={
+                                      <DropdownMenuItem
+                                        className="cursor-pointer"
+                                        onSelect={(e) => e.preventDefault()}
+                                      >
+                                        Cancel
+                                      </DropdownMenuItem>
+                                    }
+                                    headerText="Cancel Job Run?"
+                                    description="Are you sure you want to cancel this job run?"
+                                    onConfirm={async () => onCancel(jobRun.id)}
+                                    buttonText="Cancel"
+                                    buttonVariant="default"
+                                    buttonIcon={<Cross2Icon />}
+                                  />
+                                  <DropdownMenuSeparator />
+                                  <ConfirmationDialog
+                                    trigger={
+                                      <DropdownMenuItem
+                                        className="cursor-pointer"
+                                        onSelect={(e) => e.preventDefault()}
+                                      >
+                                        Terminate
+                                      </DropdownMenuItem>
+                                    }
+                                    headerText="Terminate Job Run?"
+                                    description="Are you sure you want to terminate this job run?"
+                                    onConfirm={async () =>
+                                      onTerminate(jobRun.id)
+                                    }
+                                    buttonText="Terminate"
+                                    buttonVariant="default"
+                                    buttonIcon={<Cross2Icon />}
+                                  />
+                                  <DropdownMenuSeparator />
+                                </div>
+                              )}
 
-                            <DeleteConfirmationDialog
-                              trigger={
-                                <DropdownMenuItem
-                                  className="cursor-pointer"
-                                  onSelect={(e) => e.preventDefault()}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              }
-                              headerText="Delete Job Run?"
-                              description="Are you sure you want to delete this job run?"
-                              onConfirm={async () => onDelete(jobRun.id)}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                              <DeleteConfirmationDialog
+                                trigger={
+                                  <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    Delete
+                                  </DropdownMenuItem>
+                                }
+                                headerText="Delete Job Run?"
+                                description="Are you sure you want to delete this job run?"
+                                onConfirm={async () => onDelete(jobRun.id)}
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
-    </Card>
+    </Panel>
   );
 }

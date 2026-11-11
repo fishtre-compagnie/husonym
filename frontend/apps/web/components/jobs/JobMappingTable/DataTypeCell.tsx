@@ -19,7 +19,10 @@ export default function DataTypeCell(props: Props): ReactElement {
       <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>
           <div>
-            <Badge variant="outline" className="max-w-[100px]">
+            <Badge
+              variant="outline"
+              className="max-w-[100px] border-line-soft font-mono font-normal text-muted-foreground"
+            >
               <span className="truncate block overflow-hidden">
                 {handleDataTypeBadge(value)}
               </span>

@@ -168,7 +168,7 @@ export default function ColumnPreview({
 
   if (error) {
     return (
-      <p className="rounded-md border border-red-600/40 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
+      <p className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger-fg">
         Could not read the column: {error}
       </p>
     );
@@ -215,21 +215,17 @@ export default function ColumnPreview({
         {nulls > 0 && <span>{nulls} NULL</span>}
         {empties > 0 && <span>{empties} empty</span>}
         {failures > 0 && (
-          <span className="text-red-600 dark:text-red-400">
-            {failures} failed
-          </span>
+          <span className="text-danger-fg">{failures} failed</span>
         )}
         {filled === 0 && rows.length > 0 && (
-          <span className="text-amber-600 dark:text-amber-400">
-            no usable value
-          </span>
+          <span className="text-warn-fg">no usable value</span>
         )}
       </div>
 
       {collapses && (
         // Le seul signal qui vaille avant un run : des valeurs différentes
         // deviennent la même. Sur une colonne unique, l'écriture échouerait.
-        <p className="rounded-md border border-amber-600/40 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-300">
+        <p className="rounded-lg border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn-fg">
           The transformer turns {distinct?.inputs} distinct values into{' '}
           {distinct?.outputs}: on a column under a unique constraint, the write
           would fail.
@@ -237,10 +233,13 @@ export default function ColumnPreview({
       )}
 
       <div
-        className={cn('overflow-auto rounded-md border', maxHeightClassName)}
+        className={cn(
+          'overflow-auto rounded-xl border border-line-soft',
+          maxHeightClassName
+        )}
       >
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 sticky top-0">
+          <thead className="sticky top-0 bg-surface-2">
             <tr>
               <th className="text-muted-foreground w-12 px-3 py-2 text-right text-xs font-medium">
                 #
@@ -284,9 +283,7 @@ export default function ColumnPreview({
                 {transformer && (
                   <td className="px-3 py-1.5 font-mono text-xs break-all">
                     {r.error ? (
-                      <span className="text-red-600 dark:text-red-400">
-                        {r.error}
-                      </span>
+                      <span className="text-danger-fg">{r.error}</span>
                     ) : r.output ? (
                       <SampleValue value={r.output} />
                     ) : null}

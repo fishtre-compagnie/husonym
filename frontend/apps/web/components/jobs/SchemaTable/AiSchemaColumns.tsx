@@ -106,7 +106,7 @@ export function getSchemaColumns(
                 {isPrimaryKey && (
                   <Badge
                     variant="outline"
-                    className="text-xs bg-blue-100 text-gray-800 cursor-default dark:bg-blue-200 dark:text-gray-900"
+                    className="cursor-default border-transparent bg-brand-soft font-mono text-[11px] text-link"
                   >
                     Primary Key
                   </Badge>
@@ -119,7 +119,7 @@ export function getSchemaColumns(
                       <TooltipTrigger>
                         <Badge
                           variant="outline"
-                          className="text-xs bg-orange-100 text-gray-800 cursor-default dark:dark:text-gray-900 dark:bg-orange-300"
+                          className="cursor-default border-transparent bg-warn-soft font-mono text-[11px] text-warn-fg"
                         >
                           Foreign Key
                         </Badge>
@@ -135,7 +135,7 @@ export function getSchemaColumns(
                 {isUniqueConstraint && (
                   <Badge
                     variant="outline"
-                    className="text-xs bg-purple-100 text-gray-800 cursor-default dark:bg-purple-300 dark:text-gray-900"
+                    className="cursor-default border-transparent bg-quiet-soft font-mono text-[11px] text-quiet-fg"
                   >
                     Unique
                   </Badge>

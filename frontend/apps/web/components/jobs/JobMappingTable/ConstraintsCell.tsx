@@ -27,7 +27,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
             <HoverBadge
               badgeText="P"
               tooltipContent="Primary Key"
-              badgeClassName="bg-blue-100 dark:bg-blue-200"
+              badgeClassName="bg-brand-soft text-link"
             />
           </div>
         )}
@@ -38,7 +38,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
               tooltipContent={`FK: ${fkCols
                 .map((col) => `Primary Key: ${col}`)
                 .join('\n')}`}
-              badgeClassName="bg-orange-100 dark:bg-orange-300"
+              badgeClassName="bg-warn-soft text-warn-fg"
             />
           </div>
         )}
@@ -49,7 +49,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
               tooltipContent={`VFK: ${vfkCols
                 .map((col) => `Primary Key: ${col}`)
                 .join('\n')}`}
-              badgeClassName="bg-orange-100 dark:bg-orange-300"
+              badgeClassName="border-dashed bg-warn-soft text-warn-fg"
             />
           </div>
         )}
@@ -58,7 +58,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
             <HoverBadge
               badgeText="U"
               tooltipContent="Unique Key"
-              badgeClassName="bg-red-100 dark:bg-red-300"
+              badgeClassName="bg-quiet-soft text-quiet-fg"
             />
           </div>
         )}
@@ -82,7 +82,7 @@ function HoverBadge(props: HoverBadgeProps): ReactElement {
           <Badge
             variant="outline"
             className={cn(
-              'text-xs cursor-default text-gray-800 dark:text-gray-900',
+              'cursor-default border-transparent font-mono text-[11px]',
               badgeClassName
             )}
           >

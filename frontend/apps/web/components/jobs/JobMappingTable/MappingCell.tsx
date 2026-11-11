@@ -7,18 +7,61 @@ import {
 } from '@/yup-validations/jobs';
 import { ReactElement } from 'react';
 import { LuPanelRight } from 'react-icons/lu';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { RgpdState } from './rgpd-state';
 
 interface Props {
   column: string;
   transformer: JobMappingTransformerForm;
   name: string;
   isSensitive: boolean;
+  // What the detection says of the column, with its transformer.
+  state?: RgpdState;
   onOpen(): void;
 }
 
+type PillLook = 'clear' | 'doubt' | 'protected' | 'kept' | 'empty';
+
+// The look of the pill tells what leaves the column:
+//   * clear     — personal data copied as it is: it leaves in clear.
+//   * doubt     — copied as it is, while the detection is still to confirm.
+//   * protected — a transformer rewrites the value.
+//   * kept      — nothing personal, copied as it is.
+//   * empty     — no transformer chosen yet.
+function pillLook(
+  anonymizes: boolean,
+  hasTransformer: boolean,
+  isSensitive: boolean,
+  state?: RgpdState
+): PillLook {
+  if (anonymizes) {
+    return 'protected';
+  }
+  if (state === 'review' || state === 'not_analyzed') {
+    return 'doubt';
+  }
+  if (state === 'not_anonymized' || isSensitive) {
+    return 'clear';
+  }
+  return hasTransformer ? 'kept' : 'empty';
+}
+
+const PILL_CLASS: Record<PillLook, string> = {
+  clear: 'border-dashed border-danger bg-danger-soft text-danger-fg',
+  doubt: 'border-dashed border-warn bg-warn-soft text-warn-fg',
+  protected: 'border-line-soft bg-brand-soft text-hi',
+  kept: 'border-transparent bg-transparent text-muted-foreground',
+  empty: 'border-dashed border-border bg-transparent text-muted-foreground',
+};
+
+const PILL_NOTE: Partial<Record<PillLook, string>> = {
+  clear: 'in clear',
+  doubt: 'to confirm',
+};
+
 // Ce qui sortira de la colonne, lisible sans rien ouvrir.
 export default function MappingCell(props: Props): ReactElement {
-  const { column, transformer, name, isSensitive, onOpen } = props;
+  const { column, transformer, name, isSensitive, state, onOpen } = props;
 
   const configCase = transformer.config.case;
   const anonymizes = !!configCase && configCase !== 'passthroughConfig';
@@ -28,40 +71,38 @@ export default function MappingCell(props: Props): ReactElement {
           .config
       )
     : [];
+  const look = pillLook(anonymizes, !!configCase, isSensitive, state);
+  const note = PILL_NOTE[look];
 
   return (
     <button
       type="button"
-      onClick={onOpen}
-      aria-label={`Decide what leaves ${column}`}
-      className="flex flex-row items-center gap-2 text-left w-full group"
+      onClick={(e) => {
+        // The row opens the same panel: once is enough.
+        e.stopPropagation();
+        onOpen();
+      }}
+      aria-label={`Decide what leaves ${column}: ${name || 'no transformer'}${note ? `, ${note}` : ''}`}
+      className={cn(
+        'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1 text-left text-[13px] font-medium transition-colors hover:border-primary',
+        PILL_CLASS[look]
+      )}
     >
-      {/* Ambre : une donnée personnelle laissée telle quelle. */}
-      <span
-        className={cn(
-          'h-2 w-2 rounded-full shrink-0',
-          anonymizes
-            ? 'bg-emerald-500'
-            : isSensitive
-              ? 'bg-amber-500'
-              : 'bg-gray-300 dark:bg-gray-600'
-        )}
-      />
-      <span className="flex flex-col min-w-0">
-        <span
-          className={cn(
-            'text-sm truncate group-hover:underline underline-offset-2',
-            !anonymizes && isSensitive && 'text-amber-700 dark:text-amber-500'
-          )}
-        >
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate">
           {name || 'Choose a transformer'}
+          {note && <span className="font-normal opacity-80"> · {note}</span>}
         </span>
         {options.length > 0 && (
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="truncate text-xs font-normal text-muted-foreground">
             {options.join(' · ')}
           </span>
         )}
       </span>
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="size-3 shrink-0 opacity-70"
+      />
     </button>
   );
 }

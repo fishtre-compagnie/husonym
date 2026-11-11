@@ -2,7 +2,7 @@ import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/sour
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -207,7 +207,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
   }
 
   if (isLoading || isTransformersLoading) {
-    return <Skeleton className="w-full h-48" />;
+    return <Skeleton className="h-48 w-full rounded-2xl" />;
   }
 
   const selectedChanges = pending.filter((c) => selected.has(c.id));
@@ -231,15 +231,15 @@ export default function MappingChangesCard(props: Props): ReactElement {
       <CardContent className="flex flex-col gap-4">
         <LicenseFeatureNotice feature="mapping_review" />
         {pending.length === 0 ? (
-          <div className="flex flex-row items-center gap-2 text-sm rounded-xl p-4 bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-200">
+          <div className="flex flex-row items-center gap-2 rounded-xl bg-ok-soft p-4 text-sm text-ok">
             <CheckCircledIcon />
             Nothing waiting: every change the runs made has been reviewed.
           </div>
         ) : (
-          <div className="flex flex-col rounded-xl border overflow-hidden">
+          <div className="flex flex-col overflow-x-auto rounded-xl border border-line-soft">
             {groups.map(([table, changes]) => (
               <div key={table} className="flex flex-col">
-                <div className="flex flex-row items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b">
+                <div className="flex flex-row items-center gap-3 border-b border-line-soft bg-surface-2 px-4 py-2">
                   <input
                     type="checkbox"
                     aria-label={`Select every change of ${table}`}
@@ -278,16 +278,19 @@ export default function MappingChangesCard(props: Props): ReactElement {
 
       {selectedChanges.length > 0 && (
         <div className="sticky bottom-4 z-20 flex justify-center pointer-events-none">
-          <div className="pointer-events-auto flex flex-row items-center gap-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-gray-50 px-4 py-2 shadow-lg">
+          <div
+            role="region"
+            aria-label="Selected changes"
+            className="pointer-events-auto flex flex-row items-center gap-3 rounded-2xl border border-border bg-card py-2 pl-4 pr-2 shadow-pop"
+          >
             <span className="text-sm font-medium">
               {selectedChanges.length} change
               {selectedChanges.length === 1 ? '' : 's'} selected
             </span>
-            <span className="h-5 w-px bg-gray-600" />
+            <span className="h-5 w-px bg-border" aria-hidden="true" />
             <Button
               type="button"
               size="sm"
-              variant="secondary"
               disabled={!allowed}
               onClick={() => setReviewing(selectedChanges)}
             >
@@ -297,7 +300,6 @@ export default function MappingChangesCard(props: Props): ReactElement {
               type="button"
               size="sm"
               variant="ghost"
-              className="text-gray-300 hover:text-gray-50 hover:bg-gray-700"
               onClick={() => setSelected(new Set())}
             >
               Clear
@@ -379,8 +381,8 @@ function ChangeRow(props: RowProps): ReactElement {
         }
       }}
       className={cn(
-        'flex flex-row items-center gap-3 px-4 h-16 border-b last:border-b-0 cursor-pointer text-left',
-        isOpened ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50'
+        'flex h-16 min-w-[760px] cursor-pointer flex-row items-center gap-3 border-b border-line-soft px-4 text-left transition-colors last:border-b-0',
+        isOpened ? 'bg-brand-soft' : 'hover:bg-hover'
       )}
     >
       <span onClick={(e) => e.stopPropagation()}>
@@ -396,10 +398,10 @@ function ChangeRow(props: RowProps): ReactElement {
         className={cn(
           'flex items-center justify-center h-6 w-6 rounded-md text-sm font-semibold shrink-0',
           removed
-            ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+            ? 'bg-danger-soft text-danger-fg'
             : change.kind === JobMappingChangeKind.ADDED
-              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+              ? 'bg-ok-soft text-ok'
+              : 'bg-surface-2 text-muted-foreground'
         )}
       >
         {removed ? '−' : change.kind === JobMappingChangeKind.ADDED ? '+' : '~'}
@@ -413,7 +415,7 @@ function ChangeRow(props: RowProps): ReactElement {
         </span>
       </span>
       <span className="flex flex-col w-64 shrink-0">
-        <span className={cn('text-sm truncate', inClear && 'text-amber-700')}>
+        <span className={cn('truncate text-sm', inClear && 'text-danger-fg')}>
           {removed
             ? `was ${transformerName}`
             : inClear
@@ -430,12 +432,12 @@ function ChangeRow(props: RowProps): ReactElement {
       </span>
       <span className="grow text-xs text-muted-foreground">
         {change.piiCategory && (
-          <Badge variant={inClear ? 'destructive' : 'secondary'}>
+          <Pill tone={inClear ? 'danger' : 'warn'}>
             Personal data: {change.piiCategory}
-          </Badge>
+          </Pill>
         )}
       </span>
-      <span className="text-xs text-muted-foreground w-40 shrink-0">
+      <span className="w-40 shrink-0 text-xs tabular-nums text-muted-foreground">
         {change.createdAt
           ? formatDateTime(timestampDate(change.createdAt))
           : ''}

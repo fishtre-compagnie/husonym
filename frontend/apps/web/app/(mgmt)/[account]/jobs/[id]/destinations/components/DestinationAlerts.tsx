@@ -48,7 +48,7 @@ export default function DestinationAlerts({
       {isValidatingSchema && <Skeleton className="w-full h-24 rounded-lg" />}
       {!isValidatingSchema && columnErrors && (
         <div>
-          <Alert className="border-red-400">
+          <Alert className="border-danger-line">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value={`table-error`} key={1}>
                 <AccordionTrigger className="text-left">
@@ -92,7 +92,7 @@ export default function DestinationAlerts({
       )}
       {!initTableSchemaEnabled && !isValidatingSchema && tableErrors && (
         <div>
-          <Alert className="border-red-400">
+          <Alert className="border-danger-line">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value={`table-error`} key={1}>
                 <AccordionTrigger className="text-left">

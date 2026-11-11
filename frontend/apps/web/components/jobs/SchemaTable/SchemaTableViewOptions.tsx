@@ -24,7 +24,7 @@ export function SchemaTableViewOptions<TData extends RowData>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="h-8 flex">
+        <Button variant="outline">
           <MixerHorizontalIcon className="mr-2 h-4 w-4" />
           View
         </Button>

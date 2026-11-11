@@ -47,7 +47,9 @@ export function StringSelect(props: Props): ReactElement {
           <CommandInput placeholder={`Search ${text}...`} />
           <CommandList>
             <CommandEmpty>
-              <div className="text-sm text-gray-500 p-4">No {text} found.</div>
+              <div className="text-sm text-muted-foreground p-4">
+                No {text} found.
+              </div>
             </CommandEmpty>
             <CommandGroup>
               {values.map((v) => (
