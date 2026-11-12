@@ -186,7 +186,7 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 		}
 	} else if !qb.subsetByForeignKeyConstraints && rootTable.WhereClause() != nil && *rootTable.WhereClause() != "" {
 		// No subset-by-foreign-key constraints, but a where clause was provided
-		qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, *rootTable.WhereClause())
+		qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, rootTable.Table(), *rootTable.WhereClause())
 		if err != nil {
 			return nil, nil, false, err
 		}
@@ -270,7 +270,7 @@ func (qb *QueryBuilder) addSubsetJoins(
 		// If there are no join steps, and there is a subset condition, apply it
 		// This handles case where the root table has a where clause
 		if len(subset.JoinSteps) == 0 && subset.Subset != "" {
-			qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, subset.Subset)
+			qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, rootTable.Table(), subset.Subset)
 			if err != nil {
 				return nil, false, err
 			}
@@ -329,7 +329,7 @@ func (qb *QueryBuilder) addSubsetJoins(
 			// If this is the last step in chain and there's a subset condition, apply it
 			if idx == len(subset.JoinSteps)-1 && subset.Subset != "" {
 				isSubset = true
-				qualifiedCondition, err := qb.qualifyWhereCondition(childAlias, subset.Subset)
+				qualifiedCondition, err := qb.qualifyWhereCondition(childAlias, childTable, subset.Subset)
 				if err != nil {
 					return nil, false, err
 				}
@@ -422,7 +422,7 @@ func (qb *QueryBuilder) parentRowIsSelected(
 			return nil, err
 		}
 	default:
-		condition, err := qb.qualifyWhereCondition(alias, *parent.WhereClause())
+		condition, err := qb.qualifyWhereCondition(alias, parent.Table(), *parent.WhereClause())
 		if err != nil {
 			return nil, err
 		}
@@ -462,6 +462,20 @@ func getClippedHash(input string) string {
 // whereStandIn stands for the filtered table in the statement handed to the parsers.
 const whereStandIn = "t"
 
+// filteredTable is the table a where clause was written for, by the name its author knew.
+type filteredTable struct {
+	schema, name string
+}
+
+// filteredTableOfKey splits a "schema.table" key.
+func filteredTableOfKey(key string) filteredTable {
+	schema, name, found := strings.Cut(key, ".")
+	if !found {
+		return filteredTable{name: key}
+	}
+	return filteredTable{schema: schema, name: name}
+}
+
 // qualifyWhereCondition names every column of a where clause by table: the name, or the
 // alias, the query gives the table the clause filters.
 //
@@ -469,7 +483,13 @@ const whereStandIn = "t"
 // parser of each engine writes it again with table before its columns. The name does not
 // travel through the text that is parsed: each parser is given it apart, and writes it as
 // one identifier.
-func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, error) {
+//
+// A subquery of the clause may name the filtered table to correlate with it, as in
+// EXISTS (SELECT 1 FROM o WHERE o.id = litige.order_id). Once the table is joined under
+// an alias, as a parent of the table synced, that name no longer exists in the query: the
+// subquery's references to it are given the alias as well. tableKey is the "schema.table"
+// key of the filtered table.
+func (qb *QueryBuilder) qualifyWhereCondition(table, tableKey, condition string) (string, error) {
 	if err := sqlident.Check(table); err != nil {
 		return "", fmt.Errorf("table name: %w", err)
 	}
@@ -482,13 +502,13 @@ func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, 
 	var updatedSql string
 	switch qb.driver {
 	case sqlmanager_shared.MysqlDriver:
-		sql, err := qualifyMysqlWhereColumnNames(sql, table)
+		sql, err := qualifyMysqlWhereColumnNames(sql, table, filteredTableOfKey(tableKey))
 		if err != nil {
 			return "", err
 		}
 		updatedSql = sql
 	case sqlmanager_shared.PostgresDriver:
-		sql, err := qualifyPostgresWhereColumnNames(sql, table)
+		sql, err := qualifyPostgresWhereColumnNames(sql, table, filteredTableOfKey(tableKey))
 		if err != nil {
 			return "", err
 		}
@@ -514,7 +534,7 @@ func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, 
 	return "(" + strings.TrimSpace(updatedSql[startIndex:]) + ")", nil
 }
 
-func qualifyPostgresWhereColumnNames(sql, table string) (string, error) {
+func qualifyPostgresWhereColumnNames(sql, table string, filtered filteredTable) (string, error) {
 	tree, err := pg_query.Parse(sql)
 	if err != nil {
 		return "", err
@@ -524,7 +544,7 @@ func qualifyPostgresWhereColumnNames(sql, table string) (string, error) {
 		selectStmt := stmt.GetStmt().GetSelectStmt()
 
 		if selectStmt.WhereClause != nil {
-			qualifyPostgresColumns(table, selectStmt.WhereClause)
+			qualifyPostgresColumns(table, filtered, selectStmt.WhereClause)
 		}
 	}
 	updatedSql, err := pg_query.Deparse(tree)
@@ -542,9 +562,9 @@ func qualifyPostgresWhereColumnNames(sql, table string) (string, error) {
 // run fails on a clause it accepted before the subset. The whole clause is walked instead,
 // which is what the MySQL side does.
 //
-// Subqueries name their own tables and are left alone: only the expression tested against
-// one belongs to the filtered table.
-func qualifyPostgresColumns(table string, node *pg_query.Node) {
+// Subqueries name their own tables: only the expression tested against one belongs to the
+// filtered table, and inside, only the columns named by the filtered table.
+func qualifyPostgresColumns(table string, filtered filteredTable, node *pg_query.Node) {
 	if node == nil {
 		return
 	}
@@ -552,12 +572,79 @@ func qualifyPostgresColumns(table string, node *pg_query.Node) {
 	case *pg_query.Node_ColumnRef:
 		qualifyPostgresColumnRef(table, expr.ColumnRef)
 	case *pg_query.Node_SubLink:
-		qualifyPostgresColumns(table, expr.SubLink.GetTestexpr())
+		qualifyPostgresColumns(table, filtered, expr.SubLink.GetTestexpr())
+		qualifyPostgresOuterReferences(table, filtered, expr.SubLink.GetSubselect())
 	default:
 		eachPostgresChildNode(node.ProtoReflect(), func(child *pg_query.Node) {
-			qualifyPostgresColumns(table, child)
+			qualifyPostgresColumns(table, filtered, child)
 		})
 	}
+}
+
+// qualifyPostgresOuterReferences gives table, the alias, to the columns of a subquery that
+// name the filtered table: "litige.col" or "public.litige.col". A subquery whose FROM names
+// a table the same way hides the filtered one, and is left alone with its own subqueries.
+func qualifyPostgresOuterReferences(table string, filtered filteredTable, node *pg_query.Node) {
+	if node == nil || filtered.name == "" {
+		return
+	}
+	switch expr := node.Node.(type) {
+	case *pg_query.Node_SelectStmt:
+		if postgresSelectDeclares(expr.SelectStmt, filtered.name) {
+			return
+		}
+	case *pg_query.Node_ColumnRef:
+		fields := expr.ColumnRef.GetFields()
+		names := make([]string, len(fields))
+		for i, f := range fields {
+			names[i] = f.GetString_().GetSval()
+		}
+		switch {
+		case len(names) == 2 && names[0] == filtered.name && names[1] != "":
+			expr.ColumnRef.Fields = []*pg_query.Node{pg_query.MakeStrNode(table), fields[1]}
+		case len(names) == 3 && names[0] == filtered.schema && names[1] == filtered.name && names[2] != "":
+			expr.ColumnRef.Fields = []*pg_query.Node{pg_query.MakeStrNode(table), fields[2]}
+		}
+		return
+	}
+	eachPostgresChildNode(node.ProtoReflect(), func(child *pg_query.Node) {
+		qualifyPostgresOuterReferences(table, filtered, child)
+	})
+}
+
+// postgresSelectDeclares tells whether the FROM of the statement, or of one side of its
+// UNION, names a table name, by its own name or by an alias.
+func postgresSelectDeclares(stmt *pg_query.SelectStmt, name string) bool {
+	if stmt == nil {
+		return false
+	}
+	for _, from := range stmt.GetFromClause() {
+		if postgresFromDeclares(from, name) {
+			return true
+		}
+	}
+	return postgresSelectDeclares(stmt.GetLarg(), name) || postgresSelectDeclares(stmt.GetRarg(), name)
+}
+
+func postgresFromDeclares(node *pg_query.Node, name string) bool {
+	switch from := node.GetNode().(type) {
+	case *pg_query.Node_RangeVar:
+		if alias := from.RangeVar.GetAlias(); alias != nil {
+			return alias.GetAliasname() == name
+		}
+		return from.RangeVar.GetRelname() == name
+	case *pg_query.Node_RangeSubselect:
+		return from.RangeSubselect.GetAlias().GetAliasname() == name
+	case *pg_query.Node_RangeFunction:
+		return from.RangeFunction.GetAlias().GetAliasname() == name
+	case *pg_query.Node_JoinExpr:
+		if alias := from.JoinExpr.GetAlias(); alias != nil && alias.GetAliasname() == name {
+			return true
+		}
+		return postgresFromDeclares(from.JoinExpr.GetLarg(), name) ||
+			postgresFromDeclares(from.JoinExpr.GetRarg(), name)
+	}
+	return false
 }
 
 // qualifyPostgresColumnRef names a column by the table it is filtered on, the alias the
@@ -608,7 +695,7 @@ func visitPostgresMessage(m protoreflect.Message, visit func(*pg_query.Node)) {
 	eachPostgresChildNode(m, visit)
 }
 
-func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
+func qualifyMysqlWhereColumnNames(sql, table string, filtered filteredTable) (string, error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", err
@@ -619,10 +706,12 @@ func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 		// Every column of the clause belongs to the filtered table, wherever it stands:
 		// left or right of a comparison, under IS NULL, BETWEEN, IN or a function. Once the
 		// table is joined to its children, a bare column that both tables have is
-		// ambiguous. Subqueries name their own tables and are left alone.
+		// ambiguous. Subqueries name their own tables: inside, only the columns named by
+		// the filtered table are given its alias.
 		err = sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
 			switch node := node.(type) {
 			case *sqlparser.Subquery:
+				qualifyMysqlOuterReferences(node.Select, table, filtered)
 				return false, nil
 			case *sqlparser.ColName:
 				node.Qualifier = sqlparser.TableName{Name: sqlparser.NewTableIdent(table)}
@@ -641,6 +730,68 @@ func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 	buf := sqlparser.NewTrackedBuffer(mysqlQualifierFormatter(table, dialect))
 	buf.Myprintf("%v", stmt)
 	return buf.String(), nil
+}
+
+// qualifyMysqlOuterReferences gives table, the alias, to the columns of a subquery that
+// name the filtered table: "litige.col" or "shop.litige.col". MySQL compares table names
+// without regard to case on most servers; so does this. A subquery whose FROM names a table
+// the same way hides the filtered one, and is left alone with its own subqueries.
+func qualifyMysqlOuterReferences(stmt sqlparser.SelectStatement, table string, filtered filteredTable) {
+	if filtered.name == "" || mysqlSelectDeclares(stmt, filtered.name) {
+		return
+	}
+	_ = sqlparser.Walk(func(node sqlparser.SQLNode) (bool, error) {
+		switch node := node.(type) {
+		case *sqlparser.Subquery:
+			qualifyMysqlOuterReferences(node.Select, table, filtered)
+			return false, nil
+		case *sqlparser.ColName:
+			q := node.Qualifier
+			if strings.EqualFold(q.Name.String(), filtered.name) &&
+				(q.Qualifier.IsEmpty() || strings.EqualFold(q.Qualifier.String(), filtered.schema)) {
+				node.Qualifier = sqlparser.TableName{Name: sqlparser.NewTableIdent(table)}
+			}
+		}
+		return true, nil
+	}, stmt)
+}
+
+// mysqlSelectDeclares tells whether the FROM of the statement, or of one side of its UNION,
+// names a table name, by its own name or by an alias.
+func mysqlSelectDeclares(stmt sqlparser.SelectStatement, name string) bool {
+	switch stmt := stmt.(type) {
+	case *sqlparser.Select:
+		for _, from := range stmt.From {
+			if mysqlFromDeclares(from, name) {
+				return true
+			}
+		}
+	case *sqlparser.ParenSelect:
+		return mysqlSelectDeclares(stmt.Select, name)
+	case *sqlparser.Union:
+		return mysqlSelectDeclares(stmt.Left, name) || mysqlSelectDeclares(stmt.Right, name)
+	}
+	return false
+}
+
+func mysqlFromDeclares(expr sqlparser.TableExpr, name string) bool {
+	switch expr := expr.(type) {
+	case *sqlparser.AliasedTableExpr:
+		if !expr.As.IsEmpty() {
+			return strings.EqualFold(expr.As.String(), name)
+		}
+		t, ok := expr.Expr.(sqlparser.TableName)
+		return ok && strings.EqualFold(t.Name.String(), name)
+	case *sqlparser.JoinTableExpr:
+		return mysqlFromDeclares(expr.LeftExpr, name) || mysqlFromDeclares(expr.RightExpr, name)
+	case *sqlparser.ParenTableExpr:
+		for _, e := range expr.Exprs {
+			if mysqlFromDeclares(e, name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // mysqlQualifierFormatter writes a statement the way the parser does, except for the table

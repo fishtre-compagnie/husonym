@@ -2,6 +2,7 @@ package selectquerybuilder
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -87,10 +88,76 @@ func Test_qualifyMysqlWhereColumnNames(t *testing.T) {
 		"station.id IN (1, 2)":                                 "t_1.id in (1, 2)",
 		"id IN (SELECT station_id FROM autre WHERE actif = 1)": "t_1.id in (select station_id from autre where actif = 1)",
 	} {
-		got, err := qualifyMysqlWhereColumnNames("SELECT * FROM station WHERE "+clause, "t_1")
+		got, err := qualifyMysqlWhereColumnNames("SELECT * FROM station WHERE "+clause, "t_1", filteredTable{schema: "shop", name: "station"})
 		require.NoError(t, err, clause)
 		require.Equal(t, "select * from station where "+want, got, clause)
 	}
+}
+
+// A subquery correlated with the filtered table by its name follows it under its alias;
+// its own tables, and a subquery that names a table the same way, keep their names.
+func Test_qualifyMysqlWhereColumnNames_outerReferences(t *testing.T) {
+	filtered := filteredTable{schema: "shop", name: "litige"}
+	for clause, want := range map[string]string{
+		"EXISTS (SELECT 1 FROM shop.commande AS o WHERE o.id = litige.order_id)":         "exists (select 1 from shop.commande as o where o.id = t_1.order_id)",
+		"EXISTS (SELECT 1 FROM commande AS o WHERE o.id = shop.litige.order_id)":         "exists (select 1 from commande as o where o.id = t_1.order_id)",
+		"EXISTS (SELECT 1 FROM commande o WHERE o.id = LITIGE.order_id)":                 "exists (select 1 from commande as o where o.id = t_1.order_id)",
+		"EXISTS (SELECT 1 FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x = litige.y))":   "exists (select 1 from a where exists (select 1 from b where b.x = t_1.y))",
+		"EXISTS (SELECT 1 FROM litige WHERE litige.id = 3)":                              "exists (select 1 from litige where litige.id = 3)",
+		"EXISTS (SELECT 1 FROM autre AS litige WHERE litige.id = 3)":                     "exists (select 1 from autre as litige where litige.id = 3)",
+		"EXISTS (SELECT 1 FROM commande AS o WHERE o.id = autre.litige_id)":              "exists (select 1 from commande as o where o.id = autre.litige_id)",
+		"EXISTS (SELECT 1 FROM commande AS o WHERE o.id = other_schema.litige.order_id)": "exists (select 1 from commande as o where o.id = other_schema.litige.order_id)",
+	} {
+		got, err := qualifyMysqlWhereColumnNames("SELECT * FROM litige WHERE "+clause, "t_1", filtered)
+		require.NoError(t, err, clause)
+		require.Equal(t, "select * from litige where "+want, got, clause)
+	}
+}
+
+func Test_qualifyPostgresWhereColumnNames_outerReferences(t *testing.T) {
+	filtered := filteredTable{schema: "shop", name: "litige"}
+	for clause, want := range map[string]string{
+		"EXISTS (SELECT 1 FROM shop.commande o WHERE o.id = litige.order_id)":          "EXISTS (SELECT 1 FROM shop.commande o WHERE o.id = t_1.order_id)",
+		"EXISTS (SELECT 1 FROM commande o WHERE o.id = shop.litige.order_id)":          "EXISTS (SELECT 1 FROM commande o WHERE o.id = t_1.order_id)",
+		"EXISTS (SELECT 1 FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x = litige.y))": "EXISTS (SELECT 1 FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x = t_1.y))",
+		"EXISTS (SELECT 1 FROM litige WHERE litige.id = 3)":                            "EXISTS (SELECT 1 FROM litige WHERE litige.id = 3)",
+		"EXISTS (SELECT 1 FROM autre litige WHERE litige.id = 3)":                      "EXISTS (SELECT 1 FROM autre litige WHERE litige.id = 3)",
+		"order_id IN (SELECT id FROM commande WHERE commande.client = litige.client)":  "t_1.order_id IN (SELECT id FROM commande WHERE commande.client = t_1.client)",
+	} {
+		got, err := qualifyPostgresWhereColumnNames("SELECT 1 FROM t WHERE "+clause, "t_1", filtered)
+		require.NoError(t, err, clause)
+		require.Contains(t, got, want, clause)
+	}
+}
+
+// The filter of a parent, correlated with it by name, still reads in the query of its
+// child, which joins the parent under another name.
+func Test_BuildQuery_ParentFilterCorrelatedByName(t *testing.T) {
+	fk := &sqlmanager_shared.ForeignConstraint{
+		Columns: []string{"litige_id"}, NotNullable: []bool{true},
+		ForeignKey: &sqlmanager_shared.ForeignKey{Table: "shop.litige", Columns: []string{"id"}},
+	}
+	where := "EXISTS (SELECT 1 FROM shop.commande AS o WHERE o.id = litige.order_id AND o.recent = 1)"
+	configs, err := runconfigs.BuildRunConfigs(
+		map[string][]*sqlmanager_shared.ForeignConstraint{"shop.relance": {fk}},
+		map[string]string{"shop.litige": where},
+		map[string][]string{"shop.litige": {"id"}, "shop.relance": {"id"}},
+		map[string][]string{"shop.litige": {"id", "order_id"}, "shop.relance": {"id", "litige_id"}},
+		map[string][][]string{}, map[string][][]string{},
+	)
+	require.NoError(t, err)
+	queries, err := BuildSelectQueryMap(sqlmanager_shared.MysqlDriver, configs, true, 100)
+	require.NoError(t, err)
+
+	litige := queries["shop.litige.insert"].Query
+	require.Contains(t, litige, "o.id = litige.order_id", litige)
+
+	relance := queries["shop.relance.insert"].Query
+	m := regexp.MustCompile("INNER JOIN `shop`.`litige` AS `([^`]+)`").FindStringSubmatch(relance)
+	require.NotNil(t, m, relance)
+	require.NotEqual(t, "litige", m[1])
+	require.Contains(t, relance, "o.id = "+m[1]+".order_id", relance)
+	require.NotContains(t, relance, "litige.order_id", relance)
 }
 
 // A nullable foreign key on the subset path keeps the rows holding NULL, and so do the
@@ -193,7 +260,7 @@ func Test_qualifyPostgresWhereColumnNames(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := qualifyPostgresWhereColumnNames(
-				fmt.Sprintf("SELECT 1 FROM t WHERE %s", tc.where), "STATION")
+				fmt.Sprintf("SELECT 1 FROM t WHERE %s", tc.where), "STATION", filteredTable{schema: "public", name: "station"})
 			require.NoError(t, err)
 			require.Contains(t, got, tc.want)
 		})
@@ -204,7 +271,8 @@ func Test_qualifyPostgresWhereColumnNames(t *testing.T) {
 // filtered table.
 func Test_qualifyPostgresWhereColumnNames_leavesSubqueriesAlone(t *testing.T) {
 	got, err := qualifyPostgresWhereColumnNames(
-		"SELECT 1 FROM t WHERE id IN (SELECT station_id FROM autre WHERE actif)", "STATION")
+		"SELECT 1 FROM t WHERE id IN (SELECT station_id FROM autre WHERE actif)", "STATION",
+		filteredTable{schema: "public", name: "station"})
 	require.NoError(t, err)
 	require.Contains(t, got, `"STATION".id IN (SELECT station_id FROM autre WHERE actif)`)
 }
