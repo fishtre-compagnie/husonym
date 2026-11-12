@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
 	mysqlgrants "github.com/fishtre-compagnie/husonym/internal/mysql-grants"
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/sync/errgroup"
 )
 
 // MySQL is asked about the account itself, as PostgreSQL is. What a run does with rows —
@@ -37,22 +39,56 @@ var (
 	errMysqlNoSuchColumn = errors.New("no such column")
 )
 
+// mysqlTablesAtOnce is how many tables are asked about at once. Each probe is a round trip
+// to the server: one table after another, a database of a few hundred tables took minutes,
+// past the time the run gives its checks.
+const mysqlTablesAtOnce = 8
+
+// forEachMysqlTable asks about the tables a few at once, and keeps what each one gave at its
+// place: the findings come out in the order of the tables, however the answers arrive.
+func forEachMysqlTable[T any](
+	ctx context.Context,
+	tables []*Table,
+	ask func(ctx context.Context, t *Table) (T, error),
+) ([]T, error) {
+	results := make([]T, len(tables))
+	group, gctx := errgroup.WithContext(ctx)
+	group.SetLimit(mysqlTablesAtOnce)
+	for i, t := range tables {
+		group.Go(func() error {
+			result, err := ask(gctx, t)
+			results[i] = result
+			return err
+		})
+	}
+	return results, group.Wait()
+}
+
 // checkMysqlSource: a source only needs to be read. A read-only server is fine.
 func checkMysqlSource(ctx context.Context, db Db, name string, tables []*Table) ([]*Finding, error) {
 	account := &mysqlAccount{db: db}
-	var findings []*Finding
-	for _, t := range tables {
+	found, err := forEachMysqlTable(ctx, tables, func(ctx context.Context, t *Table) (*Finding, error) {
 		allowed, err := mysqlProbe(ctx, db, t.mysqlSelect())
 		switch {
 		case errors.Is(err, errMysqlNoSuchTable):
-			findings = append(findings, blocking(CheckTableExists, t.String(), nil, "",
-				fmt.Sprintf("source %q has no table %s", name, t)))
+			return blocking(CheckTableExists, t.String(), nil, "",
+				fmt.Sprintf("source %q has no table %s", name, t)), nil
 		case err != nil:
 			return nil, fmt.Errorf("unable to read the privileges of source %q on %s: %w", name, t, err)
 		case !allowed:
-			findings = append(findings, blocking(CheckReadable, t.String(), []string{"SELECT"},
+			return blocking(CheckReadable, t.String(), []string{"SELECT"},
 				mysqlGrantOnTable([]string{"SELECT"}, t, account.quoted(ctx)),
-				fmt.Sprintf("source %q cannot read %s (missing SELECT)", name, t)))
+				fmt.Sprintf("source %q cannot read %s (missing SELECT)", name, t)), nil
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	var findings []*Finding
+	for _, finding := range found {
+		if finding != nil {
+			findings = append(findings, finding)
 		}
 	}
 	return findings, nil
@@ -79,9 +115,13 @@ func checkMysqlDestination(
 	}
 
 	account := &mysqlAccount{db: db}
-	var findings []*Finding
-	var existing []*Table
-	for _, t := range tables {
+	// What a table gave: its findings, and the table as the run writes it when it is there.
+	type checked struct {
+		findings []*Finding
+		existing *Table
+	}
+	results, err := forEachMysqlTable(ctx, tables, func(ctx context.Context, t *Table) (checked, error) {
+		var c checked
 		missing, err := mysqlMissingRowPrivileges(ctx, db, t)
 		if errors.Is(err, errMysqlNoSuchColumn) {
 			// The probes ask about the columns the table has; the others are added by the
@@ -92,14 +132,14 @@ func checkMysqlDestination(
 			err = perr
 			if perr == nil {
 				if !createsTables {
-					findings = append(findings, blocking(CheckTableExists, present.String(), absent, "",
+					c.findings = append(c.findings, blocking(CheckTableExists, present.String(), absent, "",
 						fmt.Sprintf("destination %q has no column %s in %s that the account can see",
 							name, strings.Join(absent, ", "), present)))
 				}
 				if len(present.Columns) == 0 {
 					// Not one column of the mapping is there: there is nothing to probe,
 					// and the probes would be built on an empty column list.
-					continue
+					return c, nil
 				}
 				t = present
 				missing, err = mysqlMissingRowPrivileges(ctx, db, t)
@@ -108,19 +148,31 @@ func checkMysqlDestination(
 		switch {
 		case errors.Is(err, errMysqlNoSuchTable):
 			if !createsTables {
-				findings = append(findings, blocking(CheckTableExists, t.String(), nil, "",
+				c.findings = append(c.findings, blocking(CheckTableExists, t.String(), nil, "",
 					fmt.Sprintf("destination %q has no table %s", name, t)))
 			}
-			continue // a table the run creates is the account's own
+			return c, nil // a table the run creates is the account's own
 		case err != nil:
-			return nil, fmt.Errorf("unable to read the privileges of destination %q on %s: %w", name, t, err)
+			return c, fmt.Errorf("unable to read the privileges of destination %q on %s: %w", name, t, err)
 		}
 		if len(missing) > 0 {
-			findings = append(findings, blocking(CheckWritable, t.String(), missing,
+			c.findings = append(c.findings, blocking(CheckWritable, t.String(), missing,
 				mysqlGrantOnTable(missing, t, account.quoted(ctx)),
 				fmt.Sprintf("destination %q cannot write %s (missing %s)", name, t, strings.Join(missing, ", "))))
 		}
-		existing = append(existing, t)
+		c.existing = t
+		return c, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	var findings []*Finding
+	var existing []*Table
+	for _, c := range results {
+		findings = append(findings, c.findings...)
+		if c.existing != nil {
+			existing = append(existing, c.existing)
+		}
 	}
 
 	grants, err := mysqlgrants.Read(ctx, db)
@@ -173,33 +225,51 @@ func checkMysqlTriggerDefiners(
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the account of destination %q: %w", name, err)
 	}
-	var findings []*Finding
+	// The triggers are read schema by schema, not table by table: one query for a schema of
+	// hundreds of tables. information_schema compares the names regardless of case.
+	type trigger struct{ name, definer string }
+	byTable := map[string][]trigger{}
+	var schemas []string
 	for _, t := range tables {
+		if !slices.Contains(schemas, t.Schema) {
+			schemas = append(schemas, t.Schema)
+		}
+	}
+	for _, schema := range schemas {
 		rows, err := db.QueryContext(ctx,
-			"SELECT TRIGGER_NAME, DEFINER FROM information_schema.TRIGGERS "+
-				"WHERE EVENT_OBJECT_SCHEMA = ? AND EVENT_OBJECT_TABLE = ? ORDER BY TRIGGER_NAME", t.Schema, t.Table)
+			"SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, DEFINER FROM information_schema.TRIGGERS "+
+				"WHERE EVENT_OBJECT_SCHEMA = ? ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME", schema)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
 		}
 		for rows.Next() {
-			var trigger, definer string
-			if err := rows.Scan(&trigger, &definer); err != nil {
+			var table string
+			var tr trigger
+			if err := rows.Scan(&table, &tr.name, &tr.definer); err != nil {
 				rows.Close()
 				return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
 			}
-			if definer != current {
-				findings = append(findings, blocking(CheckTriggerDefiner, t.String(),
-					[]string{"SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB"}, "",
-					fmt.Sprintf("destination %q cannot put back the trigger %s of %s, "+
-						"whose definer is %s (missing SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB): "+
-						"a trigger runs as its definer, and only "+
-						"such an account can name another one", name, trigger, t, definer)))
-			}
+			key := strings.ToLower(schema + "." + table)
+			byTable[key] = append(byTable[key], tr)
 		}
 		err = rows.Err()
 		rows.Close()
 		if err != nil {
 			return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
+		}
+	}
+
+	var findings []*Finding
+	for _, t := range tables {
+		for _, tr := range byTable[strings.ToLower(t.Schema+"."+t.Table)] {
+			if tr.definer != current {
+				findings = append(findings, blocking(CheckTriggerDefiner, t.String(),
+					[]string{"SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB"}, "",
+					fmt.Sprintf("destination %q cannot put back the trigger %s of %s, "+
+						"whose definer is %s (missing SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB): "+
+						"a trigger runs as its definer, and only "+
+						"such an account can name another one", name, tr.name, t, tr.definer)))
+			}
 		}
 	}
 	return findings, nil
@@ -373,8 +443,10 @@ func (t *Table) mysqlDelete() string {
 var quoteMysql = sqlmanager_mysql.EscapeMysqlColumn
 
 // mysqlAccount is the account the session runs as, read once, and only when something asks.
+// The tables are asked about a few at once: the first that needs it reads it for the others.
 type mysqlAccount struct {
 	db   Db
+	mu   sync.Mutex
 	name string
 	err  error
 	read bool
@@ -382,6 +454,8 @@ type mysqlAccount struct {
 
 // current is the account as CURRENT_USER() gives it: user@host.
 func (a *mysqlAccount) current(ctx context.Context) (string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if !a.read {
 		a.err = a.db.QueryRowContext(ctx, "SELECT CURRENT_USER()").Scan(&a.name)
 		a.read = true
