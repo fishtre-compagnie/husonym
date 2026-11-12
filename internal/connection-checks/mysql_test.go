@@ -148,8 +148,10 @@ func Test_checkMysqlDestination_triggerDefiner(t *testing.T) {
 	}
 	expectGrants(mock, "GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER ON `shop`.* TO `app`@`%`")
 	expectCurrentUser(mock)
-	mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop", "ARTICLE").
-		WillReturnRows(sqlmock.NewRows([]string{"n", "d"}).AddRow("trg_mine", "app@%").AddRow("trg_dba", "dba@localhost"))
+	mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop").
+		WillReturnRows(sqlmock.NewRows([]string{"t", "n", "d"}).
+			AddRow("ARTICLE", "trg_mine", "app@%").AddRow("ARTICLE", "trg_dba", "dba@localhost").
+			AddRow("CLIENT", "trg_other", "dba@localhost"))
 
 	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{article}, false, false)
 	require.NoError(t, err)
@@ -177,8 +179,8 @@ func Test_checkMysqlDestination_columnAddedByTheRun(t *testing.T) {
 			}
 			expectGrants(mock, "GRANT ALL PRIVILEGES ON `shop`.* TO `app`@`%`")
 			expectCurrentUser(mock)
-			mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop", "ARTICLE").
-				WillReturnRows(sqlmock.NewRows([]string{"n", "d"}))
+			mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop").
+				WillReturnRows(sqlmock.NewRows([]string{"t", "n", "d"}))
 
 			findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{article}, createsTables, false)
 			require.NoError(t, err)
@@ -287,4 +289,29 @@ func Test_checkMysql_tableWithoutVisibleColumns(t *testing.T) {
 		require.Equal(t, []string{`source "prod" has no table shop.ARTICLE`}, Messages(findings))
 		require.Empty(t, findings[0].Remedy)
 	})
+}
+
+// The tables are asked about a few at once; the findings still come out in their order.
+func Test_checkMysqlSource_manyTables(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.MatchExpectationsInOrder(false)
+	tables := make([]*Table, 40)
+	var want []string
+	for i := range tables {
+		tables[i] = &Table{Schema: "shop", Table: fmt.Sprintf("T%02d", i), Columns: []string{"id"}}
+		var refusal error
+		if i%3 == 0 {
+			refusal = denied(mysqlTableAccessDenied)
+			want = append(want, fmt.Sprintf(`source "prod" cannot read shop.T%02d (missing SELECT)`, i))
+		}
+		expectProbe(mock, tables[i].mysqlSelect(), refusal)
+	}
+	expectCurrentUser(mock)
+
+	findings, err := checkMysqlSource(context.Background(), db, "prod", tables)
+	require.NoError(t, err)
+	require.Equal(t, want, Messages(findings))
+	require.NoError(t, mock.ExpectationsWereMet(), "the account is read once, for all the tables")
 }

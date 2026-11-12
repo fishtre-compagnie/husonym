@@ -800,6 +800,12 @@ func runPostTableSyncActivity(
 	return nil
 }
 
+// preflightTimeout is how long the checks of the connections may take. They ask each
+// connection about every table of the run: two minutes did not cover a source of 417 tables,
+// and the run failed on a timeout without a word. The heartbeat still tells a worker that
+// stopped answering within a minute.
+const preflightTimeout = 10 * time.Minute
+
 // runPreflightCheck keeps the report of what the run will meet, and stops the run before
 // anything is read or written on a blocking finding. It returns the major version of the
 // source, as the check read it: empty when it could not, and for a check recorded before it
@@ -815,7 +821,7 @@ func runPreflightCheck(
 	var preflightActivity *preflight_activity.Activity
 	err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-			StartToCloseTimeout: 2 * time.Minute,
+			StartToCloseTimeout: preflightTimeout,
 			// It only reads, and keeps its report under one key: a failure to ask a
 			// connection or the API is asked again. A blocking finding is not retried.
 			RetryPolicy:      &temporal.RetryPolicy{MaximumAttempts: 3},
@@ -851,7 +857,7 @@ func runPrivilegeCheck(
 	var privilegesActivity *preflight_activity.Activity
 	return workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-			StartToCloseTimeout: 2 * time.Minute,
+			StartToCloseTimeout: preflightTimeout,
 			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
 			HeartbeatTimeout:    1 * time.Minute,
 		}),
