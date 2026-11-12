@@ -20,8 +20,20 @@ A Helm chart for Husonym that contains the api, app, and worker
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| global.presidio.enabled | bool | `false` | Run the French Presidio analyzer beside the API, and point the API at it for the content scan of the columns. Without it, the scan reads column names only. |
 | api.enabled | bool | `true` | Enable or Disable Husonym Api |
 | app.enabled | bool | `true` | Enable or Disable Husonym App |
+| presidio.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
+| presidio.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/presidio"` | The Presidio image, published with the others |
+| presidio.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
+| presidio.imagePullSecrets | list | `[]` | Image pull secrets of the Presidio pod |
+| presidio.nodeSelector | object | `{}` | Node selector of the Presidio pod |
+| presidio.podLabels | object | `{}` | Extra labels of the Presidio pod, for network policies for instance |
+| presidio.port | int | `3000` | Port of the analyzer |
+| presidio.replicas | int | `1` | Number of Presidio pods |
+| presidio.resources | object | `{"limits":{"cpu":"2","memory":"2Gi"},"requests":{"cpu":"250m","memory":"1280Mi"}}` | Resources of the Presidio pod: 1.12 GiB measured after start for one process |
+| presidio.tolerations | list | `[]` | Tolerations of the Presidio pod |
+| presidio.workers | int | `1` | Gunicorn processes per pod: each one holds its own copy of the models |
 | worker.enabled | bool | `true` | Enable or Disable Husonym Worker |
 | api.auth.accountIssuerAllowPrivate | bool | `false` | Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app. |
 | api.auth.api.baseUrl | string | `nil` | The base url to the auth service's admin url |
@@ -82,6 +94,9 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | api.otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | api.podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
+| api.presidio.analyzerUrl | string | `nil` | URL of the analyzer. Left empty, the umbrella chart's own analyzer is used when it runs one (global.presidio.enabled); else the scan reads column names only. |
+| api.presidio.defaultLanguage | string | `nil` | Language of the texts whose transformer names none (the French image: fr) |
+| api.presidio.port | int | `3000` | Port of the umbrella chart's analyzer |
 | api.protometrics.apiKey | string | `nil` | Optionally provide an API key if the prometheus service requires authentication |
 | api.protometrics.enabled | bool | `false` | Will enable the metrics service proto |
 | api.protometrics.url | string | `nil` | The url, will default to http://localhost:9090 if not provided. Should be a prometheus compliant API |

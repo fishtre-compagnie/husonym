@@ -9,3 +9,40 @@ app:
 worker:
   # -- Enable or Disable Husonym Worker
   enabled: true
+
+global:
+  presidio:
+    # -- Run the French Presidio analyzer beside the API, and point the API at it for the
+    # content scan of the columns. Without it, the scan reads column names only.
+    enabled: false
+
+presidio:
+  image:
+    # -- The Presidio image, published with the others
+    repository: ghcr.io/fishtre-compagnie/husonym/presidio
+    # -- Overrides the image tag whose default is the chart appVersion
+    tag:
+    # -- Overrides the default K8s pull policy
+    pullPolicy:
+  # -- Image pull secrets of the Presidio pod
+  imagePullSecrets: []
+  # -- Number of Presidio pods
+  replicas: 1
+  # -- Gunicorn processes per pod: each one holds its own copy of the models
+  workers: 1
+  # -- Port of the analyzer
+  port: 3000
+  # -- Resources of the Presidio pod: 1.12 GiB measured after start for one process
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1280Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  # -- Extra labels of the Presidio pod, for network policies for instance
+  podLabels: {}
+  # -- Node selector of the Presidio pod
+  nodeSelector: {}
+  # -- Tolerations of the Presidio pod
+  tolerations: []

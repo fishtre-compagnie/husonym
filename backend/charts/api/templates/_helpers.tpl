@@ -187,6 +187,17 @@ HUSONYM_TELEMETRY: {{ .Values.usageReport.mode | quote }}
 {{- if and .Values.ee .Values.ee.license }}
 EE_LICENSE: {{ .Values.ee.license | quote }}
 {{- end }}
+{{- /* The analyzer of the content scan: the one named here, else the one the umbrella chart
+runs beside the API (global.presidio.enabled), else none and the scan reads names only. */}}
+{{- $presidio := .Values.presidio | default dict }}
+{{- if $presidio.analyzerUrl }}
+PRESIDIO_ANALYZER_URL: {{ $presidio.analyzerUrl | quote }}
+{{- else if and .Values.global .Values.global.presidio .Values.global.presidio.enabled }}
+PRESIDIO_ANALYZER_URL: {{ printf "http://%s-presidio:%d" (.Release.Name | trunc 54 | trimSuffix "-") (int ($presidio.port | default 3000)) | quote }}
+{{- end }}
+{{- if $presidio.defaultLanguage }}
+PRESIDIO_DEFAULT_LANGUAGE: {{ $presidio.defaultLanguage | quote }}
+{{- end }}
 {{- end -}}
 
 {{/*

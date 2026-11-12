@@ -240,7 +240,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   # The French Presidio analyzer the API calls for the content scan (PRESIDIO_ANALYZER_URL).
-  # It is not in the chart: a deployment runs it beside the API, at the tag of a commit.
+  # The umbrella chart runs it beside the API (global.presidio.enabled) at the chart's
+  # version: it is tagged exactly as the other images, so that version exists for it too.
   docker-presidio:
     name: Presidio Docker Image
     runs-on: ubuntu-latest
@@ -250,6 +251,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Calculate Next Pre-release version
+        id: next_pre_version
+        if: github.ref == 'refs/heads/main'
+        uses: paulhatch/semantic-version@v6.0.4
+        with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          version_format: '${major}.${minor}.${patch}-pre.${increment}'
+
+      - name: Extract develop version
+        id: extract_version
+        if: startsWith(github.ref, 'refs/heads/develop/v')
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          VERSION_NUMBER="${BRANCH_NAME#develop/v}"
+          echo "VERSION=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Calculate Next Pre-release version (develop)
+        id: next_pre_version_develop
+        if: startsWith(github.ref, 'refs/heads/develop/v')
+        uses: paulhatch/semantic-version@v6.0.4
+        with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Docker meta
         id: meta
@@ -260,7 +288,12 @@ jobs:
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=semver,pattern={{raw}}
             type=sha
+            type=raw,value=${{ steps.next_pre_version.outputs.version }},enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=${{ steps.next_pre_version_develop.outputs.version }},enable=${{ startsWith(github.ref, 'refs/heads/develop/v') }}
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -278,6 +311,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # The models make the image heavy, and they change seldom: each release reuses the
+          # layers of the last build instead of exporting them again.
+          cache-from: type=gha,scope=presidio
+          cache-to: type=gha,scope=presidio,mode=max
 
   helm-backend:
     name: Backend Helm Chart
@@ -624,6 +661,8 @@ jobs:
       - helm-backend
       - helm-frontend
       - helm-worker
+      # The umbrella runs Presidio at its own version: the image must exist first.
+      - docker-presidio
     steps:
       - name: Checkout
         uses: actions/checkout@v7
