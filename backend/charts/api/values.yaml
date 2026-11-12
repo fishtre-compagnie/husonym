@@ -241,6 +241,16 @@ protometrics:
 # -- The strategy to use when rolling out new replicas
 updateStrategy:
 
+# The Presidio analyzer of the content scan of the columns.
+presidio:
+  # -- URL of the analyzer. Left empty, the umbrella chart's own analyzer is used when it
+  # runs one (global.presidio.enabled); else the scan reads column names only.
+  analyzerUrl:
+  # -- Port of the umbrella chart's analyzer
+  port: 3000
+  # -- Language of the texts whose transformer names none (the French image: fr)
+  defaultLanguage:
+
 # -- Provide extra environment variables that will be applied to the deployment's user-container.
 extraEnvVars: []
 

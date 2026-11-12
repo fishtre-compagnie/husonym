@@ -71,6 +71,9 @@ A Helm chart for the Husonym Backend API
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
+| presidio.analyzerUrl | string | `nil` | URL of the analyzer. Left empty, the umbrella chart's own analyzer is used when it runs one (global.presidio.enabled); else the scan reads column names only. |
+| presidio.defaultLanguage | string | `nil` | Language of the texts whose transformer names none (the French image: fr) |
+| presidio.port | int | `3000` | Port of the umbrella chart's analyzer |
 | protometrics.apiKey | string | `nil` | Optionally provide an API key if the prometheus service requires authentication |
 | protometrics.enabled | bool | `false` | Will enable the metrics service proto |
 | protometrics.url | string | `nil` | The url, will default to http://localhost:9090 if not provided. Should be a prometheus compliant API |

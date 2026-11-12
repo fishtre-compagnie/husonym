@@ -1,0 +1,102 @@
+{{- /*
+The French Presidio analyzer (docker/presidio-fr), run beside the API for the content scan of
+the columns. Its image is published with the others, at the same version: it follows the chart
+unless presidio.image.tag says otherwise. The api chart reads global.presidio.enabled too, and
+points PRESIDIO_ANALYZER_URL at the service below.
+*/ -}}
+{{- if and .Values.global .Values.global.presidio .Values.global.presidio.enabled }}
+{{- $name := printf "%s-presidio" (.Release.Name | trunc 54 | trimSuffix "-") }}
+{{- $port := .Values.presidio.port | int }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: presidio
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: husonym
+    app.kubernetes.io/version: {{ .Values.presidio.image.tag | default .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.presidio.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: presidio
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: presidio
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/part-of: husonym
+        {{- with .Values.presidio.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.presidio.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: presidio
+          image: '{{ .Values.presidio.image.repository }}:{{ .Values.presidio.image.tag | default .Chart.AppVersion }}'
+          {{- with .Values.presidio.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+          env:
+            - name: PORT
+              value: {{ $port | quote }}
+            - name: WORKERS
+              value: {{ .Values.presidio.workers | quote }}
+          # The models load at start: /health answers only once they are ready.
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.presidio.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+      {{- with .Values.presidio.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.presidio.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: presidio
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: husonym
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app.kubernetes.io/name: presidio
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ $port }}
+      targetPort: http
+{{- end }}
