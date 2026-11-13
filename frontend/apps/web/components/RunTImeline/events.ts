@@ -230,6 +230,8 @@ export interface TableProgress {
   status: RunStatus;
   // the table was synced in more than one pass (e.g. a second pass for circular references)
   passes: number;
+  // while a pass of the table runs, when it began: the run's limit applies to each pass
+  runningSince?: Date;
   error?: string;
 }
 
@@ -255,6 +257,7 @@ export function getTableProgress(
         status: w.status,
         statuses: [w.status],
         passes: 1,
+        runningSince: w.status === 'running' ? w.start : undefined,
         error: w.status === 'completed' ? undefined : error,
       });
     } else {
@@ -263,6 +266,12 @@ export function getTableProgress(
       prev.statuses.push(w.status);
       prev.status = combineStatuses(prev.statuses);
       prev.passes += 1;
+      if (
+        w.status === 'running' &&
+        (!prev.runningSince || w.start > prev.runningSince)
+      ) {
+        prev.runningSince = w.start;
+      }
       if (w.status !== 'completed' && error) prev.error = error;
     }
   }

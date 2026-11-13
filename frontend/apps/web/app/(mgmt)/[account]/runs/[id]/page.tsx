@@ -15,11 +15,7 @@ import {
   StatusDot,
 } from '@/components/ds';
 import { useAccount } from '@/components/providers/account-provider';
-import {
-  getEventsSpan,
-  getPhases,
-  getTableProgress,
-} from '@/components/RunTImeline/events';
+import { getPhases, getTableProgress } from '@/components/RunTImeline/events';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { JobRunStatus as JobRunStatusEnum, JobService } from '@husonym/sdk';
@@ -37,7 +33,6 @@ import {
 } from '@/components/ui/dialog';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import {
-  cn,
   refreshEventsWhenEventsIncomplete,
   refreshJobRunWhenJobRunning,
 } from '@/libs/utils';
@@ -72,7 +67,10 @@ import JobRunActivityTable from './components/JobRunActivityTable';
 import JobRunLogs from './components/JobRunLogs';
 import JobRunPiiDetectionTable from './components/JobRunPiiDetectionTable/JobRunPiiDetectionTable';
 import RunPhases from './components/RunPhases';
-import RunTablesPanel from './components/RunTablesPanel';
+import RunInProgressPanel, {
+  TableLimit,
+} from './components/RunInProgressPanel';
+import SlowestTablesPanel from './components/SlowestTablesPanel';
 
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -251,7 +249,6 @@ export default function Page(props: PageProps): ReactElement {
   // "now", so these move each second while the run goes on
   const phases = events ? getPhases(events, jobStatus) : [];
   const tables = events ? getTableProgress(events, jobStatus) : [];
-  const eventsSpan = events ? getEventsSpan(events, jobStatus) : undefined;
   // while the run goes on, the tables the job maps that it has not begun yet
   const begun = new Set(tables.map((t) => t.key));
   const waitingTables =
@@ -267,6 +264,7 @@ export default function Page(props: PageProps): ReactElement {
     events?.filter((e) => e.tasks.some((t) => t.error)).length ?? 0;
   const pendingFailures =
     jobRun?.pendingActivities.filter((a) => a.lastFailure) ?? [];
+  const tableLimit = getTableLimit(job?.syncOptions);
   const showLogs =
     !isSystemAppConfigDataLoading && !!systemAppConfigData?.enableRunLogs;
 
@@ -541,38 +539,48 @@ export default function Page(props: PageProps): ReactElement {
             isRunning={isRunning}
           />
 
-          {(tablesTotal > 0 || showLogs) && (
-            <div className="flex flex-wrap items-start gap-5">
-              {tablesTotal > 0 && (
-                <RunTablesPanel
-                  tables={tables}
-                  waiting={waitingTables}
-                  span={eventsSpan}
-                  onViewSelectClicked={onViewSelectClicked}
-                  className={cn(showLogs ? 'flex-[3_1_560px]' : 'flex-1')}
-                />
-              )}
-              {showLogs && (
-                <JobRunLogs
-                  accountId={accountId}
-                  runId={id}
-                  isRunning={isRunning}
-                  className="min-w-0 flex-[2_1_380px]"
-                />
-              )}
-            </div>
+          {isRunning && tablesTotal > 0 && (
+            <RunInProgressPanel
+              tables={tables}
+              waiting={waitingTables}
+              limit={tableLimit}
+              jobHref={
+                jobRun?.jobId
+                  ? `/${account?.name}/jobs/${jobRun.jobId}`
+                  : undefined
+              }
+              now={now}
+              onViewSelectClicked={onViewSelectClicked}
+            />
+          )}
+          {!isRunning && tables.length > 0 && (
+            <SlowestTablesPanel
+              tables={tables}
+              onViewSelectClicked={onViewSelectClicked}
+            />
+          )}
+
+          {showLogs && (
+            <JobRunLogs
+              accountId={accountId}
+              runId={id}
+              isRunning={isRunning}
+              className="min-w-0"
+            />
           )}
 
           <PiiDetectionJobGuard jobId={jobRun?.jobId ?? ''}>
             <JobRunPiiDetectionTable jobRunId={id} isRunning={isRunning} />
           </PiiDetectionJobGuard>
 
-          <JobRunActivityTable
-            jobRunEvents={events}
-            onViewSelectClicked={onViewSelectClicked}
-            jobStatus={jobRun?.status}
-            isRefreshing={isValidating}
-          />
+          <div id="run-activity" className="scroll-mt-6">
+            <JobRunActivityTable
+              jobRunEvents={events}
+              onViewSelectClicked={onViewSelectClicked}
+              jobStatus={jobRun?.status}
+              isRefreshing={isValidating}
+            />
+          </div>
 
           <ViewSelectDialog
             isDialogOpen={isViewSelectDialogOpen}
@@ -681,4 +689,22 @@ function ViewSelectDialog(props: ViewSelectDialogProps): ReactElement {
       </DialogContent>
     </Dialog>
   );
+}
+
+// The worker's limit for a pass of a table when the job sets none.
+const DEFAULT_TABLE_LIMIT_MS = 10 * 60 * 1000;
+
+/**
+ * How long one pass of a table may run, as the worker reads the job's sync options:
+ * the limit per attempt, else the one across attempts, else its default.
+ */
+function getTableLimit(options?: {
+  startToCloseTimeout?: bigint;
+  scheduleToCloseTimeout?: bigint;
+}): TableLimit {
+  const nanos = options?.startToCloseTimeout || options?.scheduleToCloseTimeout;
+  if (nanos && nanos > BigInt(0)) {
+    return { ms: Number(nanos / BigInt(1_000_000)), isDefault: false };
+  }
+  return { ms: DEFAULT_TABLE_LIMIT_MS, isDefault: true };
 }
