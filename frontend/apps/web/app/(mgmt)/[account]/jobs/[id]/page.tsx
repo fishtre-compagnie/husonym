@@ -21,6 +21,7 @@ import JobRecentRuns from './components/RecentRuns';
 import JobScheduleCard from './components/ScheduleCard';
 import WorkflowSettingsCard from './components/WorkflowSettingsCard';
 import JobIdSkeletonForm from './JobIdSkeletonForm';
+import { isPiiDetectJob } from './util';
 
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -95,21 +96,25 @@ export default function Page(props: PageProps): ReactElement {
                     }}
                   />
                 </div>
-                <div>
-                  <ActivitySyncOptionsCard
-                    job={data.job}
-                    mutate={(newjob) => {
-                      queryclient.setQueryData(
-                        createConnectQueryKey({
-                          schema: JobService.method.getJob,
-                          input: { id },
-                          cardinality: undefined,
-                        }),
-                        create(GetJobResponseSchema, { job: newjob })
-                      );
-                    }}
-                  />
-                </div>
+                {/* A sync table has no time limit of its own: only the PII
+                    detection keeps its per-table options. */}
+                {isPiiDetectJob(data.job) && (
+                  <div>
+                    <ActivitySyncOptionsCard
+                      job={data.job}
+                      mutate={(newjob) => {
+                        queryclient.setQueryData(
+                          createConnectQueryKey({
+                            schema: JobService.method.getJob,
+                            input: { id },
+                            cardinality: undefined,
+                          }),
+                          create(GetJobResponseSchema, { job: newjob })
+                        );
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>

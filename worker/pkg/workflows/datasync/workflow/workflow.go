@@ -50,7 +50,15 @@ func New(eelicense license.EEInterface) *Workflow {
 
 var (
 	errInvalidAccountStatusError = errors.New("exiting workflow due to invalid account status")
+	// errRunTimedOut says that the run went past the time limit of its job, and was stopped.
+	errRunTimedOut = errors.New("the run went past the time limit of its job")
 )
+
+// RunTimeoutGrace is the time Temporal leaves a run past the time limit of its job: the
+// limit is the workflow's own, which stops the run there and puts the destination back in
+// order (its triggers, Redis) before it ends. Temporal ending a run itself runs none of that.
+// The schedule of a sync job sets its runs' timeout to the limit plus this grace.
+const RunTimeoutGrace = 15 * time.Minute
 
 // The steps of a run, as the API is told the one a run that does not complete was at. What
 // is none of the others is "other": reading the options and the account status, generating
@@ -156,7 +164,7 @@ func executeWorkflow(
 	licensed bool,
 	totals *workflow_shared.RunTotals,
 	failure *workflow_shared.RunFailure,
-) (*WorkflowResponse, error) {
+) (_ *WorkflowResponse, err error) {
 	ctx, cancelHandler := workflow.WithCancel(wfctx)
 	logger := workflow.GetLogger(ctx)
 
@@ -166,6 +174,35 @@ func executeWorkflow(
 	actOptResp, err := retrieveActivityOptions(ctx, req.JobId, logger)
 	if err != nil {
 		return nil, err
+	}
+
+	// Version 1 stops the run itself at the time limit of its job, rather than leave it to
+	// Temporal: the run is canceled from within, and goes out the way a canceled run does,
+	// the triggers of the destination put back. It goes out at once, without waiting for
+	// the tables to end: one that does not hear it is canceled must not hold the run until
+	// Temporal ends it.
+	deadlineReached := workflow.NewNamedBufferedChannel(ctx, "run-deadline-reached", 1)
+	if workflow.GetVersion(ctx, "run-deadline", workflow.DefaultVersion, 1) >= 1 {
+		if remaining, limit, ok := runDeadline(workflow.GetInfo(ctx), workflow.Now(ctx), actOptResp.RunTimeout); ok {
+			timedOut := false
+			workflow.GoNamed(ctx, "run-deadline", func(ctx workflow.Context) {
+				if workflow.NewTimer(ctx, remaining).Get(ctx, nil) != nil {
+					return // the run ended first
+				}
+				logger.Warn("the run reached the time limit of its job: stopping it", "limit", limit.String())
+				timedOut = true
+				cancelHandler()
+				deadlineReached.SendAsync(true)
+			})
+			// Runs last, after the triggers are put back: what the run ends on is the limit,
+			// whatever the cancellation made the step it was at return.
+			defer func() {
+				if timedOut && err != nil {
+					failure.Category = mgmtv1alpha1.RunErrorCategory_RUN_ERROR_CATEGORY_TIMEOUT
+					err = fmt.Errorf("%w (%s): it was stopped, the tables still being copied with it", errRunTimedOut, limit)
+				}
+			}()
+		}
 	}
 	logger = log.With(
 		logger,
@@ -385,6 +422,10 @@ func executeWorkflow(
 	workselector := workflow.NewSelector(ctx)
 	var activityErr error
 
+	workselector.AddReceive(deadlineReached, func(c workflow.ReceiveChannel, more bool) {
+		c.ReceiveAsync(nil)
+		activityErr = errRunTimedOut
+	})
 	workselector.AddReceive(stopChan, func(c workflow.ReceiveChannel, more bool) {
 		// Stop signal received, exit the routing
 		logger.Warn("received signal to stop workflow based on account status")
@@ -655,6 +696,28 @@ func executeWorkflow(
 
 	logger.Info("data sync workflow completed")
 	return &WorkflowResponse{}, nil
+}
+
+// runDeadline tells how long a run has left before the time limit of its job, the limit
+// itself, and whether there is one. The limit counts from the start of the run. It is the
+// job's, or, earlier, the timeout Temporal has for the run less the grace the workflow needs
+// to put the destination back in order: a schedule made before the grace was added to it
+// gives its runs no more than the job's limit.
+func runDeadline(info *workflow.Info, now time.Time, jobLimit *time.Duration) (remaining, limit time.Duration, ok bool) {
+	if jobLimit != nil && *jobLimit > 0 {
+		limit, ok = *jobLimit, true
+	}
+	if hard := info.WorkflowRunTimeout - RunTimeoutGrace; info.WorkflowRunTimeout > 0 && hard > 0 && (!ok || hard < limit) {
+		limit, ok = hard, true
+	}
+	if !ok {
+		return 0, 0, false
+	}
+	remaining = limit - now.Sub(info.WorkflowStartTime)
+	if remaining < time.Second {
+		remaining = time.Second
+	}
+	return remaining, limit, true
 }
 
 func execRunJobHooksByTiming(

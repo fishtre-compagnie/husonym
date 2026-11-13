@@ -34,6 +34,9 @@ type RetrieveActivityOptionsResponse struct {
 	AccountId            string
 	RequestedRecordCount *uint64
 	Destinations         []*mgmtv1alpha1.JobDestination
+	// RunTimeout is the time limit the job sets on a run, nil when it sets none. The workflow
+	// stops the run there, and still puts the destination back in order.
+	RunTimeout *time.Duration `json:",omitempty"`
 }
 
 func (a *Activity) RetrieveActivityOptions(
@@ -62,7 +65,17 @@ func (a *Activity) RetrieveActivityOptions(
 		AccountId:            job.GetAccountId(),
 		RequestedRecordCount: getRequestedRecordCount(job),
 		Destinations:         job.GetDestinations(),
+		RunTimeout:           getRunTimeout(job),
 	}, nil
+}
+
+func getRunTimeout(job *mgmtv1alpha1.Job) *time.Duration {
+	timeout := job.GetWorkflowOptions().GetRunTimeout()
+	if timeout <= 0 {
+		return nil
+	}
+	d := time.Duration(timeout)
+	return &d
 }
 
 func getRequestedRecordCount(job *mgmtv1alpha1.Job) *uint64 {
@@ -116,48 +129,31 @@ func zeroToNilPointer[T uint64 | int64](value T) *T {
 	return &value
 }
 
+// The options of the activity syncing a page of a table. They are the worker's own: the
+// timeouts and attempts a job may still carry (JobSyncOptions) are no longer read.
+//
+// A page has no time limit of its own: it runs as long as it moves, which its heartbeats tell,
+// and the time limit of the run bounds it (the workflow's). Temporal asks for a limit all the
+// same: a day, far past any page.
+//
+// A page that fails on what may pass by itself, a connection lost or a deadlock, or whose
+// worker dies, is attempted again, twice at most; one that fails on its query is not (see the
+// sync activity).
 const (
-	defaultStartCloseTimeout = 10 * time.Minute
-	defaultMaxAttempts       = 1
+	pageStartToCloseTimeout = 24 * time.Hour
+	pageHeartbeatTimeout    = 1 * time.Minute
+	pageMaxAttempts         = 3
+	pageFirstRetryAfter     = 30 * time.Second
 )
 
-func getSyncActivityOptionsFromJob(job *mgmtv1alpha1.Job) *workflow.ActivityOptions {
-	syncActivityOptions := &workflow.ActivityOptions{
-		HeartbeatTimeout: 1 * time.Minute,
+func getSyncActivityOptionsFromJob(_ *mgmtv1alpha1.Job) *workflow.ActivityOptions {
+	return &workflow.ActivityOptions{
+		StartToCloseTimeout: pageStartToCloseTimeout,
+		HeartbeatTimeout:    pageHeartbeatTimeout,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    pageFirstRetryAfter,
+			BackoffCoefficient: 2,
+			MaximumAttempts:    pageMaxAttempts,
+		},
 	}
-	if job.SyncOptions != nil {
-		if job.SyncOptions.StartToCloseTimeout != nil {
-			syncActivityOptions.StartToCloseTimeout = time.Duration(
-				*job.SyncOptions.StartToCloseTimeout,
-			)
-		}
-		if job.SyncOptions.ScheduleToCloseTimeout != nil {
-			syncActivityOptions.ScheduleToCloseTimeout = time.Duration(
-				*job.SyncOptions.ScheduleToCloseTimeout,
-			)
-		}
-		if job.SyncOptions.RetryPolicy != nil {
-			if job.SyncOptions.RetryPolicy.MaximumAttempts != nil {
-				if syncActivityOptions.RetryPolicy == nil {
-					syncActivityOptions.RetryPolicy = &temporal.RetryPolicy{}
-				}
-				syncActivityOptions.RetryPolicy.MaximumAttempts = *job.SyncOptions.RetryPolicy.MaximumAttempts
-			}
-		}
-	} else {
-		return &workflow.ActivityOptions{
-			StartToCloseTimeout: defaultStartCloseTimeout, // backwards compatible default for pre-existing jobs that do not have sync options defined
-			RetryPolicy: &temporal.RetryPolicy{
-				MaximumAttempts: defaultMaxAttempts, // backwards compatible default for pre-existing jobs that do not have sync options defined
-			},
-		}
-	}
-	if syncActivityOptions.StartToCloseTimeout == 0 &&
-		syncActivityOptions.ScheduleToCloseTimeout == 0 {
-		syncActivityOptions.StartToCloseTimeout = defaultStartCloseTimeout
-	}
-	if syncActivityOptions.RetryPolicy == nil {
-		syncActivityOptions.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: defaultMaxAttempts}
-	}
-	return syncActivityOptions
 }

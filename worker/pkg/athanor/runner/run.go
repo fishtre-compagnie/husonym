@@ -51,6 +51,16 @@ type TablePage struct {
 	// Keys carries transformed keys from the tables holding them to the foreign keys
 	// following them; required only when the plan says so.
 	Keys KeyStore
+	// Progress, when set, counts what the page does as it goes, for a watcher.
+	Progress *Progress
+	// QueryTag, when set, is written in a comment ahead of the query that reads the page,
+	// so that the query can be found among those the source runs (QueryMarker).
+	QueryTag string
+}
+
+// QueryMarker is the text a page whose QueryTag is tag carries in the query reading it.
+func QueryMarker(tag string) string {
+	return "husonym-page:" + tag
 }
 
 // PageResult tells what a page read and whether the table has more pages.
@@ -110,8 +120,8 @@ func RunTablePage(
 
 	// The page is written in one transaction: whole or not at all.
 	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
-		var w sqlio.RowWriter = sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table,
-			sqlio.WithOnConflict(wc.OnConflict, pkColumns))
+		w := page.Progress.rowsWriter(sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table,
+			sqlio.WithOnConflict(wc.OnConflict, pkColumns)))
 		// Rows a writer leaves out are counted, and taken out of the keys the table
 		// publishes: a key published for a row that was not written would send its
 		// children to a parent the destination never received.
@@ -130,7 +140,7 @@ func RunTablePage(
 			publisher.inner = w
 			w = publisher
 		}
-		return reader.pipeline(ctx, page.BatchSize, spec, w, writtenColumns(mapped, plan.GeneratedColumns))
+		return reader.pipeline(ctx, page.BatchSize, spec, page.Progress.batchWriter(w), writtenColumns(mapped, plan.GeneratedColumns))
 	})
 	return reader.finish(err)
 }
@@ -168,9 +178,10 @@ func RunUpdatePage(ctx context.Context, src Querier, dst Destination, dialect sq
 			ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table,
 			foreignKeys: append(slices.Clone(translated), ownKey(plan)),
 			onDiscard:   func([]int) {},
-			inner:       sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey),
+			inner:       page.Progress.rowsWriter(sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey)),
 		}
-		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, w, slices.Concat(plan.PrimaryKey, plan.Columns))
+		written := slices.Concat(plan.PrimaryKey, plan.Columns)
+		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, page.Progress.batchWriter(w), written)
 	})
 	return reader.finish(err)
 }
@@ -182,6 +193,7 @@ type pageReader struct {
 	columns   []string
 	typeNames []string
 	observe   func(columns []string, row []any)
+	progress  *Progress
 	orderIdx  []int
 	result    *PageResult
 }
@@ -199,6 +211,9 @@ func openPage(
 	if err != nil {
 		return nil, err
 	}
+	if page.QueryTag != "" {
+		query = "/* " + QueryMarker(page.QueryTag) + " */ " + query
+	}
 	rows, err := src.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("runner: lecture de %s.%s: %w", plan.Schema, plan.Table, err)
@@ -214,7 +229,7 @@ func openPage(
 	}
 	return &pageReader{
 		plan: plan, rows: rows, columns: columnsOf(colTypes), typeNames: typeNames,
-		observe: observe, result: &PageResult{},
+		observe: observe, progress: page.Progress, result: &PageResult{},
 	}, nil
 }
 
@@ -236,6 +251,7 @@ func (r *pageReader) observeRow(columns []string, row []any) {
 		r.orderIdx = columnIndexes(columns, r.plan.OrderByColumns)
 	}
 	r.result.RowsRead++
+	r.progress.rowRead()
 	if len(r.orderIdx) == len(r.plan.OrderByColumns) {
 		last := make([]any, len(r.orderIdx))
 		for i, idx := range r.orderIdx {

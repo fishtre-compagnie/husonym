@@ -30,6 +30,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { WorkflowSettingsSchema } from '../../../new/job/job-form-validations';
 import { toWorkflowOptions } from '../../util';
+import { isPiiDetectJob } from '../util';
 
 interface Props {
   job: Job;
@@ -114,6 +115,8 @@ export default function WorkflowSettingsCard({
                     The maximum length of time (in minutes) that a single job
                     run is allowed to span before it times out. <code>0</code>{' '}
                     means no overall timeout.
+                    {!isPiiDetectJob(job) &&
+                      ' A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.'}
                   </FormDescription>
                   <FormControl>
                     <Input

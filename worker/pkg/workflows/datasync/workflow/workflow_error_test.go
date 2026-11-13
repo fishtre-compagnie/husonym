@@ -478,3 +478,82 @@ func Test_Workflow_TellsTheErrorTheRunEndsOnWhenSeveralTablesFail(t *testing.T) 
 		assert.NotEqual(t, categoryTimeout, ended.ErrorCategory)
 	}
 }
+
+// A run that goes past the time limit of its job is stopped by the workflow itself: the tables
+// being copied are canceled, the triggers of the destination put back, and the run tells a
+// timeout at the step it was at. It goes out at once, though a table does not end.
+func Test_Workflow_StopsItselfAtTheTimeLimitOfItsJob(t *testing.T) {
+	cases := map[string]struct {
+		jobLimit    time.Duration
+		temporalCap time.Duration
+		stoppedAt   time.Duration
+	}{
+		"the job's limit, with Temporal's grace": {
+			jobLimit: 30 * time.Minute, temporalCap: 30*time.Minute + RunTimeoutGrace, stoppedAt: 30 * time.Minute,
+		},
+		"a schedule made before the grace: before Temporal ends the run": {
+			jobLimit: 2 * time.Hour, temporalCap: 2 * time.Hour, stoppedAt: 2*time.Hour - RunTimeoutGrace,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			run := newFailingRun()
+			run.env.SetWorkflowRunTimeout(tc.temporalCap)
+			startedAt := run.env.Now()
+			limit := tc.jobLimit
+			var activityOpts *syncactivityopts_activity.Activity
+			run.env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
+				Return(&syncactivityopts_activity.RetrieveActivityOptionsResponse{
+					SyncActivityOptions: &workflow.ActivityOptions{StartToCloseTimeout: time.Minute},
+					RunTimeout:          &limit,
+				}, nil)
+			var triggersActivity *destinationtriggers_activity.Activity
+			run.env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+				Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil)
+			var restoredAt []time.Duration
+			run.env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+				Return(func(context.Context, *destinationtriggers_activity.RestoreTriggersRequest) (*destinationtriggers_activity.RestoreTriggersResponse, error) {
+					restoredAt = append(restoredAt, run.env.Now().Sub(startedAt))
+					return &destinationtriggers_activity.RestoreTriggersResponse{}, nil
+				})
+			// A table that does not hear it is canceled.
+			run.tableSync = func(ctx workflow.Context, _ *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+				deaf, _ := workflow.NewDisconnectedContext(ctx)
+				return nil, workflow.Sleep(deaf, 10*time.Hour)
+			}
+
+			ended, err := run.execute(t)
+
+			require.ErrorContains(t, err, errRunTimedOut.Error())
+			assert.Equal(t, runusage.OutcomeFailed, ended.Outcome)
+			assert.Equal(t, categoryTimeout, ended.ErrorCategory)
+			assert.Equal(t, stepTableSync, ended.ErrorStep)
+			require.Len(t, restoredAt, 1, "the triggers are put back")
+			assert.InDelta(t, tc.stoppedAt.Seconds(), restoredAt[0].Seconds(), 60, "put back at the limit")
+		})
+	}
+}
+
+func Test_runDeadline(t *testing.T) {
+	start := time.Date(2026, 11, 13, 8, 0, 0, 0, time.UTC)
+	hour := time.Hour
+	info := func(temporalCap time.Duration) *workflow.Info {
+		return &workflow.Info{WorkflowStartTime: start, WorkflowRunTimeout: temporalCap}
+	}
+
+	_, _, ok := runDeadline(info(0), start, nil)
+	assert.False(t, ok, "no limit anywhere")
+
+	remaining, limit, ok := runDeadline(info(hour+RunTimeoutGrace), start.Add(20*time.Minute), &hour)
+	require.True(t, ok)
+	assert.Equal(t, hour, limit)
+	assert.Equal(t, 40*time.Minute, remaining, "counted from the start of the run")
+
+	_, limit, ok = runDeadline(info(hour), start, &hour)
+	require.True(t, ok)
+	assert.Equal(t, hour-RunTimeoutGrace, limit, "Temporal ends the run at the job's limit: the grace is taken before")
+
+	remaining, _, ok = runDeadline(info(0), start.Add(2*hour), &hour)
+	require.True(t, ok)
+	assert.Equal(t, time.Second, remaining, "a limit already past stops the run at once")
+}

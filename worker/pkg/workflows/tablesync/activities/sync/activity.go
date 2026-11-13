@@ -156,6 +156,7 @@ func (a *Activity) SyncTable(
 	// engine counted what the page read: Athanor does, Benthos does not.
 	counted := false
 	defer func() {
+		retErr = withRetryability(retErr)
 		if resp != nil {
 			resp.Retries = int64(info.Attempt) - 1
 			resp.Uncounted = !counted
@@ -235,6 +236,9 @@ func (a *Activity) SyncTable(
 			return nil, perr
 		}
 		if plan != nil {
+			// The page heartbeats on its own, with what it counts: the monitor of the stream
+			// ends here, there is no stream.
+			streamDone <- nil
 			aresp, aerr := a.runAthanor(ctx, req, plan, job, consistencyKey, info.Attempt, session, getConnectionById, logger)
 			if aerr != nil {
 				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
