@@ -643,7 +643,8 @@ func (s *Service) CreateJob(
 		}
 	}
 	if cj.WorkflowOptions != nil && cj.WorkflowOptions.RunTimeout != nil {
-		action.WorkflowRunTimeout = time.Duration(*cj.WorkflowOptions.RunTimeout)
+		isSync := req.Msg.GetJobType() == nil || req.Msg.GetJobType().GetSync() != nil
+		action.WorkflowRunTimeout = scheduleRunTimeout(cj.WorkflowOptions.RunTimeout, isSync)
 	}
 
 	scheduleId, err := s.temporalmgr.CreateSchedule(
@@ -1906,7 +1907,8 @@ func (s *Service) SetJobWorkflowOptions(
 							schedule.Description.Schedule.Action,
 						)
 					}
-					action.WorkflowRunTimeout = getDurationFromInt(wfOptions.RunTimeout)
+					isSync := jobResp.Msg.GetJob().GetJobType().GetPiiDetect() == nil
+					action.WorkflowRunTimeout = scheduleRunTimeout(wfOptions.RunTimeout, isSync)
 					schedule.Description.Schedule.Action = action
 					return &temporalclient.ScheduleUpdate{
 						Schedule: &schedule.Description.Schedule,
@@ -1933,6 +1935,17 @@ func (s *Service) SetJobWorkflowOptions(
 	return connect.NewResponse(
 		&mgmtv1alpha1.SetJobWorkflowOptionsResponse{Job: updatedJob.Msg.Job},
 	), nil
+}
+
+// scheduleRunTimeout is the timeout Temporal sets on the runs of a job's schedule. A sync run
+// stops itself at the time limit of its job, and puts its destination back in order before it
+// ends: Temporal leaves it the time to (RunTimeoutGrace), and ends it only past that.
+func scheduleRunTimeout(runTimeout *int64, isSync bool) time.Duration {
+	timeout := getDurationFromInt(runTimeout)
+	if timeout > 0 && isSync {
+		timeout += datasync_workflow.RunTimeoutGrace
+	}
+	return timeout
 }
 
 func getDurationFromInt(input *int64) time.Duration {

@@ -67,9 +67,7 @@ import JobRunActivityTable from './components/JobRunActivityTable';
 import JobRunLogs from './components/JobRunLogs';
 import JobRunPiiDetectionTable from './components/JobRunPiiDetectionTable/JobRunPiiDetectionTable';
 import RunPhases from './components/RunPhases';
-import RunInProgressPanel, {
-  TableLimit,
-} from './components/RunInProgressPanel';
+import RunInProgressPanel from './components/RunInProgressPanel';
 import SlowestTablesPanel from './components/SlowestTablesPanel';
 
 export default function Page(props: PageProps): ReactElement {
@@ -264,7 +262,9 @@ export default function Page(props: PageProps): ReactElement {
     events?.filter((e) => e.tasks.some((t) => t.error)).length ?? 0;
   const pendingFailures =
     jobRun?.pendingActivities.filter((a) => a.lastFailure) ?? [];
-  const tableLimit = getTableLimit(job?.syncOptions);
+  const runLimitMs = job?.workflowOptions?.runTimeout
+    ? Number(job.workflowOptions.runTimeout / BigInt(1_000_000))
+    : undefined;
   const showLogs =
     !isSystemAppConfigDataLoading && !!systemAppConfigData?.enableRunLogs;
 
@@ -543,7 +543,7 @@ export default function Page(props: PageProps): ReactElement {
             <RunInProgressPanel
               tables={tables}
               waiting={waitingTables}
-              limit={tableLimit}
+              runLimitMs={runLimitMs}
               jobHref={
                 jobRun?.jobId
                   ? `/${account?.name}/jobs/${jobRun.jobId}`
@@ -689,22 +689,4 @@ function ViewSelectDialog(props: ViewSelectDialogProps): ReactElement {
       </DialogContent>
     </Dialog>
   );
-}
-
-// The worker's limit for a pass of a table when the job sets none.
-const DEFAULT_TABLE_LIMIT_MS = 10 * 60 * 1000;
-
-/**
- * How long one pass of a table may run, as the worker reads the job's sync options:
- * the limit per attempt, else the one across attempts, else its default.
- */
-function getTableLimit(options?: {
-  startToCloseTimeout?: bigint;
-  scheduleToCloseTimeout?: bigint;
-}): TableLimit {
-  const nanos = options?.startToCloseTimeout || options?.scheduleToCloseTimeout;
-  if (nanos && nanos > BigInt(0)) {
-    return { ms: Number(nanos / BigInt(1_000_000)), isDefault: false };
-  }
-  return { ms: DEFAULT_TABLE_LIMIT_MS, isDefault: true };
 }

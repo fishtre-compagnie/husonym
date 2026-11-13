@@ -160,6 +160,8 @@ func Test_Activity(t *testing.T) {
 		require.Nil(t, res.RequestedRecordCount)
 		require.Equal(t, accountId, res.AccountId)
 		require.NotNil(t, res.SyncActivityOptions)
+		require.NotNil(t, res.RunTimeout)
+		require.Equal(t, time.Duration(4), *res.RunTimeout)
 	})
 	t.Run("generate requested row count", func(t *testing.T) {
 		val, err := env.ExecuteActivity(
@@ -190,41 +192,39 @@ func Test_Activity(t *testing.T) {
 }
 
 func Test_getSyncActivityOptionsFromJob(t *testing.T) {
-	defaultOpts := &workflow.ActivityOptions{
-		StartToCloseTimeout: 10 * time.Minute,
-		RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
+	expected := &workflow.ActivityOptions{
+		StartToCloseTimeout: 24 * time.Hour,
+		HeartbeatTimeout:    1 * time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    30 * time.Second,
+			BackoffCoefficient: 2,
+			MaximumAttempts:    3,
+		},
 	}
-	type testcase struct {
-		name     string
-		input    *mgmtv1alpha1.Job
-		expected *workflow.ActivityOptions
+	// What a job still carries of the options it once set is not read.
+	tests := map[string]*mgmtv1alpha1.Job{
+		"no sync options": {},
+		"timeouts and attempts of the job": {
+			SyncOptions: &mgmtv1alpha1.ActivityOptions{
+				StartToCloseTimeout:    shared.Ptr(int64(2)),
+				ScheduleToCloseTimeout: shared.Ptr(int64(3)),
+				RetryPolicy:            &mgmtv1alpha1.RetryPolicy{MaximumAttempts: shared.Ptr(int32(1))},
+			},
+		},
 	}
-	tests := []testcase{
-		{name: "nil sync opts", input: &mgmtv1alpha1.Job{}, expected: defaultOpts},
-		{name: "custom start to close timeout", input: &mgmtv1alpha1.Job{
-			SyncOptions: &mgmtv1alpha1.ActivityOptions{
-				StartToCloseTimeout: shared.Ptr(int64(2)),
-			},
-		}, expected: &workflow.ActivityOptions{StartToCloseTimeout: 2, RetryPolicy: defaultOpts.RetryPolicy, HeartbeatTimeout: 1 * time.Minute}},
-		{name: "custom schedule to close timeout", input: &mgmtv1alpha1.Job{
-			SyncOptions: &mgmtv1alpha1.ActivityOptions{
-				ScheduleToCloseTimeout: shared.Ptr(int64(2)),
-			},
-		}, expected: &workflow.ActivityOptions{ScheduleToCloseTimeout: 2, RetryPolicy: defaultOpts.RetryPolicy, HeartbeatTimeout: 1 * time.Minute}},
-		{name: "custom retry policy", input: &mgmtv1alpha1.Job{
-			SyncOptions: &mgmtv1alpha1.ActivityOptions{
-				RetryPolicy: &mgmtv1alpha1.RetryPolicy{
-					MaximumAttempts: shared.Ptr(int32(2)),
-				},
-			},
-		}, expected: &workflow.ActivityOptions{StartToCloseTimeout: defaultOpts.StartToCloseTimeout, RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 2}, HeartbeatTimeout: 1 * time.Minute}},
-	}
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s_%s", t.Name(), test.name), func(t *testing.T) {
-			output := getSyncActivityOptionsFromJob(test.input)
-			assert.Equal(t, test.expected, output)
+	for name, job := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, expected, getSyncActivityOptionsFromJob(job))
 		})
 	}
+}
+
+func Test_getRunTimeout(t *testing.T) {
+	assert.Nil(t, getRunTimeout(&mgmtv1alpha1.Job{}))
+	assert.Nil(t, getRunTimeout(&mgmtv1alpha1.Job{WorkflowOptions: &mgmtv1alpha1.WorkflowOptions{RunTimeout: shared.Ptr(int64(0))}}))
+	got := getRunTimeout(&mgmtv1alpha1.Job{WorkflowOptions: &mgmtv1alpha1.WorkflowOptions{RunTimeout: shared.Ptr(int64(2 * time.Hour))}})
+	require.NotNil(t, got)
+	assert.Equal(t, 2*time.Hour, *got)
 }
 
 func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {

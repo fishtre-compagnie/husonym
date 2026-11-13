@@ -10,8 +10,10 @@ package sync_activity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -28,6 +30,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/phoneformat"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/google/uuid"
+	"go.temporal.io/sdk/activity"
 )
 
 const athanorBatchSize = 1000
@@ -245,7 +248,25 @@ func (a *Activity) runAthanor(
 		},
 	}
 
-	res, err := runPage(ctx, srcDB, dstDB, dialect, &runner.TablePage{
+	// The page is watched as it runs (pageWatch): it heartbeats with what it counted, and is
+	// given up when it no longer moves.
+	progress := &runner.Progress{}
+	tag := newQueryTag()
+	probe := newSourceProbe(srcDB, dialect, tag)
+	pageCtx, stopPage := context.WithCancelCause(ctx)
+	defer stopPage(nil)
+	watch := &pageWatch{
+		progress:   progress,
+		probe:      probe,
+		heartbeat:  func(details ...any) { activity.RecordHeartbeat(ctx, details...) },
+		stallAfter: stallAfter,
+		every:      watchEvery,
+		now:        time.Now,
+		logger:     logger,
+	}
+	go watch.run(pageCtx, func(reason error) { stopPage(reason) })
+
+	res, err := runPage(pageCtx, srcDB, dstDB, dialect, &runner.TablePage{
 		Plan:             plan,
 		Mappings:         job.GetMappings(),
 		BatchSize:        athanorBatchSize,
@@ -254,8 +275,18 @@ func (a *Activity) runAthanor(
 		AfterOrderValues: after,
 		Env:              env,
 		Keys:             newRedisKeyStore(a.redisclient),
+		Progress:         progress,
+		QueryTag:         tag,
 	})
 	if err != nil {
+		if pageCtx.Err() != nil {
+			// The page was given up, or the activity canceled: the source may still run its
+			// query, which the closed connection does not stop on MySQL.
+			stopSourceQuery(probe, logger)
+		}
+		if cause := context.Cause(pageCtx); errors.Is(cause, errPageStalled) {
+			return nil, fmt.Errorf("%s.%s: %w", plan.Schema, plan.Table, cause)
+		}
 		return nil, err
 	}
 	logger.Info("moteur=athanor : page écrite", "lignes", res.RowsRead, "pageSuivante", res.HasMore)
@@ -430,4 +461,17 @@ func conflictFromMssql(oc *mgmtv1alpha1.MssqlOnConflictConfig) sqlio.ConflictAct
 		return sqlio.ConflictDoNothing
 	}
 	return sqlio.ConflictNone
+}
+
+// stopSourceQuery asks the source to stop the query of a page that was given up, on a context
+// of its own: the page's is done.
+func stopSourceQuery(probe sourceProbe, logger *slog.Logger) {
+	if probe == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), stopQueryAfter)
+	defer cancel()
+	if err := probe.stop(ctx); err != nil {
+		logger.Warn("the query of the table could not be stopped on the source", "error", err)
+	}
 }

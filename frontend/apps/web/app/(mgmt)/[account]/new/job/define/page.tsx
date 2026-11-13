@@ -285,6 +285,8 @@ export default function Page(props: PageProps): ReactElement {
                           The maximum length of time (in minutes) that a single
                           job run is allowed to span before it times out.{' '}
                           <code>0</code> means no overall timeout.
+                          {newJobType !== 'pii-detection' &&
+                            ' A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.'}
                         </FormDescription>
                         <FormControl>
                           <Input
@@ -357,14 +359,18 @@ export default function Page(props: PageProps): ReactElement {
                       </FormItem>
                     )}
                   />
-                  <SyncActivityOptionsForm
-                    value={form.watch('syncActivityOptions') ?? {}}
-                    setValue={(value) => {
-                      form.setValue('syncActivityOptions', value);
-                    }}
-                    errors={form.formState.errors?.syncActivityOptions}
-                    jobtype={newJobType}
-                  />
+                  {/* A sync table has no time limit of its own: it runs as long
+                      as it makes progress, within the job run timeout. */}
+                  {newJobType === 'pii-detection' && (
+                    <SyncActivityOptionsForm
+                      value={form.watch('syncActivityOptions') ?? {}}
+                      setValue={(value) => {
+                        form.setValue('syncActivityOptions', value);
+                      }}
+                      errors={form.formState.errors?.syncActivityOptions}
+                      jobtype={newJobType}
+                    />
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

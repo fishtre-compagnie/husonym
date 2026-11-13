@@ -7,18 +7,12 @@ import Link from 'next/link';
 import { ReactElement } from 'react';
 import { formatSpan } from '../../components/run-format';
 
-/** How long one pass of a table may run before the run gives it up. */
-export interface TableLimit {
-  ms: number;
-  // the job sets none: the worker's default applies
-  isDefault: boolean;
-}
-
 interface Props {
   tables: TableProgress[];
   // tables the job maps that the run has not begun yet
   waiting: string[];
-  limit?: TableLimit;
+  // the time limit of the run (the job's run timeout), none when the job sets none
+  runLimitMs?: number;
   // where the limit is changed: the job's page
   jobHref?: string;
   now: Date;
@@ -29,16 +23,16 @@ interface Props {
 const UP_NEXT = 4;
 const JUST_FINISHED = 3;
 
-const ROW_GRID =
-  'grid grid-cols-[minmax(0,1fr)_120px_minmax(180px,320px)_32px] items-center gap-5';
+const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_120px_32px] items-center gap-5';
 
 /**
- * While the run goes on: the tables it is copying now, how long each has run, and how
- * much of the limit per table that is, so a table about to time out shows before it
- * does. Below, what comes next and what just ended.
+ * While the run goes on: the tables it is copying now and how long each has run. A table
+ * has no time limit of its own: it is stopped when it no longer makes progress, and the
+ * run's limit bounds them all. Below, what comes next and what just ended.
  */
 export default function RunInProgressPanel(props: Props): ReactElement {
-  const { tables, waiting, limit, jobHref, now, onViewSelectClicked } = props;
+  const { tables, waiting, runLimitMs, jobHref, now, onViewSelectClicked } =
+    props;
 
   const running = tables
     .filter((t) => t.status === 'running')
@@ -61,23 +55,26 @@ export default function RunInProgressPanel(props: Props): ReactElement {
         <Pill tone="brand">
           {running.length} {running.length === 1 ? 'table' : 'tables'}
         </Pill>
-        {limit && (
-          <span className="ml-auto text-[13px] text-muted-foreground">
-            Limit per table:{' '}
-            <span className="font-medium text-foreground">
-              {formatSpan(limit.ms)}
-            </span>
-            {limit.isDefault && ' (default)'}
-            {jobHref && (
-              <>
-                {' · '}
-                <Link href={jobHref} className="text-link hover:underline">
-                  change
-                </Link>
-              </>
-            )}
-          </span>
-        )}
+        <span className="ml-auto text-[13px] text-muted-foreground">
+          {runLimitMs ? (
+            <>
+              Run limit:{' '}
+              <span className="font-medium text-foreground">
+                {formatSpan(runLimitMs)}
+              </span>
+            </>
+          ) : (
+            'No run limit'
+          )}
+          {jobHref && (
+            <>
+              {' · '}
+              <Link href={jobHref} className="text-link hover:underline">
+                {runLimitMs ? 'change' : 'set one'}
+              </Link>
+            </>
+          )}
+        </span>
       </div>
 
       <div className="px-5 pb-1.5 pt-4">
@@ -120,7 +117,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
+          <div className="min-w-[420px]">
             <div
               className={cn(
                 ROW_GRID,
@@ -129,23 +126,17 @@ export default function RunInProgressPanel(props: Props): ReactElement {
             >
               <span>Table</span>
               <span className="text-right">Running for</span>
-              <span>{limit ? 'Share of the limit' : ''}</span>
               <span className="sr-only">Actions</span>
             </div>
             <ul className="m-0 list-none p-0">
               {running.map(({ t, since }) => {
                 const elapsed = Math.max(0, now.getTime() - since.getTime());
-                const ratio = limit ? elapsed / limit.ms : 0;
-                const tone =
-                  ratio >= 0.8 ? 'danger' : ratio >= 0.5 ? 'warn' : 'brand';
-                const left = limit ? limit.ms - elapsed : 0;
                 return (
                   <li
                     key={t.key}
                     className={cn(
                       ROW_GRID,
-                      'border-t border-line-soft px-5 py-3',
-                      tone === 'danger' && 'bg-danger-soft'
+                      'border-t border-line-soft px-5 py-3'
                     )}
                   >
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -170,56 +161,9 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                         started {format(since, 'HH:mm:ss')}
                       </span>
                     </div>
-                    <span
-                      className={cn(
-                        'text-right font-mono text-sm font-medium',
-                        tone === 'danger'
-                          ? 'text-danger-fg'
-                          : tone === 'warn'
-                            ? 'text-warn-fg'
-                            : 'text-link'
-                      )}
-                    >
+                    <span className="text-right font-mono text-sm font-medium text-link">
                       {formatSpan(elapsed)}
                     </span>
-                    {limit ? (
-                      <div className="flex flex-col gap-1">
-                        <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-                          <div
-                            className={cn(
-                              'progress-flow h-full min-w-1 rounded-full',
-                              tone === 'danger'
-                                ? 'bg-danger'
-                                : tone === 'warn'
-                                  ? 'bg-warn'
-                                  : 'bg-primary'
-                            )}
-                            style={{
-                              width: `${Math.min(100, ratio * 100)}%`,
-                            }}
-                          />
-                        </div>
-                        <span
-                          className={cn(
-                            'text-xs',
-                            tone === 'danger'
-                              ? 'text-danger-fg'
-                              : tone === 'warn'
-                                ? 'text-warn-fg'
-                                : 'text-muted-foreground'
-                          )}
-                        >
-                          {Math.floor(ratio * 100)} %
-                          {tone === 'danger'
-                            ? left > 0
-                              ? ` · times out in ${formatSpan(left)}`
-                              : ' · past the limit'
-                            : ` of ${formatSpan(limit.ms)}`}
-                        </span>
-                      </div>
-                    ) : (
-                      <span />
-                    )}
                     <button
                       type="button"
                       onClick={() => onViewSelectClicked(t.schema, t.table)}
