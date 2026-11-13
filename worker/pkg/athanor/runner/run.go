@@ -180,7 +180,8 @@ func RunUpdatePage(ctx context.Context, src Querier, dst Destination, dialect sq
 			onDiscard:   func([]int) {},
 			inner:       page.Progress.rowsWriter(sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey)),
 		}
-		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, page.Progress.batchWriter(w), slices.Concat(plan.PrimaryKey, plan.Columns))
+		written := slices.Concat(plan.PrimaryKey, plan.Columns)
+		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, page.Progress.batchWriter(w), written)
 	})
 	return reader.finish(err)
 }

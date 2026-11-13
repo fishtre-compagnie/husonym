@@ -99,7 +99,7 @@ func (p *mysqlProbe) find(ctx context.Context) (id int64, state string, found bo
 	return id, state, found, rows.Err()
 }
 
-func (p *mysqlProbe) state(ctx context.Context) (queryState, string) {
+func (p *mysqlProbe) state(ctx context.Context) (answer queryState, detail string) {
 	_, state, found, err := p.find(ctx)
 	switch {
 	case err != nil:
@@ -148,7 +148,7 @@ func (p *postgresProbe) find(ctx context.Context) (pid int64, state, waitType st
 	return pid, state, waitType, found, rows.Err()
 }
 
-func (p *postgresProbe) state(ctx context.Context) (queryState, string) {
+func (p *postgresProbe) state(ctx context.Context) (answer queryState, detail string) {
 	_, state, waitType, found, err := p.find(ctx)
 	switch {
 	case err != nil:
