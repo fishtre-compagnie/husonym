@@ -30,9 +30,9 @@ export function getJobRunStatusMeta(
     case JobRunStatusEnum.COMPLETE:
       return { label: 'Complete', tone: 'ok', live: false };
     case JobRunStatusEnum.RUNNING:
-      return { label: 'Running', tone: 'brand', live: true };
+      return { label: 'Running', tone: 'live', live: true };
     case JobRunStatusEnum.PENDING:
-      return { label: 'Pending', tone: 'quiet', live: true };
+      return { label: 'Pending', tone: 'pending', live: true };
     case JobRunStatusEnum.ERROR:
       return { label: 'Error', tone: 'danger', live: false };
     case JobRunStatusEnum.FAILED:
@@ -40,9 +40,9 @@ export function getJobRunStatusMeta(
     case JobRunStatusEnum.TIMED_OUT:
       return { label: 'Timed out', tone: 'warn', live: false };
     case JobRunStatusEnum.CANCELED:
-      return { label: 'Canceled', tone: 'muted', live: false };
+      return { label: 'Canceled', tone: 'stopped', live: false };
     case JobRunStatusEnum.TERMINATED:
-      return { label: 'Terminated', tone: 'muted', live: false };
+      return { label: 'Terminated', tone: 'stopped', live: false };
     default:
       return { label: 'Unknown', tone: 'muted', live: false };
   }

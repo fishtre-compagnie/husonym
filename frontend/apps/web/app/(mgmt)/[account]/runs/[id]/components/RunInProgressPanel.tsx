@@ -52,7 +52,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
         <h2 className="m-0 font-display text-base font-semibold">
           In progress
         </h2>
-        <Pill tone="brand">
+        <Pill tone="live">
           {running.length} {running.length === 1 ? 'table' : 'tables'}
         </Pill>
         <span className="ml-auto text-[13px] text-muted-foreground">
@@ -141,7 +141,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                   >
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <div className="flex min-w-0 items-center gap-2">
-                        <StatusDot tone="brand" label="Running" pulse />
+                        <StatusDot tone="live" label="Running" pulse />
                         <span
                           className="min-w-0 truncate font-mono text-[13px]"
                           title={t.key}

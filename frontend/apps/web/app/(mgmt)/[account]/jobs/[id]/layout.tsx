@@ -308,7 +308,8 @@ function useGetSidebarNavItems(job?: Job): JobTab[] {
     case 'Sync Job': {
       const nav: JobTab[] = [
         { title: 'Overview', href: basePath },
-        { title: 'Source & mapping', href: `${basePath}/source` },
+        { title: 'Source', href: `${basePath}/source` },
+        { title: 'Mapping', href: `${basePath}/mapping` },
         { title: 'Destinations', href: `${basePath}/destinations` },
         // Only sync jobs copy columns from a source, so only they can copy one in clear.
         {

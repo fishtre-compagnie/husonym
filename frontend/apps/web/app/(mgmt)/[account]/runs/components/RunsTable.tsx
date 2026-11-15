@@ -113,8 +113,8 @@ export default function RunsTable(props: RunsTableProps): ReactElement {
       description="Every execution of your jobs, with its status and how long it took."
       actions={
         statusCounts.live > 0 ? (
-          <Pill tone="brand">
-            <StatusDot tone="brand" pulse />
+          <Pill tone="live">
+            <StatusDot tone="live" pulse />
             {statusCounts.live} running now
           </Pill>
         ) : undefined

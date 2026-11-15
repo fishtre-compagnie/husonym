@@ -75,9 +75,9 @@ interface Props {
 const OUTCOME_TONE: Record<RunOutcome, Tone> = {
   succeeded: 'ok',
   failed: 'danger',
-  canceled: 'muted',
-  running: 'brand',
-  pending: 'warn',
+  canceled: 'stopped',
+  running: 'live',
+  pending: 'pending',
   unknown: 'muted',
 };
 
@@ -313,7 +313,7 @@ export default function HomeDashboard({
         column: `${c.table}.${c.column}`,
         sub: c.jobName,
         kind: categoryLabel(c.category),
-        href: `${base}/jobs/${c.jobId}/source`,
+        href: `${base}/jobs/${c.jobId}/mapping`,
       });
     }
     return items;
@@ -517,7 +517,7 @@ export default function HomeDashboard({
               <PanelHeader
                 leading={
                   <StatusDot
-                    tone={live.length > 0 ? 'brand' : 'muted'}
+                    tone={live.length > 0 ? 'live' : 'muted'}
                     pulse={live.length > 0}
                   />
                 }

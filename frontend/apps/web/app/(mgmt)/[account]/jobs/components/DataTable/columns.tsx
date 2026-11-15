@@ -23,7 +23,7 @@ import { RunJobButton } from './run-job-button';
 import { SortHeader } from './sort-header';
 
 const STATE_TONE: Record<JobState, Tone> = {
-  running: 'brand',
+  running: 'live',
   active: 'ok',
   failing: 'danger',
   paused: 'muted',
@@ -197,13 +197,16 @@ function runTone(s: JobRunStatus): { bar: string; label: string } {
   }
   if (isRunLive(s)) {
     return {
-      bar: 'h-4 bg-link animate-pulse-soft',
+      bar:
+        s === JobRunStatus.PENDING
+          ? 'h-4 bg-pending animate-pulse-soft'
+          : 'h-4 bg-live animate-pulse-soft',
       label: s === JobRunStatus.PENDING ? 'Pending' : 'Running',
     };
   }
   if (s === JobRunStatus.CANCELED || s === JobRunStatus.TERMINATED) {
     return {
-      bar: 'h-4 bg-quiet',
+      bar: 'h-4 bg-stopped',
       label: s === JobRunStatus.CANCELED ? 'Canceled' : 'Terminated',
     };
   }

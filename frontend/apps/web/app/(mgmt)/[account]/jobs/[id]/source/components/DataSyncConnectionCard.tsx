@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
 import SourceOptionsForm from '@/components/jobs/Form/SourceOptionsForm';
 import NosqlTable from '@/components/jobs/NosqlTable/NosqlTable';
 import { OnTableMappingUpdateRequest } from '@/components/jobs/NosqlTable/TableMappings/Columns';
@@ -15,14 +14,15 @@ import {
   splitCollection,
 } from '@/components/jobs/SchemaTable/util';
 import { useAccount } from '@/components/providers/account-provider';
-import { Panel } from '@/components/ds';
+import Spinner from '@/components/Spinner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import {
   Form,
   FormControl,
   FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import {
@@ -31,8 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import { splitConnections } from '@/libs/utils';
+import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
+import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import { getErrorMessage, getTransformerFromField } from '@/util/util';
 import {
   DataSyncSourceFormValues,
@@ -94,6 +95,7 @@ import {
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
 } from '@husonym/sdk';
+import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -119,11 +121,19 @@ import {
   shouldShowDestinationTableMappings,
 } from './util';
 
+// The job's page shows the source and the mapping on two tabs, each saving the
+// whole of the job's source: what the other tab holds is saved as the job has it.
+export type SourceSection = 'source' | 'mapping';
+
 interface Props {
   jobId: string;
+  section: SourceSection;
 }
 
-export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
+export default function DataSyncConnectionCard({
+  jobId,
+  section,
+}: Props): ReactElement {
   const { account } = useAccount();
   const {
     data,
@@ -687,6 +697,12 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
         c.connectionConfig?.config.case !== 'gcpCloudstorageConfig'
     )
   );
+  // A source changed, and not saved yet, takes along only the mapped columns
+  // it has too.
+  const sourceChanged =
+    !!sourceConnectionId && form.watch('sourceId') !== sourceConnectionId;
+  const savedMappings = data?.job?.mappings.length ?? 0;
+  const keptMappings = formMappings.length;
 
   function getAvailableTransformers(idx: number): TransformerResult {
     const row = formMappings[idx];
@@ -708,282 +724,328 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
       {checksDialog}
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="flex flex-col gap-6">
-          <Panel className="flex flex-col gap-4 p-5">
-            <FormField
-              control={form.control}
-              name="sourceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Source</FormLabel>
-                  <FormDescription>
-                    The location of the source data set.
-                  </FormDescription>
-                  <FormControl>
-                    <Select
-                      value={field.value}
-                      onValueChange={async (value) => {
-                        if (!value) {
-                          return;
-                        }
-                        field.onChange(value);
-                        await onSourceChange(value);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={source?.name} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <ConnectionSelectContent
-                          postgres={splitSourceConnections.postgres}
-                          mysql={splitSourceConnections.mysql}
-                          mongodb={splitSourceConnections.mongodb}
-                          dynamodb={splitSourceConnections.dynamodb}
-                          mssql={splitSourceConnections.mssql}
-                        />
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+          {section === 'source' && (
+            <Card>
+              <CardContent className="mt-6">
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="sourceId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={async (value) => {
+                              if (!value) {
+                                return;
+                              }
+                              field.onChange(value);
+                              await onSourceChange(value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue
+                                ref={field.ref}
+                                placeholder={source?.name}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <ConnectionSelectContent
+                                postgres={splitSourceConnections.postgres}
+                                mysql={splitSourceConnections.mysql}
+                                mongodb={splitSourceConnections.mongodb}
+                                dynamodb={splitSourceConnections.dynamodb}
+                                mssql={splitSourceConnections.mssql}
+                              />
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          The location of the source data set.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {sourceChanged && (
+                    <p className="m-0 flex items-start gap-2 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn-fg">
+                      <ExclamationTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                      <span>
+                        The mapping follows the new source: {keptMappings} of{' '}
+                        {savedMappings} mapped columns exist there and are kept.
+                        Review the mapping once this is saved.
+                      </span>
+                    </p>
+                  )}
+                  {hasSourceOptions(
+                    connections.find((c) => c.id === form.watch('sourceId'))
+                  ) && (
+                    <div className="border-t border-line-soft pt-5">
+                      <SourceOptionsForm
+                        connection={connections.find(
+                          (c) => c.id === form.watch('sourceId')
+                        )}
+                        value={form.watch('sourceOptions')}
+                        setValue={(newOpts) => {
+                          form.setValue('sourceOptions', newOpts, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          validateMappings();
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="border-t border-line-soft bg-surface-2 py-3">
+                <div className="flex w-full flex-row items-center justify-end">
+                  <Button
+                    disabled={
+                      !form.formState.isDirty || form.formState.isSubmitting
+                    }
+                    type="submit"
+                  >
+                    {form.formState.isSubmitting && <Spinner />}
+                    Save
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          )}
 
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <SourceOptionsForm
-              connection={connections.find(
-                (c) => c.id === form.getValues().sourceId
-              )}
-              value={form.watch('sourceOptions')}
-              setValue={(newOpts) => {
-                form.setValue('sourceOptions', newOpts, {
-                  shouldDirty: true,
-                  shouldTouch: true,
-                  shouldValidate: true,
-                });
-                validateMappings();
-              }}
-            />
-          </Panel>
+          {section === 'mapping' &&
+            isNosqlSource(source ?? create(ConnectionSchema)) && (
+              <NosqlTable
+                data={formMappings}
+                destinationOptions={form.watch('destinationOptions')}
+                schema={connectionSchemaDataMap?.schemaMap ?? {}}
+                isSchemaDataReloading={isSchemaMapValidating}
+                isJobMappingsValidating={isValidatingMappings}
+                formErrors={getAllFormErrors(
+                  form.formState.errors,
+                  formMappings,
+                  validateMappingsResponse
+                )}
+                onValidate={validateMappings}
+                onRemoveMappings={(indices) => {
+                  const indexSet = new Set(indices);
+                  const remainingTables = formMappings
+                    .filter((_, idx) => !indexSet.has(idx))
+                    .map((fm) => fm.table);
 
-          {isNosqlSource(source ?? create(ConnectionSchema)) && (
-            <NosqlTable
-              data={formMappings}
-              destinationOptions={form.watch('destinationOptions')}
-              schema={connectionSchemaDataMap?.schemaMap ?? {}}
-              isSchemaDataReloading={isSchemaMapValidating}
-              isJobMappingsValidating={isValidatingMappings}
-              formErrors={getAllFormErrors(
-                form.formState.errors,
-                formMappings,
-                validateMappingsResponse
-              )}
-              onValidate={validateMappings}
-              onRemoveMappings={(indices) => {
-                const indexSet = new Set(indices);
-                const remainingTables = formMappings
-                  .filter((_, idx) => !indexSet.has(idx))
-                  .map((fm) => fm.table);
+                  if (indices.length > 0) {
+                    remove(indices);
+                  }
 
-                if (indices.length > 0) {
-                  remove(indices);
-                }
+                  if (!source || isDynamoDBConnection(source)) {
+                    return;
+                  }
 
-                if (!source || isDynamoDBConnection(source)) {
-                  return;
-                }
+                  // Check and update destinationOptions if needed
+                  const destOpts = form.getValues('destinationOptions');
+                  const updatedDestOpts = destOpts
+                    .map((opt) => {
+                      if (opt.dynamodb) {
+                        const updatedTableMappings =
+                          opt.dynamodb.tableMappings.filter((tm) => {
+                            // Check if any columns remain for the table
+                            const tableColumnsExist = remainingTables.some(
+                              (table) => table === tm.sourceTable
+                            );
+                            return tableColumnsExist;
+                          });
 
-                // Check and update destinationOptions if needed
-                const destOpts = form.getValues('destinationOptions');
-                const updatedDestOpts = destOpts
-                  .map((opt) => {
-                    if (opt.dynamodb) {
-                      const updatedTableMappings =
-                        opt.dynamodb.tableMappings.filter((tm) => {
-                          // Check if any columns remain for the table
-                          const tableColumnsExist = remainingTables.some(
-                            (table) => table === tm.sourceTable
-                          );
-                          return tableColumnsExist;
-                        });
+                        return {
+                          ...opt,
+                          dynamoDb: {
+                            ...opt.dynamodb,
+                            tableMappings: updatedTableMappings,
+                          },
+                        };
+                      }
+                      return opt;
+                    })
+                    .filter(
+                      (opt) => (opt.dynamodb?.tableMappings.length ?? 0) > 0
+                    );
+                  form.setValue('destinationOptions', updatedDestOpts);
+                }}
+                onEditMappings={(values, index) => {
+                  if (index >= 0 && index < formMappings.length) {
+                    update(index, values);
+                  }
+                }}
+                onAddMappings={(values) => {
+                  append(
+                    values.map((v) => {
+                      const [schema, table] = splitCollection(v.collection);
+                      return {
+                        schema,
+                        table,
+                        column: v.key,
+                        transformer: v.transformer,
+                      };
+                    })
+                  );
+                  const uniqueCollections = Array.from(
+                    new Set(values.map((v) => v.collection))
+                  );
+
+                  const destOpts = form.getValues('destinationOptions');
+                  const existing = new Map(
+                    destOpts.map((d) => [d.destinationId, d])
+                  );
+                  const updated = dynamoDBDestinations.map(
+                    (dest): EditDestinationOptionsFormValues => {
+                      const opt = existing.get(dest.id);
+                      if (opt) {
+                        const sourceSet = new Set(
+                          opt.dynamodb?.tableMappings.map(
+                            (mapping) => mapping.sourceTable
+                          ) ?? []
+                        );
+
+                        // Add missing uniqueCollections to the existing tableMappings
+                        const updatedTableMappings = [
+                          ...(opt.dynamodb?.tableMappings ?? []),
+                          ...uniqueCollections
+                            .map((c) => {
+                              const [, table] = c.split('.');
+                              return {
+                                sourceTable: table,
+                                destinationTable: '',
+                              };
+                            })
+                            .filter(
+                              (mapping) => !sourceSet.has(mapping.sourceTable)
+                            ),
+                        ];
+
+                        return {
+                          ...opt,
+                          dynamodb: {
+                            ...opt.dynamodb,
+                            tableMappings: updatedTableMappings,
+                          },
+                        };
+                      }
 
                       return {
-                        ...opt,
-                        dynamoDb: {
-                          ...opt.dynamodb,
-                          tableMappings: updatedTableMappings,
-                        },
-                      };
-                    }
-                    return opt;
-                  })
-                  .filter(
-                    (opt) => (opt.dynamodb?.tableMappings.length ?? 0) > 0
-                  );
-                form.setValue('destinationOptions', updatedDestOpts);
-              }}
-              onEditMappings={(values, index) => {
-                if (index >= 0 && index < formMappings.length) {
-                  update(index, values);
-                }
-              }}
-              onAddMappings={(values) => {
-                append(
-                  values.map((v) => {
-                    const [schema, table] = splitCollection(v.collection);
-                    return {
-                      schema,
-                      table,
-                      column: v.key,
-                      transformer: v.transformer,
-                    };
-                  })
-                );
-                const uniqueCollections = Array.from(
-                  new Set(values.map((v) => v.collection))
-                );
-
-                const destOpts = form.getValues('destinationOptions');
-                const existing = new Map(
-                  destOpts.map((d) => [d.destinationId, d])
-                );
-                const updated = dynamoDBDestinations.map(
-                  (dest): EditDestinationOptionsFormValues => {
-                    const opt = existing.get(dest.id);
-                    if (opt) {
-                      const sourceSet = new Set(
-                        opt.dynamodb?.tableMappings.map(
-                          (mapping) => mapping.sourceTable
-                        ) ?? []
-                      );
-
-                      // Add missing uniqueCollections to the existing tableMappings
-                      const updatedTableMappings = [
-                        ...(opt.dynamodb?.tableMappings ?? []),
-                        ...uniqueCollections
-                          .map((c) => {
+                        destinationId: dest.id,
+                        dynamodb: {
+                          tableMappings: uniqueCollections.map((c) => {
                             const [, table] = c.split('.');
                             return {
                               sourceTable: table,
                               destinationTable: '',
                             };
-                          })
-                          .filter(
-                            (mapping) => !sourceSet.has(mapping.sourceTable)
-                          ),
-                      ];
-
-                      return {
-                        ...opt,
-                        dynamodb: {
-                          ...opt.dynamodb,
-                          tableMappings: updatedTableMappings,
+                          }),
                         },
                       };
                     }
+                  );
 
-                    return {
-                      destinationId: dest.id,
-                      dynamodb: {
-                        tableMappings: uniqueCollections.map((c) => {
-                          const [, table] = c.split('.');
-                          return {
-                            sourceTable: table,
-                            destinationTable: '',
-                          };
-                        }),
-                      },
-                    };
-                  }
-                );
+                  form.setValue('destinationOptions', updated);
+                }}
+                destinationDetailsRecord={getDestinationDetailsRecord(
+                  dynamoDBDestinations,
+                  connectionsRecord,
+                  destinationConnectionSchemaMapsResp ??
+                    create(GetConnectionSchemaMapsResponseSchema)
+                )}
+                onDestinationTableMappingUpdate={
+                  onDestinationTableMappingUpdate
+                }
+                showDestinationTableMappings={shouldShowDestinationTableMappings(
+                  source ?? create(ConnectionSchema),
+                  dynamoDBDestinations.length > 0
+                )}
+                onImportMappingsClick={onImportMappingsClick}
+                getAvailableTransformers={getAvailableTransformers}
+                getTransformerFromField={(idx) => {
+                  const row = formMappings[idx];
+                  return getTransformerFromField(handler, row.transformer);
+                }}
+                getAvailableTransformersForBulk={(rows) => {
+                  return getFilteredTransformersForBulkSet(
+                    rows,
+                    handler,
+                    schemaConstraintHandler,
+                    'sync',
+                    'nosql'
+                  );
+                }}
+                getTransformerFromFieldValue={(fvalue) => {
+                  return getTransformerFromField(handler, fvalue);
+                }}
+                onApplyDefaultClick={onApplyDefaultClick}
+                onTransformerBulkUpdate={onTransformerBulkUpdate}
+                hasMissingSourceColumnMappings={missingSourceColumns.length > 0}
+                onRemoveMissingSourceColumnMappings={
+                  onRemoveMissingSourceColumns
+                }
+              />
+            )}
 
-                form.setValue('destinationOptions', updated);
-              }}
-              destinationDetailsRecord={getDestinationDetailsRecord(
-                dynamoDBDestinations,
-                connectionsRecord,
-                destinationConnectionSchemaMapsResp ??
-                  create(GetConnectionSchemaMapsResponseSchema)
-              )}
-              onDestinationTableMappingUpdate={onDestinationTableMappingUpdate}
-              showDestinationTableMappings={shouldShowDestinationTableMappings(
-                source ?? create(ConnectionSchema),
-                dynamoDBDestinations.length > 0
-              )}
-              onImportMappingsClick={onImportMappingsClick}
-              getAvailableTransformers={getAvailableTransformers}
-              getTransformerFromField={(idx) => {
-                const row = formMappings[idx];
-                return getTransformerFromField(handler, row.transformer);
-              }}
-              getAvailableTransformersForBulk={(rows) => {
-                return getFilteredTransformersForBulkSet(
-                  rows,
-                  handler,
-                  schemaConstraintHandler,
-                  'sync',
-                  'nosql'
-                );
-              }}
-              getTransformerFromFieldValue={(fvalue) => {
-                return getTransformerFromField(handler, fvalue);
-              }}
-              onApplyDefaultClick={onApplyDefaultClick}
-              onTransformerBulkUpdate={onTransformerBulkUpdate}
-              hasMissingSourceColumnMappings={missingSourceColumns.length > 0}
-              onRemoveMissingSourceColumnMappings={onRemoveMissingSourceColumns}
+          {section === 'mapping' &&
+            !isNosqlSource(source ?? create(ConnectionSchema)) && (
+              <SchemaTable
+                data={formMappings}
+                virtualForeignKeys={formVirtualForeignKeys}
+                jobType="sync"
+                sourceConnectionId={sourceConnectionId}
+                constraintHandler={schemaConstraintHandler}
+                schema={connectionSchemaDataMap?.schemaMap ?? {}}
+                isSchemaDataReloading={isSchemaMapValidating}
+                selectedTables={selectedTables}
+                onSelectedTableToggle={onSelectedTableToggle}
+                formErrors={getAllFormErrors(
+                  form.formState.errors,
+                  formMappings,
+                  validateMappingsResponse
+                )}
+                isJobMappingsValidating={isValidatingMappings}
+                onValidate={validateMappings}
+                addVirtualForeignKey={addVirtualForeignKey}
+                removeVirtualForeignKey={removeVirtualForeignKey}
+                onImportMappingsClick={onImportMappingsClick}
+                onTransformerUpdate={(idx, cfg) => {
+                  onTransformerUpdate(idx, cfg);
+                }}
+                getAvailableTransformers={getAvailableTransformers}
+                getTransformerFromField={(idx) => {
+                  const row = formMappings[idx];
+                  return getTransformerFromField(handler, row.transformer);
+                }}
+                getAvailableTransformersForBulk={(rows) => {
+                  return getFilteredTransformersForBulkSet(
+                    rows,
+                    handler,
+                    schemaConstraintHandler,
+                    'sync',
+                    'relational'
+                  );
+                }}
+                getTransformerFromFieldValue={(fvalue) => {
+                  return getTransformerFromField(handler, fvalue);
+                }}
+                onApplyDefaultClick={onApplyDefaultClick}
+                onTransformerBulkUpdate={onTransformerBulkUpdate}
+                hasMissingSourceColumnMappings={missingSourceColumns.length > 0}
+                onRemoveMissingSourceColumnMappings={
+                  onRemoveMissingSourceColumns
+                }
+              />
+            )}
+          {section === 'mapping' && (
+            <SaveBar
+              isDirty={form.formState.isDirty}
+              isSubmitting={form.formState.isSubmitting}
             />
           )}
-
-          {!isNosqlSource(source ?? create(ConnectionSchema)) && (
-            <SchemaTable
-              data={formMappings}
-              virtualForeignKeys={formVirtualForeignKeys}
-              jobType="sync"
-              sourceConnectionId={sourceConnectionId}
-              constraintHandler={schemaConstraintHandler}
-              schema={connectionSchemaDataMap?.schemaMap ?? {}}
-              isSchemaDataReloading={isSchemaMapValidating}
-              selectedTables={selectedTables}
-              onSelectedTableToggle={onSelectedTableToggle}
-              formErrors={getAllFormErrors(
-                form.formState.errors,
-                formMappings,
-                validateMappingsResponse
-              )}
-              isJobMappingsValidating={isValidatingMappings}
-              onValidate={validateMappings}
-              addVirtualForeignKey={addVirtualForeignKey}
-              removeVirtualForeignKey={removeVirtualForeignKey}
-              onImportMappingsClick={onImportMappingsClick}
-              onTransformerUpdate={(idx, cfg) => {
-                onTransformerUpdate(idx, cfg);
-              }}
-              getAvailableTransformers={getAvailableTransformers}
-              getTransformerFromField={(idx) => {
-                const row = formMappings[idx];
-                return getTransformerFromField(handler, row.transformer);
-              }}
-              getAvailableTransformersForBulk={(rows) => {
-                return getFilteredTransformersForBulkSet(
-                  rows,
-                  handler,
-                  schemaConstraintHandler,
-                  'sync',
-                  'relational'
-                );
-              }}
-              getTransformerFromFieldValue={(fvalue) => {
-                return getTransformerFromField(handler, fvalue);
-              }}
-              onApplyDefaultClick={onApplyDefaultClick}
-              onTransformerBulkUpdate={onTransformerBulkUpdate}
-              hasMissingSourceColumnMappings={missingSourceColumns.length > 0}
-              onRemoveMissingSourceColumnMappings={onRemoveMissingSourceColumns}
-            />
-          )}
-          <SaveBar
-            isDirty={form.formState.isDirty}
-            isSubmitting={form.formState.isSubmitting}
-          />
         </div>
       </form>
     </Form>
@@ -1401,5 +1463,18 @@ async function getUpdatedValues(
     }
     default:
       return values;
+  }
+}
+
+// Whether the kind of a source has options of its own to show under it.
+function hasSourceOptions(connection?: Connection): boolean {
+  switch (connection?.connectionConfig?.config.case) {
+    case 'pgConfig':
+    case 'mysqlConfig':
+    case 'mssqlConfig':
+    case 'dynamodbConfig':
+      return true;
+    default:
+      return false;
   }
 }
