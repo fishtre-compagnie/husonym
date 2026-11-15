@@ -700,6 +700,7 @@ export function SchemaTable(props: Props): ReactElement {
         selected={selectedTables}
         onChange={onSelectedTableToggle}
         mode={jobType === 'generate' ? 'single' : 'many'}
+        columnCount={data.length}
         formErrors={formErrors}
         isValidating={isJobMappingsValidating}
         onValidate={onValidate}

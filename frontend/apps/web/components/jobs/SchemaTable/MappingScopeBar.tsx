@@ -4,6 +4,7 @@ import DualListBox, {
   Option,
 } from '@/components/DualListBox/DualListBox';
 import Spinner from '@/components/Spinner';
+import { Panel, ProgressBar } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,9 +16,9 @@ import {
 import { cn } from '@/libs/utils';
 import {
   CheckCircledIcon,
-  ChevronDownIcon,
   ExclamationTriangleIcon,
   ReloadIcon,
+  TableIcon,
 } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { FormError } from './FormErrorsCard';
@@ -28,6 +29,8 @@ interface Props {
   onChange(items: Set<string>, action: Action): void;
   // One table only, for the jobs that generate a single table.
   mode: 'single' | 'many';
+  // How many columns the mapping holds, told beside the tables.
+  columnCount?: number;
 
   formErrors: FormError[];
   isValidating?: boolean;
@@ -48,6 +51,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
     selected,
     onChange,
     mode,
+    columnCount,
     formErrors,
     isValidating,
     onValidate,
@@ -60,40 +64,90 @@ export default function MappingScopeBar(props: Props): ReactElement {
   const problems = [...errors, ...warnings];
   const listed = showAll ? problems : problems.slice(0, SHOWN_PROBLEMS);
 
+  const schemas = countBySchema(options, selected);
+  const single = mode === 'single';
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line-soft bg-card px-5 py-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-[13px] text-muted-foreground">
-            Tables copied by this job
-          </span>
-          <span className="font-display text-lg font-semibold">
-            {selected.size}{' '}
-            <span className="text-sm font-normal text-muted-foreground">
-              of {options.length} in the source
+      <Panel>
+        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 gap-4">
+            <span
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-primary"
+              aria-hidden="true"
+            >
+              <TableIcon className="size-5" />
             </span>
-          </span>
+            <div className="flex min-w-0 flex-col gap-1">
+              <h2 className="m-0 font-display text-base font-semibold">
+                {single ? 'Table this job fills' : 'Tables copied by this job'}
+              </h2>
+              <p className="m-0 max-w-xl text-[13px] text-muted-foreground">
+                {single
+                  ? 'The job generates rows for this table. Its columns are mapped below.'
+                  : 'The job reads these tables from the source and writes them to every destination. Their columns are mapped below.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            className="shrink-0"
+            onClick={() => setChoosing(true)}
+          >
+            <TableIcon className="size-4" />
+            {single ? 'Choose the table' : 'Choose tables'}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setChoosing(true)}
-        >
-          Choose tables
-          <ChevronDownIcon className="size-3.5" />
-        </Button>
 
-        <span
-          className="hidden h-10 w-px bg-line-soft sm:block"
-          aria-hidden="true"
-        />
+        <div className="flex flex-col gap-3 px-5 pb-5">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-display text-3xl font-semibold tabular-nums">
+              {selected.size.toLocaleString()}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              of {options.length.toLocaleString()} tables in the source
+            </span>
+            {columnCount !== undefined && (
+              <span className="text-sm text-muted-foreground">
+                · {columnCount.toLocaleString()} column
+                {columnCount === 1 ? '' : 's'} mapped
+              </span>
+            )}
+          </div>
+          <ProgressBar
+            value={
+              options.length > 0 ? (selected.size / options.length) * 100 : 0
+            }
+            label="Share of the source's tables copied"
+            className="h-1.5"
+          />
+          {schemas.length > 1 && (
+            <ul
+              aria-label="Tables copied by schema"
+              className="m-0 flex list-none flex-wrap gap-2 p-0"
+            >
+              {schemas.map((sc) => (
+                <li
+                  key={sc.schema}
+                  className="rounded-md border border-line-soft px-2 py-1 text-[12px]"
+                >
+                  <span className="font-mono">{sc.schema}</span>{' '}
+                  <span className="tabular-nums text-muted-foreground">
+                    {sc.selected} / {sc.total}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-line-soft bg-surface-2 px-5 py-3">
           <span
             className={cn(
-              'flex items-center gap-2 text-sm',
+              'flex items-center gap-2 text-sm font-medium',
               errors.length > 0
-                ? 'font-medium text-danger-fg'
+                ? 'text-danger-fg'
                 : warnings.length > 0
                   ? 'text-warn-fg'
                   : 'text-ok'
@@ -111,6 +165,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
               type="button"
               variant="ghost"
               size="sm"
+              className="ml-auto"
               disabled={isValidating}
               onClick={() => onValidate()}
             >
@@ -123,7 +178,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
             </Button>
           )}
         </div>
-      </div>
+      </Panel>
 
       {problems.length > 0 && (
         <ul
@@ -199,4 +254,24 @@ function problemSummary(errors: number, warnings: number): string {
     parts.push(`${warnings} warning${warnings === 1 ? '' : 's'}`);
   }
   return parts.join(', ');
+}
+
+// The tables of each schema of the source, and how many of them are copied.
+function countBySchema(
+  options: Option[],
+  selected: Set<string>
+): { schema: string; total: number; selected: number }[] {
+  const bySchema = new Map<string, { total: number; selected: number }>();
+  for (const o of options) {
+    const schema = o.value.split('.')[0] ?? '';
+    const count = bySchema.get(schema) ?? { total: 0, selected: 0 };
+    count.total++;
+    if (selected.has(o.value)) {
+      count.selected++;
+    }
+    bySchema.set(schema, count);
+  }
+  return Array.from(bySchema, ([schema, c]) => ({ schema, ...c })).sort(
+    (a, b) => b.selected - a.selected || a.schema.localeCompare(b.schema)
+  );
 }

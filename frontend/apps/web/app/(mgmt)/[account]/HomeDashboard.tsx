@@ -313,7 +313,7 @@ export default function HomeDashboard({
         column: `${c.table}.${c.column}`,
         sub: c.jobName,
         kind: categoryLabel(c.category),
-        href: `${base}/jobs/${c.jobId}/source`,
+        href: `${base}/jobs/${c.jobId}/mapping`,
       });
     }
     return items;
