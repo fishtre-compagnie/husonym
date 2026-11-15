@@ -140,7 +140,17 @@ export function StatCard(props: {
   );
 }
 
-export type Tone = 'ok' | 'warn' | 'danger' | 'brand' | 'quiet' | 'muted';
+export type Tone =
+  | 'ok'
+  | 'warn'
+  | 'danger'
+  | 'brand'
+  | 'quiet'
+  | 'muted'
+  // The states of a run: going, waiting to start, stopped by someone.
+  | 'live'
+  | 'pending'
+  | 'stopped';
 
 const toneText: Record<Tone, string> = {
   ok: 'text-ok',
@@ -149,6 +159,9 @@ const toneText: Record<Tone, string> = {
   brand: 'text-link',
   quiet: 'text-quiet-fg',
   muted: 'text-muted-foreground',
+  live: 'text-live-fg',
+  pending: 'text-pending-fg',
+  stopped: 'text-stopped-fg',
 };
 const toneDot: Record<Tone, string> = {
   ok: 'bg-ok',
@@ -157,6 +170,9 @@ const toneDot: Record<Tone, string> = {
   brand: 'bg-link',
   quiet: 'bg-quiet',
   muted: 'bg-muted-foreground',
+  live: 'bg-live',
+  pending: 'bg-pending',
+  stopped: 'bg-stopped',
 };
 const tonePill: Record<Tone, string> = {
   ok: 'bg-ok-soft text-ok',
@@ -165,6 +181,9 @@ const tonePill: Record<Tone, string> = {
   brand: 'bg-brand-soft text-link',
   quiet: 'bg-quiet-soft text-quiet-fg',
   muted: 'bg-surface-2 text-muted-foreground',
+  live: 'bg-live-soft text-live-fg',
+  pending: 'bg-pending-soft text-pending-fg',
+  stopped: 'bg-stopped-soft text-stopped-fg',
 };
 
 export function toneTextClass(tone: Tone): string {
@@ -235,7 +254,7 @@ export function Kbd(props: {
 export function ProgressBar(props: {
   value: number;
   live?: boolean;
-  tone?: 'brand' | 'ok' | 'danger' | 'warn';
+  tone?: 'brand' | 'ok' | 'danger' | 'warn' | 'live';
   label?: string;
   className?: string;
 }): ReactElement {
@@ -246,6 +265,7 @@ export function ProgressBar(props: {
     ok: 'bg-ok',
     danger: 'bg-danger',
     warn: 'bg-warn',
+    live: 'bg-live',
   }[tone];
   return (
     <div

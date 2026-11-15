@@ -63,6 +63,16 @@
   --color-quiet: var(--quiet);
   --color-quiet-fg: var(--quiet-fg);
   --color-quiet-soft: var(--quiet-soft);
+  /* The states of a run, apart from one another at a glance. */
+  --color-live: var(--live);
+  --color-live-fg: var(--live-fg);
+  --color-live-soft: var(--live-soft);
+  --color-pending: var(--pending);
+  --color-pending-fg: var(--pending-fg);
+  --color-pending-soft: var(--pending-soft);
+  --color-stopped: var(--stopped);
+  --color-stopped-fg: var(--stopped-fg);
+  --color-stopped-soft: var(--stopped-soft);
   --color-overlay: var(--overlay);
   --color-header: var(--header);
   --color-hover: var(--hover);
@@ -229,6 +239,15 @@
   --quiet: #8aa3bf;
   --quiet-fg: #3e5873;
   --quiet-soft: rgba(91, 127, 165, 0.13);
+  --live: #0a84e0;
+  --live-fg: #0868b3;
+  --live-soft: rgba(10, 132, 224, 0.13);
+  --pending: #7c5ce6;
+  --pending-fg: #5d3fc2;
+  --pending-soft: rgba(124, 92, 230, 0.12);
+  --stopped: #9b9b9b;
+  --stopped-fg: #5e5e5e;
+  --stopped-soft: rgba(110, 110, 110, 0.1);
   --overlay: rgba(15, 23, 32, 0.28);
   --header: rgba(244, 246, 249, 0.88);
   --hover: rgba(15, 23, 32, 0.035);
@@ -292,6 +311,15 @@
   --quiet: #5b7fa5;
   --quiet-fg: #b8c9dc;
   --quiet-soft: rgba(91, 127, 165, 0.18);
+  --live: #3ea6f5;
+  --live-fg: #8ccbfa;
+  --live-soft: rgba(62, 166, 245, 0.17);
+  --pending: #a48ff5;
+  --pending-fg: #c7b8fb;
+  --pending-soft: rgba(164, 143, 245, 0.17);
+  --stopped: #7d7d7d;
+  --stopped-fg: #b3b3b3;
+  --stopped-soft: rgba(160, 160, 160, 0.12);
   --overlay: rgba(8, 11, 16, 0.6);
   --header: rgba(11, 15, 20, 0.85);
   --hover: rgba(230, 237, 243, 0.04);

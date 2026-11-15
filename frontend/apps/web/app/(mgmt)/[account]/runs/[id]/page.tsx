@@ -275,7 +275,7 @@ export default function Page(props: PageProps): ReactElement {
         ? 'ok'
         : statusMeta.tone === 'warn'
           ? 'warn'
-          : 'brand';
+          : 'live';
 
   return (
     <PageBody className="runs-page">
