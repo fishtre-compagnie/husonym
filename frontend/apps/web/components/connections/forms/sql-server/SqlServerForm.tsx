@@ -26,6 +26,7 @@ import {
 } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
 import DatabaseCredentials from './DatabaseCredentials';
+import { useTranslations } from 'next-intl';
 
 interface MssqlFormStore extends BaseStore<MssqlFormValues> {
   init?(values: MssqlFormValues): void;
@@ -88,6 +89,7 @@ interface Props {
 }
 
 export default function SqlServerForm(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.common');
   const {
     mode,
     initialValues,
@@ -128,7 +130,7 @@ export default function SqlServerForm(props: Props): ReactElement {
   });
 
   const isViewMode = mode === 'view';
-  const submitText = mode === 'create' ? 'Create' : 'Update';
+  const submitText = mode === 'create' ? t('create') : t('update');
 
   const formContent = (
     <>

@@ -1,3 +1,629 @@
 {
-  "connections": {}
+  "connections": {
+    "list": {
+      "title": "Connections",
+      "description": "The databases and storages your jobs read from and write to.",
+      "emptyTitle": "No Connections yet",
+      "emptyDescription": "Get started by adding your first connection. Connections help you integrate and sync data across your databases.",
+      "emptyCta": "Create your first Connection",
+      "newConnection": "New Connection"
+    },
+    "table": {
+      "connectionId": "Connection Id",
+      "name": "Name",
+      "category": "Category",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "sortAsc": "Asc",
+      "sortDesc": "Desc",
+      "hide": "Hide",
+      "openMenu": "Open menu",
+      "view": "View",
+      "clone": "Clone",
+      "delete": "Delete",
+      "filterPlaceholder": "Filter connections...",
+      "reset": "Reset",
+      "viewOptions": "View",
+      "toggleColumns": "Toggle columns",
+      "noResults": "No Connections available.",
+      "categoryLocalDirectory": "Local Directory"
+    },
+    "delete": {
+      "removedList": "Connection removed successfully!",
+      "removed": "Successfully removed connection!",
+      "error": "Unable to remove connection",
+      "confirmTitle": "Are you sure you want to delete this connection?",
+      "confirmDescription": "Deleting this connection is irreversable!",
+      "confirmButton": "Delete"
+    },
+    "newConnection": {
+      "title": "New connection",
+      "description": "Connect a new datasource to use in sync or generate jobs.",
+      "typesLabel": "Connection types",
+      "experimental": "Experimental",
+      "requiresLicense": "Requires an Enterprise license",
+      "subHeadings": {
+        "postgres": "Configure a PostgreSQL database as a connection",
+        "mysql": "Configure a MySQL database as a connection",
+        "mssql": "Configure a Microsoft SQL Server database as a connection",
+        "gcpCloudStorage": "Configure a GCP Cloud Storage bucket as a connection",
+        "dynamodb": "Configure DynamoDB as a connection",
+        "mongodb": "Configure a MongoDB database as a connection",
+        "awsS3": "Configure an AWS S3 bucket as a connection",
+        "openai": "Configure an OpenAI SDK to be used for AI-focused data generation jobs.",
+        "supabase": "Configure a Supabase database as a connection",
+        "neon": "Configure a Neon database as a connection"
+      },
+      "catalog": {
+        "postgres": "PostgreSQL is a free and open-source relational database manageent system emphasizing extensibility and SQL compliance.",
+        "mysql": "MySQL is an open-source relational database management system.",
+        "awsS3": "Amazon Simple Storage Service (Amazon S3) is an object storage service used to store and retrieve any data.",
+        "gcpCloudStorage": "GCP Cloud Storage is an object storage service used to store and retrieve any data.",
+        "neon": "Neon is a serverless Postgres database that separates storage and compute to offer autoscaling, branching and bottomless storage.",
+        "supabase": "Supabase is an open source Firebase alternative that ships with Authentication, Instant APIs, Edge functions and more.",
+        "openai": "OpenAI (or equivalent interface) Chat API for generating synthetic data and inserting it directly into a destination datasource.",
+        "mongodb": "MongoDB is a source-available, cross-platform, document-oriented database program.",
+        "dynamodb": "Amazon DynamoDB is a fully managed proprietary NoSQL database offered by Amazon.com as part of the Amazon Web Services portfolio",
+        "mssql": "Microsoft SQL Server is a proprietary relational database management system developed by Microsoft."
+      }
+    },
+    "detail": {
+      "invalidMongo": "Invalid MongoDB Connection",
+      "unknown": "Unknown Connection",
+      "noComponent": "No connection component found for: ({name})",
+      "unknownName": "unknown name",
+      "copyId": "Copy the connection id",
+      "copied": "Success!",
+      "tabConfiguration": "Configuration",
+      "tabPermissions": "Permissions",
+      "edit": "Edit",
+      "clone": "Clone"
+    },
+    "permissions": {
+      "recheckError": "Unable to get update permissions table",
+      "intro": "Review the permissions that Husonym needs for your connection.",
+      "recheck": "Check the permissions again"
+    },
+    "badge": {
+      "connectedNoTables": "Successfully connected - found no tables",
+      "moreInfo": "More info",
+      "connected": "Successfully connected",
+      "connectionError": "Connection Error - Unable to connect.",
+      "blocking": "{count} blocking",
+      "warnings": "{count, plural, one {# warning} other {# warnings}}",
+      "connectedWith": "Connected · {parts}",
+      "details": "Details",
+      "checksTitle": "Connection checks",
+      "checksDescription": "What the connection cannot do in its role, at server level. The job's tables are checked when the job is saved.",
+      "nothingMissing": "Nothing missing."
+    },
+    "checks": {
+      "unreachable": "Could not be checked from the API: {reason}. The run checks it again at its start.",
+      "title": "Connection checks",
+      "source": "Source",
+      "destination": "Destination",
+      "connectionFallback": "connection",
+      "targetHeading": "{role} · {name}",
+      "nothingMissing": "Nothing missing.",
+      "checkAgain": "Check again",
+      "close": "Close",
+      "cancel": "Cancel",
+      "saveAnyway": "Save anyway",
+      "save": "Save",
+      "summaryBlocking": "The job cannot be saved: {count, plural, one {# blocking finding} other {# blocking findings}}. Grant what is missing, then check again.",
+      "summaryWarnings": "{count, plural, one {# warning: the run may stop on it.} other {# warnings: the run may stop on them.}}",
+      "summaryClear": "Nothing is missing any more.",
+      "checkingToast": "Checking the connections of the job…",
+      "saveError": "Unable to save the job"
+    },
+    "forms": {
+      "shared": {
+        "name": {
+          "title": "Name",
+          "description": "Name of the connection for display and reference, must be unique"
+        },
+        "connectionName": "Connection name",
+        "maxConnectionLimit": {
+          "title": "Max Connection Limit",
+          "description": "The maximum number of concurrent database connections allowed. If set to 0 then there is no limit on the number of open connections. -1 to leave unset and use system default."
+        },
+        "maxOpenDuration": {
+          "title": "Max Open Duration",
+          "description": "The maximum amount of time a connection may be reused. Expired connections may be closed lazily before reuse. Ex: 1s, 1m, 500ms. Empty to leave unset."
+        },
+        "maxIdleLimit": {
+          "title": "Max Idle Limit",
+          "description": "The maximum number of idle database connections allowed. If set to 0 then there is no limit on the number of idle connections. -1 to leave unset and use system default."
+        },
+        "maxIdleDuration": {
+          "title": "Max Idle Duration",
+          "description": "The maximum amount of time a connection may be idle. Expired connections may be closed lazily before reuse. Ex: 1s, 1m, 500ms. Empty to leave unset."
+        },
+        "rootCert": {
+          "title": "Root Certificate",
+          "description": "The public key certificate of the CA that issued the server's certificate. Root certificates are used to authenticate the server to the client. They ensure that the server the client is connecting to is trusted."
+        },
+        "clientCert": {
+          "title": "Client Certificate",
+          "description": "A public key certificate issued to the client by a trusted Certificate Authority (CA)."
+        },
+        "clientKey": {
+          "title": "Client Key",
+          "description": "A private key corresponding to the client certificate. The client key is used to authenticate the client to the server."
+        },
+        "serverName": {
+          "title": "Server Name",
+          "description": "Server Name is used to verify the hostname on the returned certificates. It is also included in the client's handshake to support virtual hosting unless it is an IP address. This is only required if performing full tls verification."
+        },
+        "host": {
+          "title": "Host",
+          "description": "The hostname of the bastion host that will be used for SSH tunneling."
+        },
+        "port": {
+          "title": "Port",
+          "description": "The port of the bastion host."
+        },
+        "user": {
+          "title": "User",
+          "description": "The name of the user that will be used to authenticate. If using passphrase auth, provide that in the appropriate field below."
+        },
+        "privateKey": {
+          "title": "Private Key",
+          "description": "The private key for the bastion host. If using passphrase auth, provide that in the appropriate field below."
+        },
+        "passphrase": {
+          "title": "Passphrase / Private Key Password",
+          "description": "The passphrase that will be used to authenticate with. If the SSH Key provided above is encrypted, provide the password for it here."
+        },
+        "knownHostPublicKey": {
+          "title": "Known Host Public Key",
+          "description": "The public key of the bastion host. This should be in the format like what is found in the `~/.ssh/known_hosts` file, excluding the hostname. If this is not provided, any host public key will be accepted."
+        },
+        "checkTunnelConnection": "Check Tunnel Connection",
+        "tunnelConnectionFailed": "Tunnel Connection Failed",
+        "testConnection": "Test Connection",
+        "unableToConnect": "Unable to connect",
+        "region": {
+          "title": "Region",
+          "description": "The AWS region to target"
+        },
+        "endpoint": {
+          "title": "Endpoint",
+          "description": "The endpoint to target"
+        },
+        "accessKeyId": {
+          "title": "Access Key ID",
+          "description": "The AWS access key ID"
+        },
+        "secretAccessKey": {
+          "title": "Secret Access Key",
+          "description": "The AWS secret access key"
+        },
+        "sessionToken": {
+          "title": "Session Token",
+          "description": "The AWS session token"
+        },
+        "fromEc2Role": "From EC2 Role",
+        "ifTrueTheSdk": "If true, the SDK will use the EC2 role assigned to the instance",
+        "roleArn": {
+          "title": "Role ARN",
+          "description": "The AWS role ARN"
+        },
+        "roleExternalId": {
+          "title": "Role External ID",
+          "description": "The AWS role external ID"
+        },
+        "clientTls": {
+          "title": "Client TLS Certificates",
+          "description": "Configuring this section allows Husonym to connect to the database using SSL/TLS."
+        },
+        "sshTunnel": {
+          "title": "SSH Tunnel",
+          "description": "This section is optional and only necessary if your database is not publicly accessible to the internet."
+        },
+        "sshTunnelError": "Unable to connect to SSH tunnel",
+        "testAs": "Test as",
+        "source": "Source",
+        "destination": "Destination",
+        "noErrorReturned": "no error returned",
+        "awsAdvanced": {
+          "title": "AWS Advanced Configuration",
+          "description": "This is an optional section and is used if you need to tweak the AWS SDK to connect to a different region or endpoint other than the default."
+        },
+        "awsCredentials": "AWS Credentials"
+      },
+      "fields": {
+        "url": {
+          "title": "Connection URL",
+          "description": "The URL of the database"
+        },
+        "envVar": {
+          "title": "Environment Variable",
+          "description": "The environment variable that contains the connection URL. Must start with \"USER_DEFINED_\". Must be present on both the backend and the worker processes for full functionality."
+        },
+        "host": {
+          "title": "Host",
+          "description": "The host name"
+        },
+        "port": {
+          "title": "Port",
+          "description": "The port number"
+        },
+        "name": {
+          "title": "Database Name",
+          "description": "The name of the database"
+        },
+        "user": {
+          "title": "Username",
+          "description": "The username for the database"
+        },
+        "password": {
+          "title": "Password",
+          "description": "The password for the database"
+        },
+        "protocol": {
+          "title": "Connection Protocol",
+          "description": "The protocol to use for the connection"
+        },
+        "sslMode": {
+          "title": "SSL Mode",
+          "description": "Turn on SSL Mode to use TLS for client/server encryption."
+        },
+        "bucket": {
+          "title": "Bucket",
+          "description": "The GCP Cloud Storage bucket",
+          "description2": "The S3 bucket"
+        },
+        "pathPrefix": {
+          "title": "Path Prefix",
+          "description": "The path prefix for the bucket"
+        },
+        "serviceAccountCredentials": {
+          "title": "Service Account Key",
+          "description": "The JSON key file of the service account the connection acts with. Without one, the connection acts with the identity of the servers running Husonym, which the deployment must allow."
+        },
+        "apiUrl": "API Url",
+        "theUrlOfThe": "The url of the OpenAI API (or equivalent) server",
+        "apiKey": "API Key",
+        "theApiKeyFor": "The API key for the OpenAI API (or equivalent) server",
+        "connectBy": "Connect by:",
+        "tabUrl": "URL",
+        "tabHost": "Host",
+        "tabEnvVar": "Environment Variable"
+      },
+      "common": {
+        "create": "Create",
+        "update": "Update",
+        "created": "Connection created successfully!",
+        "updated": "Connection updated successfully!",
+        "createError": "Unable to create connection",
+        "updateError": "Unable to update connection"
+      }
+    },
+    "transformers": {
+      "list": {
+        "title": "Transformers",
+        "description": "What a job does to each column: anonymize it, generate it or keep it.",
+        "tabUserDefined": "User Defined Transformers",
+        "tabSystem": "System Transformers",
+        "emptyTitle": "No User Defined Transformers yet",
+        "emptyDescription": "Create a User Defined Transformer to implement data transformation logic.",
+        "emptyCta": "Create your first Transformer",
+        "newTransformer": "New Transformer"
+      },
+      "table": {
+        "name": "Name",
+        "dataTypes": "Data Types",
+        "jobTypes": "Job Types",
+        "source": "Source",
+        "description": "Description",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "actions": "Actions",
+        "sortAsc": "Asc",
+        "sortDesc": "Desc",
+        "hide": "Hide",
+        "viewOptions": "View",
+        "toggleColumns": "Toggle columns",
+        "noResults": "No results.",
+        "filterSystem": "Filter System Transformers...",
+        "filterUserDefined": "Filter User Defined Transformers...",
+        "reset": "Reset",
+        "openMenu": "Open menu",
+        "view": "View",
+        "delete": "Delete"
+      },
+      "delete": {
+        "removedList": "Transformer removed successfully!",
+        "error": "Unable to remove transformer",
+        "confirmTitle": "Are you sure you want to delete this Transformer?",
+        "confirmDescription": "Deleting this Transformer may impact running Jobs.",
+        "confirmButton": "Delete",
+        "removed": "Successfully removed transformer!",
+        "deleteButton": "Delete Transformer",
+        "confirmDescriptionDetail": "Deleting this Transformer may impact Jobs that rely on it."
+      },
+      "detail": {
+        "fallbackTitle": "Custom Transformer"
+      },
+      "form": {
+        "updated": "Successfully updated transformer!",
+        "updateError": "Unable to update transformer",
+        "sourceLabel": "Source Transformer",
+        "sourceDescription": "The system transformer source.",
+        "nameLabel": "Name",
+        "nameDescription": "The unique name of the Transformer.",
+        "namePlaceholder": "Transformer Name",
+        "descriptionLabel": "Description",
+        "descriptionDescription": "The Transformer decription.",
+        "back": "Back",
+        "save": "Save"
+      },
+      "options": {
+        "close": "Close",
+        "save": "Save",
+        "noConfig": "There are no additional configurations for this Transformer"
+      },
+      "system": {
+        "fallbackTitle": "System Transformer",
+        "nameLabel": "Name",
+        "nameDescription": "The Transformer name.",
+        "namePlaceholder": "Transformer Name",
+        "descriptionLabel": "Description",
+        "descriptionDescription": "The Transformer decription.",
+        "typeLabel": "Data Type",
+        "typeDescription": "The Transformer type.",
+        "typePlaceholder": "Transformer type",
+        "sourceLabel": "Source",
+        "sourceDescription": "The unique key associated with the transformer.",
+        "sourcePlaceholder": "Transformer Source",
+        "back": "Back",
+        "clone": "Clone Transformer"
+      }
+    },
+    "transformerOptions": {
+      "GenerateCardNumber": {
+        "validLuhn": {
+          "label": "Valid Luhn",
+          "description": "Generate a 16 digit card number that passes a luhn check."
+        }
+      },
+      "GenerateCategorical": {
+        "categories": {
+          "label": "Categories",
+          "description": "Provide a list of comma-separated string values that you want to randomly select from."
+        }
+      },
+      "GenerateE164PhoneNumber": {
+        "min": {
+          "label": "Minimum Length",
+          "description": "Set the minimum length range of the output phone number. It cannot be less than 9."
+        },
+        "max": {
+          "label": "Maximum Length",
+          "description": "Set the maximum length range of the output phone number. It cannot be greater than 15."
+        }
+      },
+      "GenerateFloat64": {
+        "randomizeSign": {
+          "label": "Randomize Sign",
+          "description": "Will randomly assign the sign. This may cause the generated value to be out of the defined min/max range. If the min/max is 20-40, the value may be in the following ranges: 20 <= x <= 40 and -40 <= x <= -20"
+        },
+        "min": {
+          "label": "Minimum Value",
+          "description": "Sets a minimum range for generated float64 value."
+        },
+        "max": {
+          "label": "Maximum Value",
+          "description": "Sets a maximum range for generated float64 value."
+        },
+        "precision": {
+          "label": "Precision",
+          "description": "Sets the precision for the entire float64 value, not just the decimals. For example. a precision of 4 would update a float64 value of 23.567 to 23.56."
+        }
+      },
+      "GenerateGender": {
+        "abbreviate": {
+          "label": "Abbreviate",
+          "description": "Abbreviate the gender to a single character. For example, female would be returned as f."
+        }
+      },
+      "GenerateInt64": {
+        "randomizeSign": {
+          "label": "Randomize Sign",
+          "description": "Will randomly assign the sign. This may cause the generated value to be out of the defined min/max range. If the min/max is 20-40, the value may be in the following ranges: 20 <= x <= 40 and -40 <= x <= -20"
+        },
+        "min": {
+          "label": "Minimum Value",
+          "description": "Sets a minimum range for generated int64 value."
+        },
+        "max": {
+          "label": "Maximum Value",
+          "description": "Sets a maximum range for generated int64 value."
+        }
+      },
+      "GenerateString": {
+        "min": {
+          "label": "Minimum Length",
+          "description": "Set the minimum length range of the output string."
+        },
+        "max": {
+          "label": "Maximum Length",
+          "description": "Set the maximum length range of the output string."
+        }
+      },
+      "GenerateStringPhoneNumber": {
+        "min": {
+          "label": "Minimum Length",
+          "description": "Set the minimum length range of the output phone number."
+        },
+        "max": {
+          "label": "Maximum Length",
+          "description": "Set the maximum length range of the output phone number."
+        }
+      },
+      "GenerateState": {
+        "generateFullName": {
+          "label": "Generate Full Name",
+          "description": "Enable to return the full state name with a capitalized first letter. Returns the 2-letter state code by default."
+        }
+      },
+      "GenerateUuid": {
+        "includeHyphens": {
+          "label": "Include hyphens",
+          "description": "Set to true to include hyphens in the generated UUID. Note: some databases such as Postgres automatically convert UUIDs with no hyphens to have hyphens when they store the data."
+        }
+      },
+      "TransformE164PhoneNumber": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output e164 phone number to be the same as the input e164 phone number."
+        }
+      },
+      "TransformEmail": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output email to be the same as the input"
+        },
+        "preserveDomain": {
+          "label": "Preserve Domain",
+          "description": "Preserve the input domain including top level domain to the output value. For ex. if the input is john@gmail.com, the output will be ij23o@gmail.com"
+        },
+        "excludedDomains": {
+          "label": "Excluded Domains",
+          "description": "Provide a list of comma-separated domains that you want to be excluded from the transformer. Do not provide an @ with the domains."
+        },
+        "emailType": {
+          "label": "Email Type",
+          "description": "Configure the email type that will be used during transformation."
+        },
+        "invalidEmailAction": {
+          "label": "Invalid Email Action",
+          "description": "Configure the invalid email action that will be run in the event the system encounters an email that does not conform to RFC 5322."
+        }
+      },
+      "GenerateEmail": {
+        "emailType": {
+          "label": "Email Type",
+          "description": "Select the type of email you want to generate. Uuid_v4 emails guarantee uniqueness."
+        }
+      },
+      "TransformFirstName": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output first name to be the same as the input"
+        }
+      },
+      "TransformFloat64": {
+        "randomizationRangeMin": {
+          "label": "Relative Minimum Range Value",
+          "description": "Sets a relative minimum lower range value. This will create a lowerbound around the source input value. For example, if the input value is 10, and you set this value to 5, then the minimum range will be 5 (10 - 5 = 5)."
+        },
+        "randomizationRangeMax": {
+          "label": "Relative Maximum Range Value",
+          "description": "Sets a relative maximum upper range value. This will create an upperbound around the source input value. For example, if the input value is 10, and you set this value to 5, then the maximum range will be 15 (10 + 5 = 15)."
+        }
+      },
+      "TransformFullName": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Generates a full name which has the same first name and last name length as the input first and last names"
+        }
+      },
+      "TransformInt64": {
+        "randomizationRangeMin": {
+          "label": "Relative Minimum Range Value",
+          "description": "Sets a relative minimum lower range value. This will create a lowerbound around the source input value. For example, if the input value is 10, and you set this value to 5, then the minimum range will be 5 (10 - 5 = 5)."
+        },
+        "randomizationRangeMax": {
+          "label": "Relative Maximum Range Value",
+          "description": "Sets a relative maximum upper range value. This will create an upperbound around the source input value. For example, if the input value is 10, and you set this value to 5, then the maximum range will be 15 (10 + 5 = 15)."
+        }
+      },
+      "TransformInt64PhoneNumber": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output phone number to be the same as the input"
+        }
+      },
+      "TransformLastName": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output last name to be the same as the input"
+        }
+      },
+      "TransformPhoneNumber": {
+        "preserveFormat": {
+          "label": "Preserve Format",
+          "description": "Keep the prefix (06, +33 6), separators and length of the input, and replace the other digits. Two distinct numbers never give the same output, and the same number always gives the same one."
+        },
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output phone number to be the same as the input. Implied by Preserve Format."
+        }
+      },
+      "TransformString": {
+        "preserveLength": {
+          "label": "Preserve Length",
+          "description": "Set the length of the output string to be the same as the input"
+        }
+      },
+      "GenerateCountry": {
+        "generateFullName": {
+          "label": "Generate Full Name",
+          "description": "Enable to return the full country name otherwise it returns the 2-letter country code by default."
+        }
+      },
+      "GenerateIpAddress": {
+        "ipType": {
+          "label": "IP Version",
+          "description": "Select if you want to generate an IPv4 or IPv6 address."
+        }
+      }
+    },
+    "newTransformer": {
+      "title": "New transformer",
+      "description": "Start from a system transformer and save your own options.",
+      "created": "Successfully created transformer!",
+      "createError": "Uanble to create transformer",
+      "sourceLabel": "Source Transformer",
+      "sourceDescription": "The system transformer to clone.",
+      "selectPlaceholder": "Select a transformer",
+      "searchPlaceholder": "Search transformers...",
+      "noResults": "No transformers found.",
+      "nameLabel": "Name",
+      "nameDescription": "The unique name of the transformer.",
+      "namePlaceholder": "Transformer Name",
+      "descriptionLabel": "Description",
+      "descriptionDescription": "The Transformer description.",
+      "descriptionPlaceholder": "Transformer description",
+      "submit": "Submit",
+      "code": {
+        "valid": "valid",
+        "invalid": "invalid",
+        "validate": "Validate",
+        "regexLabel": "Regular Expression",
+        "regexDescription": "Provide a Go regular expression to match and transform a substring of the value. Leave this blank to transform the entire value. Note: the regex needs to compile in Go.",
+        "codeLabel": "Transformer Code",
+        "generateDescription": "Define your own Transformation below using Javascript",
+        "transformDescription": "Define your own Transformation below using Javascript. The source column value will be available at the <code>value</code> keyword. While additional columns can be accessed at <code>input.'{'column_name'}'</code>.",
+        "globalWritesTitle": "This code writes outside its own variables",
+        "globalWritesDescription": "That state only lives for one row: it is shared with the other columns of the row, and lost at the next one. To turn the same value into the same output, use the pseudo.* functions (Athanor).",
+        "trialInvalidJson": "The rows are not valid JSON: {error}",
+        "trialNotArray": "The rows must be an array of JSON objects.",
+        "trialFailedToRun": "The trial could not run: {error}",
+        "trialTitle": "Try the rule",
+        "trialDescription": "The rule runs on the rows below as it would in an Athanor job: its state does not carry from one row to the next. The pseudo.* functions derive here from a key drawn for the trial, so their outputs have the shape of a run's, not its values.",
+        "trialColumn": "Transformed column",
+        "trialRows": "Trial rows (JSON array, 20 at most)",
+        "trialTry": "Try",
+        "trialFailedOnRow": "Failed on row {row}",
+        "trialFailedOnRowColumn": "Failed on row {row}, column \"{column}\"",
+        "trialRow": "Row",
+        "trialBefore": "Before",
+        "trialAfter": "After"
+      }
+    }
+  }
 }

@@ -2,11 +2,13 @@
 import OpenAiConnectionForm from '@/components/connections/forms/openai/OpenAiConnectionForm';
 import NewConnectionLayout from '../components/NewConnectionLayout';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo } from 'react';
 import { useOnCreateSuccess } from '../components/useOnCreateSuccess';
 import { OpenAiLogo } from './OpenAiLogo';
 
 export default function OpenAi(): ReactElement {
+  const t = useTranslations('connections.newConnection.subHeadings');
   const { resolvedTheme } = useTheme();
   const logoBg = useMemo(
     () => (resolvedTheme === 'dark' ? 'white' : '#272F30'),
@@ -17,7 +19,7 @@ export default function OpenAi(): ReactElement {
   return (
     <NewConnectionLayout
       header="OpenAI"
-      subHeadings="Configure an OpenAI SDK to be used for AI-focused data generation jobs."
+      subHeadings={t('openai')}
       leftIcon={<OpenAiLogo bg={logoBg} />}
     >
       <OpenAiConnectionForm mode="create" onSuccess={onSuccess} />

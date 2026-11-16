@@ -18,6 +18,7 @@ import {
 } from '@husonym/sdk';
 import { CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useState } from 'react';
 import { ValidCode } from './TransformJavascriptForm';
 import JavascriptGlobalWrites from './JavascriptGlobalWrites';
@@ -28,6 +29,7 @@ interface Props extends TransformerConfigProps<GenerateJavascript> {}
 
 export default function GenerateJavascriptForm(props: Props): ReactElement {
   const { value, setValue, isDisabled, errors } = props;
+  const t = useTranslations('connections.newTransformer.code');
 
   const options = {
     minimap: { enabled: false },
@@ -83,9 +85,9 @@ export default function GenerateJavascriptForm(props: Props): ReactElement {
     <div>
       <div className="flex flex-row items-center justify-between">
         <div className="space-y-0.5">
-          <FormLabel>Transformer Code</FormLabel>
+          <FormLabel>{t('codeLabel')}</FormLabel>
           <div className="text-sm text-muted-foreground">
-            Define your own Transformation below using Javascript
+            {t('generateDescription')}
           </div>
         </div>
         <div className="flex flex-row gap-2">
@@ -102,7 +104,7 @@ export default function GenerateJavascriptForm(props: Props): ReactElement {
                     <CrossCircledIcon />
                   ) : null
                 }
-                text={isCodeValid === 'invalid' ? 'invalid' : 'valid'}
+                text={isCodeValid === 'invalid' ? t('invalid') : t('valid')}
               />
             </Badge>
           )}
@@ -113,7 +115,7 @@ export default function GenerateJavascriptForm(props: Props): ReactElement {
           >
             <ButtonText
               leftIcon={isValidatingCode ? <Spinner /> : null}
-              text={'Validate'}
+              text={t('validate')}
             />
           </Button>
         </div>

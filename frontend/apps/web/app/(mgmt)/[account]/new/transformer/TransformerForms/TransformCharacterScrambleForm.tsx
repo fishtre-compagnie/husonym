@@ -12,6 +12,7 @@ import {
   TransformCharacterScrambleSchema,
   TransformersService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import OptionField from './options/OptionField';
 import { TransformerConfigProps } from './util';
@@ -24,6 +25,7 @@ export default function TransformCharacterScrambleForm(
   props: Props
 ): ReactElement {
   const { value, setValue, isDisabled, errors } = props;
+  const t = useTranslations('connections.newTransformer.code');
 
   const [isValidatingRegex, setIsValidatingRegex] = useState<boolean>(false);
   const [isRegexValid, setIsRegexValid] = useState<ValidRegex>('null');
@@ -68,14 +70,14 @@ export default function TransformCharacterScrambleForm(
                   <CrossCircledIcon />
                 ) : null
               }
-              text={isRegexValid === 'invalid' ? 'invalid' : 'valid'}
+              text={isRegexValid === 'invalid' ? t('invalid') : t('valid')}
             />
           </Badge>
         )}
         <Button variant="secondary" type="button" onClick={handleValidateCode}>
           <ButtonText
             leftIcon={isValidatingRegex ? <Spinner /> : null}
-            text={'Validate'}
+            text={t('validate')}
           />
         </Button>
       </div>
@@ -86,12 +88,10 @@ export default function TransformCharacterScrambleForm(
         isDisabled={isDisabled}
         errors={errors}
         field="userProvidedRegex"
-        label="Regular Expression"
+        label={t('regexLabel')}
         description={
           <>
-            Provide a Go regular expression to match and transform a substring
-            of the value. Leave this blank to transform the entire value. Note:
-            the regex needs to compile in Go.{' '}
+            {t('regexDescription')}{' '}
             <LearnMoreLink href="https://docs.husonym.com/transformers/system#transform-character-scramble" />
           </>
         }

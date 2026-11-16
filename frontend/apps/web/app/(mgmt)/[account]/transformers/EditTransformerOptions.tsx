@@ -43,6 +43,7 @@ import {
 } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import {
   EditJobMappingTransformerConfigFormContext,
   EditJobMappingTransformerConfigFormValues,
@@ -151,6 +152,7 @@ function EditTransformerConfig(
   props: EditTransformerConfigProps
 ): ReactElement {
   const { value, onSubmit, isDisabled, onClose } = props;
+  const t = useTranslations('connections.transformers.options');
 
   const { account } = useAccount();
   const { mutateAsync: isJavascriptCodeValid } = useMutation(
@@ -195,7 +197,7 @@ function EditTransformerConfig(
         />
         <div className="flex justify-between w-full">
           <Button variant="outline" onClick={onClose}>
-            Close
+            {t('close')}
           </Button>
 
           <Button
@@ -211,7 +213,7 @@ function EditTransformerConfig(
               })(e);
             }}
           >
-            Save
+            {t('save')}
           </Button>
         </div>
       </div>
@@ -220,12 +222,13 @@ function EditTransformerConfig(
 }
 
 function NoAdditionalTransformerConfigurations(): ReactElement {
+  const t = useTranslations('connections.transformers.options');
   return (
     <Alert className="border-line-soft bg-card">
       <div className="flex flex-row items-center gap-4">
         <MixerHorizontalIcon className="h-4 w-4" />
         <AlertDescription className="text-muted-foreground">
-          There are no additional configurations for this Transformer
+          {t('noConfig')}
         </AlertDescription>
       </div>
     </Alert>

@@ -27,6 +27,7 @@ import {
 import { UpdateIcon } from '@radix-ui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
 import Error from 'next/error';
+import { useTranslations } from 'next-intl';
 import { useMemo, use } from 'react';
 import { toast } from 'sonner';
 import ViewActions from '../components/ViewActions';
@@ -51,6 +52,7 @@ function getPermissionColumnType(
 
 export default function PermissionsPage(props: PageProps) {
   const params = use(props.params);
+  const t = useTranslations('connections.detail');
   const id = params?.id ?? '';
   const { account } = useAccount();
   const { data, isLoading } = useQuery(
@@ -93,7 +95,8 @@ export default function PermissionsPage(props: PageProps) {
       <ResourceId
         labelText={data?.connection?.id ?? ''}
         copyText={data?.connection?.id ?? ''}
-        onHoverText="Copy the connection id"
+        onHoverText={t('copyId')}
+        onCopiedText={t('copied')}
       />
     ),
   });
@@ -116,11 +119,11 @@ export default function PermissionsPage(props: PageProps) {
 
   const subnav = [
     {
-      title: 'Configuration',
+      title: t('tabConfiguration'),
       href: `${basePath}`,
     },
     {
-      title: 'Permissions',
+      title: t('tabPermissions'),
       href: `${basePath}/permissions`,
     },
   ];
@@ -167,6 +170,7 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
     recheck,
     isRechecking,
   } = props;
+  const t = useTranslations('connections.permissions');
 
   async function handleMutate() {
     if (isRechecking) {
@@ -175,7 +179,7 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
     try {
       await recheck();
     } catch (error) {
-      toast.error('Unable to get update permissions table', {
+      toast.error(t('recheckError'), {
         description: getErrorMessage(error),
       });
     }
@@ -185,7 +189,7 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-row justify-between items-center w-full">
         <div className="text-muted-foreground text-sm">
-          Review the permissions that Husonym needs for your connection.{' '}
+          {t('intro')}{' '}
           <LearnMoreLink href="https://docs.husonym.com/connections/postgres#permissions" />
         </div>
       </div>
@@ -203,7 +207,7 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
             type="button"
             variant="outline"
             onClick={handleMutate}
-            aria-label="Check the permissions again"
+            aria-label={t('recheck')}
           >
             {isRechecking ? <Spinner /> : <UpdateIcon />}
           </Button>

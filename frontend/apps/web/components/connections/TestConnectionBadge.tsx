@@ -14,6 +14,7 @@ import {
 } from '@husonym/sdk';
 import { ArrowTopRightIcon, CheckCircledIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { MdErrorOutline } from 'react-icons/md';
 import { TiWarningOutline } from 'react-icons/ti';
@@ -56,6 +57,7 @@ function ValidationResponseBadge(
   props: ValidationResponseBadgeProps
 ): ReactElement | null {
   const { validationResponse, accountName, connectionId } = props;
+  const t = useTranslations('connections.badge');
   const url = `/${accountName}/connections/${connectionId}/permissions`;
 
   if (!validationResponse) {
@@ -76,8 +78,8 @@ function ValidationResponseBadge(
           >
             <TiWarningOutline />
             <div className="text-nowrap text-xs pl-2 font-medium">
-              Successfully connected - found no tables{' '}
-              <span className="underline">More info</span>
+              {t('connectedNoTables')}{' '}
+              <span className="underline">{t('moreInfo')}</span>
             </div>
             <ArrowTopRightIcon />
           </Link>
@@ -88,7 +90,7 @@ function ValidationResponseBadge(
         <div className="flex flex-row items-center gap-2 rounded-full px-2.5 py-1 h-auto text-ok bg-ok-soft transition-colors">
           <CheckCircledIcon />
           <div className="text-nowrap text-xs font-medium">
-            Successfully connected
+            {t('connected')}
           </div>
         </div>
       );
@@ -104,8 +106,8 @@ function ValidationResponseBadge(
       >
         <MdErrorOutline />
         <div className="text-nowrap text-xs pl-2 font-medium">
-          Connection Error - Unable to connect.{' '}
-          <span className="underline">More info</span>
+          {t('connectionError')}{' '}
+          <span className="underline">{t('moreInfo')}</span>
           <p>{getErrorMessage(validationResponse.connectionError)}</p>
         </div>
         <ArrowTopRightIcon />
@@ -122,11 +124,12 @@ interface FindingsBadgeProps {
 // the findings. The job's tables are checked when the job is saved.
 function FindingsBadge(props: FindingsBadgeProps): ReactElement {
   const { checks } = props;
+  const t = useTranslations('connections.badge');
   const [open, setOpen] = useState(false);
   const { blocking, warnings } = countChecks(checks);
   const parts = [
-    blocking > 0 ? `${blocking} blocking` : '',
-    warnings > 0 ? `${warnings} warning${warnings > 1 ? 's' : ''}` : '',
+    blocking > 0 ? t('blocking', { count: blocking }) : '',
+    warnings > 0 ? t('warnings', { count: warnings }) : '',
   ].filter((part) => !!part);
   const className =
     blocking > 0
@@ -141,22 +144,19 @@ function FindingsBadge(props: FindingsBadgeProps): ReactElement {
       >
         {blocking > 0 ? <MdErrorOutline /> : <TiWarningOutline />}
         <span className="text-nowrap text-xs font-medium">
-          Connected · {parts.join(', ')}{' '}
-          <span className="underline">Details</span>
+          {t('connectedWith', { parts: parts.join(', ') })}{' '}
+          <span className="underline">{t('details')}</span>
         </span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Connection checks</DialogTitle>
-            <DialogDescription>
-              What the connection cannot do in its role, at server level. The
-              job&apos;s tables are checked when the job is saved.
-            </DialogDescription>
+            <DialogTitle>{t('checksTitle')}</DialogTitle>
+            <DialogDescription>{t('checksDescription')}</DialogDescription>
           </DialogHeader>
           <ConnectionCheckList
             checks={checks}
-            allClearText="Nothing missing."
+            allClearText={t('nothingMissing')}
           />
         </DialogContent>
       </Dialog>

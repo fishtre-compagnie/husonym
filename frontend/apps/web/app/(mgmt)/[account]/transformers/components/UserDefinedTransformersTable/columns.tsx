@@ -11,6 +11,7 @@ import {
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { UserDefinedTransformer } from '@husonym/sdk';
 import { ColumnDef } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import NextLink from 'next/link';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
@@ -18,19 +19,20 @@ import { DataTableRowActions } from './data-table-row-actions';
 interface getUserDefinedTransformerColumnsProps {
   onTransformerDeleted(id: string): void;
   accountName: string;
+  t: ReturnType<typeof useTranslations<'connections.transformers.table'>>;
 }
 
 export function getUserDefinedTransformerColumns(
   props: getUserDefinedTransformerColumnsProps
 ): ColumnDef<AppTableFeatures, UserDefinedTransformer>[] {
-  const { onTransformerDeleted, accountName } = props;
+  const { onTransformerDeleted, accountName, t } = props;
 
   return [
     {
       id: 'name',
       accessorKey: 'name',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
+        <DataTableColumnHeader column={column} title={t('name')} />
       ),
       cell: ({ row }) => {
         return (
@@ -54,7 +56,7 @@ export function getUserDefinedTransformerColumns(
       accessorKey: 'types',
       accessorFn: (row) => getTransformerDataTypesString(row.dataTypes),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Data Types" />
+        <DataTableColumnHeader column={column} title={t('dataTypes')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -68,7 +70,7 @@ export function getUserDefinedTransformerColumns(
       accessorKey: 'source',
       accessorFn: (row) => getTransformerSourceString(row.source),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Source" />
+        <DataTableColumnHeader column={column} title={t('source')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -83,7 +85,7 @@ export function getUserDefinedTransformerColumns(
     {
       accessorKey: 'createdAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
+        <DataTableColumnHeader column={column} title={t('createdAt')} />
       ),
       cell: ({ row }) => {
         return (
@@ -104,7 +106,7 @@ export function getUserDefinedTransformerColumns(
     {
       accessorKey: 'updatedAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Updated At" />
+        <DataTableColumnHeader column={column} title={t('updatedAt')} />
       ),
       cell: ({ row }) => {
         return (
@@ -126,7 +128,7 @@ export function getUserDefinedTransformerColumns(
       id: 'actions',
       accessorKey: 'actions',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Actions" />
+        <DataTableColumnHeader column={column} title={t('actions')} />
       ),
       cell: ({ row }) => (
         <DataTableRowActions

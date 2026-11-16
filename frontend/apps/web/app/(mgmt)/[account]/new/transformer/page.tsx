@@ -45,6 +45,7 @@ import { CheckIcon } from '@radix-ui/react-icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { CreateUserDefinedTransformerFormValues } from '../../../../../yup-validations/transformer-validations';
 import { constructDocsLink } from '../../transformers/EditTransformerOptions';
@@ -59,6 +60,7 @@ function getTransformerSource(sourceStr: string): TransformerSource {
 }
 
 export default function NewTransformer(): ReactElement {
+  const tNew = useTranslations('connections.newTransformer');
   const { account } = useAccount();
   const { allowed } = useLicenseFeature('custom_transformers');
 
@@ -124,7 +126,7 @@ export default function NewTransformer(): ReactElement {
           values.config
         ),
       });
-      toast.success('Successfully created transformer!');
+      toast.success(tNew('created'));
       if (transformer.transformer?.id) {
         router.push(
           `/${account?.name}/transformers/${transformer.transformer?.id}`
@@ -134,7 +136,7 @@ export default function NewTransformer(): ReactElement {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Uanble to create transformer', {
+      toast.error(tNew('createError'), {
         description: getErrorMessage(err),
       });
     }
@@ -172,10 +174,7 @@ export default function NewTransformer(): ReactElement {
 
   return (
     <PageBody className="max-w-[1320px]">
-      <PageHeader
-        title="New transformer"
-        description="Start from a system transformer and save your own options."
-      />
+      <PageHeader title={tNew('title')} description={tNew('description')} />
       <LicenseFeatureNotice feature="custom_transformers" className="mb-4" />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -184,9 +183,9 @@ export default function NewTransformer(): ReactElement {
             name="source"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Source Transformer</FormLabel>
+                <FormLabel>{tNew('sourceLabel')}</FormLabel>
                 <FormDescription>
-                  The system transformer to clone.{' '}
+                  {tNew('sourceDescription')}{' '}
                   {formSource !== 0 && formSource !== null && (
                     <LearnMoreLink
                       href={constructDocsLink(
@@ -201,13 +200,13 @@ export default function NewTransformer(): ReactElement {
                     onOpenChange={setOpenBaseSelect}
                   >
                     <SelectTrigger>
-                      {base.name ? base.name : 'Select a transformer'}
+                      {base.name ? base.name : tNew('selectPlaceholder')}
                     </SelectTrigger>
                     <SelectContent>
                       <Command className="overflow-auto">
-                        <CommandInput placeholder="Search transformers..." />
+                        <CommandInput placeholder={tNew('searchPlaceholder')} />
                         <CommandList>
-                          <CommandEmpty>No transformers found.</CommandEmpty>
+                          <CommandEmpty>{tNew('noResults')}</CommandEmpty>
                           <CommandGroup className="overflow-auto h-[200px]">
                             {transformers.map((t) => (
                               <CommandItem
@@ -250,13 +249,11 @@ export default function NewTransformer(): ReactElement {
                 name="name"
                 render={({ field: { onChange, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormDescription>
-                      The unique name of the transformer.
-                    </FormDescription>
+                    <FormLabel>{tNew('nameLabel')}</FormLabel>
+                    <FormDescription>{tNew('nameDescription')}</FormDescription>
                     <FormControl>
                       <Input
-                        placeholder="Transformer Name"
+                        placeholder={tNew('namePlaceholder')}
                         {...field}
                         onChange={async ({ target: { value } }) => {
                           onChange(value);
@@ -274,13 +271,13 @@ export default function NewTransformer(): ReactElement {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{tNew('descriptionLabel')}</FormLabel>
                       <FormDescription>
-                        The Transformer description.
+                        {tNew('descriptionDescription')}
                       </FormDescription>
                       <FormControl>
                         <Input
-                          placeholder="Transformer description"
+                          placeholder={tNew('descriptionPlaceholder')}
                           {...field}
                         />
                       </FormControl>
@@ -320,7 +317,7 @@ export default function NewTransformer(): ReactElement {
               type="submit"
               disabled={!allowed || !form.formState.isValid}
             >
-              Submit
+              {tNew('submit')}
             </Button>
           </div>
         </form>

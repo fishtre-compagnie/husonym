@@ -18,6 +18,7 @@ import {
 } from '@husonym/sdk';
 import { CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useState } from 'react';
 import JavascriptGlobalWrites from './JavascriptGlobalWrites';
 import JavascriptRuleTrial from './JavascriptRuleTrial';
@@ -29,6 +30,7 @@ export type ValidCode = 'valid' | 'invalid' | 'null';
 
 export default function TransformJavascriptForm(props: Props): ReactElement {
   const { value, setValue, isDisabled, errors } = props;
+  const t = useTranslations('connections.newTransformer.code');
 
   const options = {
     minimap: { enabled: false },
@@ -84,18 +86,15 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
     <div>
       <div className="flex flex-row items-center justify-between">
         <div className="space-y-0.5">
-          <FormLabel>Transformer Code</FormLabel>
+          <FormLabel>{t('codeLabel')}</FormLabel>
           <div className="text-sm text-muted-foreground w-[90%]">
-            Define your own Transformation below using Javascript. The source
-            column value will be available at the{' '}
-            <code className="bg-surface-2 text-hi font-mono text-[12px] px-1 py-0.5 rounded">
-              value
-            </code>{' '}
-            keyword. While additional columns can be accessed at{' '}
-            <code className="bg-surface-2 text-hi font-mono text-[12px] px-1 py-0.5 rounded">
-              input.{'{'}column_name{'}'}
-            </code>
-            .
+            {t.rich('transformDescription', {
+              code: (chunks) => (
+                <code className="bg-surface-2 text-hi font-mono text-[12px] px-1 py-0.5 rounded">
+                  {chunks}
+                </code>
+              ),
+            })}
           </div>
         </div>
         <div className="flex flex-row gap-2">
@@ -112,7 +111,7 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
                     <CrossCircledIcon />
                   ) : null
                 }
-                text={isCodeValid === 'invalid' ? 'invalid' : 'valid'}
+                text={isCodeValid === 'invalid' ? t('invalid') : t('valid')}
               />
             </Badge>
           )}
@@ -123,7 +122,7 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
           >
             <ButtonText
               leftIcon={isValidatingCode ? <Spinner /> : null}
-              text={'Validate'}
+              text={t('validate')}
             />
           </Button>
         </div>

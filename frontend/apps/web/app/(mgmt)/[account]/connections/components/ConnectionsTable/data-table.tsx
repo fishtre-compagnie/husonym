@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useLocalStorage } from 'usehooks-ts';
+import { useTranslations } from 'next-intl';
 import { DataTableToolbar } from './data-table-toolbar';
 
 interface DataTableProps<TData extends RowData> {
@@ -35,6 +36,7 @@ export function DataTable<TData extends RowData>({
   columns,
   data,
 }: DataTableProps<TData>) {
+  const t = useTranslations('connections.table');
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<ColumnVisibilityState>({ id: false });
@@ -107,7 +109,7 @@ export function DataTable<TData extends RowData>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No Connections available.
+                  {t('noResults')}
                 </TableCell>
               </TableRow>
             )}

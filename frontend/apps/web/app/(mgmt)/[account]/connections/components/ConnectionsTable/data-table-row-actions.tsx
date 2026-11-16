@@ -23,6 +23,7 @@ import {
   ConnectionService,
 } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { getConnectionUrlSlugName } from '../../util';
 
@@ -36,6 +37,8 @@ export function DataTableRowActions<TData extends RowData>({
   onDeleted,
 }: DataTableRowActionsProps<TData>) {
   const connection = row.original as Connection;
+  const t = useTranslations('connections.table');
+  const tDelete = useTranslations('connections.delete');
   const router = useRouter();
   const { account } = useAccount();
   const { mutateAsync } = useMutation(
@@ -45,11 +48,11 @@ export function DataTableRowActions<TData extends RowData>({
   async function onDelete(): Promise<void> {
     try {
       await mutateAsync({ id: connection.id });
-      toast.success('Connection removed successfully!');
+      toast.success(tDelete('removedList'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove connection', {
+      toast.error(tDelete('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -63,7 +66,7 @@ export function DataTableRowActions<TData extends RowData>({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
@@ -73,7 +76,7 @@ export function DataTableRowActions<TData extends RowData>({
             router.push(`/${account?.name}/connections/${connection.id}`)
           }
         >
-          View
+          {t('view')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -87,7 +90,7 @@ export function DataTableRowActions<TData extends RowData>({
             )
           }
         >
-          Clone
+          {t('clone')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DeleteConfirmationDialog
@@ -96,11 +99,12 @@ export function DataTableRowActions<TData extends RowData>({
               className="cursor-pointer"
               onSelect={(e) => e.preventDefault()}
             >
-              Delete
+              {t('delete')}
             </DropdownMenuItem>
           }
-          headerText="Are you sure you want to delete this connection?"
-          description="Deleting this connection is irreversable!"
+          headerText={tDelete('confirmTitle')}
+          description={tDelete('confirmDescription')}
+          buttonText={tDelete('confirmButton')}
           onConfirm={async () => onDelete()}
         />
       </DropdownMenuContent>

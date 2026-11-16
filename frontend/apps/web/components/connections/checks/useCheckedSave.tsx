@@ -6,6 +6,7 @@ import {
   TransformerSource,
   TransformersService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import ConnectionChecksDialog from './ConnectionChecksDialog';
@@ -60,6 +61,7 @@ export function useCheckedSave(): CheckedSave {
   const { mutateAsync: getUserDefinedTransformer } = useMutation(
     TransformersService.method.getUserDefinedTransformerById
   );
+  const t = useTranslations('connections.checks');
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<ConnectionCheckResult[]>([]);
   const [isChecking, setIsChecking] = useState(false);
@@ -149,7 +151,7 @@ export function useCheckedSave(): CheckedSave {
       return;
     }
     inFlight.current = true;
-    const checking = toast.loading('Checking the connections of the job…');
+    const checking = toast.loading(t('checkingToast'));
     try {
       const current = { job, options, save };
       pending.current = current;
@@ -188,7 +190,7 @@ export function useCheckedSave(): CheckedSave {
       await current.save();
       setOpen(false);
     } catch (err) {
-      toast.error('Unable to save the job', {
+      toast.error(t('saveError'), {
         description: getErrorMessage(err),
       });
     } finally {

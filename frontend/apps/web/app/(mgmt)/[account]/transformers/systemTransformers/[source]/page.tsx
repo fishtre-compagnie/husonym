@@ -31,6 +31,7 @@ import Error from 'next/error';
 import NextLink from 'next/link';
 import { ReactElement, use } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { constructDocsLink } from '../../EditTransformerOptions';
 
 function getTransformerSource(sourceStr: string): TransformerSource {
@@ -43,6 +44,7 @@ function getTransformerSource(sourceStr: string): TransformerSource {
 
 export default function ViewSystemTransformers(props: PageProps): ReactElement {
   const params = use(props.params);
+  const t = useTranslations('connections.transformers.system');
   const sourceParam = getTransformerSource(params?.source ?? '');
   const { data: systemTransformerData, isLoading } = useQuery(
     TransformersService.method.getSystemTransformerBySource,
@@ -76,7 +78,7 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
   return (
     <PageBody className="max-w-[1320px]">
       <PageHeader
-        title={systemTransformer?.name ?? 'System Transformer'}
+        title={systemTransformer?.name ?? t('fallbackTitle')}
         actions={
           <CloneTransformerButton source={systemTransformer?.source ?? ''} />
         }
@@ -89,9 +91,9 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
             disabled={true}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{t('nameLabel')}</FormLabel>
                 <FormDescription>
-                  The Transformer name.{' '}
+                  {t('nameDescription')}{' '}
                   <LearnMoreLink
                     href={constructDocsLink(
                       getTransformerSource(String(sourceParam))
@@ -99,7 +101,7 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
                   />
                 </FormDescription>
                 <FormControl>
-                  <Input placeholder="Transformer Name" {...field} />
+                  <Input placeholder={t('namePlaceholder')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -111,10 +113,10 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
             disabled={true}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormDescription>The Transformer decription.</FormDescription>
+                <FormLabel>{t('descriptionLabel')}</FormLabel>
+                <FormDescription>{t('descriptionDescription')}</FormDescription>
                 <FormControl>
-                  <Input placeholder="Transformer Name" {...field} />
+                  <Input placeholder={t('namePlaceholder')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -126,10 +128,10 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
             name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Data Type</FormLabel>
-                <FormDescription>The Transformer type.</FormDescription>
+                <FormLabel>{t('typeLabel')}</FormLabel>
+                <FormDescription>{t('typeDescription')}</FormDescription>
                 <FormControl>
-                  <Input placeholder="Transformer type" {...field} />
+                  <Input placeholder={t('typePlaceholder')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -141,12 +143,10 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
             name="source"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Source</FormLabel>
-                <FormDescription>
-                  The unique key associated with the transformer.
-                </FormDescription>
+                <FormLabel>{t('sourceLabel')}</FormLabel>
+                <FormDescription>{t('sourceDescription')}</FormDescription>
                 <FormControl>
-                  <Input placeholder="Transformer Source" {...field} />
+                  <Input placeholder={t('sourcePlaceholder')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -161,7 +161,7 @@ export default function ViewSystemTransformers(props: PageProps): ReactElement {
           </div>
           <div className="flex flex-row justify-start pt-10">
             <NextLink href={`/${account?.name}/transformers?tab=system`}>
-              <Button type="button">Back</Button>
+              <Button type="button">{t('back')}</Button>
             </NextLink>
           </div>
         </form>
@@ -176,11 +176,12 @@ interface CloneTransformerProps {
 
 function CloneTransformerButton(props: CloneTransformerProps): ReactElement {
   const { source } = props;
+  const t = useTranslations('connections.transformers.system');
   const { account } = useAccount();
   return (
     <NextLink href={`/${account?.name}/new/transformer?transformer=${source}`}>
       <Button>
-        <ButtonText text="Clone Transformer" />
+        <ButtonText text={t('clone')} />
       </Button>
     </NextLink>
   );

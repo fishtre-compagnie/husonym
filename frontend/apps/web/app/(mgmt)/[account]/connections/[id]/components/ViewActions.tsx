@@ -11,6 +11,7 @@ import {
 } from '@husonym/sdk';
 import { Pencil1Icon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import RemoveConnectionButton from './RemoveConnectionButton';
 
@@ -20,6 +21,7 @@ interface Props {
 
 export default function ViewActions(props: Props): ReactElement | null {
   const { connection } = props;
+  const t = useTranslations('connections.detail');
   const router = useRouter();
   const { account } = useAccount();
 
@@ -67,7 +69,7 @@ export default function ViewActions(props: Props): ReactElement | null {
             router.push(`/${account?.name}/connections/${connection?.id}/edit`);
           }}
         >
-          <ButtonText leftIcon={<Pencil1Icon />} text="Edit" />
+          <ButtonText leftIcon={<Pencil1Icon />} text={t('edit')} />
         </Button>
       )}
     </div>

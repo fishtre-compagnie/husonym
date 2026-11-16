@@ -8,6 +8,7 @@ import { TransformersService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 
 export default function RemoveTransformerButton(props: Props): ReactElement {
   const { transformerID } = props;
+  const t = useTranslations('connections.transformers.delete');
   const router = useRouter();
   const { account } = useAccount();
   const { mutateAsync } = useMutation(
@@ -25,11 +27,11 @@ export default function RemoveTransformerButton(props: Props): ReactElement {
   async function deleteTransformer(): Promise<void> {
     try {
       await mutateAsync({ transformerId: transformerID });
-      toast.success('Successfully removed transformer!');
+      toast.success(t('removed'));
       router.push(`/${account?.name}/transformers`);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove transformer', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -38,11 +40,12 @@ export default function RemoveTransformerButton(props: Props): ReactElement {
     <DeleteConfirmationDialog
       trigger={
         <Button variant="destructive">
-          <ButtonText leftIcon={<TrashIcon />} text="Delete Transformer" />
+          <ButtonText leftIcon={<TrashIcon />} text={t('deleteButton')} />
         </Button>
       }
-      headerText="Are you sure you want to delete this Transformer?"
-      description="Deleting this Transformer may impact Jobs that rely on it."
+      headerText={t('confirmTitle')}
+      description={t('confirmDescriptionDetail')}
+      buttonText={t('confirmButton')}
       onConfirm={async () => deleteTransformer()}
     />
   );

@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { Name } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
 import Sdk from './Sdk';
+import { useTranslations } from 'next-intl';
 
 interface OpenAiFormStore extends BaseStore<OpenAiFormValues> {
   init?(values: OpenAiFormValues): void;
@@ -52,6 +53,7 @@ interface Props {
 }
 
 export default function OpenAiForm(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.common');
   const {
     mode,
     initialValues,
@@ -90,7 +92,7 @@ export default function OpenAiForm(props: Props): ReactElement {
   });
 
   const isViewMode = mode === 'view';
-  const submitText = mode === 'create' ? 'Create' : 'Update';
+  const submitText = mode === 'create' ? t('create') : t('update');
 
   async function onRevealPassword(): Promise<string> {
     const values = await getValueWithSecrets?.();

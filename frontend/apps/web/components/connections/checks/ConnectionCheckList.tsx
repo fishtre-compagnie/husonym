@@ -2,6 +2,7 @@
 import FindingList, { FindingItem } from '@/components/findings/FindingList';
 import { ConnectionCheck } from '@husonym/sdk';
 import { CheckCircledIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { isBlocking } from './useConnectionChecks';
 
@@ -17,6 +18,7 @@ interface Props {
 // findings first, each with what is missing and the statement that grants it, if any.
 export default function ConnectionCheckList(props: Props): ReactElement {
   const { checks, unreachable, allClearText } = props;
+  const t = useTranslations('connections.checks');
 
   if (checks.length === 0 && !unreachable) {
     return (
@@ -38,7 +40,7 @@ export default function ConnectionCheckList(props: Props): ReactElement {
     findings.unshift({
       key: 'unreachable',
       level: 'warning',
-      message: `Could not be checked from the API: ${unreachable}. The run checks it again at its start.`,
+      message: t('unreachable', { reason: unreachable }),
     });
   }
   return <FindingList findings={findings} />;

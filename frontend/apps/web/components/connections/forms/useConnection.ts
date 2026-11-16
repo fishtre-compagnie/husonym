@@ -10,6 +10,7 @@ import {
   UpdateConnectionRequestSchema,
 } from '@husonym/sdk';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface CreateProps<T> {
@@ -57,6 +58,7 @@ export function useConnection<T extends { connectionName: string }>(
 ): UseConnectionResult<T> {
   const { mode } = props;
 
+  const t = useTranslations('connections.forms.common');
   const { account } = useAccount();
 
   const { mutateAsync: getConnection } = useMutation(
@@ -109,9 +111,9 @@ export function useConnection<T extends { connectionName: string }>(
     onSuccess: (conn: Connection) => void | Promise<void>
   ): void {
     if (mode === 'create' || mode === 'clone') {
-      toast.success('Connection created successfully!');
+      toast.success(t('created'));
     } else if (mode === 'edit') {
-      toast.success('Connection updated successfully!');
+      toast.success(t('updated'));
     }
     onSuccess(conn);
   }
@@ -135,7 +137,7 @@ export function useConnection<T extends { connectionName: string }>(
         }
       } catch (err) {
         console.error(err);
-        toast.error('Unable to create connection', {
+        toast.error(t('createError'), {
           description: getErrorMessage(err),
         });
       }
@@ -153,7 +155,7 @@ export function useConnection<T extends { connectionName: string }>(
         }
       } catch (err) {
         console.error(err);
-        toast.error('Unable to update connection', {
+        toast.error(t('updateError'), {
           description: getErrorMessage(err),
         });
       }

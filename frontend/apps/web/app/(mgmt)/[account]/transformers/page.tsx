@@ -13,19 +13,21 @@ import NextLink from 'next/link';
 import { ReadonlyURLSearchParams, useSearchParams } from 'next/navigation';
 import { ReactElement, useMemo } from 'react';
 import { IoMdCode } from 'react-icons/io';
+import { useTranslations } from 'next-intl';
 import { getSystemTransformerColumns } from './components/SystemTransformersTable/columns';
 import { SystemTransformersDataTable } from './components/SystemTransformersTable/data-table';
 import { getUserDefinedTransformerColumns } from './components/UserDefinedTransformersTable/columns';
 import { UserDefinedTransformersDataTable } from './components/UserDefinedTransformersTable/data-table';
 
 export default function Transformers(): ReactElement {
+  const t = useTranslations('connections.transformers.list');
   const searchParams = useSearchParams();
   const defaultTab = getTableTabFromParams(searchParams);
   return (
     <PageBody className="transformer-page">
       <PageHeader
-        title="Transformers"
-        description="What a job does to each column: anonymize it, generate it or keep it."
+        title={t('title')}
+        description={t('description')}
         actions={<NewTransformerButton />}
       />
       <TransformersTable defaultTab={defaultTab} />
@@ -52,6 +54,8 @@ interface TransformersTableProps {
 
 function TransformersTable(props: TransformersTableProps): ReactElement {
   const { defaultTab } = props;
+  const t = useTranslations('connections.transformers.list');
+  const tTable = useTranslations('connections.transformers.table');
   const { data, isLoading: isSystemTransformersLoading } = useQuery(
     TransformersService.method.getSystemTransformers
   );
@@ -74,8 +78,9 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
     () =>
       getSystemTransformerColumns({
         accountName: account?.name ?? '',
+        t: tTable,
       }),
-    [account?.name]
+    [account?.name, tTable]
   );
   // memoizing these columns to prevent infinite re-render when hovering over next link
   const userDefinedTransformerColumns = useMemo(
@@ -85,8 +90,9 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
           userDefinedTransformerRefetch();
         },
         accountName: account?.name ?? '',
+        t: tTable,
       }),
-    [account?.name]
+    [account?.name, tTable]
   );
 
   if (isSystemTransformersLoading || userDefinedTransformersLoading) {
@@ -97,18 +103,18 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
     <div>
       <Tabs defaultValue={defaultTab}>
         <TabsList>
-          <TabsTrigger value="ud">User Defined Transformers</TabsTrigger>
-          <TabsTrigger value="system">System Transformers</TabsTrigger>
+          <TabsTrigger value="ud">{t('tabUserDefined')}</TabsTrigger>
+          <TabsTrigger value="system">{t('tabSystem')}</TabsTrigger>
         </TabsList>
         <TabsContent value="ud">
           {userDefinedTransformers.length == 0 ? (
             <EmptyState
-              title="No User Defined Transformers yet"
-              description="Create a User Defined Transformer to implement data transformation logic. "
+              title={t('emptyTitle')}
+              description={t('emptyDescription')}
               icon={<IoMdCode className="w-8 h-8 text-primary" />}
               extra={
                 <EmptyStateLinkButton
-                  buttonText="Create your first Transformer"
+                  buttonText={t('emptyCta')}
                   href={`/${account?.name}/new/transformer`}
                 />
               }
@@ -132,11 +138,12 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
 }
 
 function NewTransformerButton(): ReactElement {
+  const t = useTranslations('connections.transformers.list');
   const { account } = useAccount();
   return (
     <NextLink href={`/${account?.name}/new/transformer`}>
       <Button>
-        <ButtonText leftIcon={<PlusIcon />} text="New Transformer" />
+        <ButtonText leftIcon={<PlusIcon />} text={t('newTransformer')} />
       </Button>
     </NextLink>
   );

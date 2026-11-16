@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { MongoDbFormValues } from '@/yup-validations/connections';
 import { ReactElement } from 'react';
 import { SecretRevealProps } from '../SharedFormInputs';
+import { useTranslations } from 'next-intl';
 
 interface Props extends SecretRevealProps<MongoDbFormValues> {
   urlValue: MongoDbFormValues['url'];
@@ -47,6 +48,7 @@ interface UrlTabProps extends SecretRevealProps<MongoDbFormValues['url']> {
 }
 
 function UrlTab(props: UrlTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     urlValue,
     onUrlValueChange,
@@ -60,8 +62,8 @@ function UrlTab(props: UrlTabProps): ReactElement {
     <div className="space-y-2">
       <FormHeader
         htmlFor="url"
-        title="Connection URL"
-        description="The URL of the database"
+        title={t('url.title')}
+        description={t('url.description')}
         isErrored={!!error}
         isRequired={true}
       />
