@@ -8,6 +8,7 @@ import { isRoleSelectable } from '@/libs/license/license';
 import { BaseHookStore } from '@/util/zustand.stores.util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
 import { AccountRole, AccountUser } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { FormEvent, ReactElement, useEffect } from 'react';
 import * as yup from 'yup';
 import { create } from 'zustand';
@@ -63,6 +64,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
     setSubmitting,
   } = useStore();
   const { allowed } = useLicenseFeature('rbac');
+  const t = useTranslations('settings.members.updateRole');
 
   useEffect(() => {
     // Initialize form with hook data
@@ -119,7 +121,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
           onClick={onCancel}
           className="w-full sm:w-auto"
         >
-          <ButtonText text="Cancel" />
+          <ButtonText text={t('cancel')} />
         </Button>
 
         <Button
@@ -129,7 +131,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Update"
+            text={t('update')}
           />
         </Button>
       </div>
@@ -144,13 +146,14 @@ interface AccountRoleFieldProps {
 }
 function AccountRoleField(props: AccountRoleFieldProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.members.updateRole');
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="role"
-        title="Role"
-        description="The new role of the user"
+        title={t('role')}
+        description={t('roleDescription')}
         isErrored={!!error}
       />
       <SelectAccountRole role={value} onChange={(role) => onChange(role)} />

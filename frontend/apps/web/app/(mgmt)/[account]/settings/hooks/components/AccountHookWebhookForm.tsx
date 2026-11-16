@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 import FormErrorMessage from '@/components/FormErrorMessage';
@@ -15,12 +16,13 @@ interface Props {
 
 export default function AccountHookWebhookForm(props: Props): ReactElement {
   const { values, setValues, errors } = props;
+  const t = useTranslations('settings.hooks.form');
   return (
     <>
       <div className="flex flex-col gap-3">
         <FormHeader
-          title="Webhook URL"
-          description="The URL to send the event to"
+          title={t('webhookUrl')}
+          description={t('webhookUrlDescription')}
           isErrored={!!errors['config.webhook.url']}
           isRequired={true}
         />
@@ -34,8 +36,8 @@ export default function AccountHookWebhookForm(props: Props): ReactElement {
       </div>
       <div className="flex flex-col gap-3">
         <FormHeader
-          title="Webhook Secret"
-          description="The secret the webhook is signed with. Only members who may edit the account see it and can change the hook."
+          title={t('webhookSecret')}
+          description={t('webhookSecretDescription')}
           isErrored={!!errors['config.webhook.secret']}
           isRequired={true}
         />
@@ -49,8 +51,8 @@ export default function AccountHookWebhookForm(props: Props): ReactElement {
       </div>
       <div className="flex flex-col gap-3">
         <FormHeader
-          title="Disable SSL Verification"
-          description="Whether to disable SSL verification for the webhook"
+          title={t('disableSsl')}
+          description={t('disableSslDescription')}
         />
         <ToggleGroup
           className="flex justify-start"
@@ -66,8 +68,8 @@ export default function AccountHookWebhookForm(props: Props): ReactElement {
             });
           }}
         >
-          <ToggleGroupItem value="no">No</ToggleGroupItem>
-          <ToggleGroupItem value="yes">Yes</ToggleGroupItem>
+          <ToggleGroupItem value="no">{t('no')}</ToggleGroupItem>
+          <ToggleGroupItem value="yes">{t('yes')}</ToggleGroupItem>
         </ToggleGroup>
       </div>
     </>

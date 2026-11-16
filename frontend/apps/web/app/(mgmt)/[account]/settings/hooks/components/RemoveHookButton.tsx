@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHook, AccountHookService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ interface Props {
 }
 export default function RemoveHookButton(props: Props): ReactElement {
   const { hook, onDeleted } = props;
+  const t = useTranslations('settings.hooks.remove');
   const { mutateAsync: removeHook } = useMutation(
     AccountHookService.method.deleteAccountHook
   );
@@ -20,11 +22,11 @@ export default function RemoveHookButton(props: Props): ReactElement {
   async function onDelete(): Promise<void> {
     try {
       await removeHook({ id: hook.id });
-      toast.success('Successfully removed account hook!');
+      toast.success(t('success'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove account hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -37,8 +39,8 @@ export default function RemoveHookButton(props: Props): ReactElement {
           <TrashIcon />
         </Button>
       }
-      headerText={`Are you sure you want to delete account hook: ${hook.name}?`}
-      description="Deleting this hook is irreversable!"
+      headerText={t('header', { name: hook.name })}
+      description={t('description')}
       onConfirm={async () => onDelete()}
     />
   );

@@ -50,6 +50,8 @@ import {
 import { CalendarIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { addDays, endOfDay, format, startOfDay } from 'date-fns';
+import { useDateFnsLocale } from '@/i18n/date-fns';
+import { useTranslations } from 'next-intl';
 import Error from 'next/error';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use } from 'react';
@@ -64,6 +66,10 @@ export default function RegenerateAccountApiKey(
   const router = useRouter();
   const { account } = useAccount();
   const { allowed } = useLicenseFeature('api_keys');
+  const t = useTranslations('settings.apiKeys.regenerate');
+  const tForm = useTranslations('settings.apiKeys.form');
+  const tDetail = useTranslations('settings.apiKeys.detail');
+  const dateLocale = useDateFnsLocale();
   const { data, isLoading } = useQuery(
     ApiKeyService.method.getAccountApiKey,
     { id },
@@ -111,10 +117,10 @@ export default function RegenerateAccountApiKey(
         })
       );
       router.push(`/${account?.name}/settings/api-keys/${id}`);
-      toast.success('Successfully regenerated api key!');
+      toast.success(t('success'));
     } catch (err) {
       console.error(err);
-      toast.error('Unable to regenerate api key!', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -134,7 +140,7 @@ export default function RegenerateAccountApiKey(
     return (
       <div className="mt-10">
         <Alert variant="destructive">
-          <AlertTitle>{`Error: Unable to retrieve api key`}</AlertTitle>
+          <AlertTitle>{tDetail('loadError')}</AlertTitle>
         </Alert>
       </div>
     );
@@ -142,10 +148,8 @@ export default function RegenerateAccountApiKey(
   return (
     <div className="flex flex-col gap-5">
       <SubPageHeader
-        header={`Regenerate API Key: ${data.apiKey.name}`}
-        description={
-          'Submitting this form will generate a new token. Be aware that any scripts or applications using this token will need to be updated.'
-        }
+        header={t('title', { name: data.apiKey.name })}
+        description={t('description')}
       />
       <Form {...form}>
         <form
@@ -159,7 +163,7 @@ export default function RegenerateAccountApiKey(
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Expiration <RequiredLabel />
+                  {tForm('expiration')} <RequiredLabel />
                 </FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -175,31 +179,36 @@ export default function RegenerateAccountApiKey(
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an expiration date" />
+                      <SelectValue
+                        placeholder={tForm('expirationPlaceholder')}
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     <SelectItem className="cursor-pointer" value="7">
-                      7 days
+                      {tForm('days', { count: 7 })}
                     </SelectItem>
                     <SelectItem className="cursor-pointer" value="30">
-                      30 days
+                      {tForm('days', { count: 30 })}
                     </SelectItem>
                     <SelectItem className="cursor-pointer" value="60">
-                      60 days
+                      {tForm('days', { count: 60 })}
                     </SelectItem>
                     <SelectItem className="cursor-pointer" value="90">
-                      90 days
+                      {tForm('days', { count: 90 })}
                     </SelectItem>
                     <SelectItem className="cursor-pointer" value="custom">
-                      Custom
+                      {tForm('custom')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>
                   <p>
-                    The token will expire on{' '}
-                    {format(form.getValues().expiresAt, 'PPP')}
+                    {tForm('expiresOn', {
+                      date: format(form.getValues().expiresAt, 'PPP', {
+                        locale: dateLocale,
+                      }),
+                    })}
                   </p>
                 </FormDescription>
                 <FormMessage />
@@ -229,9 +238,9 @@ export default function RegenerateAccountApiKey(
                         )}
                       >
                         {field.value ? (
-                          format(field.value, 'PPP')
+                          format(field.value, 'PPP', { locale: dateLocale })
                         ) : (
-                          <span>Pick a date</span>
+                          <span>{tForm('pickDate')}</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -259,7 +268,7 @@ export default function RegenerateAccountApiKey(
           />
           <div className="flex flex-row justify-end">
             <Button type="submit" disabled={!allowed}>
-              Submit
+              {tForm('submit')}
             </Button>
           </div>
         </form>

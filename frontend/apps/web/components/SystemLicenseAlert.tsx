@@ -2,6 +2,7 @@ import { formatDate, licenseState } from '@/libs/license/license';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -24,6 +25,7 @@ export default function SystemLicenseAlert(props: Props): ReactElement | null {
   const { data: systemInfo } = useQuery(
     UserAccountService.method.getSystemInformation
   );
+  const t = useTranslations('settings.licenseAlert');
 
   const license = systemInfo?.license;
   const expiresAt = license?.expiresAt
@@ -44,26 +46,25 @@ export default function SystemLicenseAlert(props: Props): ReactElement | null {
     switch (state) {
       case 'expiring':
         return {
-          title: `License expires in ${daysUntil(expiresAt!)} days`,
-          description: `Your license expires on ${formatDate(expiresAt!)}. Renew it to avoid losing the ability to create and run jobs.`,
+          title: t('expiringTitle', { count: daysUntil(expiresAt!) }),
+          description: t('expiringDescription', {
+            date: formatDate(expiresAt!),
+          }),
         };
       case 'grace':
         return {
-          title: 'License expired — grace period',
-          description: `Your license expired on ${formatDate(expiresAt!)}. Everything still works for now, but creating and running jobs will stop when the grace period ends. Contact us to renew.`,
+          title: t('graceTitle'),
+          description: t('graceDescription', { date: formatDate(expiresAt!) }),
         };
       case 'frozen':
         return {
-          title: 'License expired',
-          description:
-            'Creating, configuring and running jobs is disabled. Your configuration and run history remain available, and you can still pause and delete jobs. Renew your license to resume.',
+          title: t('frozenTitle'),
+          description: t('frozenDescription'),
         };
       default:
         return {
-          title: props.title ?? 'License Required',
-          description:
-            props.description ??
-            'This feature is only available to customers with a valid license.',
+          title: props.title ?? t('requiredTitle'),
+          description: props.description ?? t('requiredDescription'),
         };
     }
   })();

@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { useTranslations } from 'next-intl';
 
 interface DataTableViewOptionsProps<TData extends RowData> {
   table: Table<AppTableFeatures, TData>;
@@ -21,6 +22,7 @@ interface DataTableViewOptionsProps<TData extends RowData> {
 export function DataTableViewOptions<TData extends RowData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
+  const t = useTranslations('settings.apiKeys.list');
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -30,11 +32,11 @@ export function DataTableViewOptions<TData extends RowData>({
           className="ml-auto hidden h-8 lg:flex"
         >
           <MixerHorizontalIcon className="mr-2 h-4 w-4" />
-          View
+          {t('view')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('toggleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

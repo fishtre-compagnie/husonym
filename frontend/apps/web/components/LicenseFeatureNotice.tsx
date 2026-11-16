@@ -4,6 +4,7 @@ import {
   featureNoticeMessage,
   LicenseFeature,
 } from '@/libs/license/license';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ReactElement } from 'react';
 import { useAccount } from './providers/account-provider';
@@ -22,6 +23,7 @@ export default function LicenseFeatureNotice(
   const { feature, className } = props;
   const { allowed, license } = useLicenseFeature(feature);
   const { account } = useAccount();
+  const t = useTranslations('settings.licenseNotice');
 
   if (allowed) {
     return null;
@@ -33,7 +35,7 @@ export default function LicenseFeatureNotice(
       <AlertDescription>
         {featureNoticeMessage(license)}{' '}
         <Link href={`/${account?.name}/settings/license`} className="underline">
-          View license
+          {t('viewLicense')}
         </Link>
       </AlertDescription>
     </Alert>

@@ -24,6 +24,7 @@ import {
   Code,
   ConnectError,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -46,6 +47,7 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
     AccountSettingService.method.setAccountSetting
   );
   const [key, setKey] = useState('');
+  const t = useTranslations('settings.anonymization.key');
 
   async function onReplace(): Promise<void> {
     try {
@@ -62,9 +64,9 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
       // The response carries the setting, but the fingerprint and the dates this card
       // shows come from the list: read it again rather than patch it in place.
       await refetch();
-      toast.success('Consistency key replaced');
+      toast.success(t('replaced'));
     } catch (err) {
-      toast.error('Unable to replace the consistency key', {
+      toast.error(t('replaceError'), {
         description: getErrorMessage(err),
       });
     }
@@ -82,7 +84,7 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Unable to read the settings of this account</AlertTitle>
+        <AlertTitle>{t('readError')}</AlertTitle>
         <AlertDescription>{getErrorMessage(error)}</AlertDescription>
       </Alert>
     );
@@ -95,23 +97,14 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Consistency key</CardTitle>
-        <CardDescription>
-          Both anonymization engines derive their deterministic outputs from it:
-          the same input value turns into the same output, within the
-          consistency scope a job sets. Replacing it changes every output of
-          this account.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <KeyState setting={setting} />
         <div className="flex flex-col gap-2">
-          <Label htmlFor="consistency-key">Replace with a given key</Label>
-          <p className="text-muted-foreground text-sm">
-            A key is generated for the account on its first run; you give one
-            only to take over the key of a deployment you are replacing, or to
-            replay outputs produced elsewhere.
-          </p>
+          <Label htmlFor="consistency-key">{t('replaceLabel')}</Label>
+          <p className="text-muted-foreground text-sm">{t('replaceHelp')}</p>
           <div className="flex flex-row gap-2">
             <Input
               id="consistency-key"
@@ -124,16 +117,14 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
             <ConfirmationDialog
               trigger={
                 <Button type="button" variant="destructive" disabled={!key}>
-                  Replace
+                  {t('replace')}
                 </Button>
               }
-              headerText="Replace the consistency key?"
+              headerText={t('confirmHeader')}
               description={
-                setting
-                  ? 'Every destination this account has already filled stops matching what a new run writes: the same source value will be anonymized into something else. There is no way back to the previous key unless you kept it.'
-                  : 'This account will stop deriving from the key of the deployment and use the one you give. Destinations it has already filled stop matching what a new run writes.'
+                setting ? t('confirmWithKey') : t('confirmWithoutKey')
               }
-              buttonText="Replace the key"
+              buttonText={t('confirmButton')}
               buttonVariant="destructive"
               onConfirm={onReplace}
             />
@@ -145,16 +136,12 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
 }
 
 function KeyState({ setting }: { setting?: AccountSetting }): ReactElement {
+  const t = useTranslations('settings.anonymization.key');
   if (!setting) {
     return (
       <Alert>
-        <AlertTitle>This account has no key of its own</AlertTitle>
-        <AlertDescription>
-          Its runs derive from the key of the deployment
-          (ANONYMIZATION_CONSISTENCY_KEY), shared with every other account.
-          Where that variable is not set, the account is given a key of its own
-          on its first run.
-        </AlertDescription>
+        <AlertTitle>{t('noOwnKey')}</AlertTitle>
+        <AlertDescription>{t('noOwnKeyDescription')}</AlertDescription>
       </Alert>
     );
   }
@@ -170,31 +157,31 @@ function KeyState({ setting }: { setting?: AccountSetting }): ReactElement {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-row items-center gap-2">
-        <span className="text-sm font-medium">Fingerprint</span>
+        <span className="text-sm font-medium">{t('fingerprint')}</span>
         <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
           {fingerprint || '—'}
         </code>
       </div>
       <p className="text-muted-foreground text-sm">
-        {drawn ? 'Generated for this account' : 'Given'}
-        {at ? ` on ${at}` : ''}. The key itself never leaves the API: the
-        fingerprint is there to tell two keys apart — whether two deployments
-        share one, or whether a replacement really took.
+        {drawn
+          ? at
+            ? t('generatedOn', { at })
+            : t('generated')
+          : at
+            ? t('givenOn', { at })
+            : t('given')}{' '}
+        {t('fingerprintNote')}
       </p>
     </div>
   );
 }
 
 function SettingsUnavailableAlert(): ReactElement {
+  const t = useTranslations('settings.anonymization.key');
   return (
     <Alert variant="warning">
-      <AlertTitle>This deployment holds no account settings</AlertTitle>
-      <AlertDescription>
-        Settings carry secrets, so they are only kept where the API can encrypt
-        one. Set HUSONYM_SYM_ENCRYPTION_PASSWORD on the API to give each account
-        a key of its own; until then, runs derive from
-        ANONYMIZATION_CONSISTENCY_KEY, shared by every account.
-      </AlertDescription>
+      <AlertTitle>{t('unavailableTitle')}</AlertTitle>
+      <AlertDescription>{t('unavailableDescription')}</AlertDescription>
     </Alert>
   );
 }

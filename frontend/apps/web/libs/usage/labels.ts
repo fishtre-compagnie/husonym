@@ -1,42 +1,70 @@
 import { RunErrorCategory, RunErrorStep } from '@husonym/sdk';
+import { ENGLISH_USAGE_I18N, UsageI18n } from './i18n';
 
-const OTHER = 'Other';
+type CategoryKey =
+  | 'connectionRefused'
+  | 'authenticationRefused'
+  | 'timeout'
+  | 'constraintViolated'
+  | 'insufficientPrivileges'
+  | 'objectMissing'
+  | 'typeMismatch'
+  | 'resourcesExhausted'
+  | 'canceled'
+  | 'license'
+  | 'other';
 
-// What kept a run from completing, as the pages name it. A member added to the enum
-// does not compile until it has its label here.
-const ERROR_CATEGORY_LABELS: Record<RunErrorCategory, string> = {
-  [RunErrorCategory.UNSPECIFIED]: OTHER,
-  [RunErrorCategory.CONNECTION_REFUSED]: 'Connection refused',
-  [RunErrorCategory.AUTHENTICATION_REFUSED]: 'Authentication refused',
-  [RunErrorCategory.TIMEOUT]: 'Timeout',
-  [RunErrorCategory.CONSTRAINT_VIOLATED]: 'Constraint violated',
-  [RunErrorCategory.INSUFFICIENT_PRIVILEGES]: 'Insufficient privileges',
-  [RunErrorCategory.OBJECT_MISSING]: 'Object missing',
-  [RunErrorCategory.TYPE_MISMATCH]: 'Type mismatch',
-  [RunErrorCategory.RESOURCES_EXHAUSTED]: 'Resources exhausted',
-  [RunErrorCategory.CANCELED]: 'Canceled',
-  [RunErrorCategory.LICENSE]: 'License',
-  [RunErrorCategory.OTHER]: OTHER,
+// What kept a run from completing, as the pages name it (the keys of
+// settings.usage.errorCategories). A member added to the enum does not compile until
+// it has its label here.
+const ERROR_CATEGORY_KEYS: Record<RunErrorCategory, CategoryKey> = {
+  [RunErrorCategory.UNSPECIFIED]: 'other',
+  [RunErrorCategory.CONNECTION_REFUSED]: 'connectionRefused',
+  [RunErrorCategory.AUTHENTICATION_REFUSED]: 'authenticationRefused',
+  [RunErrorCategory.TIMEOUT]: 'timeout',
+  [RunErrorCategory.CONSTRAINT_VIOLATED]: 'constraintViolated',
+  [RunErrorCategory.INSUFFICIENT_PRIVILEGES]: 'insufficientPrivileges',
+  [RunErrorCategory.OBJECT_MISSING]: 'objectMissing',
+  [RunErrorCategory.TYPE_MISMATCH]: 'typeMismatch',
+  [RunErrorCategory.RESOURCES_EXHAUSTED]: 'resourcesExhausted',
+  [RunErrorCategory.CANCELED]: 'canceled',
+  [RunErrorCategory.LICENSE]: 'license',
+  [RunErrorCategory.OTHER]: 'other',
 };
 
 // A category this page does not know (an API newer than the page) reads as Other.
-export function errorCategoryLabel(category: RunErrorCategory): string {
-  return ERROR_CATEGORY_LABELS[category] ?? OTHER;
+export function errorCategoryLabel(
+  category: RunErrorCategory,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  return i18n.t(`errorCategories.${ERROR_CATEGORY_KEYS[category] ?? 'other'}`);
 }
 
-// The step a run was at when it stopped, as the pages name it. As for the categories,
-// a member added to the enum does not compile until it has its label here.
-const ERROR_STEP_LABELS: Record<RunErrorStep, string> = {
-  [RunErrorStep.UNSPECIFIED]: OTHER,
-  [RunErrorStep.PREFLIGHT]: 'Preflight',
-  [RunErrorStep.SCHEMA_INIT]: 'Schema initialization',
-  [RunErrorStep.TABLE_SYNC]: 'Table sync',
-  [RunErrorStep.HOOKS]: 'Hooks',
-  [RunErrorStep.INTEGRITY_CHECK]: 'Integrity check',
-  [RunErrorStep.OTHER]: OTHER,
+type StepKey =
+  | 'preflight'
+  | 'schemaInit'
+  | 'tableSync'
+  | 'hooks'
+  | 'integrityCheck'
+  | 'other';
+
+// The step a run was at when it stopped, as the pages name it (the keys of
+// settings.usage.errorSteps). As for the categories, a member added to the enum does
+// not compile until it has its label here.
+const ERROR_STEP_KEYS: Record<RunErrorStep, StepKey> = {
+  [RunErrorStep.UNSPECIFIED]: 'other',
+  [RunErrorStep.PREFLIGHT]: 'preflight',
+  [RunErrorStep.SCHEMA_INIT]: 'schemaInit',
+  [RunErrorStep.TABLE_SYNC]: 'tableSync',
+  [RunErrorStep.HOOKS]: 'hooks',
+  [RunErrorStep.INTEGRITY_CHECK]: 'integrityCheck',
+  [RunErrorStep.OTHER]: 'other',
 };
 
 // A step this page does not know reads as Other.
-export function errorStepLabel(step: RunErrorStep): string {
-  return ERROR_STEP_LABELS[step] ?? OTHER;
+export function errorStepLabel(
+  step: RunErrorStep,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  return i18n.t(`errorSteps.${ERROR_STEP_KEYS[step] ?? 'other'}`);
 }

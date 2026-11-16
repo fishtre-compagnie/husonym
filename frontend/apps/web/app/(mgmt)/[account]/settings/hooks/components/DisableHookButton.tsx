@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHook, AccountHookService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
 
@@ -12,6 +13,7 @@ interface Props {
 
 export default function DisableHookButton(props: Props): ReactElement {
   const { hook, onDisabled } = props;
+  const t = useTranslations('settings.hooks.disable');
   const { mutateAsync: setEnabled, isPending } = useMutation(
     AccountHookService.method.setAccountHookEnabled
   );
@@ -19,11 +21,11 @@ export default function DisableHookButton(props: Props): ReactElement {
   async function onDisable(): Promise<void> {
     try {
       await setEnabled({ id: hook.id, enabled: false });
-      toast.success('Successfully disabled account hook!');
+      toast.success(t('success'));
       onDisabled();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to disable account hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -36,7 +38,7 @@ export default function DisableHookButton(props: Props): ReactElement {
       disabled={isPending}
       onClick={() => void onDisable()}
     >
-      Disable
+      {t('button')}
     </Button>
   );
 }

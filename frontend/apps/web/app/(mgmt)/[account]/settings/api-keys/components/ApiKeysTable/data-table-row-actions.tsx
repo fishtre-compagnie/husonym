@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AccountApiKey } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import RemoveAccountApiKeyButton from '../../[id]/components/RemoveAccountApiKeyButton';
 
@@ -29,6 +30,7 @@ export function DataTableRowActions<TData extends RowData>({
   const apikey = row.original as AccountApiKey;
   const router = useRouter();
   const { account } = useAccount();
+  const t = useTranslations('settings.apiKeys.list');
 
   return (
     <DropdownMenu modal={false}>
@@ -38,7 +40,7 @@ export function DataTableRowActions<TData extends RowData>({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
@@ -48,7 +50,7 @@ export function DataTableRowActions<TData extends RowData>({
             router.push(`/${account?.name}/settings/api-keys/${apikey.id}`)
           }
         >
-          View
+          {t('viewKey')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <RemoveAccountApiKeyButton
@@ -58,7 +60,7 @@ export function DataTableRowActions<TData extends RowData>({
               className="cursor-pointer"
               onSelect={(e) => e.preventDefault()}
             >
-              Delete
+              {t('delete')}
             </DropdownMenuItem>
           }
           onDeleted={() => onDeleted()}

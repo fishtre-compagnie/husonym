@@ -20,6 +20,7 @@ import {
 } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import { GetLicenseUsageResponse, SystemLicense } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
 
 export default function LicenseFeaturesCard(props: Props): ReactElement {
   const { license, usage, isLoading, usageError } = props;
+  const t = useTranslations('settings.license.features');
 
   if (isLoading) {
     return <Skeleton className="w-full h-64" />;
@@ -56,27 +58,20 @@ export default function LicenseFeaturesCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Features</CardTitle>
-        <CardDescription>
-          What the license of the instance includes, and what this account uses
-          of it.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {!!usageError && (
           <Alert variant="warning">
-            <AlertTitle>Unable to read what this account uses</AlertTitle>
+            <AlertTitle>{t('usageError')}</AlertTitle>
             <AlertDescription>{getErrorMessage(usageError)}</AlertDescription>
           </Alert>
         )}
-        {!inForce && (
-          <p className="text-sm">
-            No license is in force: none of the licensed features is included.
-          </p>
-        )}
+        {!inForce && <p className="text-sm">{t('noneInForce')}</p>}
         {blocking.length > 0 && (
           <p className="text-sm font-medium text-destructive">
-            Jobs that use a feature the license does not include do not start.
+            {t('blocking')}
           </p>
         )}
         {shown.length > 0 && (
@@ -88,16 +83,14 @@ export default function LicenseFeaturesCard(props: Props): ReactElement {
             </TableBody>
           </Table>
         )}
-        <p className="text-muted-foreground text-sm">
-          Usage of the MCP server, mapping review and run logs is not tracked
-          here.
-        </p>
+        <p className="text-muted-foreground text-sm">{t('notTracked')}</p>
       </CardContent>
     </Card>
   );
 }
 
 function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
+  const t = useTranslations('settings.license.features');
   return (
     <TableRow>
       <TableCell
@@ -109,9 +102,11 @@ function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
       </TableCell>
       <TableCell>
         {row.allowed ? (
-          <Pill tone="ok">Included</Pill>
+          <Pill tone="ok">{t('included')}</Pill>
         ) : (
-          <Pill tone={row.blocking ? 'danger' : 'quiet'}>Not included</Pill>
+          <Pill tone={row.blocking ? 'danger' : 'quiet'}>
+            {t('notIncluded')}
+          </Pill>
         )}
       </TableCell>
       <TableCell className="text-muted-foreground">

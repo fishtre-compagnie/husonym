@@ -18,6 +18,7 @@ import {
 import { errorRows, errorsEmptyLine, refusalRows } from '@/libs/usage/rows';
 import { noRunLine } from '@/libs/usage/totals';
 import { getErrorMessage } from '@/util/util';
+import { useUsageI18n } from '@/libs/usage/useUsageI18n';
 import { useQuery } from '@connectrpc/connect-query';
 import { GetAccountUsageResponse, UsageService } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
@@ -32,6 +33,8 @@ export default function UsagePage(): ReactElement {
   const { account } = useAccount();
   const accountId = account?.id ?? '';
   const [period, setPeriod] = useState<UsagePeriod>(DEFAULT_USAGE_PERIOD);
+  const i18n = useUsageI18n();
+  const { t } = i18n;
   const timeZone = browserTimeZone();
   const range = periodRange(period, new Date(), timeZone);
   const { data, error } = useQuery(
@@ -44,13 +47,13 @@ export default function UsagePage(): ReactElement {
     <div className="flex flex-col gap-5">
       <ReportingNotice accountId={accountId} />
       <SubPageHeader
-        header="Usage"
-        description="What this account ran, from the counters of this instance"
+        header={t('page.title')}
+        description={t('page.description')}
         subHeadings={
           error ? (
-            rangeLabel(range, undefined)
+            rangeLabel(range, undefined, i18n)
           ) : data ? (
-            rangeLabel(range, data.timeZone)
+            rangeLabel(range, data.timeZone, i18n)
           ) : (
             <Skeleton className="h-5 w-72" />
           )
@@ -61,7 +64,7 @@ export default function UsagePage(): ReactElement {
       />
       {error ? (
         <Alert variant="destructive">
-          <AlertTitle>Unable to read the usage of this account</AlertTitle>
+          <AlertTitle>{t('page.readError')}</AlertTitle>
           <AlertDescription>{getErrorMessage(error)}</AlertDescription>
         </Alert>
       ) : data ? (
@@ -80,30 +83,38 @@ function AccountUsage({
   accountName: string;
   usage: GetAccountUsageResponse;
 }): ReactElement {
-  const refusals = refusalRows(usage.refusals);
+  const i18n = useUsageI18n();
+  const { t } = i18n;
+  const refusals = refusalRows(usage.refusals, i18n.locale);
   return (
     <>
       <UsageTiles
         totals={usage.totals}
-        duration={{ label: 'Run time', seconds: usage.durationTotalSeconds }}
+        duration={{
+          label: t('page.runTime'),
+          seconds: usage.durationTotalSeconds,
+        }}
       />
-      <RowsPerDayChart days={usage.days} emptyLine={noRunLine(usage.totals)} />
+      <RowsPerDayChart
+        days={usage.days}
+        emptyLine={noRunLine(usage.totals, i18n)}
+      />
       <JobsUsageTable
         accountName={accountName}
         jobs={usage.jobs}
         totals={usage.totals}
       />
       <CountsCard
-        title="Errors by category"
-        columns={['Category', 'Runs']}
-        rows={errorRows(usage.errors)}
-        emptyLine={errorsEmptyLine(usage.totals)}
+        title={t('page.errorsTitle')}
+        columns={[t('page.category'), t('page.runs')]}
+        rows={errorRows(usage.errors, i18n)}
+        emptyLine={errorsEmptyLine(usage.totals, i18n)}
       />
       {refusals.length > 0 && (
         <CountsCard
-          title="License refusals"
-          description="Counted by UTC day, when a call reaches the API. A screen that is greyed out makes no call."
-          columns={['Refused', 'Times']}
+          title={t('page.refusalsTitle')}
+          description={t('page.refusalsDescription')}
+          columns={[t('page.refused'), t('page.times')]}
           rows={refusals}
         />
       )}

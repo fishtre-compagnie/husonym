@@ -29,6 +29,7 @@ import {
   UserAccountService,
 } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import Error from 'next/error';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
@@ -47,6 +48,7 @@ export default function Temporal(): ReactElement {
     UserAccountService.method.setAccountTemporalConfig
   );
   const queryclient = useQueryClient();
+  const t = useTranslations('settings.temporal');
 
   const form = useForm<TemporalFormValues>({
     resolver: yupResolver(TemporalFormValues),
@@ -85,9 +87,9 @@ export default function Temporal(): ReactElement {
           config: updatedResp.config,
         })
       );
-      toast.success('Successfully updated temporal config');
+      toast.success(t('success'));
     } catch (err) {
-      toast.error('Unable to update temporal config', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -106,10 +108,7 @@ export default function Temporal(): ReactElement {
 
   return (
     <div className="flex flex-col gap-5">
-      <SubPageHeader
-        header="Temporal"
-        description="Configure Temporal settings for this account"
-      />
+      <SubPageHeader header={t('title')} description={t('description')} />
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -121,13 +120,10 @@ export default function Temporal(): ReactElement {
               name="temporalUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Temporal Instance URL</FormLabel>
-                  <FormDescription>
-                    The temporal url that will be used to connect to the
-                    temporal instance.
-                  </FormDescription>
+                  <FormLabel>{t('urlLabel')}</FormLabel>
+                  <FormDescription>{t('urlDescription')}</FormDescription>
                   <FormControl>
-                    <Input placeholder="Temporal URL" {...field} />
+                    <Input placeholder={t('urlPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,12 +134,10 @@ export default function Temporal(): ReactElement {
               name="namespace"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Temporal Namespace</FormLabel>
-                  <FormDescription>
-                    The name of the temporal namespace.
-                  </FormDescription>
+                  <FormLabel>{t('namespaceLabel')}</FormLabel>
+                  <FormDescription>{t('namespaceDescription')}</FormDescription>
                   <FormControl>
-                    <Input placeholder="Temporal Namespace" {...field} />
+                    <Input placeholder={t('namespacePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -154,15 +148,10 @@ export default function Temporal(): ReactElement {
               name="syncJobName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Temporal Job Queue Name</FormLabel>
-                  <FormDescription>
-                    The name of the temporal job queue for the sync-job worker.
-                  </FormDescription>
+                  <FormLabel>{t('queueLabel')}</FormLabel>
+                  <FormDescription>{t('queueDescription')}</FormDescription>
                   <FormControl>
-                    <Input
-                      placeholder="Worker Sync Job Queue Name"
-                      {...field}
-                    />
+                    <Input placeholder={t('queuePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -170,7 +159,7 @@ export default function Temporal(): ReactElement {
             />
           </div>
           <div className="flex justify-end">
-            <Button type="submit">Submit</Button>
+            <Button type="submit">{t('submit')}</Button>
           </div>
         </form>
       </Form>

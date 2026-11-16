@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { ApiKeyService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -17,18 +18,19 @@ interface Props {
 
 export default function RemoveAccountApiKeyButton(props: Props): ReactElement {
   const { id, trigger, onDeleted } = props;
+  const t = useTranslations('settings.apiKeys.remove');
   const { mutateAsync } = useMutation(ApiKeyService.method.deleteAccountApiKey);
 
   async function onDelete(): Promise<void> {
     try {
       await mutateAsync({ id: id });
-      toast.success('Successfully removed api key!');
+      toast.success(t('success'));
       if (onDeleted) {
         onDeleted();
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove api key!', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -41,12 +43,12 @@ export default function RemoveAccountApiKeyButton(props: Props): ReactElement {
           trigger
         ) : (
           <Button variant="destructive">
-            <ButtonText leftIcon={<TrashIcon />} text="Delete API Key" />
+            <ButtonText leftIcon={<TrashIcon />} text={t('button')} />
           </Button>
         )
       }
-      headerText="Are you sure you want to delete this api key?"
-      description="Deleting this api key is irreversable and may break running workloads!"
+      headerText={t('header')}
+      description={t('description')}
       onConfirm={async () => onDelete()}
     />
   );

@@ -46,6 +46,7 @@ import {
   UsageReportSummary,
   UsageService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Fragment, ReactElement, useState } from 'react';
 import { toast } from 'sonner';
@@ -60,8 +61,13 @@ interface Props {
 
 const WARNING_BORDER = 'border-warn-line';
 
+type ReportTranslator = ReturnType<
+  typeof useTranslations<'settings.license.report'>
+>;
+
 export default function UsageReportCard(props: Props): ReactElement {
   const { accountId, reporting, isLoading, error } = props;
+  const t = useTranslations('settings.license.report');
 
   if (isLoading) {
     return <Skeleton className="w-full h-48" />;
@@ -72,24 +78,23 @@ export default function UsageReportCard(props: Props): ReactElement {
       <ReportingNoticeAlert reporting={reporting} />
       <Card>
         <CardHeader>
-          <CardTitle>Usage report</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
           <CardDescription>
-            Once a day, this instance prepares a report made of counts. It never
-            holds a name, a query or an error message.{' '}
+            {t('description')}{' '}
             <Link
               href={`${siteConfig.links.docs}/deploy/usage-report`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline"
             >
-              What it contains
+              {t('whatItContains')}
             </Link>
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           {error ? (
             <Alert variant="warning">
-              <AlertTitle>Unable to read the usage report</AlertTitle>
+              <AlertTitle>{t('readError')}</AlertTitle>
               <AlertDescription>{getErrorMessage(error)}</AlertDescription>
             </Alert>
           ) : reporting && reporting.mode !== UsageReportingMode.UNSPECIFIED ? (
@@ -99,9 +104,7 @@ export default function UsageReportCard(props: Props): ReactElement {
               <PeriodDownload accountId={accountId} />
             </>
           ) : (
-            <p className="text-sm">
-              No report is prepared: no license key is in force.
-            </p>
+            <p className="text-sm">{t('noneInForce')}</p>
           )}
         </CardContent>
       </Card>
@@ -116,6 +119,7 @@ function ReportingDetails({
   accountId: string;
   reporting: GetUsageReportingResponse;
 }): ReactElement {
+  const t = useTranslations('settings.license.report');
   const label = reportingLabel(
     reporting.mode,
     reporting.licenseMode,
@@ -127,7 +131,7 @@ function ReportingDetails({
 
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm">
-      <dt className="text-muted-foreground">Reporting</dt>
+      <dt className="text-muted-foreground">{t('reporting')}</dt>
       <dd>
         {label.text}
         {label.note && (
@@ -136,13 +140,13 @@ function ReportingDetails({
       </dd>
       {sends && (
         <>
-          <dt className="text-muted-foreground">Last sent</dt>
-          <dd>{formatTimestamp(reporting.lastSentAt) ?? 'Never'}</dd>
+          <dt className="text-muted-foreground">{t('lastSent')}</dt>
+          <dd>{formatTimestamp(reporting.lastSentAt) ?? t('never')}</dd>
         </>
       )}
       {sends && next && (
         <>
-          <dt className="text-muted-foreground">Next report</dt>
+          <dt className="text-muted-foreground">{t('nextReport')}</dt>
           <dd>
             <ReportLine accountId={accountId} report={next} />
           </dd>
@@ -153,7 +157,7 @@ function ReportingDetails({
           while it is ahead (firstReportAt). */}
       {firstAt && (
         <>
-          <dt className="text-muted-foreground">First report</dt>
+          <dt className="text-muted-foreground">{t('firstReport')}</dt>
           <dd>{firstAt}</dd>
         </>
       )}
@@ -190,19 +194,20 @@ function ReportsTable({
   reports: UsageReportSummary[];
 }): ReactElement {
   const [openDay, setOpenDay] = useState<string>();
+  const t = useTranslations('settings.license.report');
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium">Last 30 days</span>
+      <span className="text-sm font-medium">{t('last30Days')}</span>
       {reports.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No report yet.</p>
+        <p className="text-muted-foreground text-sm">{t('noReport')}</p>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Day</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Sent</TableHead>
+              <TableHead>{t('day')}</TableHead>
+              <TableHead>{t('status')}</TableHead>
+              <TableHead>{t('sent')}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -217,7 +222,7 @@ function ReportsTable({
                     <TableCell>
                       <StatusBadge status={report.status} />
                     </TableCell>
-                    <TableCell>{sentColumn(report)}</TableCell>
+                    <TableCell>{sentColumn(report, t)}</TableCell>
                     <TableCell className="text-right">
                       <ShowButton
                         open={isOpen}
@@ -243,13 +248,13 @@ function ReportsTable({
 }
 
 // The date a report was sent on, or how many times it was tried when it was not.
-function sentColumn(report: UsageReportSummary): string {
+function sentColumn(report: UsageReportSummary, t: ReportTranslator): string {
   const sentAt = formatTimestamp(report.sentAt);
   if (sentAt) {
     return sentAt;
   }
   if (report.status === UsageReportStatus.NOT_SENT && report.attempts > 0) {
-    return `${report.attempts} ${report.attempts === 1 ? 'attempt' : 'attempts'}`;
+    return t('attempts', { count: report.attempts });
   }
   return '';
 }
@@ -272,6 +277,7 @@ function ShowButton({
   open: boolean;
   onClick(): void;
 }): ReactElement {
+  const t = useTranslations('settings.license.report');
   return (
     <Button
       type="button"
@@ -280,7 +286,7 @@ function ShowButton({
       className="h-auto p-0"
       onClick={onClick}
     >
-      {open ? 'Hide' : 'Show'}
+      {open ? t('hide') : t('show')}
     </Button>
   );
 }
@@ -298,6 +304,7 @@ function ReportDocument({
     { accountId, day: report.day },
     { retry: false }
   );
+  const t = useTranslations('settings.license.report');
 
   if (isLoading) {
     return <Skeleton className="w-full h-32" />;
@@ -305,7 +312,7 @@ function ReportDocument({
   if (error || !data) {
     return (
       <Alert variant="warning">
-        <AlertTitle>Unable to read this report</AlertTitle>
+        <AlertTitle>{t('reportReadError')}</AlertTitle>
         <AlertDescription>{refusalMessage(error)}</AlertDescription>
       </Alert>
     );
@@ -317,9 +324,9 @@ function ReportDocument({
   async function onCopy(): Promise<void> {
     try {
       await navigator.clipboard.writeText(received);
-      toast.success('Report copied');
+      toast.success(t('copied'));
     } catch (err) {
-      toast.error('Unable to copy the report', {
+      toast.error(t('copyError'), {
         description: getErrorMessage(err),
       });
     }
@@ -330,12 +337,10 @@ function ReportDocument({
       <pre className="bg-muted max-h-96 overflow-auto rounded-md p-3 text-xs">
         {prettyDocument(received)}
       </pre>
-      <p className="text-muted-foreground text-xs">
-        Indented for reading. The report is sealed as one line.
-      </p>
+      <p className="text-muted-foreground text-xs">{t('indented')}</p>
       <div>
         <Button type="button" variant="outline" size="sm" onClick={onCopy}>
-          Copy
+          {t('copy')}
         </Button>
       </div>
     </div>
@@ -350,6 +355,7 @@ function PeriodDownload({ accountId }: { accountId: string }): ReactElement {
   const [fromMonth, setFromMonth] = useState('');
   const [toMonth, setToMonth] = useState('');
   const [refusal, setRefusal] = useState<string>();
+  const t = useTranslations('settings.license.report');
 
   async function onDownload(): Promise<void> {
     setRefusal(undefined);
@@ -368,7 +374,7 @@ function PeriodDownload({ accountId }: { accountId: string }): ReactElement {
     return (
       <div>
         <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-          Download a report for a period…
+          {t('downloadPeriod')}
         </Button>
       </div>
     );
@@ -378,23 +384,27 @@ function PeriodDownload({ accountId }: { accountId: string }): ReactElement {
     <div className="flex flex-col gap-4">
       {refusal && (
         <Alert variant="destructive">
-          <AlertTitle>The report could not be downloaded</AlertTitle>
+          <AlertTitle>{t('downloadRefused')}</AlertTitle>
           <AlertDescription>{refusal}</AlertDescription>
         </Alert>
       )}
       <div className="flex flex-row flex-wrap items-end gap-4">
         <MonthField
           id="usage-report-from"
-          label="From"
+          label={t('from')}
           onChange={setFromMonth}
         />
-        <MonthField id="usage-report-to" label="To" onChange={setToMonth} />
+        <MonthField
+          id="usage-report-to"
+          label={t('to')}
+          onChange={setToMonth}
+        />
         <Button
           type="button"
           disabled={!fromMonth || !toMonth || isPending}
           onClick={onDownload}
         >
-          Download
+          {t('download')}
         </Button>
       </div>
     </div>

@@ -1,3 +1,645 @@
 {
-  "settings": {}
+  "settings": {
+    "layout": {
+      "title": "Settings",
+      "copyAccountId": "Copy account Id",
+      "nav": {
+        "label": "Settings",
+        "apiKeys": "API Keys",
+        "temporal": "Temporal",
+        "members": "Members",
+        "organization": "Organization",
+        "billing": "Billing",
+        "usage": "Usage",
+        "hooks": "Hooks",
+        "anonymization": "Anonymization",
+        "license": "License"
+      }
+    },
+    "apiKeys": {
+      "list": {
+        "title": "API Keys",
+        "description": "Create and manage API keys",
+        "newButton": "New API Key",
+        "filterPlaceholder": "Filter API keys...",
+        "reset": "Reset",
+        "view": "View",
+        "toggleColumns": "Toggle columns",
+        "noResults": "No results.",
+        "openMenu": "Open menu",
+        "viewKey": "View",
+        "delete": "Delete",
+        "sortAsc": "Asc",
+        "sortDesc": "Desc",
+        "hide": "Hide",
+        "active": "Active",
+        "expired": "Expired",
+        "columns": {
+          "id": "Id",
+          "name": "Name",
+          "status": "Status",
+          "expiresAt": "Expires At",
+          "createdAt": "Created At",
+          "updatedAt": "Updated At"
+        }
+      },
+      "detail": {
+        "loadError": "Error: Unable to retrieve api key",
+        "title": "API Key: {name}",
+        "regenerate": "Regenerate",
+        "copyWarning": "Make sure to copy this access token now as you will not be able to see it again!",
+        "copied": "Success!",
+        "copyHover": "Copy the API key",
+        "created": "Created",
+        "updated": "Updated",
+        "expires": "Expires",
+        "userId": "User ID",
+        "permissions": "Permissions",
+        "noPermissions": "None: the key can do nothing"
+      },
+      "remove": {
+        "success": "Successfully removed api key!",
+        "error": "Unable to remove api key!",
+        "button": "Delete API Key",
+        "header": "Are you sure you want to delete this api key?",
+        "description": "Deleting this api key is irreversable and may break running workloads!"
+      },
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "API Key Name",
+        "nameDescription": "The unique, friendly name of the api key.",
+        "expiration": "Expiration",
+        "expirationPlaceholder": "Select an expiration date",
+        "days": "{count} days",
+        "custom": "Custom",
+        "expiresOn": "The token will expire on {date}",
+        "pickDate": "Pick a date",
+        "permissions": "Permissions",
+        "permissionsDescription": "What the key may do. It can do nothing you leave unchecked, and nothing you cannot do yourself.",
+        "submit": "Submit"
+      },
+      "new": {
+        "title": "New API key",
+        "description": "API Keys can be used to interact with Husonym programmatically",
+        "success": "Successfully created API key!",
+        "error": "Unable to create api key"
+      },
+      "regenerate": {
+        "title": "Regenerate API Key: {name}",
+        "description": "Submitting this form will generate a new token. Be aware that any scripts or applications using this token will need to be updated.",
+        "success": "Successfully regenerated api key!",
+        "error": "Unable to regenerate api key!"
+      },
+      "permissions": {
+        "groups": {
+          "jobs": "Jobs",
+          "connections": "Connections",
+          "account": "Account"
+        },
+        "options": {
+          "view": "View",
+          "create": "Create",
+          "edit": "Edit",
+          "run": "Run",
+          "delete": "Delete",
+          "seeSecrets": "See secrets",
+          "createAccounts": "Create accounts"
+        },
+        "hints": {
+          "jobEdit": "On a scheduled job, changes what its next run does: grant it as you would Run.",
+          "jobRun": "A run writes to a real destination. Also needed to schedule or resume a job.",
+          "connectionSecrets": "Needed to use a connection: read its schema, scan or preview its data, sync. Also returns passwords and keys in clear.",
+          "accountEdit": "Settings, members and hooks, including giving a person the admin role."
+        },
+        "label": "{group}: {option}",
+        "unknown": "Unknown"
+      }
+    },
+    "members": {
+      "page": {
+        "notTeam": "Members can only be added to team accounts",
+        "title": "Member Management",
+        "description": "Manage your account's members and invites",
+        "membersTab": "Members",
+        "invitesTab": "Invites"
+      },
+      "roles": {
+        "admin": "admin",
+        "jobDeveloper": "job_developer",
+        "jobExecutor": "job_executor",
+        "jobViewer": "job_viewer"
+      },
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "createdAt": "Created At",
+        "expiresAt": "Expires At",
+        "filterEmails": "Filter emails...",
+        "noResults": "No results.",
+        "previous": "Previous",
+        "next": "Next",
+        "openMenu": "Open menu",
+        "updateRole": "Update Role",
+        "remove": "Remove",
+        "removeHeader": "Are you sure you want to remove this user?",
+        "removed": "User removed from account!",
+        "removeError": "Unable to remove user from account!"
+      },
+      "invites": {
+        "deleted": "Invite deleted successfully!",
+        "deleteError": "Unable to delete user invite",
+        "deleteHeader": "Are you sure you want to delete this invite?",
+        "copied": "Success!",
+        "copyLink": "Copy the invite link"
+      },
+      "invite": {
+        "button": "Invite Member",
+        "title": "Add new member",
+        "description": "Invite a new member to your account.",
+        "email": "Email",
+        "emailDescription": "The email of the user that will be invited.",
+        "role": "Role",
+        "roleDescription": "The role of the user that will be invited.",
+        "cancel": "Cancel",
+        "submit": "Submit",
+        "success": "Successfuly created user invite!",
+        "error": "Unable to create user invite.",
+        "createdTitle": "Invite created!",
+        "createdDescription": "Copy the invite link below and send it to the user.",
+        "close": "Close"
+      },
+      "updateRole": {
+        "success": "Successfully updated user role!",
+        "title": "Update role for {name} ({email})",
+        "description": "Change the role of the user.",
+        "refused": "The role was not updated",
+        "cancel": "Cancel",
+        "update": "Update",
+        "role": "Role",
+        "roleDescription": "The new role of the user"
+      }
+    },
+    "organization": {
+      "title": "Organization",
+      "description": "The account people who sign in to this instance work in",
+      "readError": "Unable to read the organization of this instance",
+      "nothingToDesignate": "Nothing to designate",
+      "selfHostedOnly": "An organization is designated on a self-hosted instance only.",
+      "hasOrganization": "This instance has its organization",
+      "joinAsViewers": "People who sign in to this instance join it as viewers. This cannot be changed from the interface.",
+      "noAuth": "This instance runs without authentication: it has a single user, and no organization for others to join.",
+      "statementSelf": "This account is the organization of this instance.",
+      "statementNamed": "The account \"{name}\" is the organization of this instance.",
+      "statementOther": "Another account is the organization of this instance.",
+      "designate": {
+        "success": "This account is now the organization of this instance",
+        "followError": "The organization was set, but the page could not follow it. Please try refreshing the page.",
+        "title": "Make this account the organization",
+        "description": "This instance has no organization yet: each person who signs in works in an account of their own.",
+        "refused": "The organization was not set",
+        "joinAsViewers": "People who sign in to this instance will join this account as viewers.",
+        "personalBecomesTeam": " This personal account becomes a team account under the name given below, and keeps its connections, jobs and API keys.",
+        "cannotUndo": "This cannot be undone from the interface.",
+        "nameLabel": "Organization name",
+        "nameDescription": "The name this account takes as a team account.",
+        "button": "Make it the organization",
+        "confirmHeader": "Make this account the organization of this instance?",
+        "confirmDescription": "People who sign in to this instance will join it as viewers. This cannot be undone from the interface."
+      }
+    },
+    "anonymization": {
+      "title": "Anonymization",
+      "description": "What this account's anonymization derives from",
+      "key": {
+        "replaced": "Consistency key replaced",
+        "replaceError": "Unable to replace the consistency key",
+        "readError": "Unable to read the settings of this account",
+        "title": "Consistency key",
+        "description": "Both anonymization engines derive their deterministic outputs from it: the same input value turns into the same output, within the consistency scope a job sets. Replacing it changes every output of this account.",
+        "replaceLabel": "Replace with a given key",
+        "replaceHelp": "A key is generated for the account on its first run; you give one only to take over the key of a deployment you are replacing, or to replay outputs produced elsewhere.",
+        "replace": "Replace",
+        "confirmHeader": "Replace the consistency key?",
+        "confirmWithKey": "Every destination this account has already filled stops matching what a new run writes: the same source value will be anonymized into something else. There is no way back to the previous key unless you kept it.",
+        "confirmWithoutKey": "This account will stop deriving from the key of the deployment and use the one you give. Destinations it has already filled stop matching what a new run writes.",
+        "confirmButton": "Replace the key",
+        "noOwnKey": "This account has no key of its own",
+        "noOwnKeyDescription": "Its runs derive from the key of the deployment (ANONYMIZATION_CONSISTENCY_KEY), shared with every other account. Where that variable is not set, the account is given a key of its own on its first run.",
+        "fingerprint": "Fingerprint",
+        "generatedOn": "Generated for this account on {at}.",
+        "generated": "Generated for this account.",
+        "givenOn": "Given on {at}.",
+        "given": "Given.",
+        "fingerprintNote": "The key itself never leaves the API: the fingerprint is there to tell two keys apart — whether two deployments share one, or whether a replacement really took.",
+        "unavailableTitle": "This deployment holds no account settings",
+        "unavailableDescription": "Settings carry secrets, so they are only kept where the API can encrypt one. Set HUSONYM_SYM_ENCRYPTION_PASSWORD on the API to give each account a key of its own; until then, runs derive from ANONYMIZATION_CONSISTENCY_KEY, shared by every account."
+      }
+    },
+    "temporal": {
+      "success": "Successfully updated temporal config",
+      "error": "Unable to update temporal config",
+      "title": "Temporal",
+      "description": "Configure Temporal settings for this account",
+      "urlLabel": "Temporal Instance URL",
+      "urlDescription": "The temporal url that will be used to connect to the temporal instance.",
+      "urlPlaceholder": "Temporal URL",
+      "namespaceLabel": "Temporal Namespace",
+      "namespaceDescription": "The name of the temporal namespace.",
+      "namespacePlaceholder": "Temporal Namespace",
+      "queueLabel": "Temporal Job Queue Name",
+      "queueDescription": "The name of the temporal job queue for the sync-job worker.",
+      "queuePlaceholder": "Worker Sync Job Queue Name",
+      "submit": "Submit"
+    },
+    "hooks": {
+      "disabledTitle": "Account Hooks are not currently enabled",
+      "disabledDescription": "To enable them, please update Husonym configuration or contact your system administrator.",
+      "title": "Account Hooks",
+      "description": "Manage hooks that execute when events occur",
+      "emptyTitle": "No Hooks yet",
+      "emptyDescription": "Hooks are invoked when specified events occur in your account to notify you or trigger further actions",
+      "card": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "slackUnsupported": "Slack hooks are no longer supported and are not run. Replace this hook with a webhook."
+      },
+      "new": {
+        "button": "New Hook",
+        "title": "Create new Account Hook",
+        "description": "Configure values for a new account hook",
+        "success": "Successfully created account hook!",
+        "error": "Unable to create account hook",
+        "submit": "Create"
+      },
+      "edit": {
+        "title": "Edit Account Hook: {name}",
+        "description": "Change any of the available account hook settings",
+        "success": "Successfully updated account hook!",
+        "error": "Unable to update account hook",
+        "submit": "Update"
+      },
+      "remove": {
+        "success": "Successfully removed account hook!",
+        "error": "Unable to remove account hook",
+        "header": "Are you sure you want to delete account hook: {name}?",
+        "description": "Deleting this hook is irreversable!"
+      },
+      "disable": {
+        "success": "Successfully disabled account hook!",
+        "error": "Unable to disable account hook",
+        "button": "Disable"
+      },
+      "form": {
+        "name": "Name",
+        "nameDescription": "Name of the hook for display and reference, must be unique",
+        "namePlaceholder": "Hook name",
+        "description": "Description",
+        "descriptionDescription": "What this hook does",
+        "descriptionPlaceholder": "Hook description",
+        "enabled": "Enabled",
+        "enabledDescription": "Whether or not this hook will be invoked when events occur",
+        "yes": "Yes",
+        "no": "No",
+        "hookType": "Hook Type",
+        "hookTypeDescription": "The type of hook",
+        "events": "Events",
+        "eventsDescription": "The events that will trigger this hook. Wildcard will trigger for all events",
+        "wildcard": "Wildcard",
+        "jobRunCreated": "Job Run Created",
+        "jobRunFailed": "Job Run Failed",
+        "jobRunSucceeded": "Job Run Succeeded",
+        "webhookUrl": "Webhook URL",
+        "webhookUrlDescription": "The URL to send the event to",
+        "webhookSecret": "Webhook Secret",
+        "webhookSecretDescription": "The secret the webhook is signed with. Only members who may edit the account see it and can change the hook.",
+        "disableSsl": "Disable SSL Verification",
+        "disableSslDescription": "Whether to disable SSL verification for the webhook"
+      },
+      "validation": {
+        "urlRequired": "URL is required",
+        "secretRequired": "Secret is required",
+        "webhookOnly": "Only webhook hooks are currently supported",
+        "hookTypeRequired": "Hook type is required",
+        "enabledRequired": "Must provide an enabled value",
+        "nameRequired": "Name is required",
+        "nameMin": "Name must be at least 3 characters",
+        "nameMax": "The Hook name must be at most 100 characters",
+        "nameFormat": "Name must be between 3-100 characters and may only include lowercase letters, numbers, and hyphens",
+        "descriptionRequired": "Description is required",
+        "webhookConfigRequired": "Webhook config is required when hook type is webhook",
+        "eventRequired": "An event is required",
+        "eventsMin": "At least one event is required",
+        "eventsRequired": "Events are required"
+      }
+    },
+    "billing": {
+      "title": "Billing",
+      "description": "Manage your workspace's plan and billing information",
+      "checkoutError": "Unable to generate billing checkout session url",
+      "portalError": "Unable to generate billing portal session url",
+      "activate": "Activate Subscription",
+      "manage": "Manage Subscription",
+      "currentPlan": "Current Plan:",
+      "planPill": {
+        "personal": "Personal plan",
+        "team": "Team plan",
+        "enterprise": "Enterprise plan",
+        "other": "{name} plan"
+      },
+      "mostPopular": "Most popular",
+      "perMonth": "per month",
+      "noCreditCard": "*No credit card required",
+      "everythingInIndividual": "Everything in Individual + ",
+      "everythingInTeam": "Everything in Team + ",
+      "getInTouch": "Get in touch",
+      "getStarted": "Get Started",
+      "createTeam": "Create Team",
+      "plans": {
+        "trial": {
+          "name": "Trial",
+          "description": "The easiest way to try out Husonym and see if it is right for your organization.",
+          "price": "Free 14-day Trial",
+          "button": "Start free trial"
+        },
+        "team": {
+          "name": "Team",
+          "description": "The simplest and fastest way to get started with Husonym for Teams.",
+          "price": "Pay-as-you-go",
+          "button": "Get Started"
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "description": "Best for organizations who want to self-host Husonym and are operating at scale.",
+          "price": "Custom",
+          "button": "Let's talk"
+        }
+      },
+      "features": {
+        "unlimitedRecords": "Unlimited Records",
+        "unlimitedJobs": "Unlimited Jobs",
+        "oneUser": "1 user",
+        "allIntegrations": "All Integrations",
+        "dataAnonymization": "Data Anonymization",
+        "syntheticData": "Synthetic Data Generation",
+        "usRegion": "US Region",
+        "husonymInfrastructure": "Husonym Infrastructure",
+        "communitySupport": "Community support",
+        "volumePricing": "Volume-based pricing",
+        "unlimitedUsers": "Unlimited Users",
+        "usOrEuRegion": "US or EU Region",
+        "freeTextPii": "Free-form text PII anonymization",
+        "priorityEmailSupport": "Priority email support",
+        "sso": "SSO",
+        "rbac": "RBAC",
+        "webhooks": "Webhooks",
+        "selfHostedOrHusonym": "Self-hosted or Husonym Infrastructure",
+        "auditLogs": "Audit Logs",
+        "streamingMode": "Streaming Mode",
+        "whiteGlove": "White-glove implementation"
+      }
+    },
+    "license": {
+      "title": "License",
+      "description": "The license of this instance, and what this account uses of it",
+      "readError": "Unable to read the license of this instance",
+      "status": {
+        "title": "Status",
+        "states": {
+          "none": "No license",
+          "valid": "Valid",
+          "expiring": "Expiring soon",
+          "grace": "Expired — grace period",
+          "frozen": "Expired"
+        },
+        "origins": {
+          "interface": "Installed through the interface",
+          "environment": "Read from the environment",
+          "file": "Read from a file",
+          "renewal": "Received as a renewal"
+        },
+        "unreadable": "The license key could not be read",
+        "licensee": "Licensee",
+        "plan": "Plan",
+        "expiredOn": "Expired on",
+        "expiresOn": "Expires on",
+        "graceEndsOn": "Grace period ends on",
+        "key": "Key",
+        "installedOn": "on {date}",
+        "usageReport": "Usage report"
+      },
+      "key": {
+        "alreadyInForce": "This key is already in force",
+        "installed": "License key installed",
+        "title": "License key",
+        "description": "The key applies to the whole instance, every account included. The key in force is never shown here.",
+        "refused": "The license key was not installed",
+        "pasteLabel": "Paste a new key",
+        "install": "Install key",
+        "confirmHeader": "Install this license key?",
+        "confirmDescription": "It replaces the key in force for the whole instance.",
+        "issuedTo": "Issued to {name}",
+        "expiresOn": "expires on {date}",
+        "adminRequired": "An administrator of this account must install the license key."
+      },
+      "features": {
+        "title": "Features",
+        "description": "What the license of the instance includes, and what this account uses of it.",
+        "usageError": "Unable to read what this account uses",
+        "noneInForce": "No license is in force: none of the licensed features is included.",
+        "blocking": "Jobs that use a feature the license does not include do not start.",
+        "notTracked": "Usage of the MCP server, mapping review and run logs is not tracked here.",
+        "included": "Included",
+        "notIncluded": "Not included"
+      },
+      "limits": {
+        "title": "Limits",
+        "description": "What the license of the instance caps, against what is used.",
+        "sources": "Sources",
+        "countError": "Unable to count the sources",
+        "allows": "The license allows {count}.",
+        "jobs": "Jobs",
+        "connections": "Connections",
+        "connectionTypes": "Connection types",
+        "perAccount": "At most {count} per account",
+        "capped": "{used} of {cap}",
+        "uncapped": "{used}, no limit",
+        "countedForInstance": "Sources are counted for the whole instance, every account included.",
+        "overTitle": "More sources than the license allows",
+        "overDescription": "The instance counts {used} sources and its license allows {cap}.",
+        "accountSources": "Sources of this account",
+        "noSource": "This account has no source."
+      },
+      "report": {
+        "title": "Usage report",
+        "description": "Once a day, this instance prepares a report made of counts. It never holds a name, a query or an error message.",
+        "whatItContains": "What it contains",
+        "readError": "Unable to read the usage report",
+        "noneInForce": "No report is prepared: no license key is in force.",
+        "reporting": "Reporting",
+        "lastSent": "Last sent",
+        "never": "Never",
+        "nextReport": "Next report",
+        "firstReport": "First report",
+        "last30Days": "Last 30 days",
+        "noReport": "No report yet.",
+        "day": "Day",
+        "status": "Status",
+        "sent": "Sent",
+        "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+        "hide": "Hide",
+        "show": "Show",
+        "reportReadError": "Unable to read this report",
+        "copied": "Report copied",
+        "copyError": "Unable to copy the report",
+        "indented": "Indented for reading. The report is sealed as one line.",
+        "copy": "Copy",
+        "downloadPeriod": "Download a report for a period…",
+        "downloadRefused": "The report could not be downloaded",
+        "from": "From",
+        "to": "To",
+        "download": "Download"
+      }
+    },
+    "usage": {
+      "page": {
+        "title": "Usage",
+        "description": "What this account ran, from the counters of this instance",
+        "readError": "Unable to read the usage of this account",
+        "runTime": "Run time",
+        "errorsTitle": "Errors by category",
+        "category": "Category",
+        "runs": "Runs",
+        "refusalsTitle": "License refusals",
+        "refusalsDescription": "Counted by UTC day, when a call reaches the API. A screen that is greyed out makes no call.",
+        "refused": "Refused",
+        "times": "Times"
+      },
+      "jobsTable": {
+        "title": "Jobs",
+        "job": "Job",
+        "rowsRead": "Rows read",
+        "runs": "Runs",
+        "success": "Success",
+        "medianDuration": "Median duration",
+        "jobUsage": "Usage of the job {name}"
+      },
+      "chart": {
+        "title": "Rows read per day",
+        "day": "Day",
+        "rowsRead": "Rows read",
+        "runs": "Runs",
+        "tooltipRowsRead": "Rows read: {count}",
+        "tooltipRuns": "Runs: {count}"
+      },
+      "periodSelect": "Period",
+      "periods": {
+        "last-7-days": "Last 7 days",
+        "last-30-days": "Last 30 days",
+        "last-90-days": "Last 90 days",
+        "this-month": "This month",
+        "last-month": "Last month"
+      },
+      "range": {
+        "sameDay": "{day}, {year}",
+        "sameYear": "{from} – {to}, {year}",
+        "otherYears": "{from}, {fromYear} – {to}, {toYear}",
+        "withZone": "{days} · days in {timeZone}"
+      },
+      "duration": {
+        "seconds": "{s}s",
+        "minutes": "{m}m {s}s",
+        "hours": "{h}h {m}m",
+        "days": "{d}d {h}h"
+      },
+      "tiles": {
+        "rowsRead": "Rows read",
+        "runs": "Runs",
+        "successRate": "Success rate",
+        "canceled": "{count} canceled"
+      },
+      "incomplete": "{rows} (incomplete)",
+      "noRowsHint": "PII detection jobs count no rows.",
+      "noRun": "No run ended in this period.",
+      "notes": {
+        "uncounted": "The rows of {uncounted} of {runs} {runCount, plural, one {run} other {runs}} are not all counted.",
+        "discarded": "{rows} {rowCount, plural, one {row} other {rows}} set aside."
+      },
+      "jobsGone": "The jobs that ran in this period no longer exist.",
+      "noJobRan": "No job ran in this period.",
+      "allCompleted": "Every run of this period completed.",
+      "recentRuns": "The {count} most recent runs of the period.",
+      "errorWithStep": "{category} · {step}",
+      "errorCategories": {
+        "connectionRefused": "Connection refused",
+        "authenticationRefused": "Authentication refused",
+        "timeout": "Timeout",
+        "constraintViolated": "Constraint violated",
+        "insufficientPrivileges": "Insufficient privileges",
+        "objectMissing": "Object missing",
+        "typeMismatch": "Type mismatch",
+        "resourcesExhausted": "Resources exhausted",
+        "canceled": "Canceled",
+        "license": "License",
+        "other": "Other"
+      },
+      "errorSteps": {
+        "preflight": "Preflight",
+        "schemaInit": "Schema initialization",
+        "tableSync": "Table sync",
+        "hooks": "Hooks",
+        "integrityCheck": "Integrity check",
+        "other": "Other"
+      }
+    },
+    "licenseNotice": {
+      "viewLicense": "View license"
+    },
+    "licenseAlert": {
+      "expiringTitle": "{count, plural, one {License expires in # day} other {License expires in # days}}",
+      "expiringDescription": "Your license expires on {date}. Renew it to avoid losing the ability to create and run jobs.",
+      "graceTitle": "License expired — grace period",
+      "graceDescription": "Your license expired on {date}. Everything still works for now, but creating and running jobs will stop when the grace period ends. Contact us to renew.",
+      "frozenTitle": "License expired",
+      "frozenDescription": "Creating, configuring and running jobs is disabled. Your configuration and run history remain available, and you can still pause and delete jobs. Renew your license to resume.",
+      "requiredTitle": "License Required",
+      "requiredDescription": "This feature is only available to customers with a valid license."
+    },
+    "permissions": {
+      "columns": {
+        "collection": "Collection",
+        "role": "Role",
+        "table": "Table",
+        "read": "Read",
+        "create": "Create",
+        "update": "Update",
+        "truncate": "Truncate"
+      },
+      "header": {
+        "search": "Search...",
+        "asc": "Asc",
+        "desc": "Desc",
+        "hide": "Hide"
+      },
+      "table": {
+        "clearFilters": "Clear filters",
+        "empty": "No permissions found for the connection or filter(s)."
+      },
+      "dialog": {
+        "title": "Connection Permissions",
+        "description": "Review the permissions that Husonym needs for your connection.",
+        "close": "Close",
+        "asSource": "As a source",
+        "asDestination": "As a destination",
+        "allClearSource": "Nothing missing for a source at server level.",
+        "allClearDestination": "Nothing missing for a destination at server level.",
+        "serverWideOnly": "Only server-wide checks run here. A job's tables are checked when the job is created or edited."
+      },
+      "result": {
+        "noPrivileges": "We were able to connect to: {name}, but were not able to find any schema(s) or table(s). Does your role have permissions? ",
+        "connected": "Successfully connected to: {name}!",
+        "notConnected": "Not currently connected."
+      }
+    }
+  }
 }

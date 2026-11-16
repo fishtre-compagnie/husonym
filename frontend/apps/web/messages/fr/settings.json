@@ -1,3 +1,645 @@
 {
-  "settings": {}
+  "settings": {
+    "layout": {
+      "title": "Paramètres",
+      "copyAccountId": "Copier l'Id du compte",
+      "nav": {
+        "label": "Paramètres",
+        "apiKeys": "Clés d'API",
+        "temporal": "Temporal",
+        "members": "Membres",
+        "organization": "Organisation",
+        "billing": "Facturation",
+        "usage": "Utilisation",
+        "hooks": "Hooks",
+        "anonymization": "Anonymisation",
+        "license": "Licence"
+      }
+    },
+    "apiKeys": {
+      "list": {
+        "title": "Clés d'API",
+        "description": "Créer et gérer les clés d'API",
+        "newButton": "Nouvelle clé d'API",
+        "filterPlaceholder": "Filtrer les clés d'API…",
+        "reset": "Réinitialiser",
+        "view": "Affichage",
+        "toggleColumns": "Afficher les colonnes",
+        "noResults": "Aucun résultat.",
+        "openMenu": "Ouvrir le menu",
+        "viewKey": "Voir",
+        "delete": "Supprimer",
+        "sortAsc": "Croissant",
+        "sortDesc": "Décroissant",
+        "hide": "Masquer",
+        "active": "Active",
+        "expired": "Expirée",
+        "columns": {
+          "id": "Id",
+          "name": "Nom",
+          "status": "Statut",
+          "expiresAt": "Expire le",
+          "createdAt": "Créée le",
+          "updatedAt": "Modifiée le"
+        }
+      },
+      "detail": {
+        "loadError": "Erreur : impossible de récupérer la clé d'API",
+        "title": "Clé d'API : {name}",
+        "regenerate": "Régénérer",
+        "copyWarning": "Copiez ce jeton d'accès maintenant : vous ne pourrez plus le revoir !",
+        "copied": "Copié !",
+        "copyHover": "Copier la clé d'API",
+        "created": "Créée",
+        "updated": "Modifiée",
+        "expires": "Expire",
+        "userId": "ID utilisateur",
+        "permissions": "Permissions",
+        "noPermissions": "Aucune : la clé ne peut rien faire"
+      },
+      "remove": {
+        "success": "Clé d'API supprimée.",
+        "error": "Impossible de supprimer la clé d'API.",
+        "button": "Supprimer la clé d'API",
+        "header": "Voulez-vous vraiment supprimer cette clé d'API ?",
+        "description": "La suppression de cette clé d'API est irréversible et peut interrompre les traitements qui l'utilisent !"
+      },
+      "form": {
+        "name": "Nom",
+        "namePlaceholder": "Nom de la clé d'API",
+        "nameDescription": "Le nom unique et lisible de la clé d'API.",
+        "expiration": "Expiration",
+        "expirationPlaceholder": "Choisir une date d'expiration",
+        "days": "{count} jours",
+        "custom": "Personnalisée",
+        "expiresOn": "Le jeton expirera le {date}",
+        "pickDate": "Choisir une date",
+        "permissions": "Permissions",
+        "permissionsDescription": "Ce que la clé peut faire. Elle ne peut rien faire de ce que vous laissez décoché, ni rien que vous ne puissiez faire vous-même.",
+        "submit": "Valider"
+      },
+      "new": {
+        "title": "Nouvelle clé d'API",
+        "description": "Les clés d'API permettent d'utiliser Husonym par programme",
+        "success": "Clé d'API créée.",
+        "error": "Impossible de créer la clé d'API"
+      },
+      "regenerate": {
+        "title": "Régénérer la clé d'API : {name}",
+        "description": "Valider ce formulaire génère un nouveau jeton. Les scripts et applications qui utilisent ce jeton devront être mis à jour.",
+        "success": "Clé d'API régénérée.",
+        "error": "Impossible de régénérer la clé d'API."
+      },
+      "permissions": {
+        "groups": {
+          "jobs": "Jobs",
+          "connections": "Connexions",
+          "account": "Compte"
+        },
+        "options": {
+          "view": "Voir",
+          "create": "Créer",
+          "edit": "Modifier",
+          "run": "Exécuter",
+          "delete": "Supprimer",
+          "seeSecrets": "Voir les secrets",
+          "createAccounts": "Créer des comptes"
+        },
+        "hints": {
+          "jobEdit": "Sur un job planifié, change ce que fera sa prochaine exécution : accordez-la comme Exécuter.",
+          "jobRun": "Une exécution écrit dans une vraie destination. Nécessaire aussi pour planifier ou reprendre un job.",
+          "connectionSecrets": "Nécessaire pour utiliser une connexion : lire son schéma, scanner ou prévisualiser ses données, synchroniser. Renvoie aussi les mots de passe et les clés en clair.",
+          "accountEdit": "Paramètres, membres et hooks, y compris donner le rôle d'admin à une personne."
+        },
+        "label": "{group} : {option}",
+        "unknown": "Inconnue"
+      }
+    },
+    "members": {
+      "page": {
+        "notTeam": "Les membres ne peuvent être ajoutés qu'aux comptes d'équipe",
+        "title": "Gestion des membres",
+        "description": "Gérer les membres et les invitations du compte",
+        "membersTab": "Membres",
+        "invitesTab": "Invitations"
+      },
+      "roles": {
+        "admin": "admin",
+        "jobDeveloper": "développeur de jobs",
+        "jobExecutor": "exécutant de jobs",
+        "jobViewer": "lecteur de jobs"
+      },
+      "table": {
+        "name": "Nom",
+        "email": "E-mail",
+        "role": "Rôle",
+        "createdAt": "Créée le",
+        "expiresAt": "Expire le",
+        "filterEmails": "Filtrer les e-mails…",
+        "noResults": "Aucun résultat.",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "openMenu": "Ouvrir le menu",
+        "updateRole": "Modifier le rôle",
+        "remove": "Retirer",
+        "removeHeader": "Voulez-vous vraiment retirer cet utilisateur ?",
+        "removed": "Utilisateur retiré du compte.",
+        "removeError": "Impossible de retirer l'utilisateur du compte."
+      },
+      "invites": {
+        "deleted": "Invitation supprimée.",
+        "deleteError": "Impossible de supprimer l'invitation",
+        "deleteHeader": "Voulez-vous vraiment supprimer cette invitation ?",
+        "copied": "Copié !",
+        "copyLink": "Copier le lien d'invitation"
+      },
+      "invite": {
+        "button": "Inviter un membre",
+        "title": "Ajouter un membre",
+        "description": "Invitez un nouveau membre dans votre compte.",
+        "email": "E-mail",
+        "emailDescription": "L'e-mail de l'utilisateur à inviter.",
+        "role": "Rôle",
+        "roleDescription": "Le rôle de l'utilisateur à inviter.",
+        "cancel": "Annuler",
+        "submit": "Valider",
+        "success": "Invitation créée.",
+        "error": "Impossible de créer l'invitation.",
+        "createdTitle": "Invitation créée !",
+        "createdDescription": "Copiez le lien d'invitation ci-dessous et envoyez-le à l'utilisateur.",
+        "close": "Fermer"
+      },
+      "updateRole": {
+        "success": "Rôle de l'utilisateur modifié.",
+        "title": "Modifier le rôle de {name} ({email})",
+        "description": "Changer le rôle de l'utilisateur.",
+        "refused": "Le rôle n'a pas été modifié",
+        "cancel": "Annuler",
+        "update": "Modifier",
+        "role": "Rôle",
+        "roleDescription": "Le nouveau rôle de l'utilisateur"
+      }
+    },
+    "organization": {
+      "title": "Organisation",
+      "description": "Le compte dans lequel travaillent les personnes qui se connectent à cette instance",
+      "readError": "Impossible de lire l'organisation de cette instance",
+      "nothingToDesignate": "Rien à désigner",
+      "selfHostedOnly": "Une organisation ne se désigne que sur une instance auto-hébergée.",
+      "hasOrganization": "Cette instance a son organisation",
+      "joinAsViewers": "Les personnes qui se connectent à cette instance la rejoignent en lecteurs. Cela ne peut pas être modifié depuis l'interface.",
+      "noAuth": "Cette instance fonctionne sans authentification : elle a un seul utilisateur, et aucune organisation à rejoindre.",
+      "statementSelf": "Ce compte est l'organisation de cette instance.",
+      "statementNamed": "Le compte « {name} » est l'organisation de cette instance.",
+      "statementOther": "Un autre compte est l'organisation de cette instance.",
+      "designate": {
+        "success": "Ce compte est désormais l'organisation de cette instance",
+        "followError": "L'organisation a été définie, mais la page n'a pas pu suivre. Rechargez la page.",
+        "title": "Faire de ce compte l'organisation",
+        "description": "Cette instance n'a pas encore d'organisation : chaque personne qui se connecte travaille dans son propre compte.",
+        "refused": "L'organisation n'a pas été définie",
+        "joinAsViewers": "Les personnes qui se connectent à cette instance rejoindront ce compte en lecteurs.",
+        "personalBecomesTeam": " Ce compte personnel devient un compte d'équipe sous le nom indiqué ci-dessous, et garde ses connexions, ses jobs et ses clés d'API.",
+        "cannotUndo": "Cela ne peut pas être annulé depuis l'interface.",
+        "nameLabel": "Nom de l'organisation",
+        "nameDescription": "Le nom que prend ce compte en tant que compte d'équipe.",
+        "button": "En faire l'organisation",
+        "confirmHeader": "Faire de ce compte l'organisation de cette instance ?",
+        "confirmDescription": "Les personnes qui se connectent à cette instance la rejoindront en lecteurs. Cela ne peut pas être annulé depuis l'interface."
+      }
+    },
+    "anonymization": {
+      "title": "Anonymisation",
+      "description": "Ce dont dérive l'anonymisation de ce compte",
+      "key": {
+        "replaced": "Clé de cohérence remplacée",
+        "replaceError": "Impossible de remplacer la clé de cohérence",
+        "readError": "Impossible de lire les paramètres de ce compte",
+        "title": "Clé de cohérence",
+        "description": "Les deux moteurs d'anonymisation en dérivent leurs sorties déterministes : une même valeur d'entrée donne la même sortie, dans la portée de cohérence que fixe un job. La remplacer change toutes les sorties de ce compte.",
+        "replaceLabel": "Remplacer par une clé fournie",
+        "replaceHelp": "Une clé est générée pour le compte à sa première exécution ; n'en fournissez une que pour reprendre la clé d'un déploiement que vous remplacez, ou pour reproduire des sorties produites ailleurs.",
+        "replace": "Remplacer",
+        "confirmHeader": "Remplacer la clé de cohérence ?",
+        "confirmWithKey": "Chaque destination déjà remplie par ce compte cessera de correspondre à ce qu'écrit une nouvelle exécution : une même valeur source sera anonymisée autrement. Impossible de revenir à la clé précédente si vous ne l'avez pas conservée.",
+        "confirmWithoutKey": "Ce compte cessera de dériver de la clé du déploiement et utilisera celle que vous fournissez. Les destinations qu'il a déjà remplies cesseront de correspondre à ce qu'écrit une nouvelle exécution.",
+        "confirmButton": "Remplacer la clé",
+        "noOwnKey": "Ce compte n'a pas de clé propre",
+        "noOwnKeyDescription": "Ses exécutions dérivent de la clé du déploiement (ANONYMIZATION_CONSISTENCY_KEY), partagée avec tous les autres comptes. Si cette variable n'est pas définie, le compte reçoit sa propre clé à sa première exécution.",
+        "fingerprint": "Empreinte",
+        "generatedOn": "Générée pour ce compte le {at}.",
+        "generated": "Générée pour ce compte.",
+        "givenOn": "Fournie le {at}.",
+        "given": "Fournie.",
+        "fingerprintNote": "La clé elle-même ne quitte jamais l'API : l'empreinte sert à distinguer deux clés — savoir si deux déploiements en partagent une, ou si un remplacement a bien pris.",
+        "unavailableTitle": "Ce déploiement ne conserve aucun paramètre de compte",
+        "unavailableDescription": "Les paramètres contiennent des secrets : ils ne sont conservés que là où l'API peut les chiffrer. Définissez HUSONYM_SYM_ENCRYPTION_PASSWORD sur l'API pour donner à chaque compte sa propre clé ; d'ici là, les exécutions dérivent de ANONYMIZATION_CONSISTENCY_KEY, partagée par tous les comptes."
+      }
+    },
+    "temporal": {
+      "success": "Configuration Temporal mise à jour",
+      "error": "Impossible de mettre à jour la configuration Temporal",
+      "title": "Temporal",
+      "description": "Configurer Temporal pour ce compte",
+      "urlLabel": "URL de l'instance Temporal",
+      "urlDescription": "L'URL utilisée pour se connecter à l'instance Temporal.",
+      "urlPlaceholder": "URL Temporal",
+      "namespaceLabel": "Namespace Temporal",
+      "namespaceDescription": "Le nom du namespace Temporal.",
+      "namespacePlaceholder": "Namespace Temporal",
+      "queueLabel": "Nom de la file de jobs Temporal",
+      "queueDescription": "Le nom de la file de jobs Temporal du worker sync-job.",
+      "queuePlaceholder": "Nom de la file du worker de synchronisation",
+      "submit": "Valider"
+    },
+    "hooks": {
+      "disabledTitle": "Les hooks de compte ne sont pas activés",
+      "disabledDescription": "Pour les activer, mettez à jour la configuration de Husonym ou contactez votre administrateur système.",
+      "title": "Hooks de compte",
+      "description": "Gérer les hooks déclenchés par des événements",
+      "emptyTitle": "Aucun hook pour l'instant",
+      "emptyDescription": "Les hooks sont appelés quand des événements donnés surviennent dans votre compte, pour vous prévenir ou déclencher d'autres actions",
+      "card": {
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "slackUnsupported": "Les hooks Slack ne sont plus pris en charge et ne sont pas exécutés. Remplacez ce hook par un webhook."
+      },
+      "new": {
+        "button": "Nouveau hook",
+        "title": "Créer un hook de compte",
+        "description": "Configurer un nouveau hook de compte",
+        "success": "Hook de compte créé.",
+        "error": "Impossible de créer le hook de compte",
+        "submit": "Créer"
+      },
+      "edit": {
+        "title": "Modifier le hook de compte : {name}",
+        "description": "Modifier les paramètres du hook de compte",
+        "success": "Hook de compte mis à jour.",
+        "error": "Impossible de mettre à jour le hook de compte",
+        "submit": "Mettre à jour"
+      },
+      "remove": {
+        "success": "Hook de compte supprimé.",
+        "error": "Impossible de supprimer le hook de compte",
+        "header": "Voulez-vous vraiment supprimer le hook de compte {name} ?",
+        "description": "La suppression de ce hook est irréversible !"
+      },
+      "disable": {
+        "success": "Hook de compte désactivé.",
+        "error": "Impossible de désactiver le hook de compte",
+        "button": "Désactiver"
+      },
+      "form": {
+        "name": "Nom",
+        "nameDescription": "Nom du hook, affiché et utilisé comme référence ; doit être unique",
+        "namePlaceholder": "Nom du hook",
+        "description": "Description",
+        "descriptionDescription": "Ce que fait ce hook",
+        "descriptionPlaceholder": "Description du hook",
+        "enabled": "Activé",
+        "enabledDescription": "Indique si ce hook est appelé quand des événements surviennent",
+        "yes": "Oui",
+        "no": "Non",
+        "hookType": "Type de hook",
+        "hookTypeDescription": "Le type de hook",
+        "events": "Événements",
+        "eventsDescription": "Les événements qui déclenchent ce hook. Tous les déclenche pour chaque événement",
+        "wildcard": "Tous",
+        "jobRunCreated": "Exécution de job créée",
+        "jobRunFailed": "Exécution de job échouée",
+        "jobRunSucceeded": "Exécution de job réussie",
+        "webhookUrl": "URL du webhook",
+        "webhookUrlDescription": "L'URL à laquelle envoyer l'événement",
+        "webhookSecret": "Secret du webhook",
+        "webhookSecretDescription": "Le secret qui signe le webhook. Seuls les membres autorisés à modifier le compte le voient et peuvent changer le hook.",
+        "disableSsl": "Désactiver la vérification SSL",
+        "disableSslDescription": "Indique s'il faut désactiver la vérification SSL du webhook"
+      },
+      "validation": {
+        "urlRequired": "L'URL est obligatoire",
+        "secretRequired": "Le secret est obligatoire",
+        "webhookOnly": "Seuls les hooks webhook sont pris en charge",
+        "hookTypeRequired": "Le type de hook est obligatoire",
+        "enabledRequired": "Indiquez si le hook est activé",
+        "nameRequired": "Le nom est obligatoire",
+        "nameMin": "Le nom doit compter au moins 3 caractères",
+        "nameMax": "Le nom du hook doit compter au plus 100 caractères",
+        "nameFormat": "Le nom doit compter de 3 à 100 caractères et ne contenir que des minuscules, des chiffres et des tirets",
+        "descriptionRequired": "La description est obligatoire",
+        "webhookConfigRequired": "La configuration du webhook est obligatoire pour un hook de type webhook",
+        "eventRequired": "Un événement est obligatoire",
+        "eventsMin": "Au moins un événement est obligatoire",
+        "eventsRequired": "Les événements sont obligatoires"
+      }
+    },
+    "billing": {
+      "title": "Facturation",
+      "description": "Gérer l'offre et les informations de facturation de l'espace de travail",
+      "checkoutError": "Impossible de générer l'URL de paiement",
+      "portalError": "Impossible de générer l'URL du portail de facturation",
+      "activate": "Activer l'abonnement",
+      "manage": "Gérer l'abonnement",
+      "currentPlan": "Offre actuelle :",
+      "planPill": {
+        "personal": "Offre Personnelle",
+        "team": "Offre Équipe",
+        "enterprise": "Offre Entreprise",
+        "other": "Offre {name}"
+      },
+      "mostPopular": "La plus choisie",
+      "perMonth": "par mois",
+      "noCreditCard": "*Sans carte bancaire",
+      "everythingInIndividual": "Tout Individuel + ",
+      "everythingInTeam": "Tout Équipe + ",
+      "getInTouch": "Nous contacter",
+      "getStarted": "Commencer",
+      "createTeam": "Créer une équipe",
+      "plans": {
+        "trial": {
+          "name": "Essai",
+          "description": "Le moyen le plus simple d'essayer Husonym et de voir s'il convient à votre organisation.",
+          "price": "Essai gratuit de 14 jours",
+          "button": "Démarrer l'essai gratuit"
+        },
+        "team": {
+          "name": "Équipe",
+          "description": "Le moyen le plus simple et le plus rapide de démarrer Husonym en équipe.",
+          "price": "Paiement à l'usage",
+          "button": "Commencer"
+        },
+        "enterprise": {
+          "name": "Entreprise",
+          "description": "Idéale pour les organisations qui veulent héberger Husonym elles-mêmes et opèrent à grande échelle.",
+          "price": "Sur mesure",
+          "button": "Parlons-en"
+        }
+      },
+      "features": {
+        "unlimitedRecords": "Enregistrements illimités",
+        "unlimitedJobs": "Jobs illimités",
+        "oneUser": "1 utilisateur",
+        "allIntegrations": "Toutes les intégrations",
+        "dataAnonymization": "Anonymisation des données",
+        "syntheticData": "Génération de données synthétiques",
+        "usRegion": "Région US",
+        "husonymInfrastructure": "Infrastructure Husonym",
+        "communitySupport": "Support communautaire",
+        "volumePricing": "Tarification au volume",
+        "unlimitedUsers": "Utilisateurs illimités",
+        "usOrEuRegion": "Région US ou UE",
+        "freeTextPii": "Anonymisation des PII en texte libre",
+        "priorityEmailSupport": "Support prioritaire par e-mail",
+        "sso": "SSO",
+        "rbac": "RBAC",
+        "webhooks": "Webhooks",
+        "selfHostedOrHusonym": "Auto-hébergé ou infrastructure Husonym",
+        "auditLogs": "Journaux d'audit",
+        "streamingMode": "Mode streaming",
+        "whiteGlove": "Mise en place accompagnée"
+      }
+    },
+    "license": {
+      "title": "Licence",
+      "description": "La licence de cette instance, et ce que ce compte en utilise",
+      "readError": "Impossible de lire la licence de cette instance",
+      "status": {
+        "title": "Statut",
+        "states": {
+          "none": "Aucune licence",
+          "valid": "Valide",
+          "expiring": "Expire bientôt",
+          "grace": "Expirée — période de grâce",
+          "frozen": "Expirée"
+        },
+        "origins": {
+          "interface": "Installée depuis l'interface",
+          "environment": "Lue dans l'environnement",
+          "file": "Lue dans un fichier",
+          "renewal": "Reçue en renouvellement"
+        },
+        "unreadable": "La clé de licence n'a pas pu être lue",
+        "licensee": "Titulaire",
+        "plan": "Offre",
+        "expiredOn": "Expirée le",
+        "expiresOn": "Expire le",
+        "graceEndsOn": "Fin de la période de grâce",
+        "key": "Clé",
+        "installedOn": "le {date}",
+        "usageReport": "Rapport d'utilisation"
+      },
+      "key": {
+        "alreadyInForce": "Cette clé est déjà en vigueur",
+        "installed": "Clé de licence installée",
+        "title": "Clé de licence",
+        "description": "La clé s'applique à toute l'instance, tous les comptes compris. La clé en vigueur n'est jamais affichée ici.",
+        "refused": "La clé de licence n'a pas été installée",
+        "pasteLabel": "Coller une nouvelle clé",
+        "install": "Installer la clé",
+        "confirmHeader": "Installer cette clé de licence ?",
+        "confirmDescription": "Elle remplace la clé en vigueur pour toute l'instance.",
+        "issuedTo": "Délivrée à {name}",
+        "expiresOn": "expire le {date}",
+        "adminRequired": "Un administrateur de ce compte doit installer la clé de licence."
+      },
+      "features": {
+        "title": "Fonctionnalités",
+        "description": "Ce que comprend la licence de l'instance, et ce que ce compte en utilise.",
+        "usageError": "Impossible de lire ce qu'utilise ce compte",
+        "noneInForce": "Aucune licence n'est en vigueur : aucune des fonctionnalités sous licence n'est comprise.",
+        "blocking": "Les jobs qui utilisent une fonctionnalité non comprise dans la licence ne démarrent pas.",
+        "notTracked": "L'utilisation du serveur MCP, de la revue des mappings et des journaux d'exécution n'est pas suivie ici.",
+        "included": "Comprise",
+        "notIncluded": "Non comprise"
+      },
+      "limits": {
+        "title": "Limites",
+        "description": "Ce que plafonne la licence de l'instance, face à ce qui est utilisé.",
+        "sources": "Sources",
+        "countError": "Impossible de compter les sources",
+        "allows": "La licence en autorise {count}.",
+        "jobs": "Jobs",
+        "connections": "Connexions",
+        "connectionTypes": "Types de connexion",
+        "perAccount": "Au plus {count} par compte",
+        "capped": "{used} sur {cap}",
+        "uncapped": "{used}, sans limite",
+        "countedForInstance": "Les sources sont comptées pour toute l'instance, tous les comptes compris.",
+        "overTitle": "Plus de sources que la licence n'en autorise",
+        "overDescription": "L'instance compte {used} sources et sa licence en autorise {cap}.",
+        "accountSources": "Sources de ce compte",
+        "noSource": "Ce compte n'a aucune source."
+      },
+      "report": {
+        "title": "Rapport d'utilisation",
+        "description": "Une fois par jour, cette instance prépare un rapport fait de décomptes. Il ne contient jamais de nom, de requête ni de message d'erreur.",
+        "whatItContains": "Ce qu'il contient",
+        "readError": "Impossible de lire le rapport d'utilisation",
+        "noneInForce": "Aucun rapport n'est préparé : aucune clé de licence n'est en vigueur.",
+        "reporting": "Rapport",
+        "lastSent": "Dernier envoi",
+        "never": "Jamais",
+        "nextReport": "Prochain rapport",
+        "firstReport": "Premier rapport",
+        "last30Days": "30 derniers jours",
+        "noReport": "Aucun rapport pour l'instant.",
+        "day": "Jour",
+        "status": "Statut",
+        "sent": "Envoyé",
+        "attempts": "{count, plural, one {# tentative} other {# tentatives}}",
+        "hide": "Masquer",
+        "show": "Afficher",
+        "reportReadError": "Impossible de lire ce rapport",
+        "copied": "Rapport copié",
+        "copyError": "Impossible de copier le rapport",
+        "indented": "Indenté pour la lecture. Le rapport est scellé sur une seule ligne.",
+        "copy": "Copier",
+        "downloadPeriod": "Télécharger un rapport sur une période…",
+        "downloadRefused": "Le rapport n'a pas pu être téléchargé",
+        "from": "Du",
+        "to": "Au",
+        "download": "Télécharger"
+      }
+    },
+    "usage": {
+      "page": {
+        "title": "Utilisation",
+        "description": "Ce que ce compte a exécuté, d'après les compteurs de cette instance",
+        "readError": "Impossible de lire l'utilisation de ce compte",
+        "runTime": "Durée d'exécution",
+        "errorsTitle": "Erreurs par catégorie",
+        "category": "Catégorie",
+        "runs": "Exécutions",
+        "refusalsTitle": "Refus de licence",
+        "refusalsDescription": "Comptés par jour UTC, quand un appel atteint l'API. Un écran grisé ne fait aucun appel.",
+        "refused": "Refusé",
+        "times": "Fois"
+      },
+      "jobsTable": {
+        "title": "Jobs",
+        "job": "Job",
+        "rowsRead": "Lignes lues",
+        "runs": "Exécutions",
+        "success": "Réussite",
+        "medianDuration": "Durée médiane",
+        "jobUsage": "Utilisation du job {name}"
+      },
+      "chart": {
+        "title": "Lignes lues par jour",
+        "day": "Jour",
+        "rowsRead": "Lignes lues",
+        "runs": "Exécutions",
+        "tooltipRowsRead": "Lignes lues : {count}",
+        "tooltipRuns": "Exécutions : {count}"
+      },
+      "periodSelect": "Période",
+      "periods": {
+        "last-7-days": "7 derniers jours",
+        "last-30-days": "30 derniers jours",
+        "last-90-days": "90 derniers jours",
+        "this-month": "Ce mois-ci",
+        "last-month": "Le mois dernier"
+      },
+      "range": {
+        "sameDay": "{day} {year}",
+        "sameYear": "{from} – {to} {year}",
+        "otherYears": "{from} {fromYear} – {to} {toYear}",
+        "withZone": "{days} · jours selon {timeZone}"
+      },
+      "duration": {
+        "seconds": "{s} s",
+        "minutes": "{m} min {s} s",
+        "hours": "{h} h {m} min",
+        "days": "{d} j {h} h"
+      },
+      "tiles": {
+        "rowsRead": "Lignes lues",
+        "runs": "Exécutions",
+        "successRate": "Taux de réussite",
+        "canceled": "annulées : {count}"
+      },
+      "incomplete": "{rows} (incomplet)",
+      "noRowsHint": "Les jobs de détection PII ne comptent aucune ligne.",
+      "noRun": "Aucune exécution ne s'est terminée sur cette période.",
+      "notes": {
+        "uncounted": "Les lignes de {uncounted} {runCount, plural, one {exécution} other {exécutions}} sur {runs} ne sont pas toutes comptées.",
+        "discarded": "{rows} {rowCount, plural, one {ligne mise} other {lignes mises}} de côté."
+      },
+      "jobsGone": "Les jobs exécutés sur cette période n'existent plus.",
+      "noJobRan": "Aucun job n'a été exécuté sur cette période.",
+      "allCompleted": "Toutes les exécutions de cette période se sont terminées.",
+      "recentRuns": "Les {count} exécutions les plus récentes de la période.",
+      "errorWithStep": "{category} · {step}",
+      "errorCategories": {
+        "connectionRefused": "Connexion refusée",
+        "authenticationRefused": "Authentification refusée",
+        "timeout": "Délai dépassé",
+        "constraintViolated": "Contrainte violée",
+        "insufficientPrivileges": "Privilèges insuffisants",
+        "objectMissing": "Objet manquant",
+        "typeMismatch": "Types incompatibles",
+        "resourcesExhausted": "Ressources épuisées",
+        "canceled": "Annulée",
+        "license": "Licence",
+        "other": "Autre"
+      },
+      "errorSteps": {
+        "preflight": "Contrôle avant exécution",
+        "schemaInit": "Initialisation du schéma",
+        "tableSync": "Synchronisation des tables",
+        "hooks": "Hooks",
+        "integrityCheck": "Contrôle d'intégrité",
+        "other": "Autre"
+      }
+    },
+    "licenseNotice": {
+      "viewLicense": "Voir la licence"
+    },
+    "licenseAlert": {
+      "expiringTitle": "{count, plural, one {La licence expire dans # jour} other {La licence expire dans # jours}}",
+      "expiringDescription": "Votre licence expire le {date}. Renouvelez-la pour continuer à créer et exécuter des jobs.",
+      "graceTitle": "Licence expirée — période de grâce",
+      "graceDescription": "Votre licence a expiré le {date}. Tout fonctionne encore pour l'instant, mais la création et l'exécution de jobs s'arrêteront à la fin de la période de grâce. Contactez-nous pour la renouveler.",
+      "frozenTitle": "Licence expirée",
+      "frozenDescription": "La création, la configuration et l'exécution de jobs sont désactivées. Votre configuration et l'historique des exécutions restent disponibles, et vous pouvez toujours mettre en pause et supprimer des jobs. Renouvelez votre licence pour reprendre.",
+      "requiredTitle": "Licence requise",
+      "requiredDescription": "Cette fonctionnalité est réservée aux clients disposant d'une licence valide."
+    },
+    "permissions": {
+      "columns": {
+        "collection": "Collection",
+        "role": "Rôle",
+        "table": "Table",
+        "read": "Lecture",
+        "create": "Création",
+        "update": "Modification",
+        "truncate": "Vidage"
+      },
+      "header": {
+        "search": "Rechercher…",
+        "asc": "Croissant",
+        "desc": "Décroissant",
+        "hide": "Masquer"
+      },
+      "table": {
+        "clearFilters": "Effacer les filtres",
+        "empty": "Aucune permission trouvée pour la connexion ou les filtres."
+      },
+      "dialog": {
+        "title": "Permissions de la connexion",
+        "description": "Vérifiez les permissions dont Husonym a besoin pour votre connexion.",
+        "close": "Fermer",
+        "asSource": "En tant que source",
+        "asDestination": "En tant que destination",
+        "allClearSource": "Rien ne manque à une source au niveau du serveur.",
+        "allClearDestination": "Rien ne manque à une destination au niveau du serveur.",
+        "serverWideOnly": "Seuls les contrôles au niveau du serveur sont faits ici. Les tables d'un job sont contrôlées quand le job est créé ou modifié."
+      },
+      "result": {
+        "noPrivileges": "Connexion à {name} réussie, mais aucun schéma ni aucune table n'a été trouvé. Votre rôle a-t-il les permissions ? ",
+        "connected": "Connexion à {name} réussie !",
+        "notConnected": "Pas connecté actuellement."
+      }
+    }
+  }
 }

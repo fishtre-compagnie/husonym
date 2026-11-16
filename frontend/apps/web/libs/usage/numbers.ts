@@ -14,14 +14,16 @@ function viewerLocales(): string[] {
     : [...navigator.languages];
 }
 
-// A formatter of numbers in the language of the viewer, with the options given.
+// A formatter of numbers in the language given (the one the UI is shown in), or else
+// in the language of the viewer, with the options given.
 export function countFormat(
-  options?: Intl.NumberFormatOptions
+  options?: Intl.NumberFormatOptions,
+  locale?: string
 ): Intl.NumberFormat {
-  return new Intl.NumberFormat(viewerLocales(), options);
+  return new Intl.NumberFormat(locale ?? viewerLocales(), options);
 }
 
 // A count with its digits grouped. A bigint keeps every digit.
-export function formatCount(value: bigint | number): string {
-  return countFormat().format(value);
+export function formatCount(value: bigint | number, locale?: string): string {
+  return countFormat(undefined, locale).format(value);
 }

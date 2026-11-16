@@ -10,6 +10,7 @@ import { cn } from '@/libs/utils';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { ColumnDef, RowData, useTable } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useTranslations } from 'next-intl';
 import React, { ReactElement } from 'react';
 import ButtonText from '../ButtonText';
 import { AppTableFeatures, unpaginatedTableFeatures } from '../table/features';
@@ -28,6 +29,7 @@ export default function PermissionsDataTable<TData extends RowData>({
   ConnectionAlert,
   TestConnectionButton,
 }: DataTableProps<TData>): ReactElement {
+  const t = useTranslations('settings.permissions.table');
   const table = useTable({
     features: unpaginatedTableFeatures,
     data,
@@ -67,7 +69,7 @@ export default function PermissionsDataTable<TData extends RowData>({
           >
             <ButtonText
               leftIcon={<Cross2Icon className="h-3 w-3" />}
-              text="Clear filters"
+              text={t('clearFilters')}
             />
           </Button>
         </div>
@@ -111,7 +113,7 @@ export default function PermissionsDataTable<TData extends RowData>({
           >
             {rows.length === 0 && (
               <TableRow className="flex justify-center items-center py-10 text-muted-foreground text-sm">
-                <td>No permissions found for the connection or filter(s).</td>
+                <td>{t('empty')}</td>
               </TableRow>
             )}
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {

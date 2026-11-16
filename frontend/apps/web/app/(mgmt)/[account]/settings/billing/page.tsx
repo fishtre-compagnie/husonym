@@ -16,6 +16,7 @@ import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { UserAccount, UserAccountService, UserAccountType } from '@husonym/sdk';
 import { CheckIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import Error from 'next/error';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,67 +25,81 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 type PlanName = 'Trial' | 'Team' | 'Enterprise';
+type BillingTranslator = ReturnType<typeof useTranslations<'settings.billing'>>;
+// The keys of the features under settings.billing.features.
+type FeatureKey =
+  | 'unlimitedRecords'
+  | 'unlimitedJobs'
+  | 'oneUser'
+  | 'allIntegrations'
+  | 'dataAnonymization'
+  | 'syntheticData'
+  | 'usRegion'
+  | 'husonymInfrastructure'
+  | 'communitySupport'
+  | 'volumePricing'
+  | 'unlimitedUsers'
+  | 'usOrEuRegion'
+  | 'freeTextPii'
+  | 'priorityEmailSupport'
+  | 'sso'
+  | 'rbac'
+  | 'webhooks'
+  | 'selfHostedOrHusonym'
+  | 'auditLogs'
+  | 'streamingMode'
+  | 'whiteGlove';
 
 interface Plan {
   name: PlanName;
-  description: string;
-  price: string;
-  buttonText: string;
-  features: string[];
+  // The key of the plan's words under settings.billing.plans.
+  key: 'trial' | 'team' | 'enterprise';
+  features: FeatureKey[];
   planType: UserAccountType;
 }
 
 const ALL_PLANS: Plan[] = [
   {
     name: 'Trial',
-    description:
-      'The easiest way to try out Husonym and see if it is right for your organization.',
-    price: 'Free 14-day Trial',
-    buttonText: 'Start free trial',
+    key: 'trial',
     features: [
-      'Unlimited Records',
-      'Unlimited Jobs',
-      '1 user',
-      'All Integrations',
-      'Data Anonymization',
-      'Synthetic Data Generation',
-      'US Region',
-      'Husonym Infrastructure',
-      'Community support',
+      'unlimitedRecords',
+      'unlimitedJobs',
+      'oneUser',
+      'allIntegrations',
+      'dataAnonymization',
+      'syntheticData',
+      'usRegion',
+      'husonymInfrastructure',
+      'communitySupport',
     ],
     planType: UserAccountType.PERSONAL,
   },
   {
     name: 'Team',
-    description:
-      'The simplest and fastest way to get started with Husonym for Teams.',
-    price: 'Pay-as-you-go',
-    buttonText: 'Get Started',
+    key: 'team',
     features: [
-      'Volume-based pricing',
-      'Unlimited Jobs',
-      'Unlimited Users',
-      'US or EU Region',
-      'Free-form text PII anonymization',
-      'Priority email support',
+      'volumePricing',
+      'unlimitedJobs',
+      'unlimitedUsers',
+      'usOrEuRegion',
+      'freeTextPii',
+      'priorityEmailSupport',
     ],
     planType: UserAccountType.TEAM,
   },
   {
     name: 'Enterprise',
-    description:
-      'Best for organizations who want to self-host Husonym and are operating at scale.',
-    price: 'Custom',
-    buttonText: `Let's talk`,
+    key: 'enterprise',
     features: [
-      'Unlimited Records',
-      'SSO',
-      'RBAC',
-      'Webhooks',
-      'Self-hosted or Husonym Infrastructure',
-      'Audit Logs',
-      'Streaming Mode',
-      'White-glove implementation',
+      'unlimitedRecords',
+      'sso',
+      'rbac',
+      'webhooks',
+      'selfHostedOrHusonym',
+      'auditLogs',
+      'streamingMode',
+      'whiteGlove',
     ],
     planType: UserAccountType.ENTERPRISE,
   },
@@ -94,6 +109,7 @@ export default function Billing(): ReactElement {
   const { account } = useAccount();
   const { data: systemAppConfigData, isLoading: isSystemAppConfigDataLoading } =
     useGetSystemAppConfig();
+  const t = useTranslations('settings.billing');
 
   if (isSystemAppConfigDataLoading || !account?.type) {
     return <Skeleton />;
@@ -105,10 +121,7 @@ export default function Billing(): ReactElement {
 
   return (
     <div className="flex flex-col gap-5">
-      <SubPageHeader
-        header="Billing"
-        description="Manage your workspace's plan and billing information"
-      />
+      <SubPageHeader header={t('title')} description={t('description')} />
       <Plans
         account={account}
         upgradeHref={systemAppConfigData?.upgradeLink ?? ''}
@@ -140,6 +153,7 @@ function ManageSubscription(props: ManageSubscriptionProps): ReactElement {
   );
   const router = useRouter();
   const [isGeneratingUrl, setIsGeneratingUrl] = useState(false);
+  const t = useTranslations('settings.billing');
 
   if (account.type === UserAccountType.PERSONAL) {
     return <div />;
@@ -156,7 +170,7 @@ function ManageSubscription(props: ManageSubscriptionProps): ReactElement {
       router.push(resp.checkoutSessionUrl);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to generate billing checkout session url', {
+      toast.error(t('checkoutError'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -173,7 +187,7 @@ function ManageSubscription(props: ManageSubscriptionProps): ReactElement {
         <Button type="button" onClick={() => onActivateSubscriptionClick()}>
           <ButtonText
             leftIcon={isGeneratingUrl ? <Spinner /> : null}
-            text="Activate Subscription"
+            text={t('activate')}
           />
         </Button>
       </div>
@@ -192,7 +206,7 @@ function ManageSubscription(props: ManageSubscriptionProps): ReactElement {
       router.push(resp.portalSessionUrl);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to generate billing portal session url', {
+      toast.error(t('portalError'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -204,7 +218,7 @@ function ManageSubscription(props: ManageSubscriptionProps): ReactElement {
     <Button type="button" onClick={() => onManageSubscriptionClick()}>
       <ButtonText
         leftIcon={isGeneratingUrl ? <Spinner /> : null}
-        text="Manage Subscription"
+        text={t('manage')}
       />
     </Button>
   );
@@ -223,14 +237,13 @@ function Plans({
   plans,
   isStripeEnabled,
 }: PlansProps): ReactElement {
+  const t = useTranslations('settings.billing');
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-row gap-3 justify-between items-center ">
         <div className="flex flex-row items-center gap-2 text-sm py-6">
-          <p className="font-semibold">Current Plan:</p>
-          <Pill tone="brand">
-            {toTitleCase(UserAccountType[account.type])} plan
-          </Pill>
+          <p className="font-semibold">{t('currentPlan')}</p>
+          <Pill tone="brand">{planPill(account.type, t)}</Pill>
         </div>
         {isStripeEnabled && (
           <div>
@@ -253,22 +266,22 @@ function Plans({
               <div className="space-y-2">
                 <div className=" items-center flex flex-row gap-4">
                   <div className="font-display text-2xl font-semibold">
-                    {plan.name}
+                    {t(`plans.${plan.key}.name`)}
                   </div>
                   {plan.name == 'Team' && (
-                    <Pill tone="brand">Most popular</Pill>
+                    <Pill tone="brand">{t('mostPopular')}</Pill>
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {plan.description}
+                  {t(`plans.${plan.key}.description`)}
                 </div>
               </div>
               <div className="flex flex-col gap-6 w-full">
                 <div className="font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] flex flex-row gap-2 items-end">
-                  {plan.price}{' '}
+                  {t(`plans.${plan.key}.price`)}{' '}
                   {plan.name == 'Team' && (
                     <div className="font-sans text-sm font-normal text-muted-foreground">
-                      per month
+                      {t('perMonth')}
                     </div>
                   )}
                 </div>
@@ -279,10 +292,10 @@ function Plans({
                     planType={account.type}
                     upgradeHref={upgradeHref}
                     accountSlug={account.name}
-                    buttonText={plan.buttonText}
+                    buttonText={t(`plans.${plan.key}.button`)}
                   />
                   <div className="text-md flex">
-                    {plan.name == 'Trial' && '*No credit card required'}
+                    {plan.name == 'Trial' && t('noCreditCard')}
                   </div>
                 </div>
               </div>
@@ -295,15 +308,15 @@ function Plans({
             >
               <div className="font-bold">
                 {plan.name == 'Team'
-                  ? 'Everything in Individual + '
-                  : plan.name == 'Enterprise' && 'Everything in Team + '}
+                  ? t('everythingInIndividual')
+                  : plan.name == 'Enterprise' && t('everythingInTeam')}
               </div>
               <div className="flex flex-col gap-2">
                 {plan.features.map((item, index) => (
                   <div key={index}>
                     <div className="flex flex-row items-center gap-2">
                       <CheckIcon className="size-5 shrink-0 text-ok" />
-                      <div>{item}</div>
+                      <div>{t(`features.${item}`)}</div>
                     </div>
                   </div>
                 ))}
@@ -316,6 +329,21 @@ function Plans({
   );
 }
 
+function planPill(type: UserAccountType, t: BillingTranslator): string {
+  switch (type) {
+    case UserAccountType.PERSONAL:
+      return t('planPill.personal');
+    case UserAccountType.TEAM:
+      return t('planPill.team');
+    case UserAccountType.ENTERPRISE:
+      return t('planPill.enterprise');
+    default:
+      return t('planPill.other', {
+        name: toTitleCase(UserAccountType[type] ?? ''),
+      });
+  }
+}
+
 interface PlanButtonProps {
   plan: string;
   planType: UserAccountType;
@@ -326,6 +354,7 @@ interface PlanButtonProps {
 
 function PlanButton(props: PlanButtonProps) {
   const { plan, planType, upgradeHref, accountSlug } = props;
+  const t = useTranslations('settings.billing');
   switch (plan) {
     case 'Trial':
       if (planType == UserAccountType.PERSONAL) {
@@ -346,7 +375,7 @@ function PlanButton(props: PlanButtonProps) {
         return (
           <Button type="button">
             <Link href={upgradeHref} target="_blank">
-              Get in touch
+              {t('getInTouch')}
             </Link>
           </Button>
         );
@@ -360,9 +389,10 @@ interface GetStartedButtonProps {
 
 function GetStartedButton(props: GetStartedButtonProps): ReactElement {
   const { accountSlug } = props;
+  const t = useTranslations('settings.billing');
   return (
     <Button type="button" className="w-full">
-      <Link href={`/${accountSlug}/new/job`}>Get Started</Link>
+      <Link href={`/${accountSlug}/new/job`}>{t('getStarted')}</Link>
     </Button>
   );
 }
@@ -378,6 +408,7 @@ function CreateNewTeamButton(): ReactElement {
   });
   const [showNewTeamDialog, setShowNewTeamDialog] = useState(false);
   const { account } = useAccount();
+  const t = useTranslations('settings.billing');
 
   const onSubmit = useGetOnCreateTeamSubmit({
     onDone() {
@@ -400,7 +431,7 @@ function CreateNewTeamButton(): ReactElement {
       }}
       trigger={
         <Button className="w-full" onClick={() => setShowNewTeamDialog(true)}>
-          Create Team
+          {t('createTeam')}
         </Button>
       }
       showSubscriptionInfo={true} // This is only rendered in husonym cloud

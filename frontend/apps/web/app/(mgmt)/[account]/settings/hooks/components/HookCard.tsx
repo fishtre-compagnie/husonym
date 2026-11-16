@@ -1,6 +1,7 @@
 import { Pill, StatusDot } from '@/components/ds';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountHook } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import DisableHookButton from './DisableHookButton';
 import EditHookButton from './EditHookButton';
@@ -14,6 +15,7 @@ interface Props {
 
 export default function HookCard(props: Props): ReactElement {
   const { hook, onDeleted, onEdited } = props;
+  const t = useTranslations('settings.hooks.card');
   // A Slack hook that is still stored is shown, turned off and deleted, never edited.
   const isSlack = hook.config?.config.case === 'slack';
 
@@ -37,7 +39,7 @@ export default function HookCard(props: Props): ReactElement {
               <div className="flex items-center gap-4 pt-2 flex-wrap">
                 <Pill tone={hook.enabled ? 'ok' : 'quiet'}>
                   <StatusDot tone={hook.enabled ? 'ok' : 'quiet'} />
-                  {hook.enabled ? 'Enabled' : 'Disabled'}
+                  {hook.enabled ? t('enabled') : t('disabled')}
                 </Pill>
                 {hook.config?.config.case && (
                   <Pill className="font-mono">
@@ -47,8 +49,7 @@ export default function HookCard(props: Props): ReactElement {
               </div>
               {isSlack && (
                 <p className="text-sm text-muted-foreground">
-                  Slack hooks are no longer supported and are not run. Replace
-                  this hook with a webhook.
+                  {t('slackUnsupported')}
                 </p>
               )}
             </div>

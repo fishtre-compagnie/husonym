@@ -20,6 +20,7 @@ import {
   LicenseSource,
   SystemLicense,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
 
 export default function LicenseLimitsCard(props: Props): ReactElement {
   const { license, usage, isLoading, usageError } = props;
+  const t = useTranslations('settings.license.limits');
 
   if (isLoading) {
     return <Skeleton className="w-full h-48" />;
@@ -42,21 +44,21 @@ export default function LicenseLimitsCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Limits</CardTitle>
-        <CardDescription>
-          What the license of the instance caps, against what is used.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {usageError ? (
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Sources</span>
+            <span className="text-sm font-medium">{t('sources')}</span>
             <Alert variant="destructive">
-              <AlertTitle>Unable to count the sources</AlertTitle>
+              <AlertTitle>{t('countError')}</AlertTitle>
               <AlertDescription>{getErrorMessage(usageError)}</AlertDescription>
             </Alert>
             {limits?.maxSources !== undefined && (
-              <p className="text-sm">The license allows {limits.maxSources}.</p>
+              <p className="text-sm">
+                {t('allows', { count: limits.maxSources })}
+              </p>
             )}
           </div>
         ) : (
@@ -66,19 +68,19 @@ export default function LicenseLimitsCard(props: Props): ReactElement {
             each account. */}
         {limits?.maxJobs !== undefined && (
           <OtherLimit
-            name="Jobs"
-            value={`At most ${limits.maxJobs} per account`}
+            name={t('jobs')}
+            value={t('perAccount', { count: limits.maxJobs })}
           />
         )}
         {limits?.maxConnections !== undefined && (
           <OtherLimit
-            name="Connections"
-            value={`At most ${limits.maxConnections} per account`}
+            name={t('connections')}
+            value={t('perAccount', { count: limits.maxConnections })}
           />
         )}
         {!!limits?.allowedConnectionTypes.length && (
           <OtherLimit
-            name="Connection types"
+            name={t('connectionTypes')}
             value={limits.allowedConnectionTypes.join(', ')}
           />
         )}
@@ -93,34 +95,31 @@ function Sources({
 }: Pick<Props, 'license' | 'usage'>): ReactElement {
   const { used, cap, over, limit } = sourceUsage(license, usage);
   const sources = usage?.sourcesInAccount ?? [];
+  const t = useTranslations('settings.license.limits');
   const count: Record<SourceUsage['limit'], string> = {
     'none-in-force': `${used}`,
-    capped: `${used} of ${cap}`,
-    uncapped: `${used}, no limit`,
+    capped: t('capped', { used, cap: cap ?? 0 }),
+    uncapped: t('uncapped', { used }),
   };
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-baseline gap-2">
-        <span className="text-sm font-medium">Sources</span>
+        <span className="text-sm font-medium">{t('sources')}</span>
         <span className="text-sm">{count[limit]}</span>
       </div>
-      <p className="text-muted-foreground text-sm">
-        Sources are counted for the whole instance, every account included.
-      </p>
+      <p className="text-muted-foreground text-sm">{t('countedForInstance')}</p>
       {over && (
         <Alert variant="warning">
-          <AlertTitle>More sources than the license allows</AlertTitle>
+          <AlertTitle>{t('overTitle')}</AlertTitle>
           <AlertDescription>
-            The instance counts {used} sources and its license allows {cap}.
+            {t('overDescription', { used, cap: cap ?? 0 })}
           </AlertDescription>
         </Alert>
       )}
-      <span className="pt-2 text-sm font-medium">Sources of this account</span>
+      <span className="pt-2 text-sm font-medium">{t('accountSources')}</span>
       {sources.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          This account has no source.
-        </p>
+        <p className="text-muted-foreground text-sm">{t('noSource')}</p>
       ) : (
         <ul className="flex flex-col gap-1 text-sm">
           {sources.map((source) => (
