@@ -22,6 +22,7 @@ import {
   TransformerConfigSchema,
   TransformersService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 
 interface Props {
@@ -48,6 +49,7 @@ interface TrialRow {
 // tirée pour l'essai.
 export default function JavascriptRuleTrial(props: Props): ReactElement {
   const { code, kind } = props;
+  const t = useTranslations('connections.newTransformer.code');
   const { account } = useAccount();
   const [column, setColumn] = useState(defaultColumn);
   const [rowsText, setRowsText] = useState(defaultRows);
@@ -70,7 +72,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
     try {
       parsed = JSON.parse(rowsText);
     } catch (err) {
-      setInputError(`The rows are not valid JSON: ${err}`);
+      setInputError(t('trialInvalidJson', { error: String(err) }));
       return;
     }
     if (
@@ -78,7 +80,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       parsed.length === 0 ||
       parsed.some((row) => typeof row !== 'object' || row === null)
     ) {
-      setInputError('The rows must be an array of JSON objects.');
+      setInputError(t('trialNotArray'));
       return;
     }
     const sources = parsed as Record<string, unknown>[];
@@ -110,23 +112,20 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
         }))
       );
     } catch (err) {
-      setInputError(`The trial could not run: ${err}`);
+      setInputError(t('trialFailedToRun', { error: String(err) }));
     }
   }
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line-soft bg-card p-3 mt-4">
       <div className="space-y-0.5">
-        <Label>Try the rule</Label>
+        <Label>{t('trialTitle')}</Label>
         <div className="text-sm text-muted-foreground">
-          The rule runs on the rows below as it would in an Athanor job: its
-          state does not carry from one row to the next. The pseudo.* functions
-          derive here from a key drawn for the trial, so their outputs have the
-          shape of a run&apos;s, not its values.
+          {t('trialDescription')}
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <Label htmlFor="rule-trial-column">Transformed column</Label>
+        <Label htmlFor="rule-trial-column">{t('trialColumn')}</Label>
         <Input
           id="rule-trial-column"
           value={column}
@@ -135,9 +134,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
         />
       </div>
       <div className="flex flex-col gap-1">
-        <Label htmlFor="rule-trial-rows">
-          Trial rows (JSON array, 20 at most)
-        </Label>
+        <Label htmlFor="rule-trial-rows">{t('trialRows')}</Label>
         <Textarea
           id="rule-trial-rows"
           value={rowsText}
@@ -153,7 +150,10 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
           onClick={handleTry}
           disabled={!code || !column || isPending}
         >
-          <ButtonText leftIcon={isPending ? <Spinner /> : null} text="Try" />
+          <ButtonText
+            leftIcon={isPending ? <Spinner /> : null}
+            text={t('trialTry')}
+          />
         </Button>
       </div>
       {inputError && (
@@ -164,8 +164,12 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       {failure && (
         <Alert variant="destructive">
           <AlertTitle>
-            Failed on row {failure.row + 1}
-            {failure.column ? `, column "${failure.column}"` : ''}
+            {failure.column
+              ? t('trialFailedOnRowColumn', {
+                  row: failure.row + 1,
+                  column: failure.column,
+                })
+              : t('trialFailedOnRow', { row: failure.row + 1 })}
           </AlertTitle>
           <AlertDescription className="font-mono whitespace-pre-wrap">
             {failure.message}
@@ -176,9 +180,11 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Row</TableHead>
-              {kind === 'transform' && <TableHead>Before</TableHead>}
-              <TableHead>After</TableHead>
+              <TableHead>{t('trialRow')}</TableHead>
+              {kind === 'transform' && (
+                <TableHead>{t('trialBefore')}</TableHead>
+              )}
+              <TableHead>{t('trialAfter')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

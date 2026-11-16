@@ -11,6 +11,7 @@ import { Name } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
 import Bucket from './Bucket';
 import ServiceAccount from './ServiceAccount';
+import { useTranslations } from 'next-intl';
 
 interface GcpCloudStorageFormStore extends BaseStore<GcpCloudStorageFormValues> {
   init?(values: GcpCloudStorageFormValues): void;
@@ -55,6 +56,7 @@ interface Props {
 }
 
 export default function GcpCloudStorageForm(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.common');
   const {
     mode,
     initialValues,
@@ -93,7 +95,7 @@ export default function GcpCloudStorageForm(props: Props): ReactElement {
   });
 
   const isViewMode = mode === 'view';
-  const submitText = mode === 'create' ? 'Create' : 'Update';
+  const submitText = mode === 'create' ? t('create') : t('update');
 
   async function onRevealPassword(): Promise<string> {
     const values = await getValueWithSecrets?.();

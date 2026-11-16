@@ -17,6 +17,7 @@ import { TransformersService, UserDefinedTransformer } from '@husonym/sdk';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row, RowData } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface DataTableRowActionsProps<TData extends RowData> {
@@ -29,6 +30,8 @@ export function DataTableRowActions<TData extends RowData>({
   onDeleted,
 }: DataTableRowActionsProps<TData>) {
   const transformer = row.original as UserDefinedTransformer;
+  const t = useTranslations('connections.transformers.table');
+  const tDelete = useTranslations('connections.transformers.delete');
   const router = useRouter();
   const { account } = useAccount();
   const { mutateAsync: removeTransformer } = useMutation(
@@ -38,10 +41,10 @@ export function DataTableRowActions<TData extends RowData>({
   async function onDelete(): Promise<void> {
     try {
       await removeTransformer({ transformerId: transformer.id });
-      toast.success('Transformer removed successfully!');
+      toast.success(tDelete('removedList'));
       onDeleted();
     } catch (err) {
-      toast.error('Unable to remove transformer', {
+      toast.error(tDelete('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -55,7 +58,7 @@ export function DataTableRowActions<TData extends RowData>({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
@@ -65,7 +68,7 @@ export function DataTableRowActions<TData extends RowData>({
             router.push(`/${account?.name}/transformers/${transformer.id}`)
           }
         >
-          View
+          {t('view')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DeleteConfirmationDialog
@@ -74,11 +77,12 @@ export function DataTableRowActions<TData extends RowData>({
               className="cursor-pointer"
               onSelect={(e) => e.preventDefault()} // needed for the delete modal to not automatically close
             >
-              Delete
+              {t('delete')}
             </DropdownMenuItem>
           }
-          headerText="Are you sure you want to delete this Transformer?"
-          description="Deleting this Transformer may impact running Jobs. "
+          headerText={tDelete('confirmTitle')}
+          description={tDelete('confirmDescription')}
+          buttonText={tDelete('confirmButton')}
           onConfirm={() => onDelete()}
         />
       </DropdownMenuContent>

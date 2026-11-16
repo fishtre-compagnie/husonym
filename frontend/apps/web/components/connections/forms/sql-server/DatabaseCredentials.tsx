@@ -12,6 +12,7 @@ import {
 } from '@/yup-validations/connections';
 import { ReactElement } from 'react';
 import { SecretRevealProps } from '../SharedFormInputs';
+import { useTranslations } from 'next-intl';
 
 interface Props extends SecretRevealProps<MssqlFormValues> {
   urlValue: MssqlFormValues['url'];
@@ -73,6 +74,7 @@ interface ActiveTabProps {
 }
 
 function ActiveTabSelector(props: ActiveTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { activeTab, setActiveTab } = props;
 
   return (
@@ -82,15 +84,15 @@ function ActiveTabSelector(props: ActiveTabProps): ReactElement {
       value={activeTab}
     >
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="text-sm">Connect by:</div>
+        <div className="text-sm">{t('connectBy')}</div>
         <div className="flex items-center space-x-2">
           <RadioGroupItem value="url" id="r2" />
-          <Label htmlFor="r2">URL</Label>
+          <Label htmlFor="r2">{t('tabUrl')}</Label>
         </div>
         <OSSOnlyGuard>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="url-env" id="r3" />
-            <Label htmlFor="r3">Environment Variable</Label>
+            <Label htmlFor="r3">{t('tabEnvVar')}</Label>
           </div>
         </OSSOnlyGuard>
       </div>
@@ -105,6 +107,7 @@ interface UrlTabProps extends SecretRevealProps<MssqlFormValues['url']> {
 }
 
 function UrlTab(props: UrlTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     urlValue,
     onUrlValueChange,
@@ -118,8 +121,8 @@ function UrlTab(props: UrlTabProps): ReactElement {
     <div className="space-y-2">
       <FormHeader
         htmlFor="url"
-        title="Connection URL"
-        description="The URL of the database"
+        title={t('url.title')}
+        description={t('url.description')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -159,17 +162,15 @@ interface UrlEnvTabProps {
 }
 
 function UrlEnvTab(props: UrlEnvTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { envVarValue, onEnvVarValueChange, error } = props;
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="envVar"
-        title="Environment Variable"
-        description={`The environment variable that contains the connection URL.
-Must start with "USER_DEFINED_". Must be present on
-both the backend and the worker processes for full
-functionality.`}
+        title={t('envVar.title')}
+        description={t('envVar.description')}
         isErrored={!!error}
         isRequired={true}
       />

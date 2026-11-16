@@ -11,15 +11,17 @@ import { PlusIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
 import { ReactElement, useMemo } from 'react';
 import { GoWorkflow } from 'react-icons/go';
+import { useTranslations } from 'next-intl';
 import { getColumns } from './components/ConnectionsTable/columns';
 import { DataTable } from './components/ConnectionsTable/data-table';
 
 export default function Connections(): ReactElement {
+  const t = useTranslations('connections.list');
   return (
     <PageBody className="connections-page">
       <PageHeader
-        title="Connections"
-        description="The databases and storages your jobs read from and write to."
+        title={t('title')}
+        description={t('description')}
         actions={<NewConnectionButton />}
       />
       <ConnectionTable />
@@ -31,6 +33,8 @@ interface ConnectionTableProps {}
 
 function ConnectionTable(props: ConnectionTableProps): ReactElement {
   const {} = props;
+  const t = useTranslations('connections.list');
+  const tTable = useTranslations('connections.table');
   const { account } = useAccount();
   const { data, isLoading, refetch } = useQuery(
     ConnectionService.method.getConnections,
@@ -42,11 +46,12 @@ function ConnectionTable(props: ConnectionTableProps): ReactElement {
     () =>
       getColumns({
         accountName: account?.name ?? '',
+        t: tTable,
         onConnectionDeleted() {
           refetch();
         },
       }),
-    [account?.name ?? '']
+    [account?.name ?? '', tTable]
   );
 
   if (isLoading) {
@@ -59,13 +64,12 @@ function ConnectionTable(props: ConnectionTableProps): ReactElement {
     <div>
       {connections.length == 0 ? (
         <EmptyState
-          title="No Connections yet"
-          description="Get started by adding your first connection. Connections help you
-          integrate and sync data across your databases."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
           icon={<GoWorkflow className="w-8 h-8 text-primary" />}
           extra={
             <EmptyStateLinkButton
-              buttonText="Create your first Connection"
+              buttonText={t('emptyCta')}
               href={`/${account?.name}/new/connection`}
             />
           }
@@ -81,11 +85,12 @@ interface NewConnectionButtonprops {}
 
 function NewConnectionButton(props: NewConnectionButtonprops): ReactElement {
   const {} = props;
+  const t = useTranslations('connections.list');
   const { account } = useAccount();
   return (
     <NextLink href={`/${account?.name}/new/connection`}>
       <Button>
-        <ButtonText leftIcon={<PlusIcon />} text="New Connection" />
+        <ButtonText leftIcon={<PlusIcon />} text={t('newConnection')} />
       </Button>
     </NextLink>
   );

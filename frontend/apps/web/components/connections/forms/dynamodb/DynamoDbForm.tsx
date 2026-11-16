@@ -19,6 +19,7 @@ import {
   Name,
 } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
+import { useTranslations } from 'next-intl';
 
 interface DynamoDbFormStore extends BaseStore<DynamoDbFormValues> {
   init?(values: DynamoDbFormValues): void;
@@ -68,6 +69,7 @@ interface Props {
 }
 
 export default function DynamoDbForm(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.common');
   const {
     mode,
     initialValues,
@@ -107,7 +109,7 @@ export default function DynamoDbForm(props: Props): ReactElement {
   });
 
   const isViewMode = mode === 'view';
-  const submitText = mode === 'create' ? 'Create' : 'Update';
+  const submitText = mode === 'create' ? t('create') : t('update');
 
   const formContent = (
     <>

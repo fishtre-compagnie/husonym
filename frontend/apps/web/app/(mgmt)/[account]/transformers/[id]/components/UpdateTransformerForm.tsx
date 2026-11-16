@@ -28,6 +28,7 @@ import { TransformersService, UserDefinedTransformer } from '@husonym/sdk';
 import NextLink from 'next/link';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { constructDocsLink } from '../../EditTransformerOptions';
 
@@ -38,6 +39,7 @@ interface Props {
 
 export default function UpdateTransformerForm(props: Props): ReactElement {
   const { currentTransformer, onUpdated } = props;
+  const t = useTranslations('connections.transformers.form');
   const { account } = useAccount();
   const { allowed } = useLicenseFeature('custom_transformers');
   const { mutateAsync: isTransformerNameAvailableAsync } = useMutation(
@@ -82,13 +84,13 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
           values.config
         ),
       });
-      toast.success('Successfully updated transformer!');
+      toast.success(t('updated'));
       if (transformer.transformer) {
         onUpdated(transformer.transformer);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update transformer', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -102,9 +104,9 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
           name="source"
           render={() => (
             <FormItem>
-              <FormLabel>Source Transformer</FormLabel>
+              <FormLabel>{t('sourceLabel')}</FormLabel>
               <FormDescription>
-                The system transformer source.{' '}
+                {t('sourceDescription')}{' '}
                 <LearnMoreLink
                   href={constructDocsLink(currentTransformer.source)}
                 />
@@ -129,13 +131,11 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
             name="name"
             render={({ field: { onChange, ...field } }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormDescription>
-                  The unique name of the Transformer.
-                </FormDescription>
+                <FormLabel>{t('nameLabel')}</FormLabel>
+                <FormDescription>{t('nameDescription')}</FormDescription>
                 <FormControl>
                   <Input
-                    placeholder="Transformer Name"
+                    placeholder={t('namePlaceholder')}
                     {...field}
                     onChange={async ({ target: { value } }) => {
                       onChange(value);
@@ -153,10 +153,12 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormDescription>The Transformer decription.</FormDescription>
+                  <FormLabel>{t('descriptionLabel')}</FormLabel>
+                  <FormDescription>
+                    {t('descriptionDescription')}
+                  </FormDescription>
                   <FormControl>
-                    <Input placeholder="Transformer Name" {...field} />
+                    <Input placeholder={t('namePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -188,10 +190,10 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
         </div>
         <div className="flex flex-row justify-between py-4">
           <NextLink href={`/${account?.name}/transformers?tab=ud`}>
-            <Button type="button">Back</Button>
+            <Button type="button">{t('back')}</Button>
           </NextLink>
           <Button type="submit" disabled={!allowed}>
-            Save
+            {t('save')}
           </Button>
         </div>
       </form>

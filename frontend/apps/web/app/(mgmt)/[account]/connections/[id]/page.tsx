@@ -8,12 +8,14 @@ import { PageProps } from '@/components/types';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionService } from '@husonym/sdk';
 import Error from 'next/error';
+import { useTranslations } from 'next-intl';
 import { ReactElement, use } from 'react';
 import { useGetConnectionComponentDetails } from './components/useGetConnectionComponentDetails';
 import ViewActions from './components/ViewActions';
 
 export default function ConnectionPage(props: PageProps): ReactElement {
   const params = use(props.params);
+  const t = useTranslations('connections.detail');
   const id = params?.id ?? '';
   const { account } = useAccount();
 
@@ -33,7 +35,8 @@ export default function ConnectionPage(props: PageProps): ReactElement {
       <ResourceId
         labelText={data?.connection?.id ?? ''}
         copyText={data?.connection?.id ?? ''}
-        onHoverText="Copy the connection id"
+        onHoverText={t('copyId')}
+        onCopiedText={t('copied')}
       />
     ),
   });
@@ -55,11 +58,11 @@ export default function ConnectionPage(props: PageProps): ReactElement {
 
   const subnav = [
     {
-      title: 'Configuration',
+      title: t('tabConfiguration'),
       href: `${basePath}`,
     },
     {
-      title: 'Permissions',
+      title: t('tabPermissions'),
       href: `${basePath}/permissions`,
     },
   ];

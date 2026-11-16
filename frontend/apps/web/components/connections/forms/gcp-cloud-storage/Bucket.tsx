@@ -3,6 +3,7 @@ import FormHeader from '@/components/forms/FormHeader';
 import { Input } from '@/components/ui/input';
 import { GcpCloudStorageFormValues } from '@/yup-validations/connections';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   value: GcpCloudStorageFormValues['gcp'];
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function Bucket(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { value, onChange, errors } = props;
 
   return (
@@ -18,8 +20,8 @@ export default function Bucket(props: Props): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="bucket"
-          title="Bucket"
-          description="The GCP Cloud Storage bucket"
+          title={t('bucket.title')}
+          description={t('bucket.description')}
           isErrored={!!errors['gcp.bucket']}
           isRequired={true}
         />
@@ -33,8 +35,8 @@ export default function Bucket(props: Props): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="pathPrefix"
-          title="Path Prefix"
-          description="The path prefix for the bucket"
+          title={t('pathPrefix.title')}
+          description={t('pathPrefix.description')}
           isErrored={!!errors['gcp.pathPrefix']}
         />
         <Input

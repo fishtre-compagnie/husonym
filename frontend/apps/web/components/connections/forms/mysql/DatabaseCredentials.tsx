@@ -20,6 +20,7 @@ import {
 } from '@/yup-validations/connections';
 import { ReactElement } from 'react';
 import { SecretRevealProps } from '../SharedFormInputs';
+import { useTranslations } from 'next-intl';
 
 interface Props extends SecretRevealProps<MysqlFormValues> {
   dbValue: MysqlFormValues['db'];
@@ -99,6 +100,7 @@ interface ActiveTabProps {
 }
 
 function ActiveTabSelector(props: ActiveTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { activeTab, setActiveTab } = props;
 
   return (
@@ -108,19 +110,19 @@ function ActiveTabSelector(props: ActiveTabProps): ReactElement {
       value={activeTab}
     >
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="text-sm">Connect by:</div>
+        <div className="text-sm">{t('connectBy')}</div>
         <div className="flex items-center space-x-2">
           <RadioGroupItem value="url" id="r2" />
-          <Label htmlFor="r2">URL</Label>
+          <Label htmlFor="r2">{t('tabUrl')}</Label>
         </div>
         <div className="flex items-center space-x-2">
           <RadioGroupItem value="host" id="r1" />
-          <Label htmlFor="r1">Host</Label>
+          <Label htmlFor="r1">{t('tabHost')}</Label>
         </div>
         <OSSOnlyGuard>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="url-env" id="r3" />
-            <Label htmlFor="r3">Environment Variable</Label>
+            <Label htmlFor="r3">{t('tabEnvVar')}</Label>
           </div>
         </OSSOnlyGuard>
       </div>
@@ -135,6 +137,7 @@ interface UrlTabProps extends SecretRevealProps<MysqlFormValues['url']> {
 }
 
 function UrlTab(props: UrlTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     urlValue,
     onUrlValueChange,
@@ -148,8 +151,8 @@ function UrlTab(props: UrlTabProps): ReactElement {
     <div className="space-y-2">
       <FormHeader
         htmlFor="url"
-        title="Connection URL"
-        description="The URL of the database"
+        title={t('url.title')}
+        description={t('url.description')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -189,17 +192,15 @@ interface UrlEnvTabProps {
 }
 
 function UrlEnvTab(props: UrlEnvTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { envVarValue, onEnvVarValueChange, error } = props;
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="envVar"
-        title="Environment Variable"
-        description={`The environment variable that contains the connection URL.
-Must start with "USER_DEFINED_". Must be present on
-both the backend and the worker processes for full
-functionality.`}
+        title={t('envVar.title')}
+        description={t('envVar.description')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -223,6 +224,7 @@ interface HostTabProps extends SecretRevealProps<MysqlFormValues['db']> {
 }
 
 function HostTab(props: HostTabProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     dbValue,
     onDbValueChange,
@@ -237,8 +239,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="host"
-          title="Host"
-          description="The host name"
+          title={t('host.title')}
+          description={t('host.description')}
           isErrored={!!errors.host}
           isRequired={true}
         />
@@ -257,8 +259,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="port"
-          title="Port"
-          description="The port number"
+          title={t('port.title')}
+          description={t('port.description')}
           isErrored={!!errors.port}
           isRequired={true}
         />
@@ -276,8 +278,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="name"
-          title="Database Name"
-          description="The name of the database"
+          title={t('name.title')}
+          description={t('name.description')}
           isErrored={!!errors.name}
           isRequired={true}
         />
@@ -294,8 +296,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="user"
-          title="Username"
-          description="The username for the database"
+          title={t('user.title')}
+          description={t('user.description')}
           isErrored={!!errors.user}
           isRequired={true}
         />
@@ -312,8 +314,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="password"
-          title="Password"
-          description="The password for the database"
+          title={t('password.title')}
+          description={t('password.description')}
           isErrored={!!errors.pass}
           isRequired={true}
         />
@@ -346,8 +348,8 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="protocol"
-          title="Connection Protocol"
-          description="The protocol to use for the connection"
+          title={t('protocol.title')}
+          description={t('protocol.description')}
           isErrored={!!errors.protocol}
           isRequired={true}
         />

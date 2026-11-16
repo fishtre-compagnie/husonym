@@ -3,6 +3,7 @@ import FormHeader from '@/components/forms/FormHeader';
 import { SecurePasswordInput } from '@/components/SecurePasswordInput';
 import { Textarea } from '@/components/ui/textarea';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   value: string;
@@ -17,6 +18,7 @@ interface Props {
 // The key of the service account the connection acts with. Without one, the deployment must
 // allow connections to act with the servers' own identity.
 export default function ServiceAccount(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     value,
     onChange,
@@ -30,8 +32,8 @@ export default function ServiceAccount(props: Props): ReactElement {
     <div className="space-y-2">
       <FormHeader
         htmlFor="serviceAccountCredentials"
-        title="Service Account Key"
-        description="The JSON key file of the service account the connection acts with. Without one, the connection acts with the identity of the servers running Husonym, which the deployment must allow."
+        title={t('serviceAccountCredentials.title')}
+        description={t('serviceAccountCredentials.description')}
         isErrored={!!error}
       />
       {isViewMode ? (

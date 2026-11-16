@@ -1,5 +1,6 @@
 'use client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 // Avertit quand une règle écrit hors de ses variables : un script qui comptait garder
@@ -13,21 +14,18 @@ export default function JavascriptGlobalWrites(
   props: Props
 ): ReactElement | null {
   const { globalWrites } = props;
+  const t = useTranslations('connections.newTransformer.code');
   if (globalWrites.length === 0) {
     return null;
   }
   return (
     <Alert variant="warning" className="mt-4">
-      <AlertTitle>This code writes outside its own variables</AlertTitle>
+      <AlertTitle>{t('globalWritesTitle')}</AlertTitle>
       <AlertDescription>
         <p>
           <code>{globalWrites.join(', ')}</code>
         </p>
-        <p className="mt-1">
-          That state only lives for one row: it is shared with the other columns
-          of the row, and lost at the next one. To turn the same value into the
-          same output, use the pseudo.* functions (Athanor).
-        </p>
+        <p className="mt-1">{t('globalWritesDescription')}</p>
       </AlertDescription>
     </Alert>
   );

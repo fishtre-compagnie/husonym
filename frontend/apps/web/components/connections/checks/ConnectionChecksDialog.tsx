@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionRole, ConnectionService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import ConnectionCheckList from './ConnectionCheckList';
 import { ConnectionCheckResult, countFindings } from './useConnectionChecks';
@@ -39,6 +40,7 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
     onCheckAgain,
     onSave,
   } = props;
+  const t = useTranslations('connections.checks');
   const { account } = useAccount();
   const { data } = useQuery(
     ConnectionService.method.getConnections,
@@ -55,11 +57,11 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
       <DialogContent className="max-w-3xl flex flex-col gap-4">
         <DialogHeader>
           <div className="flex flex-row items-center gap-2">
-            <DialogTitle>Connection checks</DialogTitle>
+            <DialogTitle>{t('title')}</DialogTitle>
             {isChecking ? <Spinner /> : null}
           </div>
           <DialogDescription>
-            {getSummary(blocking, warnings)}
+            {getSummary(blocking, warnings, t)}
           </DialogDescription>
         </DialogHeader>
         <div className="flex max-h-[60vh] flex-col gap-5 overflow-y-auto pr-1">
@@ -69,15 +71,20 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
               className="flex flex-col gap-2"
             >
               <h3 className="text-sm font-semibold">
-                {result.target.role === ConnectionRole.SOURCE
-                  ? 'Source'
-                  : 'Destination'}{' '}
-                · {names.get(result.target.connectionId) ?? 'connection'}
+                {t('targetHeading', {
+                  role:
+                    result.target.role === ConnectionRole.SOURCE
+                      ? t('source')
+                      : t('destination'),
+                  name:
+                    names.get(result.target.connectionId) ??
+                    t('connectionFallback'),
+                })}
               </h3>
               <ConnectionCheckList
                 checks={result.checks}
                 unreachable={result.unreachable}
-                allClearText="Nothing missing."
+                allClearText={t('nothingMissing')}
               />
             </div>
           ))}
@@ -89,11 +96,11 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
             disabled={isChecking || isSaving}
             onClick={onCheckAgain}
           >
-            Check again
+            {t('checkAgain')}
           </Button>
           {blocking > 0 ? (
             <Button type="button" onClick={() => onOpenChange(false)}>
-              Close
+              {t('close')}
             </Button>
           ) : (
             <>
@@ -103,7 +110,7 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
                 disabled={isSaving}
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 type="button"
@@ -112,7 +119,7 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
               >
                 <ButtonText
                   leftIcon={isSaving ? <Spinner /> : undefined}
-                  text={warnings > 0 ? 'Save anyway' : 'Save'}
+                  text={warnings > 0 ? t('saveAnyway') : t('save')}
                 />
               </Button>
             </>
@@ -123,16 +130,16 @@ export default function ConnectionChecksDialog(props: Props): ReactElement {
   );
 }
 
-function getSummary(blocking: number, warnings: number): string {
+function getSummary(
+  blocking: number,
+  warnings: number,
+  t: ReturnType<typeof useTranslations<'connections.checks'>>
+): string {
   if (blocking > 0) {
-    return `The job cannot be saved: ${plural(blocking, 'blocking finding')}. Grant what is missing, then check again.`;
+    return t('summaryBlocking', { count: blocking });
   }
   if (warnings > 0) {
-    return `${plural(warnings, 'warning')}: the run may stop on ${warnings > 1 ? 'them' : 'it'}.`;
+    return t('summaryWarnings', { count: warnings });
   }
-  return 'Nothing is missing any more.';
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count > 1 ? 's' : ''}`;
+  return t('summaryClear');
 }

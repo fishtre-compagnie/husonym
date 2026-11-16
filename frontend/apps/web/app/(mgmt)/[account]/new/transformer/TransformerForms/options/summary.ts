@@ -7,6 +7,7 @@ import {
   getOptionKind,
   readOptionValue,
 } from './fields';
+import type { OptionText } from './optionText';
 import { TRANSFORMER_OPTIONS } from './registry';
 
 const MAX_TEXT = 30;
@@ -18,7 +19,12 @@ function shorten(text: string): string {
 // The options of a config that say something, in a few words each: a switch that is on, a number
 // or a text that is set, the value chosen in a list. A switch that is off, a field left empty, and
 // an option another one makes moot are left out — the summary is read, not audited.
-export function summarizeOptions(config?: TransformerConfig): string[] {
+// optionText, from useOptionText, gives the labels in the UI language; without it they stay in
+// English.
+export function summarizeOptions(
+  config?: TransformerConfig,
+  optionText?: OptionText
+): string[] {
   const configCase = config?.config.case;
   if (!configCase) {
     return [];
@@ -35,7 +41,14 @@ export function summarizeOptions(config?: TransformerConfig): string[] {
       continue;
     }
     const label =
-      typeof option.label === 'string' ? option.label : option.field;
+      typeof option.label === 'string'
+        ? (optionText?.(
+            registered.schema.name,
+            option.field,
+            'label',
+            option.label
+          ) ?? option.label)
+        : option.field;
     const field = getOptionField(registered.schema, option.field);
     const current = readOptionValue(value, option.field);
     switch (getOptionKind(field)) {

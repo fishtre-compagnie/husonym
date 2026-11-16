@@ -7,6 +7,7 @@ import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 import { ConnectionMeta } from '../../../connections/util';
 
@@ -16,6 +17,7 @@ interface Props {
 
 export default function ConnectionCard(props: Props): ReactElement {
   const { connection } = props;
+  const t = useTranslations('connections.newConnection');
   const { account } = useAccount();
   const searchParams = useSearchParams();
   const { data: systemInfo } = useQuery(
@@ -37,14 +39,14 @@ export default function ConnectionCard(props: Props): ReactElement {
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-[15px] font-semibold">{connection.name}</span>
           {connection.isExperimental ? (
-            <Pill tone="warn">Experimental</Pill>
+            <Pill tone="warn">{t('experimental')}</Pill>
           ) : null}
           {connection.isLicenseOnly ? (
             <Pill tone="brand">Enterprise</Pill>
           ) : null}
         </span>
         <span className="text-[13px] leading-snug text-muted-foreground">
-          {connection.description}
+          {t(`catalog.${connection.description}`)}
         </span>
       </span>
     </>
@@ -57,7 +59,7 @@ export default function ConnectionCard(props: Props): ReactElement {
     return (
       <div
         aria-disabled="true"
-        title="Requires an Enterprise license"
+        title={t('requiresLicense')}
         className={cn(className, 'cursor-not-allowed opacity-50')}
       >
         {content}

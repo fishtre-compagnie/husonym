@@ -5,6 +5,7 @@ import { SecurePasswordInput } from '@/components/SecurePasswordInput';
 import { Input } from '@/components/ui/input';
 import { OpenAiFormValues } from '@/yup-validations/connections';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   errors: Record<string, string>;
@@ -52,13 +53,14 @@ interface SdkUrlProps {
 }
 
 function SdkUrl(props: SdkUrlProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const { error, value, onChange } = props;
 
   return (
     <div className="space-y-2">
       <FormHeader
-        title="API Url"
-        description="The url of the OpenAI API (or equivalent) server"
+        title={t('apiUrl')}
+        description={t('theUrlOfThe')}
         isErrored={!!error}
       />
       <Input
@@ -83,6 +85,7 @@ interface SdkApiKeyProps {
 }
 
 function SdkApiKey(props: SdkApiKeyProps): ReactElement {
+  const t = useTranslations('connections.forms.fields');
   const {
     error,
     value,
@@ -95,8 +98,8 @@ function SdkApiKey(props: SdkApiKeyProps): ReactElement {
   return (
     <div className="space-y-2">
       <FormHeader
-        title="API Key"
-        description="The API key for the OpenAI API (or equivalent) server"
+        title={t('apiKey')}
+        description={t('theApiKeyFor')}
         isErrored={!!error}
       />
       {isViewMode ? (

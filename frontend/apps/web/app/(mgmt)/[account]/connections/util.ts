@@ -1,3 +1,4 @@
+import type connectionsMessages from '@/messages/en/connections.json';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import {
   AwsCredentialsFormValues,
@@ -46,9 +47,13 @@ import {
   SSHTunnelSchema,
 } from '@husonym/sdk';
 
+/** The key, under `connections.newConnection.catalog`, of a connection type's description. */
+type ConnectionDescriptionKey =
+  keyof (typeof connectionsMessages)['connections']['newConnection']['catalog'];
+
 export interface ConnectionMeta {
   name: string;
-  description: string;
+  description: ConnectionDescriptionKey;
   urlSlug: string;
   connectionType: ConnectionConfigCase;
   connectionTypeVariant?: ConnectionTypeVariant;
@@ -60,75 +65,65 @@ const CONNECTIONS_METADATA: ConnectionMeta[] = [
   {
     urlSlug: 'postgres',
     name: 'Postgres',
-    description:
-      'PostgreSQL is a free and open-source relational database manageent system emphasizing extensibility and SQL compliance.',
+    description: 'postgres',
     connectionType: 'pgConfig',
   },
   {
     urlSlug: 'mysql',
     name: 'MySQL',
-    description:
-      'MySQL is an open-source relational database management system.',
+    description: 'mysql',
     connectionType: 'mysqlConfig',
   },
   {
     urlSlug: 'aws-s3',
     name: 'AWS S3',
-    description:
-      'Amazon Simple Storage Service (Amazon S3) is an object storage service used to store and retrieve any data.',
+    description: 'awsS3',
     connectionType: 'awsS3Config',
     isLicenseOnly: true,
   },
   {
     urlSlug: 'gcp-cloud-storage',
     name: 'GCP Cloud Storage',
-    description:
-      'GCP Cloud Storage is an object storage service used to store and retrieve any data.',
+    description: 'gcpCloudStorage',
     connectionType: 'gcpCloudstorageConfig',
     isLicenseOnly: true,
   },
   {
     urlSlug: 'neon',
     name: 'Neon',
-    description:
-      'Neon is a serverless Postgres database that separates storage and compute to offer autoscaling, branching and bottomless storage.',
+    description: 'neon',
     connectionType: 'pgConfig',
     connectionTypeVariant: 'neon',
   },
   {
     urlSlug: 'supabase',
     name: 'Supabase',
-    description:
-      'Supabase is an open source Firebase alternative that ships with Authentication, Instant APIs, Edge functions and more.',
+    description: 'supabase',
     connectionType: 'pgConfig',
     connectionTypeVariant: 'supabase',
   },
   {
     urlSlug: 'openai',
     name: 'OpenAI',
-    description:
-      'OpenAI (or equivalent interface) Chat API for generating synthetic data and inserting it directly into a destination datasource.',
+    description: 'openai',
     connectionType: 'openaiConfig',
   },
   {
     urlSlug: 'mongodb',
     name: 'MongoDB',
-    description:
-      'MongoDB is a source-available, cross-platform, document-oriented database program.',
+    description: 'mongodb',
     connectionType: 'mongoConfig',
   },
   {
     urlSlug: 'dynamodb',
     name: 'DynamoDB',
-    description:
-      'Amazon DynamoDB is a fully managed proprietary NoSQL database offered by Amazon.com as part of the Amazon Web Services portfolio',
+    description: 'dynamodb',
     connectionType: 'dynamodbConfig',
   },
   {
     urlSlug: 'mssql',
     name: 'Microsoft SQL Server',
-    description:
-      'Microsoft SQL Server is a proprietary relational database management system developed by Microsoft.',
+    description: 'mssql',
     connectionType: 'mssqlConfig',
   },
 ];
@@ -314,11 +309,17 @@ const CONNECTION_CATEGORY_MAP: Record<ConnectionConfigCase, string> = {
 };
 
 // Used for the connections data table
-export function getCategory(cc?: ConnectionConfig): string {
+export function getCategory(
+  cc: ConnectionConfig | undefined,
+  t: (key: 'categoryLocalDirectory') => string
+): string {
   if (!cc || !cc.config.case) {
     return '-';
   }
   const connType = getConnectionType(cc);
+  if (connType === 'localDirConfig') {
+    return t('categoryLocalDirectory');
+  }
   return connType ? CONNECTION_CATEGORY_MAP[connType] : '-';
 }
 

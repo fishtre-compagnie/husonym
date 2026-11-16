@@ -11,11 +11,13 @@ import {
   TransformersService,
 } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import RemoveTransformerButton from './components/RemoveTransformerButton';
 import UpdateTransformerForm from './components/UpdateTransformerForm';
 
 export default function UpdateUserDefinedTransformerPage(props: PageProps) {
   const params = use(props.params);
+  const t = useTranslations('connections.transformers.detail');
   const id = params?.id ?? '';
 
   const { data, isLoading } = useQuery(
@@ -36,7 +38,7 @@ export default function UpdateUserDefinedTransformerPage(props: PageProps) {
   return (
     <PageBody className="max-w-[1320px]">
       <PageHeader
-        title={data?.transformer?.name ?? 'Custom Transformer'}
+        title={data?.transformer?.name ?? t('fallbackTitle')}
         description={
           <Pill className="font-mono">
             {getTransformerDataTypesString(data?.transformer?.dataTypes ?? [])}

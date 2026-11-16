@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useLocalStorage } from 'usehooks-ts';
+import { useTranslations } from 'next-intl';
 import { DataTableToolbar } from './data-table-toolbar';
 
 interface DataTableProps<TData extends RowData> {
@@ -28,6 +29,7 @@ export function SystemTransformersDataTable<TData extends RowData>({
   columns,
   data,
 }: DataTableProps<TData>) {
+  const t = useTranslations('connections.transformers.table');
   const [pagination, setPagination] = React.useState<number>(0);
   const [pageSize, setPageSize] = useLocalStorage<number>(
     'system-transformers-table-page-size',
@@ -83,7 +85,7 @@ export function SystemTransformersDataTable<TData extends RowData>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('noResults')}
                 </TableCell>
               </TableRow>
             )}

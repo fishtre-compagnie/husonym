@@ -23,6 +23,7 @@ import {
   toFieldInteger,
   withOptionValue,
 } from './fields';
+import { useOptionText } from './optionText';
 import OptionRow from './OptionRow';
 
 // What describes one option, apart from the message it edits.
@@ -59,6 +60,7 @@ export default function OptionField<S extends DescMessage>(
     formatEnumValue,
   } = props;
 
+  const optionText = useOptionText();
   const field = getOptionField(schema, name);
   const current = readOptionValue(value, name);
   const set = (fieldValue: unknown): void =>
@@ -70,8 +72,16 @@ export default function OptionField<S extends DescMessage>(
 
   return (
     <OptionRow
-      label={label}
-      description={description}
+      label={
+        typeof label === 'string'
+          ? optionText(schema.name, name, 'label', label)
+          : label
+      }
+      description={
+        typeof description === 'string'
+          ? optionText(schema.name, name, 'description', description)
+          : description
+      }
       error={typeof error === 'string' ? error : undefined}
       stacked={stacked}
     >

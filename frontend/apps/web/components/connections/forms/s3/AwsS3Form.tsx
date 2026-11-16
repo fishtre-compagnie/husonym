@@ -14,6 +14,7 @@ import {
 } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
 import Bucket from './Bucket';
+import { useTranslations } from 'next-intl';
 
 interface AwsS3FormStore extends BaseStore<AwsFormValues> {
   init?(values: AwsFormValues): void;
@@ -70,6 +71,7 @@ interface Props {
 }
 
 export default function AwsS3Form(props: Props): ReactElement {
+  const t = useTranslations('connections.forms.common');
   const {
     mode,
     initialValues,
@@ -108,7 +110,7 @@ export default function AwsS3Form(props: Props): ReactElement {
   });
 
   const isViewMode = mode === 'view';
-  const submitText = mode === 'create' ? 'Create' : 'Update';
+  const submitText = mode === 'create' ? t('create') : t('update');
 
   const formContent = (
     <>

@@ -9,24 +9,26 @@ import {
 } from '@/util/util';
 import { SystemTransformer } from '@husonym/sdk';
 import { ColumnDef } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import NextLink from 'next/link';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
 
 interface GetSystemTransformercolumnsProps {
   accountName: string;
+  t: ReturnType<typeof useTranslations<'connections.transformers.table'>>;
 }
 
 export function getSystemTransformerColumns(
   props: GetSystemTransformercolumnsProps
 ): ColumnDef<AppTableFeatures, SystemTransformer>[] {
-  const { accountName } = props;
+  const { accountName, t } = props;
   return [
     {
       id: 'name',
       accessorKey: 'name',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
+        <DataTableColumnHeader column={column} title={t('name')} />
       ),
       cell: ({ row }) => {
         return (
@@ -50,7 +52,7 @@ export function getSystemTransformerColumns(
       accessorKey: 'types',
       accessorFn: (row) => getTransformerDataTypesString(row.dataTypes),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Data Types" />
+        <DataTableColumnHeader column={column} title={t('dataTypes')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -65,7 +67,7 @@ export function getSystemTransformerColumns(
       accessorKey: 'jobTypes',
       accessorFn: (row) => getTransformerJobTypesString(row.supportedJobTypes),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Job Types" />
+        <DataTableColumnHeader column={column} title={t('jobTypes')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -83,7 +85,7 @@ export function getSystemTransformerColumns(
       accessorKey: 'source',
       accessorFn: (row) => getTransformerSourceString(row.source),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Source" />
+        <DataTableColumnHeader column={column} title={t('source')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -99,7 +101,7 @@ export function getSystemTransformerColumns(
       id: 'description',
       accessorKey: 'description',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Description" />
+        <DataTableColumnHeader column={column} title={t('description')} />
       ),
       cell: ({ row }) => {
         return (

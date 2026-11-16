@@ -10,6 +10,7 @@ import AwsS3ConnectionForm from '@/components/connections/forms/s3/AwsS3Connecti
 import SqlServerConnectionForm from '@/components/connections/forms/sql-server/SqlServerConnectionForm';
 import { PageHeader as DsPageHeader, Pill } from '@/components/ds';
 import { Connection, PostgresConnectionConfig } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import ModeView from './ModeView';
 
@@ -106,6 +107,7 @@ export function useGetConnectionComponentDetails(
     subHeading,
     mode = 'view',
   } = props;
+  const t = useTranslations('connections.detail');
 
   async function onSuccess(connection: Connection): Promise<void> {
     if (onSaved) {
@@ -271,11 +273,12 @@ export function useGetConnectionComponentDetails(
         connection.connectionConfig.config.value.connectionConfig.case !== 'url'
       ) {
         return {
-          header: <PageHeader header="Invalid MongoDB Connection" />,
+          header: <PageHeader header={t('invalidMongo')} />,
           body: (
             <div>
-              No connection component found for: (
-              {connection?.name ?? 'unknown name'})
+              {t('noComponent', {
+                name: connection?.name ?? t('unknownName'),
+              })}
             </div>
           ),
         };
@@ -423,11 +426,12 @@ export function useGetConnectionComponentDetails(
     }
     default:
       return {
-        header: <PageHeader header="Unknown Connection" />,
+        header: <PageHeader header={t('unknown')} />,
         body: (
           <div>
-            No connection component found for: (
-            {connection?.name ?? 'unknown name'})
+            {t('noComponent', {
+              name: connection?.name ?? t('unknownName'),
+            })}
           </div>
         ),
       };
