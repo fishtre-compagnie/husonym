@@ -185,6 +185,7 @@ describe('formatting', () => {
     expect(formatSpan(7 * 60_000 + 4_000)).toBe('7 min 04');
     expect(formatSpan(HOUR + 3 * 60_000)).toBe('1 h 03 min');
     expect(formatSpan(undefined)).toBe('–');
-    expect(categoryLabel('birth_date')).toBe('Birth date');
+    expect(categoryLabel('birth_date', 'Personal data')).toBe('Birth date');
+    expect(categoryLabel('', 'Personal data')).toBe('Personal data');
   });
 });

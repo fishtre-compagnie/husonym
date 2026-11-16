@@ -15,6 +15,7 @@ import {
   SymbolIcon,
 } from '@radix-ui/react-icons';
 import { nanoid } from 'nanoid';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ReactElement, useEffect, useState } from 'react';
 import { AiOutlineExperiment } from 'react-icons/ai';
@@ -34,6 +35,7 @@ export default function WelcomeRouter({
   const [sessionToken, setSessionToken] = useState<string>('');
   const searchParams = useSearchParams();
   const { account } = useAccount();
+  const t = useTranslations('dashboard.onboarding');
 
   useEffect(() => {
     // Generate the session token only on the client side
@@ -60,24 +62,24 @@ export default function WelcomeRouter({
 
   const jobData = [
     {
-      name: 'Data Synchronization',
-      description: 'Sync and anonymize data between a source and destination. ',
+      name: t('router.dataSync'),
+      description: t('router.dataSyncDescription'),
       href: `/${account?.name}/new/job/define?${dataSyncParams.toString()}`,
       icon: <SymbolIcon />,
       type: 'data-sync',
       experimental: false,
     },
     {
-      name: 'Data Generation',
-      description: 'Generate synthetic data from using Husonym Transformers.',
+      name: t('router.dataGen'),
+      description: t('router.dataGenDescription'),
       href: `/${account?.name}/new/job/define?${dataGenParams.toString()}`,
       icon: <AiOutlineExperiment />,
       type: 'generate-table',
       experimental: false,
     },
     {
-      name: 'AI Data Generation',
-      description: 'Generate synthetic data from scratch with AI.',
+      name: t('router.aiDataGen'),
+      description: t('router.aiDataGenDescription'),
       href: `/${account?.name}/new/job/define?${aiDataGenParams.toString()}`,
       icon: <MagicWandIcon />,
       type: 'ai-generate-table',
@@ -99,10 +101,8 @@ export default function WelcomeRouter({
 
   return (
     <div className="flex flex-col gap-8 justify-center items-center text-center ">
-      <h1 className="font-semibold text-2xl">Select a Job type</h1>
-      <p className="text-sm px-10">
-        Select the type of job that you would like to create.
-      </p>
+      <h1 className="font-semibold text-2xl">{t('router.title')}</h1>
+      <p className="text-sm px-10">{t('router.text')}</p>
       <div className="flex flex-col justify-center">
         <RadioGroup value={selectedJobType} onChange={() => setSelectedJobType}>
           {jobData.map((jd) => (
@@ -123,7 +123,9 @@ export default function WelcomeRouter({
                       <div className="flex flex-row items-center gap-2">
                         <div>{jd.icon}</div>
                         <p>{jd.name}</p>
-                        {jd.experimental ? <Badge>Experimental</Badge> : null}
+                        {jd.experimental ? (
+                          <Badge>{t('router.experimental')}</Badge>
+                        ) : null}
                       </div>
                     </CardTitle>
                     <CardDescription className="pl-6 pt-2">
@@ -147,7 +149,7 @@ export default function WelcomeRouter({
       </div>
       <div className="flex flex-row justify-between w-full py-6">
         <Button variant="outline" type="reset" onClick={onPreviousStep}>
-          Back
+          {t('back')}
         </Button>
         <Button
           type="submit"
@@ -163,7 +165,7 @@ export default function WelcomeRouter({
           }}
         >
           <div className="flex flex-row items-center gap-2">
-            <div>Next</div> <ArrowRightIcon />
+            <div>{t('next')}</div> <ArrowRightIcon />
           </div>
         </Button>
       </div>

@@ -14,7 +14,7 @@ import {
   JobRunStatus,
   JobSource,
 } from '@husonym/sdk';
-import { formatDistanceStrict } from 'date-fns';
+import { Locale as DateFnsLocale, formatDistanceStrict } from 'date-fns';
 
 export type Period = '24h' | '7d' | '30d';
 
@@ -28,22 +28,8 @@ const PERIODS: Record<Period, { ms: number; buckets: number }> = {
   '30d': { ms: 30 * DAY, buckets: 30 },
 };
 
-export const PERIOD_OPTIONS: { value: Period; label: string }[] = [
-  { value: '24h', label: '24 h' },
-  { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
-];
-
-export function periodLabel(p: Period): string {
-  switch (p) {
-    case '24h':
-      return 'last 24 hours';
-    case '7d':
-      return 'last 7 days';
-    case '30d':
-      return 'last 30 days';
-  }
-}
+/** The periods the dashboard offers, shortest first. */
+export const PERIODS_ORDER: Period[] = ['24h', '7d', '30d'];
 
 export type RunOutcome =
   'succeeded' | 'failed' | 'canceled' | 'running' | 'pending' | 'unknown';
@@ -68,27 +54,38 @@ export function runOutcome(status: JobRunStatus): RunOutcome {
   }
 }
 
-/** The word for a run's status, closer to the API than its outcome. */
-export function runStatusLabel(status: JobRunStatus): string {
+export type RunStatusKey =
+  | 'succeeded'
+  | 'error'
+  | 'failed'
+  | 'timedOut'
+  | 'canceled'
+  | 'terminated'
+  | 'running'
+  | 'pending'
+  | 'unknown';
+
+/** The key of the word for a run's status, closer to the API than its outcome. */
+export function runStatusKey(status: JobRunStatus): RunStatusKey {
   switch (status) {
     case JobRunStatus.COMPLETE:
-      return 'Succeeded';
+      return 'succeeded';
     case JobRunStatus.ERROR:
-      return 'Error';
+      return 'error';
     case JobRunStatus.FAILED:
-      return 'Failed';
+      return 'failed';
     case JobRunStatus.TIMED_OUT:
-      return 'Timed out';
+      return 'timedOut';
     case JobRunStatus.CANCELED:
-      return 'Canceled';
+      return 'canceled';
     case JobRunStatus.TERMINATED:
-      return 'Terminated';
+      return 'terminated';
     case JobRunStatus.RUNNING:
-      return 'Running';
+      return 'running';
     case JobRunStatus.PENDING:
-      return 'Pending';
+      return 'pending';
     default:
-      return 'Unknown';
+      return 'unknown';
   }
 }
 
@@ -218,21 +215,37 @@ export function runDuration(
   return (toDate(run.completedAt) ?? now).getTime() - start.getTime();
 }
 
+/** How relative times are written: the language, and the words for "just now". */
+export interface RelativeWords {
+  locale?: DateFnsLocale;
+  justNow: string;
+}
+
+/** "3 minutes ago", in the language of `words`. */
 export function formatAgo(
   date: Date | undefined,
-  now: Date = new Date()
+  now: Date,
+  words: RelativeWords
 ): string {
   if (!date) {
     return '–';
   }
   if (now.getTime() - date.getTime() < 60_000) {
-    return 'just now';
+    return words.justNow;
   }
-  return `${formatDistanceStrict(date, now)} ago`;
+  return formatDistanceStrict(date, now, {
+    addSuffix: true,
+    locale: words.locale,
+  });
 }
 
-export function formatIn(date: Date, now: Date = new Date()): string {
-  return `in ${formatDistanceStrict(date, now)}`;
+/** "in 3 hours", in the language of `locale`. */
+export function formatIn(
+  date: Date,
+  now: Date,
+  locale?: DateFnsLocale
+): string {
+  return formatDistanceStrict(date, now, { addSuffix: true, locale });
 }
 
 export function runWhen(run: JobRun): Date | undefined {
@@ -379,15 +392,11 @@ export function coverage(
   return out;
 }
 
-/** "birth_date" → "Birth date". */
-export function categoryLabel(category: string): string {
+/** "birth_date" → "Birth date"; `fallback` when there is no category. */
+export function categoryLabel(category: string, fallback: string): string {
   const s = category.replace(/[_-]+/g, ' ').trim();
   if (!s) {
-    return 'Personal data';
+    return fallback;
   }
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-}
-
-export function plural(n: number, one: string, many = `${one}s`): string {
-  return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 }

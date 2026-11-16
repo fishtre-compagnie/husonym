@@ -1,4 +1,5 @@
 import { ArrowRightIcon, CaretSortIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,25 +11,29 @@ interface Props {
 
 export default function Config(props: Props): ReactElement {
   const { onNextStep, onPreviousStep } = props;
+  const t = useTranslations('dashboard.onboarding');
 
   return (
     <div className="flex flex-col gap-12 justify-center items-center text-center">
-      <h1 className="font-semibold text-2xl">Configure</h1>
-      <p className="text-sm px-10">
-        Configure your Schema, Transformers and Subsetting rules in order to
-        anonymize and generate data to sync to lower level environments.
-      </p>
+      <h1 className="font-semibold text-2xl">{t('configure.title')}</h1>
+      <p className="text-sm px-10">{t('configure.text')}</p>
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-xs">
         <div className="flex flex-row gap-4 justify-between" id="header">
-          <div className="w-[100px] font-semibold">Column</div>
-          <div className="w-[100px] font-semibold">Constraints</div>
-          <div className="w-[100px] font-semibold">Data Type</div>
-          <div className="w-[100px] font-semibold">Transformer</div>
+          <div className="w-[100px] font-semibold">{t('configure.column')}</div>
+          <div className="w-[100px] font-semibold">
+            {t('configure.constraints')}
+          </div>
+          <div className="w-[100px] font-semibold">
+            {t('configure.dataType')}
+          </div>
+          <div className="w-[100px] font-semibold">
+            {t('configure.transformer')}
+          </div>
         </div>
         <div className="flex flex-row items-center gap-4 justify-between">
           <div className="w-[100px]">id</div>
           <Badge variant="outline" className="w-[100px]">
-            Primary Key
+            {t('configure.primaryKey')}
           </Badge>
           <Badge variant="outline" className="w-[100px]">
             UUID
@@ -55,7 +60,7 @@ export default function Config(props: Props): ReactElement {
           <div className="w-[100px]">email</div>
 
           <Badge variant="outline" className="w-[100px]">
-            Foreign Key
+            {t('configure.foreignKey')}
           </Badge>
           <Badge variant="outline" className="w-[100px]">
             varchar(255)
@@ -65,11 +70,11 @@ export default function Config(props: Props): ReactElement {
       </div>
       <div className="flex flex-row justify-between w-full py-6">
         <Button variant="outline" type="reset" onClick={onPreviousStep}>
-          Back
+          {t('back')}
         </Button>
         <Button onClick={onNextStep}>
           <div className="flex flex-row items-center gap-2">
-            <div>Next</div> <ArrowRightIcon />
+            <div>{t('next')}</div> <ArrowRightIcon />
           </div>
         </Button>
       </div>

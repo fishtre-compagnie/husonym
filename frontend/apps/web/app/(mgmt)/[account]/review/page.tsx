@@ -12,22 +12,21 @@ import { usePendingReviews } from '@/components/site-header/PendingReviewsBell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/libs/utils';
 import { CheckCircledIcon, ChevronRightIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ReactElement } from 'react';
 
 // The review of the account: every job whose runs changed its mapping, with what waits
 // for a decision. The decisions themselves are made on the job's Review tab.
 export default function Page(): ReactElement {
+  const t = useTranslations('dashboard.review');
   const { account } = useAccount();
   const { byJob, total, isLoading } = usePendingReviews();
   const inClear = byJob.reduce((n, j) => n + j.personalInClear, 0);
 
   return (
     <PageBody>
-      <PageHeader
-        title="PII review"
-        description="When a run finds columns the mapping did not know, or columns that changed, it maps them and lists them here for someone to confirm. A personal column a run left in clear comes first."
-      />
+      <PageHeader title={t('title')} description={t('description')} />
 
       {isLoading ? (
         <Skeleton className="h-40 w-full rounded-2xl" />
@@ -37,27 +36,26 @@ export default function Page(): ReactElement {
             <CheckCircledIcon className="size-5" />
           </span>
           <h2 className="m-0 font-display text-lg font-semibold">
-            Nothing to review
+            {t('nothing')}
           </h2>
           <p className="m-0 max-w-md text-muted-foreground">
-            Every change your jobs&apos; runs made to their mappings has been
-            reviewed. New ones will show here after the next runs.
+            {t('nothingText')}
           </p>
           <Link
             href={`/${account?.name}/jobs`}
             className="text-sm text-link hover:underline"
           >
-            Go to the jobs
+            {t('goToJobs')}
           </Link>
         </Panel>
       ) : (
         <Panel>
           <PanelHeader
-            title={`${total} change${total === 1 ? '' : 's'} to review`}
+            title={t('total', { count: total })}
             actions={
               inClear > 0 ? (
                 <Pill tone="danger">
-                  {inClear} personal column{inClear === 1 ? '' : 's'} in clear
+                  {t('personalInClear', { count: inClear })}
                 </Pill>
               ) : undefined
             }
@@ -73,7 +71,9 @@ export default function Page(): ReactElement {
                     {job.jobName}
                   </span>
                   {job.personalInClear > 0 && (
-                    <Pill tone="danger">{job.personalInClear} in clear</Pill>
+                    <Pill tone="danger">
+                      {t('jobInClear', { count: job.personalInClear })}
+                    </Pill>
                   )}
                   <span
                     className={cn(
@@ -83,7 +83,7 @@ export default function Page(): ReactElement {
                         : 'text-muted-foreground'
                     )}
                   >
-                    {job.count} change{job.count === 1 ? '' : 's'}
+                    {t('jobChanges', { count: job.count })}
                   </span>
                   <ChevronRightIcon
                     aria-hidden="true"

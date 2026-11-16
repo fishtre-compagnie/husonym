@@ -1,3 +1,190 @@
 {
-  "dashboard": {}
+  "dashboard": {
+    "home": {
+      "title": "Overview",
+      "periodAria": "Period",
+      "periods": {
+        "24h": "24 h",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "periodsLong": {
+        "24h": "last 24 hours",
+        "7d": "last 7 days",
+        "30d": "last 30 days"
+      },
+      "justNow": "just now",
+      "subtitle": {
+        "running": "{count, plural, one {# run in progress} other {# runs in progress}}",
+        "noRunning": "No run in progress",
+        "waiting": "{count} waiting to start",
+        "nextRun": "next scheduled run {when}",
+        "allPaused": "every schedule is paused"
+      },
+      "keyFigures": "Key figures",
+      "finished": {
+        "label": "Finished runs",
+        "none": "None in the {period}",
+        "succeeded": "{count} succeeded",
+        "failed": "{count} failed",
+        "canceled": "{count} canceled",
+        "series": "Finished runs over the {period}, oldest first: {series}.",
+        "successRate": "{rate}% success rate"
+      },
+      "jobs": {
+        "label": "Jobs",
+        "none": "No job yet",
+        "note": "{schedules, plural, one {# active schedule} other {# active schedules}} · {connections, plural, one {# connection} other {# connections}}",
+        "engineDefault": "Default"
+      },
+      "protected": {
+        "label": "Personal columns protected",
+        "loading": "Loading",
+        "value": "{value}%",
+        "reading": "Reading source schemas…",
+        "noDatabase": "No job reads from a database",
+        "unreachable": "Source schema unreachable",
+        "noPersonal": "No personal column detected",
+        "ratio": "{anonymized} of {personal, plural, one {# detected column} other {# detected columns}}",
+        "bar": "{value}% of personal columns protected"
+      },
+      "toReview": {
+        "label": "To review",
+        "nothing": "Nothing waiting for a decision",
+        "inClear": "{count, plural, one {# new sensitive column} other {# new sensitive columns}} in clear",
+        "changes": "{changes, plural, one {# mapping change} other {# mapping changes}} in {jobs, plural, one {# job} other {# jobs}}",
+        "open": "Open the review"
+      },
+      "runsSection": "Runs",
+      "inProgress": {
+        "title": "In progress",
+        "seeAll": "See all",
+        "empty": "No run in progress.",
+        "nextRun": "The next scheduled run starts {when}.",
+        "startOne": "Start one from a job."
+      },
+      "latest": {
+        "title": "Latest runs",
+        "all": "All runs",
+        "empty": "No run finished in the {period}."
+      },
+      "personalSection": "Personal data",
+      "inClear": {
+        "title": "Sensitive columns in clear",
+        "added": "{job} · added {when}",
+        "more": "And {count, plural, one {# other column} other {# other columns}}, in the mapping of each job.",
+        "personalData": "Personal data"
+      },
+      "spotted": {
+        "title": "Huso spotted {count, plural, one {# change} other {# changes}} in your sources",
+        "body": "{summary} across {jobs, plural, one {# job} other {# jobs}}, found by their runs. Each one waits for your review.",
+        "added": "{count, plural, one {# new column} other {# new columns}}",
+        "removed": "{count, plural, one {# column} other {# columns}} removed",
+        "typeChanged": "{count, plural, one {# type change} other {# type changes}}",
+        "mappingChanges": "Mapping changes"
+      },
+      "live": {
+        "generated": "generated",
+        "waiting": "Waiting to start",
+        "started": "Started {when}",
+        "running": "Running",
+        "barWaiting": "{name}: waiting to start",
+        "barRunning": "{name}: running",
+        "runningFor": "Running for <strong>{duration}</strong>",
+        "inProgress": "In progress"
+      },
+      "status": {
+        "succeeded": "Succeeded",
+        "error": "Error",
+        "failed": "Failed",
+        "timedOut": "Timed out",
+        "canceled": "Canceled",
+        "terminated": "Terminated",
+        "running": "Running",
+        "pending": "Pending",
+        "unknown": "Unknown"
+      },
+      "coverage": {
+        "title": "Personal data coverage",
+        "noSources": "None of your jobs reads from a database, so there is no column to classify.",
+        "noMatch": "No mapped column could be matched with its source schema.",
+        "breakdown": "Breakdown of {count, plural, one {# mapped column} other {# mapped columns}}",
+        "anonymized": "Personal, anonymized",
+        "kept": "Not personal, kept",
+        "toConfirm": "To confirm",
+        "inClear": "Personal, in clear",
+        "note": "The mapped columns of {count, plural, one {# job} other {# jobs}}, classified from their names and types in the source schema.",
+        "unreachable": "Could not read the schema of {names}: the jobs that read from {count, plural, one {it} other {them}} are not counted."
+      },
+      "noJobs": {
+        "title": "No job yet",
+        "description": "A job copies a source database to a destination, anonymizing its personal columns on the way. Its runs, and the coverage of personal data, will show up here.",
+        "newJob": "New job"
+      }
+    },
+    "review": {
+      "title": "PII review",
+      "description": "When a run finds columns the mapping did not know, or columns that changed, it maps them and lists them here for someone to confirm. A personal column a run left in clear comes first.",
+      "nothing": "Nothing to review",
+      "nothingText": "Every change your jobs' runs made to their mappings has been reviewed. New ones will show here after the next runs.",
+      "goToJobs": "Go to the jobs",
+      "total": "{count, plural, one {# change to review} other {# changes to review}}",
+      "personalInClear": "{count, plural, one {# personal column} other {# personal columns}} in clear",
+      "jobInClear": "{count} in clear",
+      "jobChanges": "{count, plural, one {# change} other {# changes}}"
+    },
+    "findings": {
+      "blocking": "Blocking",
+      "warning": "Warning",
+      "information": "Note",
+      "copy": "Copy the statement",
+      "copied": "Copied"
+    },
+    "onboarding": {
+      "back": "Back",
+      "next": "Next",
+      "completeError": "Unable to complete onboarding",
+      "welcome": {
+        "title": "Welcome to Husonym",
+        "text": "Husonym makes it easy to anonymize sensitive data, generate synthetic data and sync data across environments. Click <b>Next</b> to learn how Husonym works.",
+        "skip": "Skip"
+      },
+      "connect": {
+        "title": "Connect",
+        "text": "Create <b>Connections</b> to your upstream and downstream data sources. Husonym supports a variety of databases and types of object storage."
+      },
+      "configure": {
+        "title": "Configure",
+        "text": "Configure your Schema, Transformers and Subsetting rules in order to anonymize and generate data to sync to lower level environments.",
+        "column": "Column",
+        "constraints": "Constraints",
+        "dataType": "Data Type",
+        "transformer": "Transformer",
+        "primaryKey": "Primary Key",
+        "foreignKey": "Foreign Key"
+      },
+      "sync": {
+        "title": "Sync",
+        "text": "Run your job on a set schedule or run it ad-hoc whenever you'd like. Now that you have an idea of Husonym works, click <b>Next</b> to create a Job.",
+        "schedule": "Schedule",
+        "jobRuns": "Job Runs",
+        "job": "Job",
+        "start": "Start",
+        "complete": "Complete",
+        "completeStatus": "Complete",
+        "status": "Status"
+      },
+      "router": {
+        "title": "Select a Job type",
+        "text": "Select the type of job that you would like to create.",
+        "experimental": "Experimental",
+        "dataSync": "Data Synchronization",
+        "dataSyncDescription": "Sync and anonymize data between a source and destination. ",
+        "dataGen": "Data Generation",
+        "dataGenDescription": "Generate synthetic data from using Husonym Transformers.",
+        "aiDataGen": "AI Data Generation",
+        "aiDataGenDescription": "Generate synthetic data from scratch with AI."
+      }
+    }
+  }
 }

@@ -6,6 +6,7 @@ import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 // What a finding does: stop the run, perhaps stop it or copy wrong, or only tell what the
@@ -28,12 +29,6 @@ const levelOrder: Record<FindingLevel, number> = {
   blocking: 0,
   warning: 1,
   information: 2,
-};
-
-const levelLabels: Record<FindingLevel, string> = {
-  blocking: 'Blocking',
-  warning: 'Warning',
-  information: 'Note',
 };
 
 // FindingList shows findings one per line, the most serious first: what each is about,
@@ -62,13 +57,14 @@ function Finding(props: {
   copyable: boolean;
 }): ReactElement {
   const { level, table, columns, message, missing, remedy } = props.finding;
+  const t = useTranslations('dashboard.findings');
   return (
     <li className="flex flex-row gap-3 p-3.5 text-sm">
       <LevelIcon level={level} />
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-row flex-wrap items-center gap-2">
           <span className={`font-medium ${levelTextClass(level)}`}>
-            {levelLabels[level]}
+            {t(level)}
           </span>
           {table ? (
             <code className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-hi">
@@ -98,8 +94,8 @@ function Finding(props: {
               <CopyButton
                 buttonVariant="outline"
                 textToCopy={remedy}
-                onHoverText="Copy the statement"
-                onCopiedText="Copied"
+                onHoverText={t('copy')}
+                onCopiedText={t('copied')}
               />
             ) : null}
           </div>
