@@ -1,4 +1,5 @@
 import { cn } from '@/libs/utils';
+import { useValidationMessage } from '@/yup-validations/use-validation-message';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 export default function FormErrorMessage(props: Props): ReactElement | null {
   const { message, id, className } = props;
+  const validationMessage = useValidationMessage();
 
   if (!message) {
     return null;
@@ -21,7 +23,7 @@ export default function FormErrorMessage(props: Props): ReactElement | null {
       className={cn('text-[0.8rem] font-medium text-destructive', className)}
       {...props}
     >
-      {message}
+      {validationMessage(message)}
     </p>
   );
 }

@@ -41,17 +41,19 @@ export default function JobsUsageTable(props: Props): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">{t('jobsTable.job')}</TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2">
+                  {t('jobsTable.job')}
+                </TableHead>
+                <TableHead scope="col" className="px-2 text-right">
                   {t('jobsTable.rowsRead')}
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2 text-right">
                   {t('jobsTable.runs')}
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2 text-right">
                   {t('jobsTable.success')}
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2 text-right">
                   {t('jobsTable.medianDuration')}
                 </TableHead>
               </TableRow>

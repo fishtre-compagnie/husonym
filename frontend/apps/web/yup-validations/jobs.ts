@@ -118,7 +118,7 @@ const VIRTUAL_FOREIGN_KEY_SCHEMA = Yup.object({
   schema: Yup.string().required('A schema is required'),
   table: Yup.string().required('A table is required'),
   columns: Yup.array().of(Yup.string().required('Columns are required')),
-}).required('Virtural Foreign Key mappings are required.');
+}).required('Virtual Foreign Key mappings are required.');
 
 const VirtualForeignConstraintFormValues = Yup.object({
   schema: Yup.string().required('A schema is required'),
@@ -233,7 +233,7 @@ const DynamoDbDestinationOptionsFormValues = Yup.object({
         destinationTable: Yup.string().required(
           'Destination table is required'
         ),
-      }).required('The Destinatino form values are required.')
+      }).required('The Destination form values are required.')
     )
     .required('The Destination form values are required.')
     .default([]),
@@ -357,7 +357,7 @@ export const SchemaFormValues = Yup.object({
   destinationOptions: Yup.array()
     .of(
       SchemaFormValuesDestinationOptions.required(
-        'Schems Form Destination options are required'
+        'Schema Form Destination options are required'
       )
     )
     .required('Destination options are required'),

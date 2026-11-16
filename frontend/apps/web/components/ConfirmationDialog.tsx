@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog';
 import { Button, ButtonProps, buttonVariants } from './ui/button';
+import { useTranslations } from 'next-intl';
 
 export interface Props {
   trigger?: ReactNode;
@@ -28,12 +29,13 @@ export interface Props {
 }
 
 export default function ConfirmationDialog(props: Props): ReactElement {
+  const t = useTranslations('common');
   const {
-    trigger = <Button type="button">Press to Confirm</Button>,
-    headerText = 'Are you sure?',
-    description = 'This will confirm the action that you selected.',
+    trigger = <Button type="button">{t('confirm.trigger')}</Button>,
+    headerText = t('confirm.header'),
+    description = t('confirm.description'),
     body,
-    buttonText = 'Confirm',
+    buttonText = t('confirm.button'),
     buttonVariant,
     buttonIcon,
     containerClassName,
@@ -66,7 +68,7 @@ export default function ConfirmationDialog(props: Props): ReactElement {
         </AlertDialogHeader>
         <div className="pt-6">{body}</div>
         <AlertDialogFooter className="w-full flex sm:justify-between mt-4">
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();

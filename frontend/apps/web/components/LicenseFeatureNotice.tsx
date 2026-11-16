@@ -24,6 +24,7 @@ export default function LicenseFeatureNotice(
   const { allowed, license } = useLicenseFeature(feature);
   const { account } = useAccount();
   const t = useTranslations('settings.licenseNotice');
+  const tLicense = useTranslations('settings.license');
 
   if (allowed) {
     return null;
@@ -31,9 +32,9 @@ export default function LicenseFeatureNotice(
 
   return (
     <Alert variant="warning" className={className}>
-      <AlertTitle>{featureLabel(feature)}</AlertTitle>
+      <AlertTitle>{featureLabel(feature, tLicense)}</AlertTitle>
       <AlertDescription>
-        {featureNoticeMessage(license)}{' '}
+        {featureNoticeMessage(license, tLicense)}{' '}
         <Link href={`/${account?.name}/settings/license`} className="underline">
           {t('viewLicense')}
         </Link>

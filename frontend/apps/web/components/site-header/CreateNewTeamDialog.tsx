@@ -26,6 +26,7 @@ import {
 } from '../ui/form';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   open: boolean;
@@ -50,15 +51,17 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
     showConvertPersonalToTeamOption,
     form,
   } = props;
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger}
       <DialogContent className="flex flex-col gap-3">
         <DialogHeader>
-          <DialogTitle>Create team</DialogTitle>
+          <DialogTitle>{t('createTeam')}</DialogTitle>
           <DialogDescription>
-            Create a new team account to collaborate with your co-workers.
+            {t('createTeamDialog.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
@@ -68,7 +71,7 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team Name</FormLabel>
+                  <FormLabel>{t('createTeamDialog.name')}</FormLabel>
                   <FormControl>
                     <Input
                       autoCapitalize="off" // we don't allow capitals in team names
@@ -90,9 +93,9 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
                     showConvertPersonalToTeamOption ? undefined : 'hidden'
                   )}
                 >
-                  <FormLabel>Personal Account Conversion</FormLabel>
+                  <FormLabel>{t('createTeamDialog.convert')}</FormLabel>
                   <FormDescription>
-                    Move all settings from personal to team account.
+                    {t('createTeamDialog.convertDescription')}
                   </FormDescription>
                   <FormControl className="m-0">
                     <Switch
@@ -113,7 +116,7 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
         <DialogFooter>
           <div className="flex flex-row justify-between w-full">
             <Button variant="outline" onClick={() => onCancel()}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               type="submit"
@@ -122,7 +125,7 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
               }
               disabled={!form.formState.isValid}
             >
-              Continue
+              {tCommon('continue')}
             </Button>
           </div>
         </DialogFooter>
@@ -134,19 +137,18 @@ export function CreateNewTeamDialog(props: Props): ReactElement {
 interface ShowSubscriptionInfoProps {}
 function ShowSubscriptionInfo(props: ShowSubscriptionInfoProps): ReactElement {
   const {} = props;
+  const t = useTranslations('account.createTeamDialog');
 
   return (
     <div>
       <div className="flex flex-row gap-2">
-        <p className="text-sm tracking-tight">
-          Continuing will start a monthly Team plan subscription.
-        </p>
+        <p className="text-sm tracking-tight">{t('subscription')}</p>
         <Link
           href="https://husonym.com/pricing"
           target="_blank"
           className="hover:underline inline-flex gap-1 flex-row items-center text-sm tracking-tight"
         >
-          Learn More
+          {t('learnMore')}
           <ExternalLinkIcon className="w-3 h-3" />
         </Link>
       </div>

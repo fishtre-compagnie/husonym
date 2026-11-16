@@ -7,7 +7,7 @@ import NextLink from 'next/link';
 import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Pill, StatusDot } from '@/components/ds';
-import { formatDateTime } from '@/util/util';
+import DateTime from '@/components/DateTime';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { AccountApiKey } from '@husonym/sdk';
 import { useTranslations } from 'next-intl';
@@ -91,9 +91,9 @@ export function getColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
-              {formatDateTime(
-                expiresAt ? timestampDate(expiresAt) : new Date()
-              )}
+              <DateTime
+                value={expiresAt ? timestampDate(expiresAt) : new Date()}
+              />
             </span>
           </div>
         );
@@ -112,9 +112,9 @@ export function getColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
-              {formatDateTime(
-                createdAt ? timestampDate(createdAt) : new Date()
-              )}
+              <DateTime
+                value={createdAt ? timestampDate(createdAt) : new Date()}
+              />
             </span>
           </div>
         );
@@ -133,9 +133,9 @@ export function getColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
-              {formatDateTime(
-                updatedAt ? timestampDate(updatedAt) : new Date()
-              )}
+              <DateTime
+                value={updatedAt ? timestampDate(updatedAt) : new Date()}
+              />
             </span>
           </div>
         );

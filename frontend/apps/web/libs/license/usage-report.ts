@@ -4,6 +4,7 @@ import type {
   GetUsageReportingResponse,
   UsageReportSummary,
 } from '@husonym/sdk';
+import { ENGLISH_LICENSE_T, LicenseTranslator } from './i18n';
 
 type ReportDay = NonNullable<UsageReportSummary['day']>;
 
@@ -12,46 +13,46 @@ type ReportDay = NonNullable<UsageReportSummary['day']>;
 export function reportingLabel(
   mode: UsageReportingMode,
   licenseMode: UsageReportingMode,
-  belowLicense: boolean
+  belowLicense: boolean,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
 ): { text: string; note?: string } {
-  const text = modeLabel(mode);
+  const text = modeLabel(mode, t);
   // Without a mode there is nothing to set against the license.
   if (mode === UsageReportingMode.UNSPECIFIED || !licenseMode) {
     return { text };
   }
   return {
     text,
-    note: belowLicense
-      ? 'set below what your license provides'
-      : 'as your license provides',
+    note: belowLicense ? t('report.belowLicense') : t('report.asLicense'),
   };
 }
 
-function modeLabel(mode: UsageReportingMode): string {
+function modeLabel(mode: UsageReportingMode, t: LicenseTranslator): string {
   switch (mode) {
     case UsageReportingMode.ONLINE:
-      return 'Sent daily';
+      return t('report.modes.online');
     case UsageReportingMode.OFFLINE_REPORT:
-      return 'Not sent — a report file is expected';
+      return t('report.modes.offline');
     case UsageReportingMode.NONE:
-      return 'Not sent';
+      return t('report.modes.none');
     default:
-      return 'No report is prepared';
+      return t('report.modes.unspecified');
   }
 }
 
 // What the license key provides for the usage report, for the Status card. Nothing
 // without a key in force.
 export function licensedReportingLabel(
-  licenseMode: UsageReportingMode
+  licenseMode: UsageReportingMode,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
 ): string | undefined {
   switch (licenseMode) {
     case UsageReportingMode.ONLINE:
-      return 'Sent daily';
+      return t('report.licensedModes.online');
     case UsageReportingMode.OFFLINE_REPORT:
-      return 'Report file';
+      return t('report.licensedModes.offline');
     case UsageReportingMode.NONE:
-      return 'None';
+      return t('report.licensedModes.none');
     default:
       return undefined;
   }
@@ -63,19 +64,20 @@ type ReportStatusLabel = {
 };
 
 export function reportStatusLabel(
-  status: UsageReportStatus
+  status: UsageReportStatus,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
 ): ReportStatusLabel {
   switch (status) {
     case UsageReportStatus.SENT:
-      return { text: 'sent', variant: 'success' };
+      return { text: t('report.statuses.sent'), variant: 'success' };
     case UsageReportStatus.TO_BE_SENT:
-      return { text: 'to be sent', variant: 'secondary' };
+      return { text: t('report.statuses.toBeSent'), variant: 'secondary' };
     case UsageReportStatus.NOT_SENT:
-      return { text: 'not sent', variant: 'warning' };
+      return { text: t('report.statuses.notSent'), variant: 'warning' };
     case UsageReportStatus.KEPT:
-      return { text: 'kept', variant: 'secondary' };
+      return { text: t('report.statuses.kept'), variant: 'secondary' };
     default:
-      return { text: 'unknown', variant: 'secondary' };
+      return { text: t('report.statuses.unknown'), variant: 'secondary' };
   }
 }
 
@@ -85,22 +87,24 @@ export function reportingNotice(
   reporting: Pick<
     GetUsageReportingResponse,
     'mode' | 'licenseMode' | 'belowLicense' | 'silent'
-  >
+  >,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
 ): { title: string; description: string } | undefined {
   if (reporting.silent) {
     return {
-      title: 'No usage report could be sent for 30 days',
-      description: 'The reports are kept and tried again. Nothing is blocked.',
+      title: t('report.notice.silentTitle'),
+      description: t('report.notice.silentDescription'),
     };
   }
   if (reporting.belowLicense) {
-    const provided =
-      reporting.licenseMode === UsageReportingMode.OFFLINE_REPORT
-        ? 'a usage report file'
-        : 'a daily usage report';
     return {
-      title: `Your license provides for ${provided}`,
-      description: `Reporting is set to "${modeLabel(reporting.mode)}" on this instance. Nothing is blocked.`,
+      title:
+        reporting.licenseMode === UsageReportingMode.OFFLINE_REPORT
+          ? t('report.notice.providesFile')
+          : t('report.notice.providesDaily'),
+      description: t('report.notice.belowDescription', {
+        mode: modeLabel(reporting.mode, t),
+      }),
     };
   }
   return undefined;

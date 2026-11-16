@@ -13,7 +13,7 @@ import {
 import { licensedReportingLabel } from '@/libs/license/usage-report';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { SystemLicense, UsageReportingMode } from '@husonym/sdk';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 
 interface Props {
@@ -43,6 +43,7 @@ function isKnownOrigin(origin: string): origin is Origin {
 export default function LicenseStatusCard(props: Props): ReactElement {
   const { license, isLoading, licenseReportingMode } = props;
   const t = useTranslations('settings.license.status');
+  const tLicense = useTranslations('settings.license');
 
   if (isLoading) {
     return <Skeleton className="w-full h-32" />;
@@ -75,7 +76,7 @@ export default function LicenseStatusCard(props: Props): ReactElement {
             reportingMode={licenseReportingMode}
           />
         ) : (
-          <p className="text-sm">{missingKeyMessage(license)}</p>
+          <p className="text-sm">{missingKeyMessage(license, tLicense)}</p>
         )}
       </CardContent>
     </Card>
@@ -92,13 +93,15 @@ function LicenseDetails({
   reportingMode?: UsageReportingMode;
 }): ReactElement {
   const t = useTranslations('settings.license.status');
-  const expiresOn = formatTimestamp(license.expiresAt);
-  const graceEndsOn = formatTimestamp(license.graceEndsAt);
-  const installedOn = formatTimestamp(license.installedAt);
+  const tLicense = useTranslations('settings.license');
+  const locale = useLocale();
+  const expiresOn = formatTimestamp(license.expiresAt, locale);
+  const graceEndsOn = formatTimestamp(license.graceEndsAt, locale);
+  const installedOn = formatTimestamp(license.installedAt, locale);
   const reporting =
     reportingMode === undefined
       ? undefined
-      : licensedReportingLabel(reportingMode);
+      : licensedReportingLabel(reportingMode, tLicense);
   const origin = isKnownOrigin(license.origin)
     ? t(`origins.${license.origin}`)
     : license.origin;
@@ -155,10 +158,13 @@ function Detail({
 
 // A timestamp the API left unset comes as nothing or as the epoch: neither is a date
 // worth showing.
-function formatTimestamp(timestamp: Timestamp | undefined): string | undefined {
+function formatTimestamp(
+  timestamp: Timestamp | undefined,
+  locale: string
+): string | undefined {
   if (!timestamp) {
     return undefined;
   }
   const date = timestampDate(timestamp);
-  return date.getTime() === 0 ? undefined : formatDate(date);
+  return date.getTime() === 0 ? undefined : formatDate(date, locale);
 }

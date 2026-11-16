@@ -1,3 +1,4 @@
+import type { LicenseTranslator } from '@/libs/license/i18n';
 import { gateLabel } from '@/libs/license/license';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRunStatus, RunErrorStep } from '@husonym/sdk';
@@ -180,13 +181,14 @@ function runErrorLabel(
 // What the license refused, by gate. A gate that refused nothing is no row.
 export function refusalRows(
   refusals: readonly GateRefusalCount[],
-  locale?: string
+  locale?: string,
+  t?: LicenseTranslator
 ): CountRow[] {
   return refusals
     .filter((refusal) => refusal.refusals > ZERO)
     .map((refusal) => ({
       key: refusal.gate,
-      label: gateLabel(refusal.gate),
+      label: gateLabel(refusal.gate, t),
       count: formatCount(refusal.refusals, locale),
     }));
 }

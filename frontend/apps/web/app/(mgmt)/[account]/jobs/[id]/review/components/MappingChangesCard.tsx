@@ -22,11 +22,7 @@ import {
   isPassthrough,
   urgency,
 } from '@/util/mapping-changes';
-import {
-  formatDateTime,
-  getErrorMessage,
-  getTransformerFromField,
-} from '@/util/util';
+import { getErrorMessage, getTransformerFromField } from '@/util/util';
 import {
   convertJobMappingTransformerFormToJobMappingTransformer,
   convertJobMappingTransformerToForm,
@@ -53,6 +49,7 @@ import { LuPanelRight } from 'react-icons/lu';
 import { toast } from 'sonner';
 import ChangeDecisionPanel from './ChangeDecisionPanel';
 import ReviewChangesDialog from './ReviewChangesDialog';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 interface Props {
   jobId: string;
@@ -354,6 +351,8 @@ function ChangeRow(props: RowProps): ReactElement {
   const { change, isOpened, isSelected, onSelect, onOpen, transformerName } =
     props;
   const t = useTranslations('jobs.review.row');
+  const tKinds = useTranslations('jobs.review.changeKinds');
+  const formatDateTime = useFormatDateTime();
   const optionText = useOptionText();
   const options = summarizeOptions(change.transformer?.config, optionText);
   const removed = change.kind === JobMappingChangeKind.REMOVED;
@@ -409,7 +408,7 @@ function ChangeRow(props: RowProps): ReactElement {
           {change.column?.column}
         </span>
         <span className="text-xs text-muted-foreground truncate">
-          {changeLabel(change)}
+          {changeLabel(change, tKinds)}
         </span>
       </span>
       <span className="flex flex-col w-64 shrink-0">

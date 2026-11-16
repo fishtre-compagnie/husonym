@@ -22,7 +22,7 @@ import {
   SystemLicense,
   UserAccountService,
 } from '@husonym/sdk';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 
 type KeyTranslator = ReturnType<typeof useTranslations<'settings.license.key'>>;
@@ -44,6 +44,7 @@ export default function LicenseKeyCard(props: Props): ReactElement {
   const [key, setKey] = useState('');
   const [refusal, setRefusal] = useState<string>();
   const t = useTranslations('settings.license.key');
+  const locale = useLocale();
 
   async function onInstall(): Promise<void> {
     setRefusal(undefined);
@@ -65,7 +66,7 @@ export default function LicenseKeyCard(props: Props): ReactElement {
       isKeyAlreadyInForce(current, installed)
         ? t('alreadyInForce')
         : t('installed'),
-      { description: installedDescription(installed, t) }
+      { description: installedDescription(installed, t, locale) }
     );
     // Outside of what catches a refusal: the key is installed by now, and a page that
     // fails to read itself again must not say it was not.
@@ -117,7 +118,8 @@ export default function LicenseKeyCard(props: Props): ReactElement {
 
 function installedDescription(
   license: SystemLicense | undefined,
-  t: KeyTranslator
+  t: KeyTranslator,
+  locale: string
 ): string | undefined {
   if (!license) {
     return undefined;
@@ -128,7 +130,9 @@ function installedDescription(
   }
   if (license.expiresAt) {
     parts.push(
-      t('expiresOn', { date: formatDate(timestampDate(license.expiresAt)) })
+      t('expiresOn', {
+        date: formatDate(timestampDate(license.expiresAt), locale),
+      })
     );
   }
   return parts.join(', ') || undefined;

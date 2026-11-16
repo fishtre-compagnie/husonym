@@ -19,6 +19,7 @@ import { errorRows, errorsEmptyLine, refusalRows } from '@/libs/usage/rows';
 import { noRunLine } from '@/libs/usage/totals';
 import { getErrorMessage } from '@/util/util';
 import { useUsageI18n } from '@/libs/usage/useUsageI18n';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@connectrpc/connect-query';
 import { GetAccountUsageResponse, UsageService } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
@@ -85,7 +86,8 @@ function AccountUsage({
 }): ReactElement {
   const i18n = useUsageI18n();
   const { t } = i18n;
-  const refusals = refusalRows(usage.refusals, i18n.locale);
+  const tLicense = useTranslations('settings.license');
+  const refusals = refusalRows(usage.refusals, i18n.locale, tLicense);
   return (
     <>
       <UsageTiles

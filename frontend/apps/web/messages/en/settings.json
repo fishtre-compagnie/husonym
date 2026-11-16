@@ -426,7 +426,9 @@
         "graceEndsOn": "Grace period ends on",
         "key": "Key",
         "installedOn": "on {date}",
-        "usageReport": "Usage report"
+        "usageReport": "Usage report",
+        "missingKeyUnreadable": "A license key was given and could not be read, so none is in force. You can paste one below.",
+        "missingKeyNone": "No license key is installed. You can paste one below."
       },
       "key": {
         "alreadyInForce": "This key is already in force",
@@ -450,7 +452,9 @@
         "blocking": "Jobs that use a feature the license does not include do not start.",
         "notTracked": "Usage of the MCP server, mapping review and run logs is not tracked here.",
         "included": "Included",
-        "notIncluded": "Not included"
+        "notIncluded": "Not included",
+        "inUseNotIncluded": "In use, not included — what exists keeps working, changes are refused",
+        "inUse": "In use by this account"
       },
       "limits": {
         "title": "Limits",
@@ -498,7 +502,61 @@
         "downloadRefused": "The report could not be downloaded",
         "from": "From",
         "to": "To",
-        "download": "Download"
+        "download": "Download",
+        "modes": {
+          "online": "Sent daily",
+          "offline": "Not sent — a report file is expected",
+          "none": "Not sent",
+          "unspecified": "No report is prepared"
+        },
+        "licensedModes": {
+          "online": "Sent daily",
+          "offline": "Report file",
+          "none": "None"
+        },
+        "belowLicense": "set below what your license provides",
+        "asLicense": "as your license provides",
+        "statuses": {
+          "sent": "sent",
+          "toBeSent": "to be sent",
+          "notSent": "not sent",
+          "kept": "kept",
+          "unknown": "unknown"
+        },
+        "notice": {
+          "silentTitle": "No usage report could be sent for 30 days",
+          "silentDescription": "The reports are kept and tried again. Nothing is blocked.",
+          "providesFile": "Your license provides for a usage report file",
+          "providesDaily": "Your license provides for a daily usage report",
+          "belowDescription": "Reporting is set to \"{mode}\" on this instance. Nothing is blocked."
+        }
+      },
+      "featureNames": {
+        "job_hooks": "Job hooks",
+        "account_hooks": "Account hooks",
+        "pii_text": "PII text anonymization",
+        "pii_detection": "PII detection",
+        "custom_transformers": "Custom transformers",
+        "subsetting": "Subsetting",
+        "scheduling": "Scheduling",
+        "mapping_review": "Mapping review",
+        "api_keys": "API keys",
+        "mcp": "MCP server",
+        "rbac": "Member roles",
+        "sso": "Single sign-on (OIDC)",
+        "run_logs": "Run logs"
+      },
+      "gates": {
+        "license_not_in_force": "No license in force",
+        "source_cap": "Source limit",
+        "job_cap": "Job limit",
+        "connection_cap": "Connection limit",
+        "connection_type": "Connection type",
+        "other": "Other"
+      },
+      "notice": {
+        "notIncluded": "This feature is not included in your license.",
+        "noneInForce": "No license is in force."
       }
     },
     "usage": {

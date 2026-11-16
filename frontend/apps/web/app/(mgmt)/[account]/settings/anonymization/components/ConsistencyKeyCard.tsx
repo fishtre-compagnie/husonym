@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDateTime, getErrorMessage } from '@/util/util';
+import { getErrorMessage } from '@/util/util';
 import { create } from '@bufbuild/protobuf';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
@@ -27,6 +27,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 // The field the fingerprint of the key is filed under, as protosecret names it: the path
 // of the field it stands in for.
@@ -137,6 +138,7 @@ export default function ConsistencyKeyCard(props: Props): ReactElement {
 
 function KeyState({ setting }: { setting?: AccountSetting }): ReactElement {
   const t = useTranslations('settings.anonymization.key');
+  const formatDateTime = useFormatDateTime();
   if (!setting) {
     return (
       <Alert>

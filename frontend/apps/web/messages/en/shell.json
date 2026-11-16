@@ -1,7 +1,54 @@
 {
   "common": {
     "close": "Close",
-    "search": "Search"
+    "search": "Search",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "delete": "Delete",
+    "tryAgain": "Try again",
+    "learnMore": "Learn more",
+    "somethingWentWrong": "Something went wrong",
+    "copyError": "Unable to copy text",
+    "confirm": {
+      "trigger": "Press to Confirm",
+      "header": "Are you sure?",
+      "description": "This will confirm the action that you selected.",
+      "button": "Confirm"
+    },
+    "pagination": {
+      "rowsPerPage": "Rows per page",
+      "page": "Page {page} of {count}",
+      "first": "Go to first page",
+      "previous": "Go to previous page",
+      "next": "Go to next page",
+      "last": "Go to last page"
+    },
+    "wizard": {
+      "stepOf": "Step {index} of {total}",
+      "done": "(done)"
+    },
+    "fileUpload": {
+      "drop": "Drop Files Here",
+      "browse": "or click to browse",
+      "maxSize": "Maximum file size: {size}",
+      "invalidType": "Invalid file type",
+      "tooLarge": "File size must be less than {size}",
+      "maximumSize": "maximum size",
+      "processingFailed": "Processing failed",
+      "issueWith": "Issue with {name}"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "jobTypes": {
+      "sync": "Sync",
+      "generate": "Generate"
+    },
+    "notFound": {
+      "title": "404 Error",
+      "description": "The page you are looking for does not exist or may have been moved."
+    }
   },
   "nav": {
     "mainNavigation": "Main navigation",
@@ -43,7 +90,15 @@
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",
     "trialExpired": "Trial expired",
-    "trialDaysLeft": "{count, plural, one {# day left in your trial} other {# days left in your trial}}"
+    "trialDaysLeft": "{count, plural, one {# day left in your trial} other {# days left in your trial}}",
+    "supportLinks": {
+      "documentation": "Documentation",
+      "documentationDescription": "Guides, useful information and more.",
+      "github": "Github",
+      "githubDescription": "Check out our source code.",
+      "email": "Email support",
+      "emailDescription": "Ask us a question directly!"
+    }
   },
   "palette": {
     "button": "Search (Ctrl+K)",
@@ -72,7 +127,16 @@
     "empty": "No account found.",
     "personalGroup": "Personal",
     "teamGroup": "Team",
-    "createTeam": "Create team"
+    "createTeam": "Create team",
+    "entryError": "Unable to open your account",
+    "createTeamDialog": {
+      "description": "Create a new team account to collaborate with your co-workers.",
+      "name": "Team Name",
+      "convert": "Personal Account Conversion",
+      "convertDescription": "Move all settings from personal to team account.",
+      "subscription": "Continuing will start a monthly Team plan subscription.",
+      "learnMore": "Learn More"
+    }
   },
   "reviews": {
     "nothing": "Nothing to review",

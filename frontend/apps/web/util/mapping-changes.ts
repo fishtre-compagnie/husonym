@@ -1,19 +1,34 @@
+import { englishTranslator } from '@/i18n/english';
+import enJobs from '@/messages/en/jobs.json';
 import { JobMappingChange, JobMappingChangeKind } from '@husonym/sdk';
+import type { useTranslations } from 'next-intl';
+
+// The words of a kind of change, from useTranslations('jobs.review.changeKinds').
+export type ChangeKindTranslator = ReturnType<
+  typeof useTranslations<'jobs.review.changeKinds'>
+>;
+
+const ENGLISH_CHANGE_KINDS = englishTranslator(
+  enJobs.jobs.review.changeKinds
+) as unknown as ChangeKindTranslator;
 
 export function columnName(c: JobMappingChange): string {
   return `${c.column?.schema}.${c.column?.table}.${c.column?.column}`;
 }
 
-export function changeLabel(c: JobMappingChange): string {
+export function changeLabel(
+  c: JobMappingChange,
+  t: ChangeKindTranslator = ENGLISH_CHANGE_KINDS
+): string {
   switch (c.kind) {
     case JobMappingChangeKind.ADDED:
-      return 'New column';
+      return t('added');
     case JobMappingChangeKind.REMOVED:
-      return 'Column removed';
+      return t('removed');
     case JobMappingChangeKind.TYPE_CHANGED:
-      return `Type changed: ${c.previousDataType} → ${c.dataType}`;
+      return t('typeChanged', { from: c.previousDataType, to: c.dataType });
     default:
-      return 'Changed';
+      return t('changed');
   }
 }
 

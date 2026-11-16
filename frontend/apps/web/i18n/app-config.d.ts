@@ -6,6 +6,7 @@ import type newJob from '../messages/en/newJob.json';
 import type runs from '../messages/en/runs.json';
 import type settings from '../messages/en/settings.json';
 import type shell from '../messages/en/shell.json';
+import type validation from '../messages/en/validation.json';
 import type { Locale } from './config';
 
 // Types the message keys (from the English messages, the reference) and the locales.
@@ -19,6 +20,7 @@ declare module 'next-intl' {
       typeof runs &
       typeof dashboard &
       typeof connections &
-      typeof settings;
+      typeof settings &
+      typeof validation;
   }
 }

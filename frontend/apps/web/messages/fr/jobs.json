@@ -393,6 +393,12 @@
         "notePlaceholder": "ex. références internes, aucune donnée personnelle",
         "cancel": "Annuler",
         "confirm": "Marquer comme revu"
+      },
+      "changeKinds": {
+        "added": "Nouvelle colonne",
+        "removed": "Colonne retirée",
+        "typeChanged": "Type modifié : {from} → {to}",
+        "changed": "Modifiée"
       }
     },
     "source": {

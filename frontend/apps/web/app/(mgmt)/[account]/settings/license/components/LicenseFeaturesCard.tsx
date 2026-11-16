@@ -91,6 +91,7 @@ export default function LicenseFeaturesCard(props: Props): ReactElement {
 
 function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
   const t = useTranslations('settings.license.features');
+  const tLicense = useTranslations('settings.license');
   return (
     <TableRow>
       <TableCell
@@ -98,7 +99,7 @@ function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
           row.blocking ? 'font-medium text-destructive' : 'font-medium'
         }
       >
-        {featureLabel(row.name)}
+        {featureLabel(row.name, tLicense)}
       </TableCell>
       <TableCell>
         {row.allowed ? (
@@ -110,7 +111,7 @@ function FeatureTableRow({ row }: { row: FeatureRow }): ReactElement {
         )}
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {featureUseNote(row)}
+        {featureUseNote(row, tLicense)}
       </TableCell>
     </TableRow>
   );

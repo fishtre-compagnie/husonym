@@ -2,6 +2,7 @@ import { cn } from '@/libs/utils';
 import { ArrowTopRightIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   href: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export default function LearnMoreLink(props: Props): ReactElement {
   const { href, classNames } = props;
+  const t = useTranslations('common');
 
   return (
     <Link
@@ -20,7 +22,7 @@ export default function LearnMoreLink(props: Props): ReactElement {
         classNames
       )}
     >
-      <span>Learn more</span>
+      <span>{t('learnMore')}</span>
       <ArrowTopRightIcon className="w-3 h-3" />
     </Link>
   );

@@ -62,7 +62,7 @@ describe('LICENSE_FEATURES', () => {
 
 describe('featureLabel', () => {
   it('gives every known feature a label of its own', () => {
-    const labels = LICENSE_FEATURES.map(featureLabel);
+    const labels = LICENSE_FEATURES.map((name) => featureLabel(name));
     expect(new Set(labels).size).toBe(LICENSE_FEATURES.length);
     for (const name of LICENSE_FEATURES) {
       expect(featureLabel(name)).not.toBe(name);

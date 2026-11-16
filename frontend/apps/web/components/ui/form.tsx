@@ -13,6 +13,7 @@ import { MdErrorOutline } from 'react-icons/md';
 
 import { Label } from '@/components/ui/label';
 import { cn } from '@/libs/utils';
+import { useValidationMessage } from '@/yup-validations/use-validation-message';
 
 export const Form = FormProvider;
 
@@ -139,7 +140,8 @@ export function FormMessage({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message) : children;
+  const validationMessage = useValidationMessage();
+  const body = error ? validationMessage(String(error?.message)) : children;
 
   return (
     <div

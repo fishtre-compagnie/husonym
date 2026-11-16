@@ -449,7 +449,7 @@ export type SingleTableEditAiSourceFormValues = Yup.InferType<
 
 export const SingleTableSchemaFormValues = Yup.object({
   numRows: Yup.number()
-    .required('THe number of rows to generate is required')
+    .required('The number of rows to generate is required')
     .min(
       1,
       'The number of rows to generate must be greater than or equal to 1.'

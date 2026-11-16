@@ -5,6 +5,7 @@ import type {
   LicenseLimits,
   SystemLicense,
 } from '@husonym/sdk';
+import { ENGLISH_LICENSE_T, LicenseTranslator } from './i18n';
 
 // The features a license key can allow, by the names the API uses, in the order they
 // are shown. A test of the API (internal/license) reads this list and holds it to the
@@ -40,44 +41,37 @@ const BLOCKING_FEATURES: readonly LicenseFeature[] = [
   'subsetting',
 ];
 
-const FEATURE_LABELS: Record<LicenseFeature, string> = {
-  job_hooks: 'Job hooks',
-  account_hooks: 'Account hooks',
-  pii_text: 'PII text anonymization',
-  pii_detection: 'PII detection',
-  custom_transformers: 'Custom transformers',
-  subsetting: 'Subsetting',
-  scheduling: 'Scheduling',
-  mapping_review: 'Mapping review',
-  api_keys: 'API keys',
-  mcp: 'MCP server',
-  rbac: 'Member roles',
-  sso: 'Single sign-on (OIDC)',
-  run_logs: 'Run logs',
-};
-
-export function featureLabel(name: LicenseFeature): string {
-  return FEATURE_LABELS[name];
+// The words of a helper come from the translator of settings.license it is given,
+// from useTranslations('settings.license'); without one they are English.
+export function featureLabel(
+  name: LicenseFeature,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
+): string {
+  return t(`featureNames.${name}`);
 }
 
 // The gates of the license that are not features, by the names the API counts its
 // refusals under (internal/license/refusal.go).
-const LIMIT_GATE_LABELS: ReadonlyMap<string, string> = new Map([
-  ['license_not_in_force', 'No license in force'],
-  ['source_cap', 'Source limit'],
-  ['job_cap', 'Job limit'],
-  ['connection_cap', 'Connection limit'],
-  ['connection_type', 'Connection type'],
-]);
+const LIMIT_GATES = [
+  'license_not_in_force',
+  'source_cap',
+  'job_cap',
+  'connection_cap',
+  'connection_type',
+] as const;
 
 // What the license refused at a gate: a feature, by its label, or one of the limits.
 // A gate this page does not know (an API newer than the page) reads as Other.
-export function gateLabel(gate: string): string {
+export function gateLabel(
+  gate: string,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
+): string {
   const feature = LICENSE_FEATURES.find((name) => name === gate);
   if (feature) {
-    return featureLabel(feature);
+    return featureLabel(feature, t);
   }
-  return LIMIT_GATE_LABELS.get(gate) ?? 'Other';
+  const limit = LIMIT_GATES.find((name) => name === gate);
+  return t(`gates.${limit ?? 'other'}`);
 }
 
 // Whether the license in force allows a feature. A key that is not valid allows
@@ -112,11 +106,10 @@ export function isFeatureAvailable(
 // frozen one, no feature is included: saying that this one is missing from "your
 // license" would name the wrong cause.
 export function featureNoticeMessage(
-  license: SystemLicense | undefined
+  license: SystemLicense | undefined,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
 ): string {
-  return license?.isValid
-    ? 'This feature is not included in your license.'
-    : 'No license is in force.';
+  return license?.isValid ? t('notice.notIncluded') : t('notice.noneInForce');
 }
 
 // Whether the logs of a run are hidden. Reading keeps working when a license has lapsed
@@ -178,22 +171,28 @@ export function featureRows(
 // What a row says about the use the account makes of a feature. A feature in use that
 // the license does not include, and that blocks no job, gets its own words: nothing
 // stops, only changes are refused.
-export function featureUseNote(row: FeatureRow): string {
+export function featureUseNote(
+  row: FeatureRow,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
+): string {
   if (!row.inUse) {
     return '';
   }
   if (!row.allowed && !row.blocking) {
-    return 'In use, not included — what exists keeps working, changes are refused';
+    return t('features.inUseNotIncluded');
   }
-  return 'In use by this account';
+  return t('features.inUse');
 }
 
 // What the Status card says in place of the details of a key. A key that was given and
 // could not be read is not "no key installed".
-export function missingKeyMessage(license: SystemLicense | undefined): string {
+export function missingKeyMessage(
+  license: SystemLicense | undefined,
+  t: LicenseTranslator = ENGLISH_LICENSE_T
+): string {
   return license?.problem
-    ? 'A license key was given and could not be read, so none is in force. You can paste one below.'
-    : 'No license key is installed. You can paste one below.';
+    ? t('status.missingKeyUnreadable')
+    : t('status.missingKeyNone');
 }
 
 // Whether the answer to installing a key describes the key the page already showed.
@@ -301,8 +300,9 @@ function resolveState(
   return 'valid';
 }
 
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, {
+// A day in the UI language (from useLocale), or the browser's language without one.
+export function formatDate(date: Date, locale?: string): string {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

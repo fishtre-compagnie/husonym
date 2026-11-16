@@ -1,10 +1,10 @@
 'use client';
+import DateTime from '@/components/DateTime';
 
 import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Pill } from '@/components/ds';
 import {
-  formatDateTime,
   getTransformerDataTypesString,
   getTransformerSourceString,
 } from '@/util/util';
@@ -91,10 +91,11 @@ export function getUserDefinedTransformerColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
-              {row.original.createdAt &&
-                formatDateTime(
-                  timestampDate(row.getValue<Timestamp>('createdAt'))
-                )}
+              {row.original.createdAt && (
+                <DateTime
+                  value={timestampDate(row.getValue<Timestamp>('createdAt'))}
+                />
+              )}
             </span>
           </div>
         );
@@ -112,10 +113,11 @@ export function getUserDefinedTransformerColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate text-muted-foreground tabular-nums">
-              {row.original.updatedAt &&
-                formatDateTime(
-                  timestampDate(row.getValue<Timestamp>('updatedAt'))
-                )}
+              {row.original.updatedAt && (
+                <DateTime
+                  value={timestampDate(row.getValue<Timestamp>('updatedAt'))}
+                />
+              )}
             </span>
           </div>
         );

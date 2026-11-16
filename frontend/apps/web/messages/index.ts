@@ -15,6 +15,7 @@ const MESSAGE_FILES = [
   'dashboard',
   'connections',
   'settings',
+  'validation',
 ] as const;
 
 /** Every message of a language, the files merged into one object. */

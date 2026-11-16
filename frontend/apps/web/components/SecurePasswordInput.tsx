@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Spinner from './Spinner';
 import { Button } from './ui/button';
 import { Input, InputProps } from './ui/input';
+import { useTranslations } from 'next-intl';
 
 interface SecurePasswordInputProps extends Omit<InputProps, 'value'> {
   value?: string;
@@ -19,6 +20,7 @@ export const SecurePasswordInput = ({
   onRevealPassword,
   ...props
 }: SecurePasswordInputProps) => {
+  const t = useTranslations('common.password');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [revealedValue, setRevealedValue] = useState<string>('');
@@ -71,9 +73,7 @@ export const SecurePasswordInput = ({
         ) : (
           <EyeNoneIcon className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="sr-only">
-          {showPassword ? 'Hide password' : 'Show password'}
-        </span>
+        <span className="sr-only">{showPassword ? t('hide') : t('show')}</span>
       </Button>
     </div>
   );

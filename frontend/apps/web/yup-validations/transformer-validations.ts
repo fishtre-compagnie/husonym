@@ -495,7 +495,7 @@ const transformerNameSchema = Yup.string()
       if (!RESOURCE_NAME_REGEX.test(value)) {
         return context.createError({
           message:
-            'Transformer name Name can only include lowercase letters, numbers, and hyphens.',
+            'Transformer Name can only include lowercase letters, numbers, and hyphens.',
         });
       }
       const accountId = context?.options?.context?.accountId;

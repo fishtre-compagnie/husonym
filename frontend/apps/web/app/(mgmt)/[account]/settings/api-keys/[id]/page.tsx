@@ -11,7 +11,6 @@ import { PageProps } from '@/components/types';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { AccountApiKey, ApiKeyService } from '@husonym/sdk';
@@ -23,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { useSessionStorage } from 'usehooks-ts';
 import RemoveAccountApiKeyButton from './components/RemoveAccountApiKeyButton';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 export default function AccountApiKeyPage(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -114,6 +114,7 @@ interface ApiKeyDetailsProps {
 function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
   const { apiKey, keyValue } = props;
   const t = useTranslations('settings.apiKeys.detail');
+  const formatDateTime = useFormatDateTime();
   const tPermissions = useTranslations('settings.apiKeys.permissions');
   return (
     <div className="flex flex-col gap-3">

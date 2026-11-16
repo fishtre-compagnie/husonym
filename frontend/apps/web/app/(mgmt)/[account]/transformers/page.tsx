@@ -56,6 +56,7 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
   const { defaultTab } = props;
   const t = useTranslations('connections.transformers.list');
   const tTable = useTranslations('connections.transformers.table');
+  const tCommon = useTranslations('common');
   const { data, isLoading: isSystemTransformersLoading } = useQuery(
     TransformersService.method.getSystemTransformers
   );
@@ -79,8 +80,12 @@ function TransformersTable(props: TransformersTableProps): ReactElement {
       getSystemTransformerColumns({
         accountName: account?.name ?? '',
         t: tTable,
+        jobTypeLabels: {
+          sync: tCommon('jobTypes.sync'),
+          generate: tCommon('jobTypes.generate'),
+        },
       }),
-    [account?.name, tTable]
+    [account?.name, tTable, tCommon]
   );
   // memoizing these columns to prevent infinite re-render when hovering over next link
   const userDefinedTransformerColumns = useMemo(
