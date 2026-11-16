@@ -10,6 +10,25 @@ message GetUserRequest {}
 message GetUserResponse {
   // The unique identifier of the user that was retrieved.
   string user_id = 1;
+  // The language the user chose for the interface, such as "en" or "fr".
+  // Empty when the user follows the default of the instance, and for a caller that is not a person.
+  string locale = 2;
+}
+
+message SetUserPreferencesRequest {
+  // The language the user chooses for the interface: "en" or "fr".
+  // Empty returns the user to the default of the instance.
+  string locale = 1 [(buf.validate.field).string = {
+    in: [
+      "",
+      "en",
+      "fr"
+    ]
+  }];
+}
+message SetUserPreferencesResponse {
+  // The language now stored for the user. Empty when the user follows the default of the instance.
+  string locale = 1;
 }
 
 message SetUserRequest {}
@@ -556,6 +575,12 @@ service UserAccountService {
     option (mgmt.v1alpha1.requires) = {
       all_of: [PERMISSION_ACCOUNT_EDIT]
     };
+  }
+
+  // Sets the preferences of the calling user, such as the language of the interface.
+  // It acts on the person calling and on no account. An API key has no person behind it and is refused.
+  rpc SetUserPreferences(SetUserPreferencesRequest) returns (SetUserPreferencesResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
   }
 
   // Retrieves the list of accounts that the user belongs to.

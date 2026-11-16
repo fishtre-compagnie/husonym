@@ -611,6 +611,12 @@ components:
           type: string
           title: user_id
           description: The unique identifier of the user that was retrieved.
+        locale:
+          type: string
+          title: locale
+          description: |-
+            The language the user chose for the interface, such as "en" or "fr".
+             Empty when the user follows the default of the instance, and for a caller that is not a person.
       title: GetUserResponse
       additionalProperties: false
     mgmt.v1alpha1.HasPermissionRequest:
@@ -1038,6 +1044,30 @@ components:
           title: license
           description: The license information for the system, once the key was taken.
       title: SetSystemLicenseResponse
+      additionalProperties: false
+    mgmt.v1alpha1.SetUserPreferencesRequest:
+      type: object
+      properties:
+        locale:
+          type: string
+          title: locale
+          enum:
+            - ""
+            - en
+            - fr
+          description: |-
+            The language the user chooses for the interface: "en" or "fr".
+             Empty returns the user to the default of the instance.
+      title: SetUserPreferencesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.SetUserPreferencesResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+          title: locale
+          description: The language now stored for the user. Empty when the user follows the default of the instance.
+      title: SetUserPreferencesResponse
       additionalProperties: false
     mgmt.v1alpha1.SetUserRequest:
       type: object
@@ -2418,6 +2448,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SetUserResponse'
+  /mgmt.v1alpha1.UserAccountService/SetUserPreferences:
+    post:
+      tags:
+        - mgmt.v1alpha1.UserAccountService
+      summary: SetUserPreferences
+      description: |-
+        Sets the preferences of the calling user, such as the language of the interface.
+         It acts on the person calling and on no account. An API key has no person behind it and is refused.
+      operationId: mgmt.v1alpha1.UserAccountService.SetUserPreferences
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetUserPreferencesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetUserPreferencesResponse'
   /mgmt.v1alpha1.UserAccountService/SetUserRole:
     post:
       tags:

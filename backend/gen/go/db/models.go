@@ -279,6 +279,7 @@ type HusonymApiUser struct {
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	UserType  int16
+	Locale    pgtype.Text
 }
 
 // Stores the last day each user was seen, to count the users active over a period

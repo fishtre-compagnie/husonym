@@ -11810,6 +11810,78 @@ func (_c *MockQuerier_SetTransactionLockTimeout_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// SetUserLocale provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetUserLocale(ctx context.Context, db DBTX, arg SetUserLocaleParams) (pgtype.Text, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetUserLocale")
+	}
+
+	var r0 pgtype.Text
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetUserLocaleParams) (pgtype.Text, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetUserLocaleParams) pgtype.Text); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(pgtype.Text)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, SetUserLocaleParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SetUserLocale_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUserLocale'
+type MockQuerier_SetUserLocale_Call struct {
+	*mock.Call
+}
+
+// SetUserLocale is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg SetUserLocaleParams
+func (_e *MockQuerier_Expecter) SetUserLocale(ctx any, db any, arg any) *MockQuerier_SetUserLocale_Call {
+	return &MockQuerier_SetUserLocale_Call{Call: _e.mock.On("SetUserLocale", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_SetUserLocale_Call) Run(run func(ctx context.Context, db DBTX, arg SetUserLocaleParams)) *MockQuerier_SetUserLocale_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 SetUserLocaleParams
+		if args[2] != nil {
+			arg2 = args[2].(SetUserLocaleParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetUserLocale_Call) Return(text pgtype.Text, err error) *MockQuerier_SetUserLocale_Call {
+	_c.Call.Return(text, err)
+	return _c
+}
+
+func (_c *MockQuerier_SetUserLocale_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetUserLocaleParams) (pgtype.Text, error)) *MockQuerier_SetUserLocale_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SettleRunUsage provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error {
 	ret := _mock.Called(ctx, db, arg)

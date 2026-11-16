@@ -336,6 +336,9 @@ type Querier interface {
 	// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
 	// waits longer fails with lock_not_available instead of holding what the transaction has locked.
 	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
+	// Sets the language a user chose for the interface. A null locale returns the user to the
+	// default of the instance. No row returned means no such user.
+	SetUserLocale(ctx context.Context, db DBTX, arg SetUserLocaleParams) (pgtype.Text, error)
 	// Only a run still open is settled.
 	SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error
 	// Only an instance that does not send yet starts: the first date stays.

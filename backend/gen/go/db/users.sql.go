@@ -179,7 +179,7 @@ INSERT INTO husonym_api.users (
 ) VALUES (
   DEFAULT, DEFAULT, DEFAULT, 1
 )
-RETURNING id, created_at, updated_at, user_type
+RETURNING id, created_at, updated_at, user_type, locale
 `
 
 func (q *Queries) CreateMachineUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
@@ -190,6 +190,7 @@ func (q *Queries) CreateMachineUser(ctx context.Context, db DBTX) (HusonymApiUse
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -200,7 +201,7 @@ INSERT INTO husonym_api.users (
 ) VALUES (
   DEFAULT, DEFAULT, DEFAULT, 0
 )
-RETURNING id, created_at, updated_at, user_type
+RETURNING id, created_at, updated_at, user_type, locale
 `
 
 func (q *Queries) CreateNonMachineUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
@@ -211,6 +212,7 @@ func (q *Queries) CreateNonMachineUser(ctx context.Context, db DBTX) (HusonymApi
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -516,7 +518,7 @@ func (q *Queries) GetActiveAccountInvites(ctx context.Context, db DBTX, accounti
 }
 
 const getAnonymousUser = `-- name: GetAnonymousUser :one
-SELECT id, created_at, updated_at, user_type from husonym_api.users
+SELECT id, created_at, updated_at, user_type, locale from husonym_api.users
 WHERE id = '00000000-0000-0000-0000-000000000000'
 `
 
@@ -528,6 +530,7 @@ func (q *Queries) GetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -663,7 +666,7 @@ func (q *Queries) GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, a
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, created_at, updated_at, user_type FROM husonym_api.users
+SELECT id, created_at, updated_at, user_type, locale FROM husonym_api.users
 WHERE id = $1
 `
 
@@ -675,6 +678,7 @@ func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (Husonym
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -737,7 +741,7 @@ func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, 
 }
 
 const getUserByProviderSub = `-- name: GetUserByProviderSub :one
-SELECT u.id, u.created_at, u.updated_at, u.user_type from husonym_api.users u
+SELECT u.id, u.created_at, u.updated_at, u.user_type, u.locale from husonym_api.users u
 INNER JOIN husonym_api.user_identity_provider_associations uipa ON uipa.user_id = u.id
 WHERE uipa.provider_sub = $1 and u.user_type = 0
 `
@@ -750,6 +754,7 @@ func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -967,7 +972,7 @@ INSERT INTO husonym_api.users (
 ON CONFLICT (id)
 DO
   UPDATE SET updated_at = current_timestamp
-RETURNING id, created_at, updated_at, user_type
+RETURNING id, created_at, updated_at, user_type, locale
 `
 
 func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
@@ -978,6 +983,7 @@ func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -1108,6 +1114,28 @@ func (q *Queries) SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, ar
 		&i.StripeCustomerID,
 	)
 	return i, err
+}
+
+const setUserLocale = `-- name: SetUserLocale :one
+UPDATE husonym_api.users
+SET locale = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $2
+RETURNING locale
+`
+
+type SetUserLocaleParams struct {
+	Locale pgtype.Text
+	UserId pgtype.UUID
+}
+
+// Sets the language a user chose for the interface. A null locale returns the user to the
+// default of the instance. No row returned means no such user.
+func (q *Queries) SetUserLocale(ctx context.Context, db DBTX, arg SetUserLocaleParams) (pgtype.Text, error) {
+	row := db.QueryRow(ctx, setUserLocale, arg.Locale, arg.UserId)
+	var locale pgtype.Text
+	err := row.Scan(&locale)
+	return locale, err
 }
 
 const updateAccountInviteToAccepted = `-- name: UpdateAccountInviteToAccepted :one

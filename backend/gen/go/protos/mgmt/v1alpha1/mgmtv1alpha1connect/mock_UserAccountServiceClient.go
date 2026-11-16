@@ -2156,6 +2156,74 @@ func (_c *MockUserAccountServiceClient_SetUser_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// SetUserPreferences provides a mock function for the type MockUserAccountServiceClient
+func (_mock *MockUserAccountServiceClient) SetUserPreferences(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]) (*connect.Response[mgmtv1alpha1.SetUserPreferencesResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetUserPreferences")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.SetUserPreferencesResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]) (*connect.Response[mgmtv1alpha1.SetUserPreferencesResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]) *connect.Response[mgmtv1alpha1.SetUserPreferencesResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.SetUserPreferencesResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserAccountServiceClient_SetUserPreferences_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUserPreferences'
+type MockUserAccountServiceClient_SetUserPreferences_Call struct {
+	*mock.Call
+}
+
+// SetUserPreferences is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]
+func (_e *MockUserAccountServiceClient_Expecter) SetUserPreferences(context1 any, request any) *MockUserAccountServiceClient_SetUserPreferences_Call {
+	return &MockUserAccountServiceClient_SetUserPreferences_Call{Call: _e.mock.On("SetUserPreferences", context1, request)}
+}
+
+func (_c *MockUserAccountServiceClient_SetUserPreferences_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest])) *MockUserAccountServiceClient_SetUserPreferences_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.SetUserPreferencesRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_SetUserPreferences_Call) Return(response *connect.Response[mgmtv1alpha1.SetUserPreferencesResponse], err error) *MockUserAccountServiceClient_SetUserPreferences_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockUserAccountServiceClient_SetUserPreferences_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetUserPreferencesRequest]) (*connect.Response[mgmtv1alpha1.SetUserPreferencesResponse], error)) *MockUserAccountServiceClient_SetUserPreferences_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUserRole provides a mock function for the type MockUserAccountServiceClient
 func (_mock *MockUserAccountServiceClient) SetUserRole(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetUserRoleRequest]) (*connect.Response[mgmtv1alpha1.SetUserRoleResponse], error) {
 	ret := _mock.Called(context1, request)

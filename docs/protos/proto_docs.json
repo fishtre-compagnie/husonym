@@ -25674,6 +25674,18 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
+            },
+            {
+              "name": "locale",
+              "description": "The language the user chose for the interface, such as \"en\" or \"fr\".\nEmpty when the user follows the default of the instance, and for a caller that is not a person.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
@@ -26634,6 +26646,54 @@
           ]
         },
         {
+          "name": "SetUserPreferencesRequest",
+          "longName": "SetUserPreferencesRequest",
+          "fullName": "mgmt.v1alpha1.SetUserPreferencesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "locale",
+              "description": "The language the user chooses for the interface: \"en\" or \"fr\".\nEmpty returns the user to the default of the instance.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SetUserPreferencesResponse",
+          "longName": "SetUserPreferencesResponse",
+          "fullName": "mgmt.v1alpha1.SetUserPreferencesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "locale",
+              "description": "The language now stored for the user. Empty when the user follows the default of the instance.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "SetUserRequest",
           "longName": "SetUserRequest",
           "fullName": "mgmt.v1alpha1.SetUserRequest",
@@ -27000,6 +27060,18 @@
               "responseType": "SetUserResponse",
               "responseLongType": "SetUserResponse",
               "responseFullType": "mgmt.v1alpha1.SetUserResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "SetUserPreferences",
+              "description": "Sets the preferences of the calling user, such as the language of the interface.\nIt acts on the person calling and on no account. An API key has no person behind it and is refused.",
+              "requestType": "SetUserPreferencesRequest",
+              "requestLongType": "SetUserPreferencesRequest",
+              "requestFullType": "mgmt.v1alpha1.SetUserPreferencesRequest",
+              "requestStreaming": false,
+              "responseType": "SetUserPreferencesResponse",
+              "responseLongType": "SetUserPreferencesResponse",
+              "responseFullType": "mgmt.v1alpha1.SetUserPreferencesResponse",
               "responseStreaming": false
             },
             {
