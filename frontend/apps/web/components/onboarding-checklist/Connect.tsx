@@ -2,6 +2,7 @@ import { AwsS3Icon } from '@/public/icons/AwsS3Icon';
 import { DynamoDBIcon } from '@/public/icons/DynamoDB';
 import { NeonGrayScale } from '@/public/icons/NeonGrayScale';
 import { ArrowRightIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { ReactElement } from 'react';
 import { DiMongodb, DiMsqlServer } from 'react-icons/di';
@@ -18,6 +19,7 @@ export default function Connect(props: Props): ReactElement {
   const { onPreviousStep, onNextStep } = props;
 
   const theme = useTheme();
+  const t = useTranslations('dashboard.onboarding');
 
   const integrations = [
     { name: 'Postgres', icon: <SiPostgresql className="w-8 h-8" /> },
@@ -33,11 +35,11 @@ export default function Connect(props: Props): ReactElement {
 
   return (
     <div className="flex flex-col gap-12 justify-center items-center text-center">
-      <h1 className="font-semibold text-2xl">Connect</h1>
+      <h1 className="font-semibold text-2xl">{t('connect.title')}</h1>
       <p className="text-sm px-10">
-        Create <span className="font-semibold">Connections</span> to your
-        upstream and downstream data sources. Husonym supports a variety of
-        databases and types of object storage.
+        {t.rich('connect.text', {
+          b: (chunks) => <span className="font-semibold">{chunks}</span>,
+        })}
       </p>
       <div className="grid grid-cols-3 gap-2">
         {integrations.map((item) => (
@@ -53,11 +55,11 @@ export default function Connect(props: Props): ReactElement {
 
       <div className="flex flex-row justify-between w-full py-6">
         <Button variant="outline" type="reset" onClick={onPreviousStep}>
-          Back
+          {t('back')}
         </Button>
         <Button onClick={onNextStep}>
           <div className="flex flex-row items-center gap-2">
-            <div>Next</div> <ArrowRightIcon />
+            <div>{t('next')}</div> <ArrowRightIcon />
           </div>
         </Button>
       </div>

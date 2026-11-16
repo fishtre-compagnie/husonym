@@ -17,6 +17,7 @@ import {
   UserAccountService,
 } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 import { useAccount } from '../providers/account-provider';
@@ -37,6 +38,7 @@ export interface FormStep {
 
 export default function WelcomeDialog(): ReactElement {
   const { account } = useAccount();
+  const t = useTranslations('dashboard.onboarding');
   const {
     data,
     isLoading,
@@ -165,7 +167,7 @@ export default function WelcomeDialog(): ReactElement {
       );
       setShowGuide(false);
     } catch (e) {
-      toast.error('Unable to complete onboarding', {
+      toast.error(t('completeError'), {
         description: getErrorMessage(e),
       });
     } finally {

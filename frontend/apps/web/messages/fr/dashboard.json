@@ -1,3 +1,190 @@
 {
-  "dashboard": {}
+  "dashboard": {
+    "home": {
+      "title": "Vue d'ensemble",
+      "periodAria": "Période",
+      "periods": {
+        "24h": "24 h",
+        "7d": "7 jours",
+        "30d": "30 jours"
+      },
+      "periodsLong": {
+        "24h": "24 dernières heures",
+        "7d": "7 derniers jours",
+        "30d": "30 derniers jours"
+      },
+      "justNow": "à l'instant",
+      "subtitle": {
+        "running": "{count, plural, one {# exécution en cours} other {# exécutions en cours}}",
+        "noRunning": "Aucune exécution en cours",
+        "waiting": "{count} en attente de démarrage",
+        "nextRun": "prochaine exécution planifiée {when}",
+        "allPaused": "toutes les planifications sont en pause"
+      },
+      "keyFigures": "Chiffres clés",
+      "finished": {
+        "label": "Exécutions terminées",
+        "none": "Aucune sur les {period}",
+        "succeeded": "{count, plural, one {# réussie} other {# réussies}}",
+        "failed": "{count, plural, one {# échouée} other {# échouées}}",
+        "canceled": "{count, plural, one {# annulée} other {# annulées}}",
+        "series": "Exécutions terminées sur les {period}, de la plus ancienne à la plus récente : {series}.",
+        "successRate": "{rate} % de réussite"
+      },
+      "jobs": {
+        "label": "Jobs",
+        "none": "Aucun job pour l'instant",
+        "note": "{schedules, plural, one {# planification active} other {# planifications actives}} · {connections, plural, one {# connexion} other {# connexions}}",
+        "engineDefault": "Par défaut"
+      },
+      "protected": {
+        "label": "Colonnes personnelles protégées",
+        "loading": "Chargement",
+        "value": "{value} %",
+        "reading": "Lecture des schémas sources…",
+        "noDatabase": "Aucun job ne lit une base de données",
+        "unreachable": "Schéma source inaccessible",
+        "noPersonal": "Aucune colonne personnelle détectée",
+        "ratio": "{anonymized} sur {personal, plural, one {# colonne détectée} other {# colonnes détectées}}",
+        "bar": "{value} % des colonnes personnelles protégées"
+      },
+      "toReview": {
+        "label": "À revoir",
+        "nothing": "Rien n'attend de décision",
+        "inClear": "{count, plural, one {# nouvelle colonne sensible en clair} other {# nouvelles colonnes sensibles en clair}}",
+        "changes": "{changes, plural, one {# changement de mapping} other {# changements de mapping}} dans {jobs, plural, one {# job} other {# jobs}}",
+        "open": "Ouvrir la revue"
+      },
+      "runsSection": "Exécutions",
+      "inProgress": {
+        "title": "En cours",
+        "seeAll": "Tout voir",
+        "empty": "Aucune exécution en cours.",
+        "nextRun": "La prochaine exécution planifiée démarre {when}.",
+        "startOne": "Lancez-en une depuis un job."
+      },
+      "latest": {
+        "title": "Dernières exécutions",
+        "all": "Toutes les exécutions",
+        "empty": "Aucune exécution terminée sur les {period}."
+      },
+      "personalSection": "Données personnelles",
+      "inClear": {
+        "title": "Colonnes sensibles en clair",
+        "added": "{job} · ajoutée {when}",
+        "more": "Et {count, plural, one {# autre colonne} other {# autres colonnes}}, dans le mapping de chaque job.",
+        "personalData": "Données personnelles"
+      },
+      "spotted": {
+        "title": "Huso a repéré {count, plural, one {# changement} other {# changements}} dans vos sources",
+        "body": "{summary} dans {jobs, plural, one {# job} other {# jobs}}, trouvés par leurs exécutions. Chacun attend votre revue.",
+        "added": "{count, plural, one {# nouvelle colonne} other {# nouvelles colonnes}}",
+        "removed": "{count, plural, one {# colonne supprimée} other {# colonnes supprimées}}",
+        "typeChanged": "{count, plural, one {# changement de type} other {# changements de type}}",
+        "mappingChanges": "Changements de mapping"
+      },
+      "live": {
+        "generated": "généré",
+        "waiting": "En attente de démarrage",
+        "started": "Démarrée {when}",
+        "running": "En cours",
+        "barWaiting": "{name} : en attente de démarrage",
+        "barRunning": "{name} : en cours",
+        "runningFor": "En cours depuis <strong>{duration}</strong>",
+        "inProgress": "En cours"
+      },
+      "status": {
+        "succeeded": "Réussie",
+        "error": "Erreur",
+        "failed": "Échouée",
+        "timedOut": "Délai dépassé",
+        "canceled": "Annulée",
+        "terminated": "Interrompue",
+        "running": "En cours",
+        "pending": "En attente",
+        "unknown": "Inconnu"
+      },
+      "coverage": {
+        "title": "Couverture des données personnelles",
+        "noSources": "Aucun de vos jobs ne lit une base de données : il n'y a pas de colonne à classer.",
+        "noMatch": "Aucune colonne mappée n'a pu être rapprochée de son schéma source.",
+        "breakdown": "Répartition de {count, plural, one {# colonne mappée} other {# colonnes mappées}}",
+        "anonymized": "Personnelle, anonymisée",
+        "kept": "Non personnelle, conservée",
+        "toConfirm": "À confirmer",
+        "inClear": "Personnelle, en clair",
+        "note": "Les colonnes mappées de {count, plural, one {# job} other {# jobs}}, classées d'après leurs noms et types dans le schéma source.",
+        "unreachable": "Impossible de lire le schéma de {names} : les jobs qui {count, plural, one {le lisent} other {les lisent}} ne sont pas comptés."
+      },
+      "noJobs": {
+        "title": "Aucun job pour l'instant",
+        "description": "Un job copie une base source vers une destination en anonymisant ses colonnes personnelles au passage. Ses exécutions et la couverture des données personnelles s'afficheront ici.",
+        "newJob": "Nouveau job"
+      }
+    },
+    "review": {
+      "title": "Revue PII",
+      "description": "Quand une exécution trouve des colonnes que le mapping ne connaissait pas, ou des colonnes qui ont changé, elle les mappe et les liste ici pour que quelqu'un les confirme. Une colonne personnelle laissée en clair par une exécution passe en premier.",
+      "nothing": "Rien à revoir",
+      "nothingText": "Tous les changements que les exécutions de vos jobs ont apportés à leurs mappings ont été revus. Les nouveaux s'afficheront ici après les prochaines exécutions.",
+      "goToJobs": "Aller aux jobs",
+      "total": "{count, plural, one {# changement à revoir} other {# changements à revoir}}",
+      "personalInClear": "{count, plural, one {# colonne personnelle en clair} other {# colonnes personnelles en clair}}",
+      "jobInClear": "{count} en clair",
+      "jobChanges": "{count, plural, one {# changement} other {# changements}}"
+    },
+    "findings": {
+      "blocking": "Bloquant",
+      "warning": "Avertissement",
+      "information": "Note",
+      "copy": "Copier l'instruction",
+      "copied": "Copié"
+    },
+    "onboarding": {
+      "back": "Retour",
+      "next": "Suivant",
+      "completeError": "Impossible de terminer la prise en main",
+      "welcome": {
+        "title": "Bienvenue dans Husonym",
+        "text": "Husonym permet d'anonymiser facilement des données sensibles, de générer des données synthétiques et de synchroniser des données entre environnements. Cliquez sur <b>Suivant</b> pour découvrir le fonctionnement de Husonym.",
+        "skip": "Passer"
+      },
+      "connect": {
+        "title": "Connecter",
+        "text": "Créez des <b>Connexions</b> vers vos sources de données amont et aval. Husonym prend en charge de nombreuses bases de données et plusieurs types de stockage objet."
+      },
+      "configure": {
+        "title": "Configurer",
+        "text": "Configurez votre schéma, vos transformers et vos règles de sous-ensemble pour anonymiser et générer les données à synchroniser vers les environnements inférieurs.",
+        "column": "Colonne",
+        "constraints": "Contraintes",
+        "dataType": "Type de données",
+        "transformer": "Transformer",
+        "primaryKey": "Clé primaire",
+        "foreignKey": "Clé étrangère"
+      },
+      "sync": {
+        "title": "Synchroniser",
+        "text": "Exécutez votre job selon une planification ou ponctuellement, quand vous le souhaitez. Maintenant que vous voyez comment fonctionne Husonym, cliquez sur <b>Suivant</b> pour créer un job.",
+        "schedule": "Planification",
+        "jobRuns": "Exécutions du job",
+        "job": "Job",
+        "start": "Début",
+        "complete": "Fin",
+        "completeStatus": "Terminée",
+        "status": "Statut"
+      },
+      "router": {
+        "title": "Choisissez un type de job",
+        "text": "Choisissez le type de job que vous souhaitez créer.",
+        "experimental": "Expérimental",
+        "dataSync": "Synchronisation de données",
+        "dataSyncDescription": "Synchronisez et anonymisez des données entre une source et une destination.",
+        "dataGen": "Génération de données",
+        "dataGenDescription": "Générez des données synthétiques avec les transformers Husonym.",
+        "aiDataGen": "Génération de données par IA",
+        "aiDataGenDescription": "Générez des données synthétiques de zéro avec l'IA."
+      }
+    }
+  }
 }

@@ -3,6 +3,7 @@
  * both themes.
  */
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 
 /** A line through `values`, scaled to its highest point. Decorative: say it in text too. */
@@ -85,11 +86,12 @@ export function SegmentBar(props: {
 
 /** A bar for work whose progress is not known: it moves, it does not fill. */
 export function LiveBar(props: { label: string }): ReactElement {
+  const t = useTranslations('dashboard.home.live');
   return (
     <div
       role="progressbar"
       aria-label={props.label}
-      aria-valuetext="In progress"
+      aria-valuetext={t('inProgress')}
       className="h-2 overflow-hidden rounded-full bg-surface-2"
     >
       <div className="progress-flow h-full w-full rounded-full bg-primary/60" />

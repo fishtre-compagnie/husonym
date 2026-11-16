@@ -1,4 +1,5 @@
 import { ArrowRightIcon, CheckIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -11,18 +12,19 @@ interface Props {
 
 export default function Sync(props: Props): ReactElement {
   const { onNextStep, onPreviousStep } = props;
+  const t = useTranslations('dashboard.onboarding');
 
   return (
     <div className="flex flex-col gap-12 justify-center items-center text-center">
-      <h1 className="font-semibold text-2xl">Sync</h1>
+      <h1 className="font-semibold text-2xl">{t('sync.title')}</h1>
       <p className="text-sm px-10">
-        Run your job on a set schedule or run it ad-hoc whenever you&apos;d
-        like. Now that you have an idea of Husonym works, click{' '}
-        <span className="font-semibold">Next</span> to create a Job.
+        {t.rich('sync.text', {
+          b: (chunks) => <span className="font-semibold">{chunks}</span>,
+        })}
       </p>
       <div className=" flex flex-col gap-8">
         <div className=" flex flex-col gap-2 text-left">
-          <p className="text-sm font-semibold">Schedule</p>
+          <p className="text-sm font-semibold">{t('sync.schedule')}</p>
           <Input
             disabled={true}
             value="0 0 1 1 *"
@@ -30,20 +32,23 @@ export default function Sync(props: Props): ReactElement {
           />
         </div>
         <div className=" flex flex-col gap-2 text-left">
-          <p className="text-sm font-semibold">Job Runs</p>
+          <p className="text-sm font-semibold">{t('sync.jobRuns')}</p>
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-xs">
             <div className="flex flex-row gap-4 justify-between" id="header">
-              <div className="w-[100px] font-semibold">Job</div>
-              <div className="w-[100px] font-semibold">Start</div>
-              <div className="w-[100px] font-semibold">Complete</div>
-              <div className="w-[100px] font-semibold">Status</div>
+              <div className="w-[100px] font-semibold">{t('sync.job')}</div>
+              <div className="w-[100px] font-semibold">{t('sync.start')}</div>
+              <div className="w-[100px] font-semibold">
+                {t('sync.complete')}
+              </div>
+              <div className="w-[100px] font-semibold">{t('sync.status')}</div>
             </div>
             <div className="flex flex-row items-center gap-4 justify-between">
               <div className="w-[100px]">sync-prod</div>
               <div className="w-[100px]">08/14/2024 12:15:54 PM</div>
               <div className="w-[100px]">08/14/2024 12:16:00 PM</div>
               <Badge variant="success" className="w-[100px]">
-                <CheckIcon className="w-3 h-3" /> <p>Complete</p>
+                <CheckIcon className="w-3 h-3" />{' '}
+                <p>{t('sync.completeStatus')}</p>
               </Badge>
             </div>
           </div>
@@ -51,11 +56,11 @@ export default function Sync(props: Props): ReactElement {
       </div>
       <div className="flex flex-row justify-between w-full py-6">
         <Button variant="outline" type="reset" onClick={onPreviousStep}>
-          Back
+          {t('back')}
         </Button>
         <Button onClick={onNextStep}>
           <div className="flex flex-row items-center gap-2">
-            <div>Next</div> <ArrowRightIcon />
+            <div>{t('next')}</div> <ArrowRightIcon />
           </div>
         </Button>
       </div>

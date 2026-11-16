@@ -31,7 +31,9 @@ import {
   JobService,
   JobStatus,
 } from '@husonym/sdk';
+import { useDateFnsLocale } from '@/i18n/date-fns';
 import { useQueries } from '@tanstack/react-query';
+import { useFormatter, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
@@ -45,8 +47,9 @@ import {
   rowLinkFocus,
 } from './DashboardParts';
 import {
-  PERIOD_OPTIONS,
+  PERIODS_ORDER,
   Period,
+  RelativeWords,
   RunOutcome,
   activeRuns,
   categoryLabel,
@@ -56,12 +59,10 @@ import {
   formatIn,
   formatSpan,
   latestRuns,
-  periodLabel,
-  plural,
   runDuration,
   runOutcome,
   runStats,
-  runStatusLabel,
+  runStatusKey,
   runWhen,
   sqlSourceConnectionId,
   toDate,
@@ -97,6 +98,13 @@ export default function HomeDashboard({
   accountId,
   accountName,
 }: Props): ReactElement {
+  const t = useTranslations('dashboard.home');
+  const format = useFormatter();
+  const dateLocale = useDateFnsLocale();
+  const words: RelativeWords = useMemo(
+    () => ({ locale: dateLocale, justNow: t('justNow') }),
+    [dateLocale, t]
+  );
   const [period, setPeriod] = useState<Period>('7d');
   const now = useNow(15_000);
   const transport = useTransport();
@@ -299,8 +307,11 @@ export default function HomeDashboard({
       items.push({
         key,
         column: `${c.column?.table}.${c.column?.column}`,
-        sub: `${jobsById.get(c.jobId)?.name ?? c.jobId} · added ${formatAgo(added, now)}`,
-        kind: categoryLabel(c.piiCategory),
+        sub: t('inClear.added', {
+          job: jobsById.get(c.jobId)?.name ?? c.jobId,
+          when: formatAgo(added, now, words),
+        }),
+        kind: categoryLabel(c.piiCategory, t('inClear.personalData')),
         href: `${base}/jobs/${c.jobId}/review`,
       });
     }
@@ -312,12 +323,12 @@ export default function HomeDashboard({
         key,
         column: `${c.table}.${c.column}`,
         sub: c.jobName,
-        kind: categoryLabel(c.category),
+        kind: categoryLabel(c.category, t('inClear.personalData')),
         href: `${base}/jobs/${c.jobId}/mapping`,
       });
     }
     return items;
-  }, [pending, cov.inClearColumns, jobsById, base, now]);
+  }, [pending, cov.inClearColumns, jobsById, base, now, words, t]);
 
   const isLoading = jobsLoading || runsLoading || connsLoading;
   if (isLoading) {
@@ -328,32 +339,38 @@ export default function HomeDashboard({
   const waiting = live.length - running.length;
   const subtitle = [
     running.length > 0
-      ? `${plural(running.length, 'run')} in progress`
-      : 'No run in progress',
-    waiting > 0 ? `${waiting} waiting to start` : null,
+      ? t('subtitle.running', { count: running.length })
+      : t('subtitle.noRunning'),
+    waiting > 0 ? t('subtitle.waiting', { count: waiting }) : null,
     nextRun
-      ? `next scheduled run ${formatIn(nextRun, now)}`
+      ? t('subtitle.nextRun', { when: formatIn(nextRun, now, dateLocale) })
       : scheduledJobs.length > 0 && statusesData && activeScheduled.length === 0
-        ? 'every schedule is paused'
+        ? t('subtitle.allPaused')
         : null,
   ]
     .filter(Boolean)
     .join(' · ');
 
   const engines = engineCounts(jobs);
+  const engineName = (name: string): string =>
+    name === 'Default' ? t('jobs.engineDefault') : name;
   const personal = cov.anonymized + cov.inClear;
   const protectedPct =
     personal > 0 ? Math.round((cov.anonymized / personal) * 1000) / 10 : null;
+  const periodLong = t(`periodsLong.${period}`);
 
   return (
     <>
       <PageHeader
-        title="Overview"
+        title={t('title')}
         description={subtitle}
         actions={
           <Segmented
-            ariaLabel="Period"
-            options={PERIOD_OPTIONS}
+            ariaLabel={t('periodAria')}
+            options={PERIODS_ORDER.map((p) => ({
+              value: p,
+              label: t(`periods.${p}`),
+            }))}
             value={period}
             onChange={setPeriod}
           />
@@ -361,19 +378,21 @@ export default function HomeDashboard({
       />
 
       <section
-        aria-label="Key figures"
+        aria-label={t('keyFigures')}
         className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
       >
         <StatCard
-          label="Finished runs"
-          value={stats.finished.toLocaleString('en-US')}
+          label={t('finished.label')}
+          value={format.number(stats.finished)}
           note={
             stats.finished === 0
-              ? `None in the ${periodLabel(period)}`
+              ? t('finished.none', { period: periodLong })
               : [
-                  `${stats.succeeded} succeeded`,
-                  `${stats.failed} failed`,
-                  stats.canceled > 0 ? `${stats.canceled} canceled` : null,
+                  t('finished.succeeded', { count: stats.succeeded }),
+                  t('finished.failed', { count: stats.failed }),
+                  stats.canceled > 0
+                    ? t('finished.canceled', { count: stats.canceled })
+                    : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')
@@ -385,32 +404,40 @@ export default function HomeDashboard({
             <>
               <Sparkline values={stats.series} />
               <span className="sr-only">
-                {`Finished runs over the ${periodLabel(period)}, oldest first: ${stats.series.join(', ')}.`}
+                {t('finished.series', {
+                  period: periodLong,
+                  series: stats.series.join(', '),
+                })}
               </span>
             </>
           }
           footer={
             stats.successRate !== null && (
               <span className="text-xs text-muted-foreground">
-                {stats.successRate}% success rate
+                {t('finished.successRate', { rate: stats.successRate })}
               </span>
             )
           }
         />
 
         <StatCard
-          label="Jobs"
+          label={t('jobs.label')}
           value={jobs.length}
           note={
             jobs.length === 0
-              ? 'No job yet'
-              : `${plural(activeScheduled.length, 'active schedule')} · ${plural(connNames.size, 'connection')}`
+              ? t('jobs.none')
+              : t('jobs.note', {
+                  schedules: activeScheduled.length,
+                  connections: connNames.size,
+                })
           }
           chart={
             engines.length > 0 && (
               <div className="flex flex-col gap-2">
                 <SegmentBar
-                  label={engines.map((e) => `${e.name}: ${e.count}`).join(', ')}
+                  label={engines
+                    .map((e) => `${engineName(e.name)}: ${e.count}`)
+                    .join(', ')}
                   segments={engines.map((e) => ({
                     key: e.name,
                     value: e.count,
@@ -427,7 +454,7 @@ export default function HomeDashboard({
                         )}
                         aria-hidden="true"
                       />
-                      {e.name} {e.count}
+                      {engineName(e.name)} {e.count}
                     </span>
                   ))}
                 </span>
@@ -437,29 +464,32 @@ export default function HomeDashboard({
         />
 
         <StatCard
-          label="Personal columns protected"
+          label={t('protected.label')}
           value={
             schemasLoading && cov.jobsCounted === 0 ? (
               <span
                 className="inline-block h-8 w-24 animate-pulse rounded-md bg-surface-2 align-middle"
-                aria-label="Loading"
+                aria-label={t('protected.loading')}
               />
             ) : protectedPct === null ? (
               '—'
             ) : (
-              `${protectedPct}%`
+              t('protected.value', { value: protectedPct })
             )
           }
           note={
             schemasLoading && cov.jobsCounted === 0
-              ? 'Reading source schemas…'
+              ? t('protected.reading')
               : sourceIds.length === 0
-                ? 'No job reads from a database'
+                ? t('protected.noDatabase')
                 : cov.jobsCounted === 0
-                  ? 'Source schema unreachable'
+                  ? t('protected.unreachable')
                   : personal === 0
-                    ? 'No personal column detected'
-                    : `${cov.anonymized.toLocaleString('en-US')} of ${plural(personal, 'detected column')}`
+                    ? t('protected.noPersonal')
+                    : t('protected.ratio', {
+                        anonymized: cov.anonymized,
+                        personal,
+                      })
           }
           noteTone={
             cov.jobsCounted === 0 && !schemasLoading && sourceIds.length > 0
@@ -469,7 +499,7 @@ export default function HomeDashboard({
           chart={
             personal > 0 && (
               <SegmentBar
-                label={`${protectedPct}% of personal columns protected`}
+                label={t('protected.bar', { value: protectedPct ?? 0 })}
                 segments={[
                   { key: 'ok', value: cov.anonymized, className: 'bg-primary' },
                   { key: 'clear', value: cov.inClear, className: 'bg-danger' },
@@ -480,15 +510,18 @@ export default function HomeDashboard({
         />
 
         <StatCard
-          label="To review"
+          label={t('toReview.label')}
           tone={review.total > 0 ? 'danger' : 'default'}
           value={review.total}
           note={
             review.total === 0
-              ? 'Nothing waiting for a decision'
+              ? t('toReview.nothing')
               : review.inClear > 0
-                ? `${plural(review.inClear, 'new sensitive column')} in clear`
-                : `${plural(review.total, 'mapping change')} in ${plural(review.jobs, 'job')}`
+                ? t('toReview.inClear', { count: review.inClear })
+                : t('toReview.changes', {
+                    changes: review.total,
+                    jobs: review.jobs,
+                  })
           }
           noteTone={review.inClear > 0 ? 'danger' : 'muted'}
           footer={
@@ -497,7 +530,7 @@ export default function HomeDashboard({
                 href={`${base}/jobs/${review.firstJobId}/review`}
                 className="flex w-fit items-center gap-1.5 rounded-sm text-[13px] font-semibold text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Open the review
+                {t('toReview.open')}
                 <ArrowRight />
               </Link>
             )
@@ -510,7 +543,7 @@ export default function HomeDashboard({
       ) : (
         <div className="flex flex-wrap items-start gap-5">
           <section
-            aria-label="Runs"
+            aria-label={t('runsSection')}
             className="flex min-w-0 flex-[3_1_520px] flex-col gap-5"
           >
             <Panel>
@@ -521,22 +554,24 @@ export default function HomeDashboard({
                     pulse={live.length > 0}
                   />
                 }
-                title="In progress"
+                title={t('inProgress.title')}
                 actions={
                   <Link
                     href={`${base}/runs`}
                     className="text-link hover:underline"
                   >
-                    See all
+                    {t('inProgress.seeAll')}
                   </Link>
                 }
               />
               {live.length === 0 ? (
                 <EmptyRow>
-                  No run in progress.{' '}
+                  {t('inProgress.empty')}{' '}
                   {nextRun
-                    ? `The next scheduled run starts ${formatIn(nextRun, now)}.`
-                    : 'Start one from a job.'}
+                    ? t('inProgress.nextRun', {
+                        when: formatIn(nextRun, now, dateLocale),
+                      })
+                    : t('inProgress.startOne')}
                 </EmptyRow>
               ) : (
                 live.map((r) => (
@@ -547,6 +582,7 @@ export default function HomeDashboard({
                     connNames={connNames}
                     href={`${base}/runs/${r.id}`}
                     now={now}
+                    words={words}
                   />
                 ))
               )}
@@ -554,20 +590,18 @@ export default function HomeDashboard({
 
             <Panel>
               <PanelHeader
-                title="Latest runs"
+                title={t('latest.title')}
                 actions={
                   <Link
                     href={`${base}/runs`}
                     className="text-link hover:underline"
                   >
-                    All runs
+                    {t('latest.all')}
                   </Link>
                 }
               />
               {latest.length === 0 ? (
-                <EmptyRow>
-                  No run finished in the {periodLabel(period)}.
-                </EmptyRow>
+                <EmptyRow>{t('latest.empty', { period: periodLong })}</EmptyRow>
               ) : (
                 <div className="overflow-x-auto">
                   {latest.map((r) => (
@@ -577,6 +611,7 @@ export default function HomeDashboard({
                       jobName={jobsById.get(r.jobId)?.name ?? r.jobId}
                       href={`${base}/runs/${r.id}`}
                       now={now}
+                      words={words}
                     />
                   ))}
                 </div>
@@ -585,7 +620,7 @@ export default function HomeDashboard({
           </section>
 
           <section
-            aria-label="Personal data"
+            aria-label={t('personalSection')}
             className="flex min-w-0 flex-[2_1_340px] flex-col gap-5"
           >
             <CoveragePanel
@@ -597,7 +632,7 @@ export default function HomeDashboard({
 
             {clearList.length > 0 && (
               <Panel>
-                <PanelHeader title="Sensitive columns in clear" />
+                <PanelHeader title={t('inClear.title')} />
                 <ul className="m-0 list-none p-0">
                   {clearList.slice(0, 6).map((c) => (
                     <li key={c.key} className={rowClass}>
@@ -623,8 +658,7 @@ export default function HomeDashboard({
                 </ul>
                 {clearList.length > 6 && (
                   <p className="m-0 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-                    And {plural(clearList.length - 6, 'other column')}, in the
-                    mapping of each job.
+                    {t('inClear.more', { count: clearList.length - 6 })}
                   </p>
                 )}
               </Panel>
@@ -641,13 +675,13 @@ export default function HomeDashboard({
                 />
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="font-semibold">
-                    Huso spotted {plural(review.total, 'change')} in your
-                    sources
+                    {t('spotted.title', { count: review.total })}
                   </span>
                   <span className="text-[13px] text-muted-foreground">
-                    {schemaChangeSummary(review)} across{' '}
-                    {plural(review.jobs, 'job')}, found by their runs. Each one
-                    waits for your review.
+                    {t('spotted.body', {
+                      summary: schemaChangeSummary(review, t),
+                      jobs: review.jobs,
+                    })}
                   </span>
                 </div>
               </Panel>
@@ -670,17 +704,22 @@ function engineSwatch(name: string): string {
   }
 }
 
-function schemaChangeSummary(r: {
-  added: number;
-  removed: number;
-  typeChanged: number;
-}): string {
+function schemaChangeSummary(
+  r: {
+    added: number;
+    removed: number;
+    typeChanged: number;
+  },
+  t: ReturnType<typeof useTranslations<'dashboard.home'>>
+): string {
   const parts = [
-    r.added > 0 ? plural(r.added, 'new column') : null,
-    r.removed > 0 ? `${plural(r.removed, 'column')} removed` : null,
-    r.typeChanged > 0 ? plural(r.typeChanged, 'type change') : null,
+    r.added > 0 ? t('spotted.added', { count: r.added }) : null,
+    r.removed > 0 ? t('spotted.removed', { count: r.removed }) : null,
+    r.typeChanged > 0
+      ? t('spotted.typeChanged', { count: r.typeChanged })
+      : null,
   ].filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : 'Mapping changes';
+  return parts.length > 0 ? parts.join(', ') : t('spotted.mappingChanges');
 }
 
 function LiveRunRow(props: {
@@ -689,8 +728,10 @@ function LiveRunRow(props: {
   connNames: Map<string, string>;
   href: string;
   now: Date;
+  words: RelativeWords;
 }): ReactElement {
-  const { run, job, connNames, href, now } = props;
+  const { run, job, connNames, href, now, words } = props;
+  const t = useTranslations('dashboard.home.live');
   const isPending = runOutcome(run.status) === 'pending';
   const srcId = job ? sourceConnectionId(job) : undefined;
   const src = srcId ? connNames.get(srcId) : undefined;
@@ -699,7 +740,7 @@ function LiveRunRow(props: {
     .filter((n): n is string => !!n);
   const route =
     src || dests.length > 0
-      ? `${src ?? 'generated'} → ${dests.join(', ') || '–'}`
+      ? `${src ?? t('generated')} → ${dests.join(', ') || '–'}`
       : undefined;
   const started = toDate(run.startedAt);
   const name = job?.name ?? run.jobId;
@@ -717,21 +758,27 @@ function LiveRunRow(props: {
         )}
         <span className="ml-auto text-[13px] text-muted-foreground">
           {isPending
-            ? 'Waiting to start'
+            ? t('waiting')
             : started
-              ? `Started ${formatAgo(started, now)}`
-              : 'Running'}
+              ? t('started', { when: formatAgo(started, now, words) })
+              : t('running')}
         </span>
       </div>
       <LiveBar
-        label={`${name}: ${isPending ? 'waiting to start' : 'running'}`}
+        label={
+          isPending ? t('barWaiting', { name }) : t('barRunning', { name })
+        }
       />
       {!isPending && (
         <div className="text-[13px] text-muted-foreground">
-          Running for{' '}
-          <strong className="font-semibold text-foreground">
-            {formatSpan(runDuration(run, now))}
-          </strong>
+          {t.rich('runningFor', {
+            duration: formatSpan(runDuration(run, now)),
+            strong: (chunks) => (
+              <strong className="font-semibold text-foreground">
+                {chunks}
+              </strong>
+            ),
+          })}
         </div>
       )}
     </Link>
@@ -763,10 +810,12 @@ function LatestRunRow(props: {
   jobName: string;
   href: string;
   now: Date;
+  words: RelativeWords;
 }): ReactElement {
-  const { run, jobName, href, now } = props;
+  const { run, jobName, href, now, words } = props;
+  const t = useTranslations('dashboard.home.status');
   const tone = OUTCOME_TONE[runOutcome(run.status)];
-  const label = runStatusLabel(run.status);
+  const label = t(runStatusKey(run.status));
   return (
     <Link
       href={href}
@@ -783,7 +832,7 @@ function LatestRunRow(props: {
         {formatSpan(runDuration(run, now))}
       </span>
       <span className="text-right text-[13px] text-muted-foreground">
-        {formatAgo(runWhen(run), now)}
+        {formatAgo(runWhen(run), now, words)}
       </span>
     </Link>
   );
@@ -796,13 +845,12 @@ function CoveragePanel(props: {
   unreachable: string[];
 }): ReactElement {
   const { loading, hasSources, cov, unreachable } = props;
+  const t = useTranslations('dashboard.home.coverage');
+  const format = useFormatter();
   let body: ReactNode;
   if (!hasSources) {
     body = (
-      <p className="m-0 text-sm text-muted-foreground">
-        None of your jobs reads from a database, so there is no column to
-        classify.
-      </p>
+      <p className="m-0 text-sm text-muted-foreground">{t('noSources')}</p>
     );
   } else if (loading) {
     body = (
@@ -813,17 +861,13 @@ function CoveragePanel(props: {
       </div>
     );
   } else if (cov.total === 0) {
-    body = (
-      <p className="m-0 text-sm text-muted-foreground">
-        No mapped column could be matched with its source schema.
-      </p>
-    );
+    body = <p className="m-0 text-sm text-muted-foreground">{t('noMatch')}</p>;
   } else {
     body = (
       <>
         <SegmentBar
           className="h-3.5"
-          label={`Breakdown of ${plural(cov.total, 'mapped column')}`}
+          label={t('breakdown', { count: cov.total })}
           segments={[
             { key: 'anon', value: cov.anonymized, className: 'bg-primary' },
             { key: 'kept', value: cov.kept, className: 'bg-quiet' },
@@ -834,43 +878,42 @@ function CoveragePanel(props: {
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[13px]">
           <LegendRow
             swatch="bg-primary"
-            label="Personal, anonymized"
-            value={cov.anonymized.toLocaleString('en-US')}
+            label={t('anonymized')}
+            value={format.number(cov.anonymized)}
           />
           <LegendRow
             swatch="bg-quiet"
-            label="Not personal, kept"
-            value={cov.kept.toLocaleString('en-US')}
+            label={t('kept')}
+            value={format.number(cov.kept)}
           />
           <LegendRow
             swatch="bg-warn"
-            label="To confirm"
-            value={cov.toConfirm.toLocaleString('en-US')}
+            label={t('toConfirm')}
+            value={format.number(cov.toConfirm)}
           />
           <LegendRow
             swatch="bg-danger"
-            label="Personal, in clear"
-            value={cov.inClear.toLocaleString('en-US')}
+            label={t('inClear')}
+            value={format.number(cov.inClear)}
             valueClassName={cov.inClear > 0 ? 'text-danger-fg' : undefined}
           />
         </ul>
         <p className="m-0 text-xs text-muted-foreground">
-          The mapped columns of {plural(cov.jobsCounted, 'job')}, classified
-          from their names and types in the source schema.
+          {t('note', { count: cov.jobsCounted })}
         </p>
       </>
     );
   }
   return (
     <Panel className="flex flex-col gap-4 p-5">
-      <h2 className="m-0 font-display text-base font-semibold">
-        Personal data coverage
-      </h2>
+      <h2 className="m-0 font-display text-base font-semibold">{t('title')}</h2>
       {body}
       {!loading && unreachable.length > 0 && (
         <p className="m-0 text-xs text-warn-fg">
-          Could not read the schema of {unreachable.join(', ')}: the jobs that
-          read from {unreachable.length === 1 ? 'it' : 'them'} are not counted.
+          {t('unreachable', {
+            names: unreachable.join(', '),
+            count: unreachable.length,
+          })}
         </p>
       )}
     </Panel>
@@ -878,16 +921,15 @@ function CoveragePanel(props: {
 }
 
 function NoJobs(props: { base: string }): ReactElement {
+  const t = useTranslations('dashboard.home.noJobs');
   return (
     <Panel className="flex flex-col items-start gap-3 p-8">
-      <h2 className="m-0 font-display text-lg font-semibold">No job yet</h2>
+      <h2 className="m-0 font-display text-lg font-semibold">{t('title')}</h2>
       <p className="m-0 max-w-prose text-sm text-muted-foreground">
-        A job copies a source database to a destination, anonymizing its
-        personal columns on the way. Its runs, and the coverage of personal
-        data, will show up here.
+        {t('description')}
       </p>
       <Button asChild>
-        <Link href={`${props.base}/new/job`}>New job</Link>
+        <Link href={`${props.base}/new/job`}>{t('newJob')}</Link>
       </Button>
     </Panel>
   );
