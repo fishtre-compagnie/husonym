@@ -6,7 +6,7 @@ import type { Locale } from '@/i18n/config';
 // header, menus) and the shared `common` words; the others one namespace named
 // after the file (`jobs.json` → `jobs`). Adding an area means adding its files
 // in every language, and its name here and in i18n/app-config.d.ts.
-export const MESSAGE_FILES = [
+const MESSAGE_FILES = [
   'shell',
   'jobs',
   'mapping',
