@@ -27,6 +27,7 @@ import { create } from '@bufbuild/protobuf';
 import { useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { ConnectionConfigSchema, ConnectionService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
@@ -48,6 +49,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -108,8 +110,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps('ai-generate-table')}
       stepLabels={getJobProgressStepLabels('ai-generate-table')}
       stepName="connect"
-      title="Which model, and where should its data go?"
-      description="An OpenAI-compatible connection writes the rows; a database connection gives the shape of the table and receives the result."
+      title={t('aiGenerate.connect.title')}
+      description={t('aiGenerate.connect.description')}
     >
       <FormPersist formKey={formKey} form={form} />
       <Form {...form}>
@@ -119,8 +121,8 @@ export default function Page(props: PageProps): ReactElement {
         >
           <WizardSection
             id="aigenerate-source"
-            title="Model connection"
-            description="An OpenAI-compatible API to generate data from."
+            title={t('aiGenerate.connect.model.title')}
+            description={t('aiGenerate.connect.model.description')}
           >
             <FormField
               control={form.control}
@@ -132,7 +134,7 @@ export default function Page(props: PageProps): ReactElement {
                       <Skeleton className="w-full h-12 rounded-lg" />
                     ) : (
                       <ConnectionPicker
-                        ariaLabel="Model connection"
+                        ariaLabel={t('aiGenerate.connect.model.title')}
                         openai={openai}
                         newConnectionValue={NEW_CONNECTION_VALUE}
                         value={field.value}
@@ -162,8 +164,8 @@ export default function Page(props: PageProps): ReactElement {
           </WizardSection>
           <WizardSection
             id="aigenerate-schema-connection"
-            title="Table schema connection"
-            description="The connection whose table gives the shape of the data to generate. It can be the destination itself."
+            title={t('generate.connect.schemaConnection.title')}
+            description={t('aiGenerate.connect.schemaConnectionDescription')}
           >
             <FormField
               control={form.control}
@@ -175,7 +177,7 @@ export default function Page(props: PageProps): ReactElement {
                       <Skeleton className="w-full h-12 rounded-lg" />
                     ) : (
                       <ConnectionPicker
-                        ariaLabel="Table schema connection"
+                        ariaLabel={t('generate.connect.schemaConnection.title')}
                         postgres={postgres}
                         mysql={mysql}
                         newConnectionValue={NEW_CONNECTION_VALUE}
@@ -249,8 +251,8 @@ export default function Page(props: PageProps): ReactElement {
           </WizardSection>
           <WizardSection
             id="aigenerate-destination"
-            title="Destination"
-            description="Where the generated rows are written."
+            title={t('generate.connect.destination.title')}
+            description={t('generate.connect.destination.description')}
           >
             <div className="flex flex-col gap-4">
               <FormField
@@ -263,7 +265,9 @@ export default function Page(props: PageProps): ReactElement {
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
                         <ConnectionPicker
-                          ariaLabel="Destination connection"
+                          ariaLabel={t(
+                            'generate.connect.destination.ariaLabel'
+                          )}
                           postgres={postgres}
                           mysql={mysql}
                           newConnectionValue={NEW_CONNECTION_VALUE}
@@ -333,7 +337,11 @@ export default function Page(props: PageProps): ReactElement {
               />
 
               {destinationName && (
-                <WizardPanel title={`Before writing to ${destinationName}`}>
+                <WizardPanel
+                  title={t('connect.destinations.beforeWriting', {
+                    name: destinationName ?? '',
+                  })}
+                >
                   <DestinationOptionsForm
                     connection={connections.find(
                       (c) => c.id === form.getValues().destination.connectionId
@@ -378,9 +386,9 @@ export default function Page(props: PageProps): ReactElement {
                 router.back();
               }}
             >
-              Back
+              {t('wizard.back')}
             </Button>
-            <Button type="submit">Continue</Button>
+            <Button type="submit">{t('wizard.continue')}</Button>
           </WizardFooter>
         </form>
       </Form>

@@ -37,6 +37,7 @@ import {
   ConnectionRole,
   ConnectionService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
@@ -58,6 +59,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -136,8 +138,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps('generate-table')}
       stepLabels={getJobProgressStepLabels('generate-table')}
       stepName="connect"
-      title="Where should the generated data go?"
-      description="A connection gives the shape of the tables; the destination receives the synthetic rows. Both can be the same database."
+      title={t('generate.connect.title')}
+      description={t('generate.connect.description')}
     >
       <FormPersist formKey={formKey} form={form} />
       <Form {...form}>
@@ -147,8 +149,8 @@ export default function Page(props: PageProps): ReactElement {
         >
           <WizardSection
             id="generate-schema-connection"
-            title="Table schema connection"
-            description="The connection whose tables give the shape of the data to generate. It can be the destination itself."
+            title={t('generate.connect.schemaConnection.title')}
+            description={t('generate.connect.schemaConnection.description')}
           >
             <div className="flex flex-col gap-4">
               <FormField
@@ -161,7 +163,9 @@ export default function Page(props: PageProps): ReactElement {
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
                         <ConnectionPicker
-                          ariaLabel="Table schema connection"
+                          ariaLabel={t(
+                            'generate.connect.schemaConnection.title'
+                          )}
                           postgres={postgres}
                           mysql={mysql}
                           newConnectionValue={NEW_CONNECTION_VALUE}
@@ -281,8 +285,8 @@ export default function Page(props: PageProps): ReactElement {
           </WizardSection>
           <WizardSection
             id="generate-destination"
-            title="Destination"
-            description="Where the generated rows are written."
+            title={t('generate.connect.destination.title')}
+            description={t('generate.connect.destination.description')}
           >
             <div className="flex flex-col gap-4">
               <FormField
@@ -295,7 +299,9 @@ export default function Page(props: PageProps): ReactElement {
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
                         <ConnectionPicker
-                          ariaLabel="Destination connection"
+                          ariaLabel={t(
+                            'generate.connect.destination.ariaLabel'
+                          )}
                           postgres={postgres}
                           mysql={mysql}
                           newConnectionValue={NEW_CONNECTION_VALUE}
@@ -392,7 +398,11 @@ export default function Page(props: PageProps): ReactElement {
               />
 
               {destinationName && (
-                <WizardPanel title={`Before writing to ${destinationName}`}>
+                <WizardPanel
+                  title={t('connect.destinations.beforeWriting', {
+                    name: destinationName ?? '',
+                  })}
+                >
                   <DestinationOptionsForm
                     connection={connections.find(
                       (c) => c.id === form.getValues().destination.connectionId
@@ -436,13 +446,13 @@ export default function Page(props: PageProps): ReactElement {
                 router.back();
               }}
             >
-              Back
+              {t('wizard.back')}
             </Button>
             <Button
               type="submit"
               disabled={(errors?.root?.message?.length ?? 0) > 0}
             >
-              Continue
+              {t('wizard.continue')}
             </Button>
           </WizardFooter>
         </form>

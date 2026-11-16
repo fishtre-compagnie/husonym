@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 
 interface Props {
@@ -21,6 +22,7 @@ const COMMON_MODELS = {
 export default function SelectModelNames(props: Props): ReactElement {
   const { onSelected } = props;
   const [value, setValue] = useState('');
+  const t = useTranslations('newJob.aiGenerate.schema');
   return (
     <Select
       onValueChange={(value) => {
@@ -30,7 +32,7 @@ export default function SelectModelNames(props: Props): ReactElement {
       defaultValue={value}
     >
       <SelectTrigger>
-        <SelectValue placeholder="Common model names..." />
+        <SelectValue placeholder={t('commonModels')} />
       </SelectTrigger>
       <SelectContent>
         {Object.entries(COMMON_MODELS).map(([group, modelNames]) => (

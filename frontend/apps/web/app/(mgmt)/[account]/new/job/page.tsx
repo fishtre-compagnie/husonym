@@ -9,6 +9,7 @@ import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { MagicWandIcon, SymbolIcon } from '@radix-ui/react-icons';
 import { nanoid } from 'nanoid';
+import { useTranslations } from 'next-intl';
 import {
   ReadonlyURLSearchParams,
   useRouter,
@@ -28,6 +29,7 @@ export default function NewJob(props: PageProps): ReactElement {
   const params = use(props.params);
   const searchParams = useSearchParams();
   const { account } = useAccount();
+  const t = useTranslations('newJob');
 
   const jobData = useGetJobData(params, searchParams);
 
@@ -56,13 +58,13 @@ export default function NewJob(props: PageProps): ReactElement {
       steps={getJobProgressSteps(selectedJobType)}
       stepLabels={getJobProgressStepLabels(selectedJobType)}
       stepName="type"
-      title="What do you want to do?"
-      description="Pick the kind of job. The next steps follow from it: a name, the connections, then what happens to each column."
+      title={t('type.title')}
+      description={t('type.description')}
       mascot
     >
       <div
         role="radiogroup"
-        aria-label="Job type"
+        aria-label={t('type.ariaLabel')}
         className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5"
       >
         {jobData.map((jd) => {
@@ -88,7 +90,9 @@ export default function NewJob(props: PageProps): ReactElement {
                   {jd.icon}
                 </span>
                 <span className="text-[15px] font-semibold">{jd.name}</span>
-                {jd.experimental && <Pill tone="quiet">Experimental</Pill>}
+                {jd.experimental && (
+                  <Pill tone="quiet">{t('type.experimental')}</Pill>
+                )}
               </span>
               <span className="text-[13px] leading-[1.45] text-muted-foreground">
                 {jd.description}
@@ -106,7 +110,7 @@ export default function NewJob(props: PageProps): ReactElement {
           type="reset"
           onClick={() => router.push(`/${account?.name}`)}
         >
-          Back
+          {t('wizard.back')}
         </Button>
         <Button
           type="submit"
@@ -118,7 +122,7 @@ export default function NewJob(props: PageProps): ReactElement {
             router.push(href);
           }}
         >
-          Continue
+          {t('wizard.continue')}
         </Button>
       </WizardFooter>
     </NewJobWizard>
@@ -141,6 +145,7 @@ function useGetJobData(
   const [sessionToken] = useState<string>(params?.sessionId ?? nanoid());
   const { account } = useAccount();
   const { data: systemAppConfig } = useGetSystemAppConfig();
+  const t = useTranslations('newJob.type');
 
   const dataSyncParams = new URLSearchParams(searchParams);
   dataSyncParams.set('jobType', 'data-sync');
@@ -167,27 +172,24 @@ function useGetJobData(
   }
   const jobData: JobData[] = [
     {
-      name: 'Copy and anonymize',
-      description:
-        'Real data, transformed column by column, written to a test database.',
+      name: t('dataSync.name'),
+      description: t('dataSync.description'),
       href: `/${account?.name}/new/job/define?${dataSyncParams.toString()}`,
       icon: <SymbolIcon />,
       type: 'data-sync',
       experimental: false,
     },
     {
-      name: 'Generate data',
-      description:
-        'Fully synthetic rows for a chosen destination, from the schema only.',
+      name: t('generate.name'),
+      description: t('generate.description'),
       href: `/${account?.name}/new/job/define?${dataGenParams.toString()}`,
       icon: <AiOutlineExperiment />,
       type: 'generate-table',
       experimental: false,
     },
     {
-      name: 'Generate with AI',
-      description:
-        'Synthetic rows written by a model, shaped by a table schema and your prompt.',
+      name: t('aiGenerate.name'),
+      description: t('aiGenerate.description'),
       href: `/${account?.name}/new/job/define?${aiDataGenParams.toString()}`,
       icon: <MagicWandIcon />,
       type: 'ai-generate-table',
@@ -197,9 +199,8 @@ function useGetJobData(
 
   if (systemAppConfig?.isPiiDetectionJobEnabled) {
     jobData.push({
-      name: 'Find personal data',
-      description:
-        'A report of the sensitive columns in a database, without copying anything.',
+      name: t('piiDetection.name'),
+      description: t('piiDetection.description'),
       href: `/${account?.name}/new/job/define?${piiDetectionParams.toString()}`,
       icon: <PiDetective />,
       type: 'pii-detection',

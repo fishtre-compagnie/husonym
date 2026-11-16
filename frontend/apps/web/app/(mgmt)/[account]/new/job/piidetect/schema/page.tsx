@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { Connection, ConnectionService, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { FormEvent, ReactElement, use, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
 
   useEffect(() => {
     if (!searchParams?.sessionId) {
@@ -131,7 +133,7 @@ export default function Page(props: PageProps): ReactElement {
       await checkThenSave(request, async () => {
         try {
           const job = await createJob(request);
-          toast.success('Successfully created job!');
+          toast.success(t('toasts.created'));
 
           resetForm();
           clearNewJobSession(window.sessionStorage, sessionPrefix);
@@ -142,7 +144,7 @@ export default function Page(props: PageProps): ReactElement {
             router.push(`/${account?.name}/jobs`);
           }
         } catch (err) {
-          toast.error('Unable to create job', {
+          toast.error(t('toasts.createFailed'), {
             description: getErrorMessage(err),
           });
         }
@@ -167,8 +169,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps('pii-detection')}
       stepLabels={getJobProgressStepLabels('pii-detection')}
       stepName="schema"
-      title="How should the scan run?"
-      description="What to look for, how many rows to sample, and which tables to read. The analysis runs where your data is."
+      title={t('piiDetect.schema.title')}
+      description={t('piiDetect.schema.description')}
       mascot
     >
       {checksDialog}
@@ -241,12 +243,12 @@ export default function Page(props: PageProps): ReactElement {
             variant="outline"
             onClick={() => router.back()}
           >
-            Back
+            {t('wizard.back')}
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             <ButtonText
               leftIcon={isSubmitting ? <Spinner /> : undefined}
-              text="Create job"
+              text={t('wizard.createJob')}
             />
           </Button>
         </WizardFooter>

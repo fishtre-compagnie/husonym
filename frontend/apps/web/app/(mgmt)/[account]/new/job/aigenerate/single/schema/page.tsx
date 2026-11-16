@@ -44,6 +44,7 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -68,6 +69,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   const [aioutput, setaioutput] = useState<SampleRecord[]>([]);
 
   useEffect(() => {
@@ -164,7 +166,7 @@ export default function Page(props: PageProps): ReactElement {
     await checkThenSave(request, async () => {
       try {
         const job = await createJobAsync(request);
-        toast.success('Successfully created job!');
+        toast.success(t('toasts.created'));
 
         clearNewJobSession(window.sessionStorage, sessionPrefix);
 
@@ -175,7 +177,7 @@ export default function Page(props: PageProps): ReactElement {
         }
       } catch (err) {
         console.error(err);
-        toast.error('Unable to create job!', {
+        toast.error(t('toasts.createFailedBang'), {
           description: getErrorMessage(err),
         });
       }
@@ -226,7 +228,7 @@ export default function Page(props: PageProps): ReactElement {
       );
       setaioutput(output.records);
     } catch (err) {
-      toast.error('Unable to generate sample data', {
+      toast.error(t('aiGenerate.schema.sampleFailed'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -278,8 +280,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps('ai-generate-table')}
       stepLabels={getJobProgressStepLabels('ai-generate-table')}
       stepName="schema"
-      title="What should the model generate?"
-      description="Pick the table to fill, the model and its prompt. Sample a few rows before creating the job."
+      title={t('aiGenerate.schema.title')}
+      description={t('aiGenerate.schema.description')}
       wide
     >
       <FormPersist formKey={formKey} form={form} />
@@ -305,10 +307,10 @@ export default function Page(props: PageProps): ReactElement {
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Model Name</FormLabel>
+                <FormLabel>{t('aiGenerate.schema.model')}</FormLabel>
                 <div className="flex flex-col md:flex-row gap-2 md:items-center">
                   <FormDescription>
-                    The name of the model to use.
+                    {t('aiGenerate.schema.modelDescription')}
                   </FormDescription>
                   <div>
                     <SelectModelNames
@@ -329,11 +331,9 @@ export default function Page(props: PageProps): ReactElement {
             name="userPrompt"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Prompt</FormLabel>
+                <FormLabel>{t('aiGenerate.schema.prompt')}</FormLabel>
                 <FormDescription>
-                  Optionally provide a prompt to give further context to the
-                  model. This is highly recommended! The table schema will be
-                  appended to the end of this prompt automatically.
+                  {t('aiGenerate.schema.promptDescription')}
                 </FormDescription>
                 <FormControl>
                   <Textarea
@@ -354,9 +354,9 @@ export default function Page(props: PageProps): ReactElement {
             name="numRows"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Number of Rows</FormLabel>
+                <FormLabel>{t('generate.schema.numRows')}</FormLabel>
                 <FormDescription>
-                  The number of rows to generate.
+                  {t('generate.schema.numRowsDescription')}
                 </FormDescription>
                 <FormControl>
                   <Input
@@ -380,11 +380,9 @@ export default function Page(props: PageProps): ReactElement {
             name="generateBatchSize"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Batch Size</FormLabel>
+                <FormLabel>{t('aiGenerate.schema.batchSize')}</FormLabel>
                 <FormDescription>
-                  The batch size used when asking the model to generate records.
-                  Useful for large datasets or prompts that may exceed AI token
-                  limits. Smaller is generally better.
+                  {t('aiGenerate.schema.batchSizeDescription')}
                 </FormDescription>
                 <FormControl>
                   <Input
@@ -407,7 +405,7 @@ export default function Page(props: PageProps): ReactElement {
             <Alert variant="destructive">
               <AlertTitle className="flex flex-row space-x-2 justify-center">
                 <ExclamationTriangleIcon />
-                <p>Please fix form errors and try again.</p>
+                <p>{t('formErrors')}</p>
               </AlertTitle>
             </Alert>
           )}
@@ -416,7 +414,7 @@ export default function Page(props: PageProps): ReactElement {
           <WizardFooter
             summary={[
               form.watch('model'),
-              `${form.watch('numRows') ?? 0} rows`,
+              t('wizard.rows', { count: form.watch('numRows') ?? 0 }),
             ]}
           >
             <Button
@@ -425,7 +423,7 @@ export default function Page(props: PageProps): ReactElement {
               variant="outline"
               onClick={() => router.back()}
             >
-              Back
+              {t('wizard.back')}
             </Button>
             <Button
               type="button"
@@ -434,11 +432,11 @@ export default function Page(props: PageProps): ReactElement {
             >
               <ButtonText
                 leftIcon={isSampling ? <Spinner /> : undefined}
-                text="Sample"
+                text={t('aiGenerate.schema.sample')}
               />
             </Button>
             <Button key="submit" type="submit">
-              Create job
+              {t('wizard.createJob')}
             </Button>
           </WizardFooter>
         </form>

@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ColumnDef, useTable } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { SampleRecord } from '../types';
 
@@ -20,6 +21,7 @@ interface Props {
 }
 export default function SampleTable(props: Props): ReactElement {
   const { records, columns } = props;
+  const t = useTranslations('newJob.aiGenerate.sampleTable');
 
   const table = useTable({
     features: unpaginatedTableFeatures,
@@ -31,10 +33,9 @@ export default function SampleTable(props: Props): ReactElement {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
-        <h2 className="m-0 text-[15px] font-semibold">Synthetic data sample</h2>
+        <h2 className="m-0 text-[15px] font-semibold">{t('title')}</h2>
         <p className="m-0 text-[13px] text-muted-foreground">
-          A sample of synthetic data given the inputs above: the configured row
-          count, up to 10 records.
+          {t('description')}
         </p>
       </div>
       <div className="overflow-auto rounded-[14px] border border-line-soft bg-card">
@@ -74,7 +75,7 @@ export default function SampleTable(props: Props): ReactElement {
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  Click Sample to generate a preview of synthetic data.
+                  {t('empty')}
                 </TableCell>
               </TableRow>
             )}

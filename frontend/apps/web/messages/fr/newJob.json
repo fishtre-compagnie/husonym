@@ -1,3 +1,311 @@
 {
-  "newJob": {}
+  "newJob": {
+    "steps": {
+      "label": "Étapes",
+      "type": "Type",
+      "define": "Nom et planification",
+      "connect": "Connexions",
+      "schema": "Mapping",
+      "subset": "Subset",
+      "schemaOnly": "Schéma",
+      "source": "Source",
+      "scan": "Analyse"
+    },
+    "wizard": {
+      "title": "Nouveau job",
+      "exit": "Quitter la création du job",
+      "back": "Retour",
+      "continue": "Continuer",
+      "createJob": "Créer le job",
+      "tablesColumns": "{tables, plural, one {# table} other {# tables}} · {columns, plural, one {# colonne} other {# colonnes}}",
+      "rows": "{count, plural, one {# ligne} other {# lignes}}"
+    },
+    "type": {
+      "title": "Que voulez-vous faire ?",
+      "description": "Choisissez le type de job. Les étapes suivantes en découlent : un nom, les connexions, puis ce qui arrive à chaque colonne.",
+      "ariaLabel": "Type de job",
+      "experimental": "Expérimental",
+      "dataSync": {
+        "name": "Copier et anonymiser",
+        "description": "Des données réelles, transformées colonne par colonne, écrites dans une base de test."
+      },
+      "generate": {
+        "name": "Générer des données",
+        "description": "Des lignes entièrement synthétiques pour la destination choisie, à partir du seul schéma."
+      },
+      "aiGenerate": {
+        "name": "Générer avec l'IA",
+        "description": "Des lignes synthétiques écrites par un modèle, d'après le schéma d'une table et votre prompt."
+      },
+      "piiDetection": {
+        "name": "Trouver les données personnelles",
+        "description": "Un rapport des colonnes sensibles d'une base, sans rien copier."
+      }
+    },
+    "define": {
+      "title": "Nommer le job",
+      "description": "Un nom unique, puis le moment où il doit s'exécuter.",
+      "jobName": "Nom du job",
+      "jobNameHint": "Lettres minuscules, chiffres et tirets.",
+      "available": "Disponible.",
+      "schedule": {
+        "title": "Quand doit-il s'exécuter ?",
+        "description": "Sans planification, le job est en pause et ne s'exécute que lorsque vous le lancez ; un cron par défaut est enregistré.",
+        "onDemand": "Quand je le décide",
+        "onDemandHint": "Depuis l'interface, la CLI ou l'API.",
+        "scheduled": "Selon une planification",
+        "scheduledHint": "Une expression cron, par exemple {cron}.",
+        "cron": "Planification cron"
+      },
+      "initiate": {
+        "title": "Une fois créé",
+        "description": "Lancer une exécution juste après la création du job, ou la garder pour plus tard.",
+        "ariaLabel": "Lancer une exécution après la création",
+        "createOnly": "Créer seulement",
+        "createAndRun": "Créer et exécuter"
+      },
+      "advanced": {
+        "title": "Paramètres avancés",
+        "runTimeout": "Délai maximal d'une exécution",
+        "runTimeoutDescription": "La durée maximale (en minutes) d'une exécution du job avant son expiration. <code>0</code> signifie aucun délai global.",
+        "runTimeoutTables": "Une table n'a pas de limite propre : elle est arrêtée lorsqu'elle ne progresse plus. À cette limite, l'exécution arrête les tables encore en cours de copie et remet en place les triggers de la destination.",
+        "engine": "Moteur",
+        "engineDescription": "Moteur de transformation utilisé pour exécuter ce job. <code>Default</code> suit le réglage du déploiement.",
+        "engineDefault": "Par défaut (déploiement)",
+        "engineBenthos": "Benthos (ancien)",
+        "consistencyScope": "Portée de cohérence",
+        "consistencyScopeDescription": "Cohérence déterministe (moteur Athanor uniquement) : une même valeur source reçoit la même valeur anonymisée partout dans cette portée. Au-delà d'une seule exécution, les sorties restent rapprochables dans le temps."
+      },
+      "summary": {
+        "scheduled": "Planifié : {cron}",
+        "onDemand": "Exécution à la demande"
+      }
+    },
+    "activityOptions": {
+      "retryTitle": "Nombre maximal de tentatives",
+      "pii": {
+        "startToCloseTitle": "Délai de détection PII",
+        "startToCloseDescription": "La durée maximale (en minutes) de la détection d'une table avant son expiration. Ce délai s'applique à chaque tentative.",
+        "scheduleToCloseTitle": "Délai maximal de détection PII, tentatives comprises",
+        "scheduleToCloseDescription": "La durée totale (en minutes) allouée à la détection d'une table, tentatives comprises. 0 signifie aucun délai.",
+        "retryDescription": "Le nombre maximal de nouvelles tentatives pour la détection d'une table avant abandon. Vide ou 0 : tentatives illimitées, et le délai maximal par table (tentatives comprises) détermine l'arrêt."
+      },
+      "sync": {
+        "startToCloseTitle": "Délai de synchronisation d'une page de table",
+        "startToCloseDescription": "La durée maximale (en minutes) de la synchronisation d'une page de table avant son expiration. À ajuster selon le volume de données et la qualité des index de la table. S'applique à chaque synchronisation et génération de page de table, et à chaque tentative.",
+        "scheduleToCloseTitle": "Délai maximal par table, tentatives comprises",
+        "scheduleToCloseDescription": "La durée totale (en minutes) allouée à la synchronisation d'une table, tentatives comprises. 0 signifie aucun délai.",
+        "retryDescription": "Le nombre maximal de nouvelles tentatives pour la synchronisation d'une table avant abandon. Vide ou 0 : tentatives illimitées, et le délai maximal par table (tentatives comprises) détermine l'arrêt."
+      }
+    },
+    "connectionPicker": {
+      "empty": "Aucune connexion d'un type adapté pour l'instant.",
+      "openaiCompatible": "Compatible OpenAI",
+      "checking": "Vérification",
+      "newConnection": "Nouvelle connexion",
+      "newConnectionTitle": "Nouvelle connexion"
+    },
+    "connect": {
+      "title": "D'où viennent les données, et où vont-elles ?",
+      "description": "Choisissez la source à lire, puis une ou plusieurs destinations où écrire les données anonymisées.",
+      "source": {
+        "title": "Connexion source",
+        "description": "La base que le job lit.",
+        "schemaChanges": "Quand le schéma de la source change"
+      },
+      "destinations": {
+        "title": "Où écrire les données anonymisées ?",
+        "description": "La source elle-même ne peut pas être une destination.",
+        "numbered": "Destination {number}",
+        "remove": "Retirer la destination {number}",
+        "removeShort": "Retirer",
+        "beforeWriting": "Avant d'écrire dans {name}",
+        "add": "Ajouter une autre destination",
+        "invalidPair": "Destination non valide pour cette source",
+        "alreadyUsed": "Déjà une destination de ce job",
+        "isSource": "C'est la source de ce job"
+      }
+    },
+    "toasts": {
+      "created": "Job créé !",
+      "createFailed": "Impossible de créer le job",
+      "validateMappingsFailed": "Impossible de valider les mappings du job",
+      "validateVfksFailed": "Impossible de valider les clés étrangères virtuelles",
+      "createdThe": "Job créé !",
+      "createFailedBang": "Impossible de créer le job !"
+    },
+    "schema": {
+      "title": "Quelles tables, et que devient chaque colonne ?",
+      "description": "Cochez les tables à copier. Les colonnes détectées comme personnelles partent avec un transformer d'anonymisation ; vérifiez-les, puis ajustez chaque colonne une à une."
+    },
+    "subset": {
+      "title": "Réduire le volume ?",
+      "description": "Filtrez une table de départ avec une clause WHERE ; les tables liées suivent par leurs clés. Laissez tous les filtres vides pour tout copier.",
+      "unsupported": {
+        "title": "Attention !",
+        "description": "Le sous-ensemble n'est pas encore disponible pour ce type de connexion. Vous pouvez poursuivre la création de ce job pendant que nous y travaillons."
+      },
+      "summary": {
+        "filtered": "{count, plural, one {# table filtrée} other {# tables filtrées}}",
+        "everything": "Tout est copié"
+      }
+    },
+    "addDestinations": {
+      "title": "Ajouter des destinations",
+      "backTo": "Retour à {name}",
+      "backToJob": "Retour au job",
+      "descriptionFrom": "Où écrire aussi les données anonymisées de {name} ? Seules les connexions compatibles avec la source sont listées.",
+      "description": "Où écrire aussi les données anonymisées ? Seules les connexions compatibles avec la source sont listées.",
+      "alreadyAdded": "Déjà ajoutée plus haut",
+      "empty": "Aucune autre connexion ne peut recevoir les données de cette source.",
+      "save": "Enregistrer",
+      "toasts": {
+        "created": "Destination(s) du job créée(s)",
+        "createFailed": "Impossible de créer la ou les destinations du job"
+      }
+    },
+    "generate": {
+      "connect": {
+        "title": "Où écrire les données générées ?",
+        "description": "Une connexion donne la forme des tables ; la destination reçoit les lignes synthétiques. Les deux peuvent être la même base.",
+        "schemaConnection": {
+          "title": "Connexion du schéma de table",
+          "description": "La connexion dont les tables donnent la forme des données à générer. Ce peut être la destination elle-même."
+        },
+        "destination": {
+          "title": "Destination",
+          "description": "Où les lignes générées sont écrites.",
+          "ariaLabel": "Connexion de destination"
+        }
+      },
+      "schema": {
+        "title": "Que faut-il générer ?",
+        "description": "Choisissez la table à remplir, le nombre de lignes et le générateur de chaque colonne.",
+        "numRows": "Nombre de lignes",
+        "numRowsDescription": "Le nombre de lignes à générer."
+      }
+    },
+    "formErrors": "Corrigez les erreurs du formulaire et réessayez.",
+    "aiGenerate": {
+      "connect": {
+        "title": "Quel modèle, et où écrire ses données ?",
+        "description": "Une connexion compatible OpenAI écrit les lignes ; une connexion de base de données donne la forme de la table et reçoit le résultat.",
+        "model": {
+          "title": "Connexion du modèle",
+          "description": "Une API compatible OpenAI qui génère les données."
+        },
+        "schemaConnectionDescription": "La connexion dont la table donne la forme des données à générer. Ce peut être la destination elle-même."
+      },
+      "schema": {
+        "title": "Que doit générer le modèle ?",
+        "description": "Choisissez la table à remplir, le modèle et son prompt. Générez un échantillon de quelques lignes avant de créer le job.",
+        "sampleFailed": "Impossible de générer l'échantillon",
+        "model": "Nom du modèle",
+        "modelDescription": "Le nom du modèle à utiliser.",
+        "commonModels": "Noms de modèles courants…",
+        "prompt": "Prompt",
+        "promptDescription": "Un prompt facultatif pour donner plus de contexte au modèle. Vivement recommandé ! Le schéma de la table est ajouté automatiquement à la fin de ce prompt.",
+        "batchSize": "Taille de lot",
+        "batchSizeDescription": "La taille des lots demandés au modèle pour générer les enregistrements. Utile pour les gros volumes ou les prompts qui risquent de dépasser la limite de tokens. Plus petit vaut généralement mieux.",
+        "sample": "Échantillon"
+      },
+      "sampleTable": {
+        "title": "Échantillon de données synthétiques",
+        "description": "Un échantillon de données synthétiques d'après les réglages ci-dessus : le nombre de lignes configuré, 10 enregistrements au plus.",
+        "empty": "Cliquez sur Échantillon pour prévisualiser des données synthétiques."
+      }
+    },
+    "piiDetect": {
+      "connect": {
+        "title": "Quelle base analyser ?",
+        "description": "Le job lit les noms des colonnes et un échantillon de lignes pour trouver les données personnelles. Rien n'est copié.",
+        "sourceDescription": "Les connexions PostgreSQL, MySQL et SQL Server peuvent être analysées.",
+        "ariaLabel": "Connexion à analyser"
+      },
+      "schema": {
+        "title": "Comment l'analyse doit-elle se dérouler ?",
+        "description": "Ce qu'il faut chercher, combien de lignes échantillonner et quelles tables lire. L'analyse s'exécute là où se trouvent vos données."
+      },
+      "form": {
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "connection": {
+          "title": "Connexion",
+          "description": "La connexion à utiliser pour le job de détection PII.",
+          "placeholder": "Sélectionnez une connexion source"
+        },
+        "userPrompt": {
+          "title": "Prompt utilisateur",
+          "description": "Un prompt facultatif pour guider la partie LLM du job de détection PII.",
+          "placeholder": "Ne classe PAS les colonnes suivantes comme PII ou données personnelles : id, created_at, updated_at"
+        },
+        "dataSampling": {
+          "title": "Échantillonnage des données",
+          "description": "Autoriser le job à lire des lignes de chaque table. Jusqu'à 200 lignes par table sont lues par le worker, dans votre déploiement, pour reconnaître des formats comme les adresses e-mail, les IBAN ou les numéros de carte. Désactivé, aucune ligne n'est lue : seuls les noms des tables, les noms et les types des colonnes sont utilisés.",
+          "modelInput": {
+            "title": "Ce que reçoit le modèle",
+            "description": "Choisissez ce qui est transmis au modèle de langage à propos des lignes échantillonnées.",
+            "profiles": "Statistiques seules",
+            "profilesDescription": "Le modèle de langage reçoit le nom de la table, les noms et types des colonnes, et des statistiques calculées sur les lignes échantillonnées : effectifs, longueurs, types de caractères, formats. Aucune valeur de vos données n'est envoyée au modèle.",
+            "values": "Statistiques et valeurs d'exemple",
+            "valuesDescription": "En plus, le modèle de langage reçoit jusqu'à 5 valeurs distinctes de chaque colonne, tronquées à 64 caractères. Ces valeurs quittent le worker vers le point d'accès du modèle configuré sur ce déploiement. Ne choisissez cette option que si ce point d'accès peut recevoir ces données, par exemple un modèle hébergé dans votre réseau."
+          },
+          "noModel": "Sans modèle configuré, rien n'est envoyé nulle part : la détection n'utilise que les règles. Seules, les règles ne trouvent pas de données personnelles dans une colonne au nom neutre, sauf si ses valeurs ont un format qu'elles vérifient, comme les adresses e-mail, les IBAN, les numéros de carte ou les empreintes de mots de passe."
+        },
+        "incremental": {
+          "title": "Analyses incrémentales",
+          "description": "Autoriser le job à détecter les PII de façon incrémentale sur les tables nouvelles ou modifiées. Seules les tables ajoutées ou modifiées depuis la dernière exécution réussie sont analysées. La détection des nouvelles tables dépend du mode d'analyse et des motifs choisis ci-dessous."
+        },
+        "scanMode": {
+          "title": "Mode d'analyse des tables",
+          "description": "Le mode du filtre d'analyse des tables. Il détermine les schémas et les tables analysés pour les PII.",
+          "include_all": "Tout inclure",
+          "include": "Inclure",
+          "exclude": "Exclure"
+        },
+        "patterns": {
+          "title": "Motifs",
+          "description": "Les motifs du filtre d'analyse des tables, selon le mode choisi. Une combinaison de schémas et de tables est analysée selon le mode et la sélection."
+        },
+        "schemas": {
+          "title": "Sélection des schémas",
+          "noOptions": "Impossible de charger les schémas, ou aucun trouvé",
+          "description": {
+            "include_all": "Sélectionnez tous les schémas à analyser pour les PII.",
+            "include": "Sélectionnez les schémas à analyser pour les PII.",
+            "exclude": "Sélectionnez les schémas à exclure de l'analyse PII."
+          },
+          "left": {
+            "include_all": "Tous les schémas ont été ajoutés !",
+            "include": "Tous les schémas disponibles ont été inclus !",
+            "exclude": "Tous les schémas disponibles ont été exclus !"
+          },
+          "right": {
+            "include_all": "Tous les schémas ont été ajoutés !",
+            "include": "Ajoutez des schémas à analyser pour les PII !",
+            "exclude": "Ajoutez des schémas à exclure de l'analyse PII !"
+          }
+        },
+        "tables": {
+          "title": "Sélection des tables",
+          "noOptions": "Impossible de charger les tables, ou aucune trouvée",
+          "description": {
+            "include_all": "Sélectionnez toutes les tables à analyser pour les PII.",
+            "include": "Sélectionnez les tables à analyser pour les PII.",
+            "exclude": "Sélectionnez les tables à exclure de l'analyse PII."
+          },
+          "left": {
+            "include_all": "Toutes les tables ont été ajoutées !",
+            "include": "Toutes les tables disponibles ont été incluses !",
+            "exclude": "Toutes les tables disponibles ont été exclues !"
+          },
+          "right": {
+            "include_all": "Toutes les tables ont été ajoutées !",
+            "include": "Ajoutez des tables à analyser pour les PII !",
+            "exclude": "Ajoutez des tables à exclure de l'analyse PII !"
+          }
+        }
+      }
+    }
+  }
 }

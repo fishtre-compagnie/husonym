@@ -1,9 +1,11 @@
 'use client';
 import { WizardFrame, WizardHeading } from '@/components/progress-steps/Wizard';
 import { useAccount } from '@/components/providers/account-provider';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 import JobsProgressSteps, {
   JobProgressStep,
+  getJobProgressStepLabels,
   getStepPosition,
 } from './JobsProgressSteps';
 
@@ -11,7 +13,7 @@ interface Props {
   /** The steps of the current flow, as getJobProgressSteps gives them. */
   steps: JobProgressStep[];
   stepName: JobProgressStep;
-  stepLabels?: Partial<Record<JobProgressStep, string>>;
+  stepLabels?: ReturnType<typeof getJobProgressStepLabels>;
   title: ReactNode;
   description?: ReactNode;
   mascot?: boolean;
@@ -39,12 +41,13 @@ export default function NewJobWizard(props: Props): ReactElement {
     children,
   } = props;
   const { account } = useAccount();
+  const t = useTranslations('newJob.wizard');
   return (
     <WizardFrame
       id={id}
-      title="New job"
+      title={t('title')}
       exitHref={`/${account?.name ?? ''}/jobs`}
-      exitLabel="Leave job creation"
+      exitLabel={t('exit')}
       wide={wide}
       steps={
         <JobsProgressSteps

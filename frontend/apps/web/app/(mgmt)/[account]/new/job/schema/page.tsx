@@ -45,6 +45,7 @@ import {
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
   ReactElement,
@@ -90,6 +91,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   const [validateMappingsResponse, setValidateMappingsResponse] = useState<
     ValidateJobMappingsResponse | undefined
   >();
@@ -217,7 +219,7 @@ export default function Page(props: PageProps): ReactElement {
       await checkThenSave(request, async () => {
         try {
           const job = await createNewSyncJob(request);
-          toast.success('Successfully created job!');
+          toast.success(t('toasts.created'));
 
           clearNewJobSession(window.sessionStorage, sessionPrefix);
 
@@ -228,7 +230,7 @@ export default function Page(props: PageProps): ReactElement {
           }
         } catch (err) {
           console.error(err);
-          toast.error('Unable to create job', {
+          toast.error(t('toasts.createFailed'), {
             description: getErrorMessage(err),
           });
         }
@@ -259,7 +261,7 @@ export default function Page(props: PageProps): ReactElement {
       setValidateMappingsResponse(res);
     } catch (error) {
       console.error('Failed to validate job mappings:', error);
-      toast.error('Unable to validate job mappings', {
+      toast.error(t('toasts.validateMappingsFailed'), {
         description: getErrorMessage(error),
       });
     } finally {
@@ -288,7 +290,7 @@ export default function Page(props: PageProps): ReactElement {
       setValidateMappingsResponse(res);
     } catch (error) {
       console.error('Failed to validate virtual foreign keys:', error);
-      toast.error('Unable to validate virtual foreign keys', {
+      toast.error(t('toasts.validateVfksFailed'), {
         description: getErrorMessage(error),
       });
     } finally {
@@ -536,8 +538,8 @@ export default function Page(props: PageProps): ReactElement {
     <NewJobWizard
       steps={getJobProgressSteps('data-sync', isSubsettable)}
       stepName="schema"
-      title="Which tables, and what becomes of each column?"
-      description="Check the tables to copy. Columns detected as personal start with an anonymizing transformer; review them, then adjust any column one by one."
+      title={t('schema.title')}
+      description={t('schema.description')}
       wide
     >
       <FormPersist formKey={schemaFormKey} form={form} />
@@ -774,7 +776,12 @@ export default function Page(props: PageProps): ReactElement {
                     ? destinationNames.join(', ')
                     : '…'
                 }`,
-              `${new Set(formMappings.map((m) => `${m.schema}.${m.table}`)).size} tables · ${formMappings.length} columns`,
+              t('wizard.tablesColumns', {
+                tables: new Set(
+                  formMappings.map((m) => `${m.schema}.${m.table}`)
+                ).size,
+                columns: formMappings.length,
+              }),
             ]}
           >
             <Button
@@ -783,14 +790,14 @@ export default function Page(props: PageProps): ReactElement {
               variant="outline"
               onClick={() => router.back()}
             >
-              Back
+              {t('wizard.back')}
             </Button>
             <Button
               key="submit"
               type="submit"
               disabled={form.formState.isSubmitting}
             >
-              {isSubsettable ? 'Continue' : 'Create job'}
+              {isSubsettable ? t('wizard.continue') : t('wizard.createJob')}
             </Button>
           </WizardFooter>
         </form>

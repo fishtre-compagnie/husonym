@@ -20,6 +20,7 @@ import { getSingleOrUndefined, splitConnections } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { ConnectionService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -41,6 +42,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -90,8 +92,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps('pii-detection')}
       stepName="connect"
       stepLabels={getJobProgressStepLabels('pii-detection')}
-      title="Which database should be scanned?"
-      description="The job reads column names and a sample of rows to find personal data. Nothing is copied."
+      title={t('piiDetect.connect.title')}
+      description={t('piiDetect.connect.description')}
       mascot
     >
       <FormPersist formKey={formKey} form={form} />
@@ -102,8 +104,8 @@ export default function Page(props: PageProps): ReactElement {
         >
           <WizardSection
             id="piidetect-source"
-            title="Source connection"
-            description="PostgreSQL, MySQL and SQL Server connections can be scanned."
+            title={t('connect.source.title')}
+            description={t('piiDetect.connect.sourceDescription')}
           >
             <FormField
               control={form.control}
@@ -115,7 +117,7 @@ export default function Page(props: PageProps): ReactElement {
                       <Skeleton className="h-16 w-full rounded-[14px]" />
                     ) : (
                       <ConnectionPicker
-                        ariaLabel="Connection to scan"
+                        ariaLabel={t('piiDetect.connect.ariaLabel')}
                         postgres={postgres}
                         mysql={mysql}
                         mssql={mssql}
@@ -162,9 +164,9 @@ export default function Page(props: PageProps): ReactElement {
                 router.back();
               }}
             >
-              Back
+              {t('wizard.back')}
             </Button>
-            <Button type="submit">Continue</Button>
+            <Button type="submit">{t('wizard.continue')}</Button>
           </WizardFooter>
         </form>
       </Form>
