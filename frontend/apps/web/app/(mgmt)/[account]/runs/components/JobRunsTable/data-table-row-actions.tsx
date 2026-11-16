@@ -24,6 +24,7 @@ import {
 } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface DataTableRowActionsProps<TData extends RowData> {
   row: Row<AppTableFeatures, TData>;
@@ -35,6 +36,7 @@ export function DataTableRowActions<TData extends RowData>({
   onDeleted,
 }: DataTableRowActionsProps<TData>) {
   const run = row.original as JobRun;
+  const t = useTranslations('runs.actions');
   const router = useRouter();
   const { account } = useAccount();
   const { mutateAsync: removeJobRunAsync } = useMutation(
@@ -50,11 +52,11 @@ export function DataTableRowActions<TData extends RowData>({
   async function onDelete(): Promise<void> {
     try {
       await removeJobRunAsync({ accountId: account?.id, jobRunId: run.id });
-      toast.success('Removing Job Run. This may take a minute to delete!');
+      toast.success(t('removing'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove job run', {
+      toast.error(t('removeFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -63,11 +65,11 @@ export function DataTableRowActions<TData extends RowData>({
   async function onCancel(): Promise<void> {
     try {
       await cancelJobRunAsync({ accountId: account?.id, jobRunId: run.id });
-      toast.success('Canceling Job Run. This may take a minute to cancel!');
+      toast.success(t('canceling'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to cancel job run', {
+      toast.error(t('cancelFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -76,13 +78,11 @@ export function DataTableRowActions<TData extends RowData>({
   async function onTerminate(): Promise<void> {
     try {
       await terminateJobRunAsync({ accountId: account?.id, jobRunId: run.id });
-      toast.success(
-        'Terminating Job Run. This may take a minute to terminate!'
-      );
+      toast.success(t('terminating'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to terminate job run', {
+      toast.error(t('terminateFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -96,7 +96,7 @@ export function DataTableRowActions<TData extends RowData>({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
@@ -104,7 +104,7 @@ export function DataTableRowActions<TData extends RowData>({
           className="cursor-pointer"
           onClick={() => router.push(`/${account?.name}/runs/${run.id}`)}
         >
-          View
+          {t('view')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {(run.status === JobRunStatusEnum.RUNNING ||
@@ -116,13 +116,13 @@ export function DataTableRowActions<TData extends RowData>({
                   className="cursor-pointer"
                   onSelect={(e) => e.preventDefault()}
                 >
-                  Cancel
+                  {t('cancel')}
                 </DropdownMenuItem>
               }
-              headerText="Cancel Job Run?"
-              description="Are you sure you want to cancel this job run?"
+              headerText={t('cancelTitle')}
+              description={t('cancelDescription')}
               onConfirm={async () => onCancel()}
-              buttonText="Cancel"
+              buttonText={t('cancel')}
               buttonVariant="default"
               buttonIcon={<Cross2Icon />}
             />
@@ -133,13 +133,13 @@ export function DataTableRowActions<TData extends RowData>({
                   className="cursor-pointer"
                   onSelect={(e) => e.preventDefault()}
                 >
-                  Terminate
+                  {t('terminate')}
                 </DropdownMenuItem>
               }
-              headerText="Terminate Job Run?"
-              description="Are you sure you want to terminate this job run?"
+              headerText={t('terminateTitle')}
+              description={t('terminateDescription')}
               onConfirm={async () => onTerminate()}
-              buttonText="Terminate"
+              buttonText={t('terminate')}
               buttonVariant="default"
               buttonIcon={<Cross2Icon />}
             />
@@ -153,11 +153,12 @@ export function DataTableRowActions<TData extends RowData>({
               className="cursor-pointer"
               onSelect={(e) => e.preventDefault()}
             >
-              Delete
+              {t('delete')}
             </DropdownMenuItem>
           }
-          headerText="Delete Job Run?"
-          description="Are you sure you want to delete this job run?"
+          headerText={t('deleteTitle')}
+          description={t('deleteDescription')}
+          buttonText={t('delete')}
           onConfirm={async () => {
             await onDelete();
           }}

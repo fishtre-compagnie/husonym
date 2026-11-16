@@ -3,7 +3,8 @@ import { TableProgress } from '@/components/RunTImeline/events';
 import { cn } from '@/libs/utils';
 import { CodeIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
-import { formatSpan } from '../../components/run-format';
+import { useRunFormat } from '../../components/run-format';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   tables: TableProgress[];
@@ -22,9 +23,12 @@ const ROW_GRID =
  */
 export default function SlowestTablesPanel(props: Props): ReactElement {
   const { tables, onViewSelectClicked } = props;
-  const timed = tables.map((t) => ({
-    t,
-    ms: t.end.getTime() - t.start.getTime(),
+  const t = useTranslations('runs.slowest');
+  const tIn = useTranslations('runs.inProgress');
+  const fmt = useRunFormat();
+  const timed = tables.map((tp) => ({
+    t: tp,
+    ms: tp.end.getTime() - tp.start.getTime(),
   }));
   const slowest = [...timed].sort((a, b) => b.ms - a.ms).slice(0, SHOWN);
   const longest = slowest[0]?.ms ?? 0;
@@ -32,15 +36,18 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
   const top = slowest.reduce((sum, { ms }) => sum + ms, 0);
 
   return (
-    <Panel aria-label="Slowest tables">
+    <Panel aria-label={t('title')}>
       <PanelHeader
-        title="Slowest tables"
+        title={t('title')}
         className="flex-wrap"
         actions={
           all > 0 && tables.length > SHOWN ? (
             <span className="text-muted-foreground">
-              {tables.length} tables · the {SHOWN} longest take{' '}
-              {Math.round((top / all) * 100)} % of the time spent copying
+              {t('share', {
+                count: tables.length,
+                shown: SHOWN,
+                percent: Math.round((top / all) * 100),
+              })}
             </span>
           ) : undefined
         }
@@ -54,15 +61,15 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
             )}
           >
             <span>#</span>
-            <span>Table</span>
-            <span>Compared with the longest</span>
-            <span className="text-right">Duration</span>
-            <span className="sr-only">Actions</span>
+            <span>{t('table')}</span>
+            <span>{t('compared')}</span>
+            <span className="text-right">{t('duration')}</span>
+            <span className="sr-only">{t('actions')}</span>
           </div>
           <ol className="m-0 list-none p-0">
-            {slowest.map(({ t, ms }, i) => (
+            {slowest.map(({ t: tp, ms }, i) => (
               <li
-                key={t.key}
+                key={tp.key}
                 className={cn(
                   ROW_GRID,
                   'border-t border-line-soft px-5 py-2.5'
@@ -74,17 +81,17 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
                 <span
                   className={cn(
                     'min-w-0 truncate font-mono text-[13px]',
-                    t.status === 'failed' && 'text-danger-fg'
+                    tp.status === 'failed' && 'text-danger-fg'
                   )}
-                  title={t.error ? `${t.key}: ${t.error}` : t.key}
+                  title={tp.error ? `${tp.key}: ${tp.error}` : tp.key}
                 >
-                  <span className="text-muted-foreground">{t.schema}.</span>
-                  <span className={t.status === 'failed' ? '' : 'text-hi'}>
-                    {t.table}
+                  <span className="text-muted-foreground">{tp.schema}.</span>
+                  <span className={tp.status === 'failed' ? '' : 'text-hi'}>
+                    {tp.table}
                   </span>
-                  {t.passes > 1 && (
+                  {tp.passes > 1 && (
                     <span className="ml-2 rounded-md bg-surface-2 px-1.5 py-px font-sans text-[11px] text-muted-foreground">
-                      {t.passes} passes
+                      {t('passes', { count: tp.passes })}
                     </span>
                   )}
                 </span>
@@ -92,7 +99,7 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
                   <div
                     className={cn(
                       'h-full rounded-full',
-                      t.status === 'failed' ? 'bg-danger' : 'bg-quiet'
+                      tp.status === 'failed' ? 'bg-danger' : 'bg-quiet'
                     )}
                     style={{
                       width: `${longest > 0 ? (ms / longest) * 100 : 0}%`,
@@ -100,13 +107,13 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
                   />
                 </div>
                 <span className="text-right font-mono text-[13px] font-medium">
-                  {formatSpan(ms)}
+                  {fmt.span(ms)}
                 </span>
                 <button
                   type="button"
-                  onClick={() => onViewSelectClicked(t.schema, t.table)}
-                  aria-label={`Show the select query of ${t.key}`}
-                  title="Show the select query"
+                  onClick={() => onViewSelectClicked(tp.schema, tp.table)}
+                  aria-label={tIn('showSelectOf', { table: tp.key })}
+                  title={tIn('showSelect')}
                   className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-surface-2 hover:text-foreground"
                 >
                   <CodeIcon className="size-3.5" />
@@ -118,7 +125,7 @@ export default function SlowestTablesPanel(props: Props): ReactElement {
       </div>
       <div className="border-t border-line-soft px-5 py-3 text-[13px]">
         <a href="#run-activity" className="text-link hover:underline">
-          See every table in the Activity timeline ↓
+          {tIn('seeTimeline')}
         </a>
       </div>
     </Panel>

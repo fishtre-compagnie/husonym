@@ -36,7 +36,7 @@ import {
   refreshEventsWhenEventsIncomplete,
   refreshJobRunWhenJobRunning,
 } from '@/libs/utils';
-import { formatDateTime, getErrorMessage } from '@/util/util';
+import { getErrorMessage } from '@/util/util';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { Editor } from '@monaco-editor/react';
 import {
@@ -56,11 +56,10 @@ import { format as formatSql } from 'sql-formatter';
 import yaml from 'yaml';
 import { getJobRunStatusMeta } from '../components/JobRunStatus';
 import {
-  formatAgo,
-  formatSpan,
   runSpan,
   toDate,
   useNow,
+  useRunFormat,
 } from '../components/run-format';
 import JobRunActivityErrors from './components/JobRunActivityErrors';
 import JobRunActivityTable from './components/JobRunActivityTable';
@@ -69,6 +68,7 @@ import JobRunPiiDetectionTable from './components/JobRunPiiDetectionTable/JobRun
 import RunPhases from './components/RunPhases';
 import RunInProgressPanel from './components/RunInProgressPanel';
 import SlowestTablesPanel from './components/SlowestTablesPanel';
+import { useTranslations } from 'next-intl';
 
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -76,6 +76,10 @@ export default function Page(props: PageProps): ReactElement {
   const accountId = account?.id || '';
   const id = decodeURIComponent(params?.id ?? '');
   const router = useRouter();
+  const t = useTranslations('runs.run');
+  const tActions = useTranslations('runs.actions');
+  const tStatus = useTranslations('runs.status');
+  const fmt = useRunFormat();
   const { data: systemAppConfigData, isLoading: isSystemAppConfigDataLoading } =
     useGetSystemAppConfig();
   const {
@@ -147,11 +151,11 @@ export default function Page(props: PageProps): ReactElement {
   async function onDelete(): Promise<void> {
     try {
       await removeJobRunAsync({ accountId: accountId, jobRunId: id });
-      toast.success('Job run removed successfully!');
+      toast.success(tActions('removed'));
       router.push(`/${account?.name}/runs`);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove job run', {
+      toast.error(tActions('removeFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -160,12 +164,12 @@ export default function Page(props: PageProps): ReactElement {
   async function onCancel(): Promise<void> {
     try {
       await cancelJobRunAsync({ accountId, jobRunId: id });
-      toast.success('Job run canceled successfully!');
+      toast.success(tActions('canceled'));
       mutate();
       eventMutate();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to cancel job run', {
+      toast.error(tActions('cancelFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -174,12 +178,12 @@ export default function Page(props: PageProps): ReactElement {
   async function onTerminate(): Promise<void> {
     try {
       await terminateJobRunAsync({ accountId, jobRunId: id });
-      toast.success('Job run terminated successfully!');
+      toast.success(tActions('terminated'));
       mutate();
       eventMutate();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to terminate job run', {
+      toast.error(tActions('terminateFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -210,13 +214,15 @@ export default function Page(props: PageProps): ReactElement {
         });
         setIsSelectDialogOpen(true);
       } else {
-        toast.error('Unable to parse run context', {
-          description: `Was unable to pull Select Query out of run context for ${schema}.${table}`,
+        toast.error(t('parseRunContextFailed'), {
+          description: t('parseRunContextDescription', {
+            table: `${schema}.${table}`,
+          }),
         });
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to retrieve select for table', {
+      toast.error(t('retrieveSelectFailed'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -281,7 +287,7 @@ export default function Page(props: PageProps): ReactElement {
     <PageBody className="runs-page">
       <div className="flex flex-col gap-3">
         <nav
-          aria-label="Breadcrumb"
+          aria-label={t('breadcrumb')}
           className="flex items-center gap-2 text-sm"
         >
           <NextLink
@@ -289,7 +295,7 @@ export default function Page(props: PageProps): ReactElement {
             className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
           >
             <ChevronLeftIcon aria-hidden="true" />
-            Runs
+            {t('runs')}
           </NextLink>
           {jobRun?.jobId && (
             <>
@@ -300,34 +306,39 @@ export default function Page(props: PageProps): ReactElement {
                 href={`/${account?.name}/jobs/${jobRun.jobId}`}
                 className="text-link hover:text-foreground"
               >
-                {job?.name ?? 'Job'}
+                {job?.name ?? t('job')}
               </NextLink>
             </>
           )}
         </nav>
         <PageHeader
           title={
-            startedAt ? `Run of ${format(startedAt, 'MMM d, HH:mm')}` : 'Run'
+            startedAt
+              ? t('titleOf', { date: fmt.date(startedAt, 'short') })
+              : t('title')
           }
           description={
             <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <Pill tone={statusMeta.tone} className="px-2.5 py-1">
                 <StatusDot tone={statusMeta.tone} pulse={statusMeta.live} />
-                {statusMeta.label}
-                {span !== undefined && ` · ${formatSpan(span)}`}
+                {tStatus(statusMeta.label)}
+                {span !== undefined && ` · ${fmt.span(span)}`}
               </Pill>
               {startedAt && (
-                <span className="text-[13px]" title={formatDateTime(startedAt)}>
-                  Started {formatAgo(startedAt)}
+                <span
+                  className="text-[13px]"
+                  title={fmt.date(startedAt, 'dateTime')}
+                >
+                  {t('startedAgo', { ago: fmt.ago(startedAt) })}
                 </span>
               )}
               {jobRun?.id && (
                 <span className="flex items-center gap-1 font-mono text-xs">
                   {jobRun.id}
                   <CopyButton
-                    onHoverText="Copy the Run ID"
+                    onHoverText={t('copyId')}
                     textToCopy={jobRun.id}
-                    onCopiedText="Success!"
+                    onCopiedText={t('copied')}
                     buttonVariant="ghost"
                   />
                 </span>
@@ -342,13 +353,13 @@ export default function Page(props: PageProps): ReactElement {
                     trigger={
                       <Button variant="outline">
                         <Cross2Icon />
-                        Cancel run
+                        {tActions('cancelRun')}
                       </Button>
                     }
-                    headerText="Cancel Job Run?"
-                    description="Are you sure you want to cancel this job run?"
+                    headerText={tActions('cancelTitle')}
+                    description={tActions('cancelDescription')}
                     onConfirm={async () => onCancel()}
-                    buttonText="Cancel"
+                    buttonText={tActions('cancel')}
                     buttonVariant="default"
                     buttonIcon={<Cross2Icon />}
                   />
@@ -356,13 +367,13 @@ export default function Page(props: PageProps): ReactElement {
                     trigger={
                       <Button variant="outline">
                         <TiCancel />
-                        Terminate
+                        {tActions('terminate')}
                       </Button>
                     }
-                    headerText="Terminate Job Run?"
-                    description="Are you sure you want to terminate this job run?"
+                    headerText={tActions('terminateTitle')}
+                    description={tActions('terminateDescription')}
                     onConfirm={async () => onTerminate()}
-                    buttonText="Terminate"
+                    buttonText={tActions('terminate')}
                     buttonVariant="default"
                     buttonIcon={<Cross2Icon />}
                   />
@@ -375,7 +386,7 @@ export default function Page(props: PageProps): ReactElement {
                     router.push(`/${account?.name}/jobs/${jobRun.jobId}`)
                   }
                 >
-                  View job
+                  {tActions('viewJob')}
                   <ArrowRightIcon />
                 </Button>
               )}
@@ -384,15 +395,16 @@ export default function Page(props: PageProps): ReactElement {
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Delete this run"
-                    title="Delete this run"
+                    aria-label={tActions('deleteRun')}
+                    title={tActions('deleteRun')}
                     className="text-danger-fg hover:text-danger-fg"
                   >
                     <TrashIcon />
                   </Button>
                 }
-                headerText="Delete Job Run?"
-                description="Are you sure you want to delete this job run?"
+                headerText={tActions('deleteTitle')}
+                description={tActions('deleteDescription')}
+                buttonText={tActions('delete')}
                 onConfirm={async () => onDelete()}
               />
             </>
@@ -418,11 +430,15 @@ export default function Page(props: PageProps): ReactElement {
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-baseline justify-between gap-2 text-[13px]">
                 <span className="text-muted-foreground">
-                  <strong className="font-semibold text-foreground">
-                    {tablesDone}
-                  </strong>{' '}
-                  of {tablesTotal} {tablesTotal === 1 ? 'table' : 'tables'}{' '}
-                  copied
+                  {t.rich('tablesProgress', {
+                    done: tablesDone,
+                    total: tablesTotal,
+                    strong: (chunks) => (
+                      <strong className="font-semibold text-foreground">
+                        {chunks}
+                      </strong>
+                    ),
+                  })}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
                   {Math.round((tablesDone / tablesTotal) * 100)}%
@@ -432,35 +448,33 @@ export default function Page(props: PageProps): ReactElement {
                 value={(tablesDone / tablesTotal) * 100}
                 live={isRunning}
                 tone={progressTone}
-                label="Tables copied"
+                label={t('tablesCopied')}
               />
             </div>
           )}
 
           <section
-            aria-label="Run summary"
+            aria-label={t('summary')}
             className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3"
           >
             <StatCard
-              label="Duration"
-              value={span !== undefined ? formatSpan(span) : '–'}
+              label={t('duration')}
+              value={span !== undefined ? fmt.span(span) : '–'}
               note={
                 isRunning
-                  ? 'still running'
+                  ? t('stillRunning')
                   : completedAt
-                    ? `ended ${format(completedAt, 'MMM d, HH:mm:ss')}`
-                    : 'no end recorded'
+                    ? t('ended', { date: fmt.date(completedAt, 'medium') })
+                    : t('noEnd')
               }
             />
             <StatCard
-              label="Started"
+              label={t('started')}
               value={startedAt ? format(startedAt, 'HH:mm:ss') : '–'}
-              note={
-                startedAt ? format(startedAt, 'EEEE, MMM d yyyy') : undefined
-              }
+              note={startedAt ? fmt.date(startedAt, 'day') : undefined}
             />
             <StatCard
-              label="Tables copied"
+              label={t('tablesCopied')}
               value={
                 tablesTotal > 0 ? (
                   <>
@@ -476,29 +490,28 @@ export default function Page(props: PageProps): ReactElement {
               }
               note={
                 tablesTotal === 0
-                  ? 'no table synced yet'
-                  : tables.some((t) => t.status === 'failed')
-                    ? `${tables.filter((t) => t.status === 'failed').length} failed`
-                    : `${events?.length ?? 0} activities in all`
+                  ? t('noTableYet')
+                  : tables.some((tp) => tp.status === 'failed')
+                    ? t('tablesFailed', {
+                        count: tables.filter((tp) => tp.status === 'failed')
+                          .length,
+                      })
+                    : t('activitiesInAll', { count: events?.length ?? 0 })
               }
               noteTone={
-                tables.some((t) => t.status === 'failed') ? 'danger' : 'muted'
+                tables.some((tp) => tp.status === 'failed') ? 'danger' : 'muted'
               }
             />
             <StatCard
-              label="Activities with errors"
+              label={t('activitiesWithErrors')}
               value={failedActivities}
               tone={failedActivities > 0 ? 'danger' : 'default'}
-              note={
-                failedActivities > 0
-                  ? 'an attempt failed; some may have succeeded on retry'
-                  : 'none'
-              }
+              note={failedActivities > 0 ? t('errorsNote') : t('none')}
             />
           </section>
 
           {pendingFailures.length > 0 && (
-            <Panel tone="danger" aria-label="Failing activities">
+            <Panel tone="danger" aria-label={t('failingActivities')}>
               <PanelHeader
                 leading={
                   <ExclamationTriangleIcon
@@ -506,7 +519,7 @@ export default function Page(props: PageProps): ReactElement {
                     className="h-4 w-4 text-danger-fg"
                   />
                 }
-                title="Failing activities"
+                title={t('failingActivities')}
               />
               <ul className="m-0 list-none p-0">
                 {pendingFailures.map((a) => (
@@ -638,6 +651,7 @@ interface ViewSelectDialogProps {
 function ViewSelectDialog(props: ViewSelectDialogProps): ReactElement {
   const { isDialogOpen, setIsDialogOpen, query } = props;
   const { resolvedTheme } = useTheme();
+  const t = useTranslations('runs.selectDialog');
 
   const formattedQuery = useMemo(() => {
     // todo: maybe update this to explicitly pass in the driver type so it formats it according to the correct connection
@@ -649,12 +663,9 @@ function ViewSelectDialog(props: ViewSelectDialogProps): ReactElement {
       <DialogContent className="lg:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            SQL Select Query - {query.schema}.{query.table}
+            {t('title', { table: `${query.schema}.${query.table}` })}
           </DialogTitle>
-          <DialogDescription>
-            This was the query used to query the source database during the job
-            run
-          </DialogDescription>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div>
           <Editor
@@ -676,14 +687,14 @@ function ViewSelectDialog(props: ViewSelectDialogProps): ReactElement {
             variant="secondary"
             onClick={() => setIsDialogOpen(false)}
           >
-            Close
+            {t('close')}
           </Button>
           <CopyButton
             buttonVariant="default"
-            onCopiedText="Success!"
-            onHoverText="Copy the SELECT Query"
+            onCopiedText={t('copied')}
+            onHoverText={t('copyHover')}
             textToCopy={query.select}
-            buttonText="Copy"
+            buttonText={t('copy')}
           />
         </DialogFooter>
       </DialogContent>

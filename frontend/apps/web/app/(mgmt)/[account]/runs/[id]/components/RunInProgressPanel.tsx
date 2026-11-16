@@ -2,10 +2,11 @@ import { Panel, Pill, StatusDot } from '@/components/ds';
 import { TableProgress } from '@/components/RunTImeline/events';
 import { cn } from '@/libs/utils';
 import { CodeIcon } from '@radix-ui/react-icons';
-import { format } from 'date-fns';
 import Link from 'next/link';
 import { ReactElement } from 'react';
-import { formatSpan } from '../../components/run-format';
+import { useRunFormat } from '../../components/run-format';
+import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   tables: TableProgress[];
@@ -33,6 +34,8 @@ const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_120px_32px] items-center gap-5';
 export default function RunInProgressPanel(props: Props): ReactElement {
   const { tables, waiting, runLimitMs, jobHref, now, onViewSelectClicked } =
     props;
+  const tr = useTranslations('runs.inProgress');
+  const fmt = useRunFormat();
 
   const running = tables
     .filter((t) => t.status === 'running')
@@ -47,30 +50,28 @@ export default function RunInProgressPanel(props: Props): ReactElement {
   const total = tables.length + waiting.length;
 
   return (
-    <Panel aria-label="Tables in progress">
+    <Panel aria-label={tr('label')}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-soft px-5 py-4">
         <h2 className="m-0 font-display text-base font-semibold">
-          In progress
+          {tr('title')}
         </h2>
-        <Pill tone="live">
-          {running.length} {running.length === 1 ? 'table' : 'tables'}
-        </Pill>
+        <Pill tone="live">{tr('tables', { count: running.length })}</Pill>
         <span className="ml-auto text-[13px] text-muted-foreground">
           {runLimitMs ? (
             <>
-              Run limit:{' '}
+              {tr('runLimit')}{' '}
               <span className="font-medium text-foreground">
-                {formatSpan(runLimitMs)}
+                {fmt.span(runLimitMs)}
               </span>
             </>
           ) : (
-            'No run limit'
+            tr('noRunLimit')
           )}
           {jobHref && (
             <>
               {' · '}
               <Link href={jobHref} className="text-link hover:underline">
-                {runLimitMs ? 'change' : 'set one'}
+                {runLimitMs ? tr('change') : tr('setOne')}
               </Link>
             </>
           )}
@@ -93,27 +94,31 @@ export default function RunInProgressPanel(props: Props): ReactElement {
           <span className="bg-danger" style={{ width: share(failed, total) }} />
         </div>
         <ul className="m-0 mt-2.5 flex list-none flex-wrap gap-x-5 gap-y-1.5 p-0 text-[13px] text-muted-foreground">
-          <Count fill="bg-quiet" count={finished} label="finished" />
-          <Count fill="bg-primary" count={running.length} label="in progress" />
+          <Count fill="bg-quiet" count={finished} label={tr('finished')} />
+          <Count
+            fill="bg-primary"
+            count={running.length}
+            label={tr('inProgress')}
+          />
           {failed > 0 && (
             <Count
               fill="bg-danger"
               count={failed}
-              label="failed"
+              label={tr('failed')}
               countClass="text-danger-fg"
             />
           )}
           <Count
             fill="border border-border bg-surface-2"
             count={waiting.length}
-            label="waiting"
+            label={tr('waiting')}
           />
         </ul>
       </div>
 
       {running.length === 0 ? (
         <p className="m-0 px-5 py-6 text-center text-muted-foreground">
-          No table is being copied right now.
+          {tr('nothingRunning')}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -124,9 +129,9 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                 'px-5 pb-2 pt-4 text-[11px] uppercase tracking-[0.06em] text-muted-foreground'
               )}
             >
-              <span>Table</span>
-              <span className="text-right">Running for</span>
-              <span className="sr-only">Actions</span>
+              <span>{tr('table')}</span>
+              <span className="text-right">{tr('runningFor')}</span>
+              <span className="sr-only">{tr('actions')}</span>
             </div>
             <ul className="m-0 list-none p-0">
               {running.map(({ t, since }) => {
@@ -141,7 +146,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                   >
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <div className="flex min-w-0 items-center gap-2">
-                        <StatusDot tone="live" label="Running" pulse />
+                        <StatusDot tone="live" label={tr('running')} pulse />
                         <span
                           className="min-w-0 truncate font-mono text-[13px]"
                           title={t.key}
@@ -153,22 +158,22 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                         </span>
                         {t.passes > 1 && (
                           <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-px text-[11px] text-muted-foreground">
-                            pass {t.passes}
+                            {tr('pass', { count: t.passes })}
                           </span>
                         )}
                       </div>
                       <span className="pl-4 text-xs text-muted-foreground">
-                        started {format(since, 'HH:mm:ss')}
+                        {tr('startedAt', { time: format(since, 'HH:mm:ss') })}
                       </span>
                     </div>
                     <span className="text-right font-mono text-sm font-medium text-link">
-                      {formatSpan(elapsed)}
+                      {fmt.span(elapsed)}
                     </span>
                     <button
                       type="button"
                       onClick={() => onViewSelectClicked(t.schema, t.table)}
-                      aria-label={`Show the select query of ${t.key}`}
-                      title="Show the select query"
+                      aria-label={tr('showSelectOf', { table: t.key })}
+                      title={tr('showSelect')}
                       className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-surface-2 hover:text-foreground"
                     >
                       <CodeIcon className="size-3.5" />
@@ -185,11 +190,11 @@ export default function RunInProgressPanel(props: Props): ReactElement {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] border-t border-line-soft bg-surface-2/40">
           <div className="border-line-soft px-5 py-4 [&:not(:last-child)]:border-r">
             <h3 className="m-0 text-[11px] font-normal uppercase tracking-[0.06em] text-muted-foreground">
-              Up next
+              {tr('upNext')}
             </h3>
             {waiting.length === 0 ? (
               <p className="m-0 mt-2.5 text-xs text-muted-foreground">
-                Every table has begun.
+                {tr('allBegun')}
               </p>
             ) : (
               <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -203,7 +208,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                 ))}
                 {waiting.length > UP_NEXT && (
                   <span className="px-1 py-0.5 text-xs text-muted-foreground">
-                    +{waiting.length - UP_NEXT} more
+                    {tr('more', { count: waiting.length - UP_NEXT })}
                   </span>
                 )}
               </div>
@@ -211,11 +216,11 @@ export default function RunInProgressPanel(props: Props): ReactElement {
           </div>
           <div className="px-5 py-4">
             <h3 className="m-0 text-[11px] font-normal uppercase tracking-[0.06em] text-muted-foreground">
-              Just finished
+              {tr('justFinished')}
             </h3>
             {ended.length === 0 ? (
               <p className="m-0 mt-2.5 text-xs text-muted-foreground">
-                No table has finished yet.
+                {tr('noneFinished')}
               </p>
             ) : (
               <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
@@ -230,13 +235,15 @@ export default function RunInProgressPanel(props: Props): ReactElement {
                   >
                     <StatusDot
                       tone={t.status === 'failed' ? 'danger' : 'quiet'}
-                      label={t.status === 'failed' ? 'Failed' : 'Completed'}
+                      label={
+                        t.status === 'failed' ? tr('failed') : tr('completed')
+                      }
                     />
                     <span className="min-w-0 flex-1 truncate">{t.key}</span>
                     <span>
                       {t.status === 'completed'
-                        ? formatSpan(t.end.getTime() - t.start.getTime())
-                        : t.status}
+                        ? fmt.span(t.end.getTime() - t.start.getTime())
+                        : tr(`endedStatus.${t.status}`)}
                     </span>
                   </li>
                 ))}
@@ -248,7 +255,7 @@ export default function RunInProgressPanel(props: Props): ReactElement {
 
       <div className="border-t border-line-soft px-5 py-3 text-[13px]">
         <a href="#run-activity" className="text-link hover:underline">
-          See every table in the Activity timeline ↓
+          {tr('seeTimeline')}
         </a>
       </div>
     </Panel>

@@ -20,6 +20,7 @@ import {
 import { cn } from '@/libs/utils';
 import { JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
 import { DataTableViewOptions } from './data-table-view-options';
+import { useTranslations } from 'next-intl';
 
 export type RunStatusGroup = 'all' | 'live' | 'complete' | 'failed' | 'stopped';
 
@@ -62,6 +63,7 @@ export function DataTableToolbar<
   isRefreshing,
   statusCounts,
 }: DataTableToolbarProps<TData, TAutoRefreshInterval>) {
+  const t = useTranslations('runs.table');
   const isFiltered = table.state.columnFilters.length > 0;
   const statusFilter = table.getColumn('status')?.getFilterValue() as
     JobRunStatusEnum[] | undefined;
@@ -74,17 +76,17 @@ export function DataTableToolbar<
   }
 
   const groups: { value: RunStatusGroup; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'live', label: 'Running' },
-    { value: 'complete', label: 'Complete' },
-    { value: 'failed', label: 'Failed' },
-    { value: 'stopped', label: 'Stopped' },
+    { value: 'all', label: t('groups.all') },
+    { value: 'live', label: t('groups.live') },
+    { value: 'complete', label: t('groups.complete') },
+    { value: 'failed', label: t('groups.failed') },
+    { value: 'stopped', label: t('groups.stopped') },
   ];
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line-soft px-5 py-3">
       <Segmented
-        ariaLabel="Filter runs by status"
+        ariaLabel={t('filterByStatus')}
         value={group}
         onChange={onGroupChange}
         className="max-w-full overflow-x-auto"
@@ -101,8 +103,8 @@ export function DataTableToolbar<
         }))}
       />
       <Input
-        placeholder="Filter by job name…"
-        aria-label="Filter by job name"
+        placeholder={t('filterPlaceholder')}
+        aria-label={t('filterLabel')}
         value={(table.getColumn('jobName')?.getFilterValue() as string) ?? ''}
         onChange={(event) =>
           table.getColumn('jobName')?.setFilterValue(event.target.value)
@@ -115,7 +117,7 @@ export function DataTableToolbar<
           onClick={() => table.resetColumnFilters()}
           className="h-9 px-3"
         >
-          Reset
+          {t('reset')}
           <Cross2Icon className="h-4 w-4" />
         </Button>
       )}
@@ -126,18 +128,18 @@ export function DataTableToolbar<
         >
           <SelectTrigger
             className="h-9 w-[132px]"
-            aria-label="Auto-refresh interval"
+            aria-label={t('autoRefresh')}
           >
-            <span className="text-muted-foreground">Refresh</span>
-            <SelectValue placeholder="Select auto-refresh interval" />
+            <span className="text-muted-foreground">{t('refresh')}</span>
+            <SelectValue placeholder={t('selectInterval')} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectLabel>Auto-refresh interval</SelectLabel>
+              <SelectLabel>{t('autoRefresh')}</SelectLabel>
               {autoRefreshIntervalOptions.map((interval, index) => {
                 return (
                   <SelectItem key={`${interval}-${index}`} value={interval}>
-                    {interval}
+                    {interval === 'off' ? t('intervalOff') : interval}
                   </SelectItem>
                 );
               })}
@@ -148,7 +150,7 @@ export function DataTableToolbar<
           variant="outline"
           size="icon"
           className="h-9 w-9"
-          aria-label="Refresh runs"
+          aria-label={t('refreshRuns')}
           onClick={() => onRefreshClick()}
         >
           <ReloadIcon

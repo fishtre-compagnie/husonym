@@ -10,6 +10,7 @@ import { useQuery } from '@connectrpc/connect-query';
 import { Code, Connection, ConnectionService, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
+import { useTranslations } from 'next-intl';
 
 interface JobRunActivityErrorsProps {
   jobRunId: string;
@@ -104,6 +105,7 @@ function JobRunInitSchemaErrorViewer(
 ): ReactElement {
   const { jobRunId, accountId, externalId, parseUint8ArrayToInitSchemaReport } =
     props;
+  const t = useTranslations('runs.schemaErrors');
 
   const { data: runContextData, error: runContextError } = useQuery(
     JobService.method.getRunContext,
@@ -149,7 +151,7 @@ function JobRunInitSchemaErrorViewer(
   }
 
   return (
-    <Panel tone="danger" aria-label="Schema initialization errors">
+    <Panel tone="danger" aria-label={t('title')}>
       <PanelHeader
         leading={
           <IoAlertCircleOutline
@@ -157,7 +159,7 @@ function JobRunInitSchemaErrorViewer(
             className="h-5 w-5 text-danger-fg"
           />
         }
-        title="Schema initialization errors"
+        title={t('title')}
       />
       <div className="max-h-[400px] overflow-y-auto">
         {filteredRunContext.map((connectionError) => (
@@ -167,7 +169,7 @@ function JobRunInitSchemaErrorViewer(
           >
             <p className="m-0 flex flex-wrap items-baseline gap-x-3 font-medium">
               {connectionsMap[connectionError.ConnectionId]?.name ??
-                'Unknown connection'}
+                t('unknownConnection')}
               <span className="font-mono text-xs text-muted-foreground">
                 {connectionError.ConnectionId}
               </span>
@@ -185,7 +187,7 @@ function JobRunInitSchemaErrorViewer(
                   <AccordionContent>
                     <div className="rounded-lg bg-surface-2 p-3">
                       <p className="m-0 text-xs text-muted-foreground">
-                        Statement
+                        {t('statement')}
                       </p>
                       <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs">
                         {error.Statement}

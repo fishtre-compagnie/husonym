@@ -21,7 +21,7 @@ import {
   Cross2Icon,
   MixerHorizontalIcon,
 } from '@radix-ui/react-icons';
-import { format } from 'date-fns';
+import { useRunFormat } from '@/app/(mgmt)/[account]/runs/components/run-format';
 import { ReactElement, useMemo, useState } from 'react';
 import { Button } from '../ui/button';
 import {
@@ -31,7 +31,6 @@ import {
   getScheduledTime,
   getSyncTable,
   humanizeActivityType,
-  RUN_STATUS_LABEL,
   RUN_STATUS_TONE,
   RunStatus,
 } from './events';
@@ -41,6 +40,7 @@ import {
   TimelineBar,
   TimelineLegend,
 } from './TimelineTrack';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   jobRunEvents: JobRunEvent[];
@@ -85,6 +85,8 @@ export default function RunTimeline(props: Props): ReactElement {
     setExpandedTaskId((prevId) => (prevId === taskId ? null : taskId));
   }
 
+  const t = useTranslations('runs.activity');
+  const fmt = useRunFormat();
   const spanStart = span?.start ?? new Date();
   const spanTotal = span ? span.end.getTime() - span.start.getTime() : 0;
 
@@ -93,8 +95,11 @@ export default function RunTimeline(props: Props): ReactElement {
       <div className="flex flex-wrap items-center gap-3 px-5 py-3">
         <span className="text-[13px] text-muted-foreground">
           {filteredJobRunEvents.length === jobRunEvents.length
-            ? `${jobRunEvents.length} activities`
-            : `${filteredJobRunEvents.length} of ${jobRunEvents.length} activities`}
+            ? t('count', { count: jobRunEvents.length })
+            : t('countOf', {
+                shown: filteredJobRunEvents.length,
+                count: jobRunEvents.length,
+              })}
         </span>
         <TimelineLegend className="hidden md:flex" />
         <div className="ml-auto">
@@ -110,13 +115,13 @@ export default function RunTimeline(props: Props): ReactElement {
         <div className="min-w-[640px]">
           <TimelineAxis
             spanTotal={spanTotal}
-            format={formatElapsed}
-            trailing="duration"
+            format={(ms) => formatElapsed(ms, fmt.locale)}
+            trailing={t('duration')}
             className="sticky top-0 z-[1] bg-card pt-2"
           />
           {filteredJobRunEvents.length === 0 && (
             <p className="px-5 py-6 text-center text-[13px] text-muted-foreground">
-              No activity in the selected states.
+              {t('noneInStates')}
             </p>
           )}
           <ul className="m-0 list-none p-0 pb-2">
@@ -156,6 +161,9 @@ function TimelineRow(props: TimelineRowProps): ReactElement {
   const stopped =
     status === 'failed' || status === 'canceled' || status === 'terminated';
   const bodyId = `activity-${jobRunEvent.id}-steps`;
+  const t = useTranslations('runs.activity');
+  const fmt = useRunFormat();
+  const na = t('notAvailable');
 
   return (
     <li>
@@ -181,7 +189,7 @@ function TimelineRow(props: TimelineRowProps): ReactElement {
               >
                 <StatusDot
                   tone={RUN_STATUS_TONE[status]}
-                  label={RUN_STATUS_LABEL[status]}
+                  label={t(`states.${status}`)}
                   pulse={status === 'running'}
                 />
                 {table ? (
@@ -218,7 +226,11 @@ function TimelineRow(props: TimelineRowProps): ReactElement {
                       : 'text-muted-foreground'
                 )}
               >
-                {formatTaskDuration(getScheduledTime(jobRunEvent), end)}
+                {formatTaskDuration(
+                  getScheduledTime(jobRunEvent),
+                  end,
+                  fmt.locale
+                ) ?? na}
               </span>
             </button>
           </TooltipTrigger>
@@ -234,11 +246,19 @@ function TimelineRow(props: TimelineRowProps): ReactElement {
                 {table.schema}.{table.table}
               </span>
             )}
-            <span>Start: {formatFullDate(start)}</span>
-            <span>Finish: {stopped ? 'N/A' : formatFullDate(end)}</span>
+            <span>
+              {t('start', { date: start ? fmt.date(start, 'full') : na })}
+            </span>
+            <span>
+              {t('finish', {
+                date: stopped || !end ? na : fmt.date(end, 'full'),
+              })}
+            </span>
             {failedTask && (
               <span className="text-danger-fg">
-                Error: {failedTask.error?.message || 'Unknown error'}
+                {t('error', {
+                  message: failedTask.error?.message || t('unknownError'),
+                })}
               </span>
             )}
           </TooltipContent>
@@ -267,13 +287,14 @@ function StatusFilter({
   onClear,
 }: StatusFilterProps) {
   const uniqueSelectedStatuses = new Set(selectedStatuses);
+  const t = useTranslations('runs.activity');
 
   const isFiltered = selectedStatuses.length < INITIAL_STATUSES.length;
   return (
     <div className="flex flex-row items-center gap-2">
       {isFiltered && (
         <Button variant="ghost" size="sm" onClick={onReset} className="h-8">
-          Reset
+          {t('reset')}
           <Cross2Icon className="h-3.5 w-3.5" />
         </Button>
       )}
@@ -281,7 +302,7 @@ function StatusFilter({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" type="button" className="h-8">
             <MixerHorizontalIcon className="h-3.5 w-3.5" />
-            Status
+            {t('statusFilter')}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end">
@@ -291,7 +312,7 @@ function StatusFilter({
               onReset();
             }}
           >
-            Select all
+            {t('selectAll')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={(e) => {
@@ -299,7 +320,7 @@ function StatusFilter({
               onClear();
             }}
           >
-            Deselect all
+            {t('deselectAll')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {INITIAL_STATUSES.map((s) => (
@@ -311,7 +332,7 @@ function StatusFilter({
             >
               <span className="flex items-center gap-2">
                 <StatusDot tone={RUN_STATUS_TONE[s]} />
-                {RUN_STATUS_LABEL[s]}
+                {t(`states.${s}`)}
               </span>
             </DropdownMenuCheckboxItem>
           ))}
@@ -321,15 +342,19 @@ function StatusFilter({
   );
 }
 
-function formatFullDate(date: Date | undefined): string {
-  if (!date) return 'N/A';
-  return format(date, 'MM/dd/yyyy HH:mm:ss.SSS');
+/** Seconds with the decimals asked, the decimal mark of `locale`. */
+function formatSeconds(ms: number, digits: number, locale: string): string {
+  return `${(ms / 1000).toLocaleString(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    useGrouping: false,
+  })} s`;
 }
 
 /** Elapsed time on the axis: 120 ms, 4.2 s, 2:05, 1:02:05. */
-function formatElapsed(ms: number): string {
+function formatElapsed(ms: number, locale: string): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`;
+  if (ms < 60_000) return formatSeconds(ms, ms < 10_000 ? 1 : 0, locale);
   const total = Math.round(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -337,19 +362,21 @@ function formatElapsed(ms: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 }
 
+/** How long from `s` to `end`; undefined when it cannot tell (shown as N/A). */
 function formatTaskDuration(
   s: Timestamp | undefined,
-  end: Date | undefined
-): string {
-  if (!s || !end) return 'N/A';
+  end: Date | undefined,
+  locale: string
+): string | undefined {
+  if (!s || !end) return undefined;
   const ms = end.getTime() - convertTimestampToDate(s).getTime();
-  return formatElapsedLong(ms);
+  return formatElapsedLong(ms, locale);
 }
 
-function formatElapsedLong(ms: number): string {
-  if (ms < 0) return 'N/A';
+function formatElapsedLong(ms: number, locale: string): string | undefined {
+  if (ms < 0) return undefined;
   if (ms < 1000) return `${Math.round(ms)} ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`;
+  if (ms < 60_000) return formatSeconds(ms, ms < 10_000 ? 1 : 0, locale);
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -357,73 +384,92 @@ function formatElapsedLong(ms: number): string {
   return h > 0 ? `${h} h ${m} min` : `${m} min ${s} s`;
 }
 
-function getStepLabel(type: string): string {
+type StepLabel =
+  | 'scheduled'
+  | 'started'
+  | 'completed'
+  | 'failed'
+  | 'timedOut'
+  | 'cancelRequested'
+  | 'terminated';
+
+/** The step a task type stands for: a key of runs.activity.steps, none when unknown. */
+function getStepLabel(type: string): StepLabel | undefined {
   switch (type) {
     case 'ActivityTaskScheduled':
     case 'StartChildWorkflowExecutionInitiated':
-      return 'Scheduled';
+      return 'scheduled';
     case 'ActivityTaskStarted':
     case 'ChildWorkflowExecutionStarted':
-      return 'Started';
+      return 'started';
     case 'ActivityTaskCompleted':
     case 'ChildWorkflowExecutionCompleted':
-      return 'Completed';
+      return 'completed';
     case 'ActivityTaskFailed':
     case 'ChildWorkflowExecutionFailed':
     case 'StartChildWorkflowExecutionFailed':
-      return 'Failed';
+      return 'failed';
     case 'ActivityTaskTimedOut':
     case 'ChildWorkflowExecutionTimedOut':
-      return 'Timed out';
+      return 'timedOut';
     case 'ActivityTaskCancelRequested':
-      return 'Cancel requested';
+      return 'cancelRequested';
     case 'ActivityTaskTerminated':
     case 'ChildWorkflowExecutionTerminated':
-      return 'Terminated';
+      return 'terminated';
     default:
-      return type;
+      return undefined;
   }
 }
 
 function ExpandedRowBody(props: { task: JobRunEvent }): ReactElement {
   const { task: jobRunEvent } = props;
+  const t = useTranslations('runs.activity');
+  const fmt = useRunFormat();
+  const na = t('notAvailable');
   return (
     <div className="mx-5 mb-2 rounded-lg border border-line-soft bg-surface-2/60 px-4 py-3">
       <div className="mb-2 text-xs text-muted-foreground">
         {jobRunEvent.id.toString()}. {jobRunEvent.type}
       </div>
       <ol className="m-0 flex list-none flex-col gap-1.5 p-0 text-[13px]">
-        {jobRunEvent.tasks.map((subtask, index) => (
-          <li
-            key={String(subtask.id)}
-            className="grid grid-cols-[120px_minmax(0,auto)_1fr] items-baseline gap-3"
-          >
-            <span className="font-medium">{getStepLabel(subtask.type)}</span>
-            <span className="font-mono text-xs">
-              {formatFullDate(
-                subtask.eventTime
-                  ? convertTimestampToDate(subtask.eventTime)
-                  : undefined
-              )}
-            </span>
-            <span className="font-mono text-xs text-muted-foreground">
-              {index > 0
-                ? `+${formatTaskDuration(
-                    jobRunEvent.tasks[index - 1].eventTime,
-                    convertTimestampToDate(subtask.eventTime)
-                  )}`
-                : ''}
-            </span>
-            {subtask.error && (
-              <span className="col-span-3 whitespace-pre-wrap break-words rounded-md bg-danger-soft px-2 py-1 text-xs text-danger-fg">
-                {subtask.error.message}
-                {subtask.error.retryState
-                  ? ` (retry state: ${subtask.error.retryState})`
+        {jobRunEvent.tasks.map((subtask, index) => {
+          const stepLabel = getStepLabel(subtask.type);
+          return (
+            <li
+              key={String(subtask.id)}
+              className="grid grid-cols-[120px_minmax(0,auto)_1fr] items-baseline gap-3"
+            >
+              <span className="font-medium">
+                {stepLabel ? t(`steps.${stepLabel}`) : subtask.type}
+              </span>
+              <span className="font-mono text-xs">
+                {subtask.eventTime
+                  ? fmt.date(convertTimestampToDate(subtask.eventTime), 'full')
+                  : na}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {index > 0
+                  ? `+${
+                      formatTaskDuration(
+                        jobRunEvent.tasks[index - 1].eventTime,
+                        convertTimestampToDate(subtask.eventTime),
+                        fmt.locale
+                      ) ?? na
+                    }`
                   : ''}
               </span>
-            )}
-          </li>
-        ))}
+              {subtask.error && (
+                <span className="col-span-3 whitespace-pre-wrap break-words rounded-md bg-danger-soft px-2 py-1 text-xs text-danger-fg">
+                  {subtask.error.message}
+                  {subtask.error.retryState
+                    ? t('retryState', { state: subtask.error.retryState })
+                    : ''}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

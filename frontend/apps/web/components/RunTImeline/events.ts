@@ -14,14 +14,6 @@ import {
 export type RunStatus =
   'running' | 'completed' | 'failed' | 'canceled' | 'terminated';
 
-export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
-  running: 'Running',
-  completed: 'Completed',
-  failed: 'Failed',
-  canceled: 'Canceled',
-  terminated: 'Terminated',
-};
-
 export const RUN_STATUS_TONE: Record<RunStatus, Tone> = {
   running: 'brand',
   completed: 'ok',
@@ -290,17 +282,6 @@ type PhaseKey =
   | 'hooksAfter'
   | 'wrapUp';
 
-const PHASE_LABEL: Record<PhaseKey, string> = {
-  prepare: 'Preparation',
-  preflight: 'Pre-flight',
-  hooksBefore: 'Hooks before',
-  schema: 'Schema',
-  tables: 'Table copy',
-  integrity: 'Integrity',
-  hooksAfter: 'Hooks after',
-  wrapUp: 'Wrap-up',
-};
-
 const PHASE_ORDER: PhaseKey[] = [
   'prepare',
   'preflight',
@@ -313,8 +294,8 @@ const PHASE_ORDER: PhaseKey[] = [
 ];
 
 export interface Phase {
+  // also names the phase: a key of runs.phases
   key: PhaseKey;
-  label: string;
   status: RunStatus;
   start: Date;
   end: Date;
@@ -388,7 +369,6 @@ export function getPhases(
     const tables = key === 'tables' ? getTableProgress(list, jobStatus) : [];
     return {
       key,
-      label: PHASE_LABEL[key],
       status: combineStatuses(windows.map((w) => w.status)),
       start: new Date(Math.min(...windows.map((w) => w.start.getTime()))),
       end: new Date(Math.max(...windows.map((w) => w.end.getTime()))),
