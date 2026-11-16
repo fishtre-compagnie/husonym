@@ -1,5 +1,6 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
+import { useOptionText } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/optionText';
 import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { Pill } from '@/components/ds';
@@ -353,7 +354,8 @@ function ChangeRow(props: RowProps): ReactElement {
   const { change, isOpened, isSelected, onSelect, onOpen, transformerName } =
     props;
   const t = useTranslations('jobs.review.row');
-  const options = summarizeOptions(change.transformer?.config);
+  const optionText = useOptionText();
+  const options = summarizeOptions(change.transformer?.config, optionText);
   const removed = change.kind === JobMappingChangeKind.REMOVED;
   const inClear =
     change.kind === JobMappingChangeKind.ADDED && isPassthrough(change);

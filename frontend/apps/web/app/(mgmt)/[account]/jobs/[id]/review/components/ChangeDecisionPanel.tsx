@@ -1,4 +1,5 @@
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
+import { useOptionText } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/optionText';
 import ButtonText from '@/components/ButtonText';
 import ColumnDecisionFields, {
   configKey,
@@ -60,6 +61,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
     onApply,
   } = props;
   const t = useTranslations('jobs.review.panel');
+  const optionText = useOptionText();
   const runChoice = change.transformer
     ? convertJobMappingTransformerToForm(change.transformer)
     : NO_TRANSFORMER;
@@ -192,8 +194,8 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
           {t.rich('removed', {
             transformer: getTransformerFromField(handler, runChoice).name,
             options:
-              summarizeOptions(toConfig(runChoice)).length > 0
-                ? ` (${summarizeOptions(toConfig(runChoice)).join(' · ')})`
+              summarizeOptions(toConfig(runChoice), optionText).length > 0
+                ? ` (${summarizeOptions(toConfig(runChoice), optionText).join(' · ')})`
                 : '',
             strong: (chunks) => <strong>{chunks}</strong>,
           })}

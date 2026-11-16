@@ -13,6 +13,7 @@ import { formatDateTime } from '@/util/util';
 import { GetJobUsageResponse } from '@husonym/sdk';
 import Link from 'next/link';
 import { ReactElement } from 'react';
+import { useUsageI18n } from '@/libs/usage/useUsageI18n';
 import { useTranslations } from 'next-intl';
 
 interface Props {
@@ -27,7 +28,7 @@ interface Props {
 export default function LatestRunsTable(props: Props): ReactElement {
   const { accountName, usage, emptyLine } = props;
   const t = useTranslations('jobs.usage.latestRuns');
-  const { rows, caption } = runsTable(usage, accountName);
+  const { rows, caption } = runsTable(usage, accountName, useUsageI18n());
   return (
     <Card>
       <CardHeader>

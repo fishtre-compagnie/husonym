@@ -684,7 +684,8 @@ export default function Page(props: PageProps): ReactElement {
                 dynamoDbDestinations,
                 connectionsRecord,
                 destinationConnectionSchemaMapsResp ??
-                  create(GetConnectionSchemaMapsResponseSchema, {})
+                  create(GetConnectionSchemaMapsResponseSchema, {}),
+                t('unknownDestination')
               )}
               onDestinationTableMappingUpdate={onDestinationTableMappingUpdate}
               showDestinationTableMappings={shouldShowDestinationTableMappings(
