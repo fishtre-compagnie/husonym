@@ -10,7 +10,8 @@ import { DownloadIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { useTable } from '@tanstack/react-table';
 import Papa from 'papaparse';
 import { ReactElement, useCallback, useMemo } from 'react';
-import { PII_DETECTION_COLUMNS, PiiDetectionRow } from './columns';
+import { getPiiDetectionColumns, PiiDetectionRow } from './columns';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   jobRunId: string;
@@ -20,6 +21,9 @@ interface Props {
 export default function JobRunPiiDetectionTable(props: Props): ReactElement {
   const { jobRunId, isRunning } = props;
   const { account } = useAccount();
+  const t = useTranslations('runs.pii');
+  const tColumns = useTranslations('runs.pii.columns');
+  const columns = useMemo(() => getPiiDetectionColumns(tColumns), [tColumns]);
 
   const {
     data: reportResp,
@@ -55,7 +59,7 @@ export default function JobRunPiiDetectionTable(props: Props): ReactElement {
   const table = useTable({
     features: unpaginatedTableFeatures,
     data: data,
-    columns: PII_DETECTION_COLUMNS,
+    columns,
   });
 
   function onRefreshClick(): void {
@@ -67,19 +71,19 @@ export default function JobRunPiiDetectionTable(props: Props): ReactElement {
   const onDownloadClick = useOnDownloadClick(jobRunId, data);
 
   return (
-    <Panel aria-label="PII detection report">
+    <Panel aria-label={t('title')}>
       <PanelHeader
-        title="PII detection report"
+        title={t('title')}
         actions={
           <>
             <span className="text-muted-foreground">
-              {data.length} {data.length === 1 ? 'column' : 'columns'}
+              {t('columnsCount', { count: data.length })}
             </span>
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              aria-label="Refresh the report"
+              aria-label={t('refresh')}
               onClick={() => onRefreshClick()}
             >
               <ReloadIcon
@@ -93,7 +97,7 @@ export default function JobRunPiiDetectionTable(props: Props): ReactElement {
               disabled={!data.length}
             >
               <DownloadIcon className="h-3.5 w-3.5" />
-              CSV
+              {t('csv')}
             </Button>
           </>
         }

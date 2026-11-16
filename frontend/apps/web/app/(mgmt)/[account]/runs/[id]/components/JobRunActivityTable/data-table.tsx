@@ -26,6 +26,7 @@ import {
   JobRunSyncMetadata,
 } from '@husonym/sdk';
 import { useLocalStorage } from 'usehooks-ts';
+import { useTranslations } from 'next-intl';
 
 interface DataTableProps {
   columns: ColumnDef<AppTableFeatures, JobRunEvent>[];
@@ -35,6 +36,7 @@ interface DataTableProps {
 }
 
 export function DataTable({ columns, data, isError }: DataTableProps) {
+  const t = useTranslations('runs.activity');
   const columnVisibility: ColumnVisibilityState = { error: isError };
 
   const [pagination, setPagination] = React.useState<number>(0);
@@ -96,7 +98,7 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
                 colSpan={columns.length}
                 className="h-24 text-center text-muted-foreground"
               >
-                No activities found
+                {t('noActivities')}
               </TableCell>
             </TableRow>
           )}

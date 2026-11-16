@@ -5,6 +5,7 @@
 import { cn } from '@/libs/utils';
 import { ReactElement, ReactNode } from 'react';
 import { RunStatus } from './events';
+import { useTranslations } from 'next-intl';
 
 export const TIMELINE_GRID =
   'grid grid-cols-[minmax(150px,220px)_minmax(0,1fr)_88px] items-center gap-3';
@@ -84,11 +85,12 @@ export function TimelineAxis(props: {
 }
 
 export function TimelineLegend(props: { className?: string }): ReactElement {
-  const items: { status: RunStatus; label: string; fill: string }[] = [
-    { status: 'completed', label: 'Completed', fill: 'bg-quiet' },
-    { status: 'running', label: 'Running', fill: 'bg-primary' },
-    { status: 'failed', label: 'Failed', fill: 'bg-danger' },
-    { status: 'canceled', label: 'Canceled', fill: 'bg-warn' },
+  const t = useTranslations('runs.activity.states');
+  const items: { status: RunStatus; fill: string }[] = [
+    { status: 'completed', fill: 'bg-quiet' },
+    { status: 'running', fill: 'bg-primary' },
+    { status: 'failed', fill: 'bg-danger' },
+    { status: 'canceled', fill: 'bg-warn' },
   ];
   return (
     <div
@@ -100,7 +102,7 @@ export function TimelineLegend(props: { className?: string }): ReactElement {
       {items.map((i) => (
         <span key={i.status} className="flex items-center gap-1.5">
           <span className={cn('h-2 w-3.5 rounded-sm', i.fill)} />
-          {i.label}
+          {t(i.status)}
         </span>
       ))}
     </div>

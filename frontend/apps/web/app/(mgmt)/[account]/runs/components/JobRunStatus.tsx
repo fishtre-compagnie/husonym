@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/libs/utils';
 import { JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -15,8 +16,20 @@ interface Props {
   badgeClassName?: string;
 }
 
+type JobRunStatusLabel =
+  | 'complete'
+  | 'running'
+  | 'pending'
+  | 'error'
+  | 'failed'
+  | 'timedOut'
+  | 'canceled'
+  | 'terminated'
+  | 'unknown';
+
 export interface JobRunStatusMeta {
-  label: string;
+  // its words: a key of runs.status
+  label: JobRunStatusLabel;
   tone: Tone;
   // the run is still going: its dot breathes
   live: boolean;
@@ -28,40 +41,41 @@ export function getJobRunStatusMeta(
 ): JobRunStatusMeta {
   switch (status) {
     case JobRunStatusEnum.COMPLETE:
-      return { label: 'Complete', tone: 'ok', live: false };
+      return { label: 'complete', tone: 'ok', live: false };
     case JobRunStatusEnum.RUNNING:
-      return { label: 'Running', tone: 'live', live: true };
+      return { label: 'running', tone: 'live', live: true };
     case JobRunStatusEnum.PENDING:
-      return { label: 'Pending', tone: 'pending', live: true };
+      return { label: 'pending', tone: 'pending', live: true };
     case JobRunStatusEnum.ERROR:
-      return { label: 'Error', tone: 'danger', live: false };
+      return { label: 'error', tone: 'danger', live: false };
     case JobRunStatusEnum.FAILED:
-      return { label: 'Failed', tone: 'danger', live: false };
+      return { label: 'failed', tone: 'danger', live: false };
     case JobRunStatusEnum.TIMED_OUT:
-      return { label: 'Timed out', tone: 'warn', live: false };
+      return { label: 'timedOut', tone: 'warn', live: false };
     case JobRunStatusEnum.CANCELED:
-      return { label: 'Canceled', tone: 'stopped', live: false };
+      return { label: 'canceled', tone: 'stopped', live: false };
     case JobRunStatusEnum.TERMINATED:
-      return { label: 'Terminated', tone: 'stopped', live: false };
+      return { label: 'terminated', tone: 'stopped', live: false };
     default:
-      return { label: 'Unknown', tone: 'muted', live: false };
+      return { label: 'unknown', tone: 'muted', live: false };
   }
 }
 
 export default function JobRunStatus(props: Props): ReactElement {
   const { status, containerClassName, badgeClassName } = props;
   const meta = getJobRunStatusMeta(status);
+  const t = useTranslations('runs.status');
 
   const pill = (
     <div className={cn('flex', containerClassName)}>
       <Pill tone={meta.tone} className={badgeClassName}>
         <StatusDot tone={meta.tone} pulse={meta.live} />
-        {meta.label}
+        {t(meta.label)}
       </Pill>
     </div>
   );
 
-  if (meta.label !== 'Unknown') {
+  if (meta.label !== 'unknown') {
     return pill;
   }
   return (
@@ -69,9 +83,7 @@ export default function JobRunStatus(props: Props): ReactElement {
       <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>{pill}</TooltipTrigger>
         <TooltipContent>
-          <p>
-            This run is un-started, archived by the system, or has been deleted.
-          </p>
+          <p>{t('unknownTooltip')}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

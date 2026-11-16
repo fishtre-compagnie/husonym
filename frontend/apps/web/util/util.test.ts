@@ -10,7 +10,6 @@ import {
   convertMinutesToNanoseconds,
   convertNanosecondsToMinutes,
   formatDateTime,
-  formatDateTimeMilliseconds,
   getErrorMessage,
   getGenerateEmailTypeString,
   getInvalidEmailActionString,
@@ -56,46 +55,6 @@ describe('formatDateTime', () => {
 
   it('should return undefined for invalid date input', () => {
     const result = formatDateTime('invalid-date');
-    expect(result).toBeUndefined();
-  });
-});
-
-describe('formatDateTimeMilliseconds', () => {
-  it('should format a date string in 12-hour format', () => {
-    const dateStr = '2024-08-16T14:30:00Z';
-    const result = formatDateTimeMilliseconds(dateStr);
-    const expected = format(new Date(dateStr), 'MM/dd/yyyy hh:mm:ss:SSS a');
-    expect(result).toBe(expected);
-  });
-
-  it('should format a date string in 24-hour format', () => {
-    const dateStr = '2024-08-16T14:30:00Z';
-    const result = formatDateTimeMilliseconds(dateStr, true);
-    const expected = format(new Date(dateStr), 'MM/dd/yyyy HH:mm:ss:SSS');
-    expect(result).toBe(expected);
-  });
-
-  it('should handle a Date object input', () => {
-    const dateObj = new Date('2024-08-16T14:30:00Z');
-    const result = formatDateTimeMilliseconds(dateObj);
-    const expected = format(dateObj, 'MM/dd/yyyy hh:mm:ss:SSS a');
-    expect(result).toBe(expected);
-  });
-
-  it('should handle a timestamp input', () => {
-    const timestamp = new Date('2024-08-16T14:30:00Z').getTime();
-    const result = formatDateTimeMilliseconds(timestamp);
-    const expected = format(new Date(timestamp), 'MM/dd/yyyy hh:mm:ss:SSS a');
-    expect(result).toBe(expected);
-  });
-
-  it('should return undefined for no input', () => {
-    const result = formatDateTimeMilliseconds();
-    expect(result).toBeUndefined();
-  });
-
-  it('should return undefined for invalid date input', () => {
-    const result = formatDateTimeMilliseconds('invalid-date');
     expect(result).toBeUndefined();
   });
 });

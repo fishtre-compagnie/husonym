@@ -5,6 +5,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import CategoryCell from './CategoryCell';
 import ConfidenceCell from './ConfidenceCell';
 import ReporterTypeCell from './ReporterTypeCell';
+import { useTranslations } from 'next-intl';
 
 export interface PiiDetectionRow {
   schema: string;
@@ -15,12 +16,14 @@ export interface PiiDetectionRow {
   reporterCategory: string[];
 }
 
-function getPiiDetectionColumns() {
+export function getPiiDetectionColumns(
+  t: ReturnType<typeof useTranslations<'runs.pii.columns'>>
+) {
   const columnHelper = createColumnHelper<AppTableFeatures, PiiDetectionRow>();
 
   const schemaColumn = columnHelper.accessor('schema', {
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Schema" />;
+      return <SchemaColumnHeader column={column} title={t('schema')} />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} />;
@@ -29,7 +32,7 @@ function getPiiDetectionColumns() {
 
   const tableColumn = columnHelper.accessor('table', {
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Table" />;
+      return <SchemaColumnHeader column={column} title={t('table')} />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} />;
@@ -38,7 +41,7 @@ function getPiiDetectionColumns() {
 
   const columnColumn = columnHelper.accessor('column', {
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Column" />;
+      return <SchemaColumnHeader column={column} title={t('column')} />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} />;
@@ -52,7 +55,7 @@ function getPiiDetectionColumns() {
     {
       id: 'reporterType',
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Reporter" />;
+        return <SchemaColumnHeader column={column} title={t('reporter')} />;
       },
       cell({ row }) {
         return <ReporterTypeCell reporterTypes={row.original.reporterType} />;
@@ -67,7 +70,7 @@ function getPiiDetectionColumns() {
     {
       id: 'reporterConfidence',
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Confidence" />;
+        return <SchemaColumnHeader column={column} title={t('confidence')} />;
       },
       cell({ row }) {
         return <ConfidenceCell confidence={row.original.reporterConfidence} />;
@@ -92,7 +95,7 @@ function getPiiDetectionColumns() {
     {
       id: 'reporterCategory',
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Category" />;
+        return <SchemaColumnHeader column={column} title={t('category')} />;
       },
       cell({ row }) {
         return <CategoryCell categories={row.original.reporterCategory} />;
@@ -109,5 +112,3 @@ function getPiiDetectionColumns() {
     reporterCategoryColumn,
   ]);
 }
-
-export const PII_DETECTION_COLUMNS = getPiiDetectionColumns();

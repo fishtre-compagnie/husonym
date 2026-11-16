@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ReactElement, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   reporterTypes: string[];
@@ -56,14 +57,15 @@ function ReporterTypeBadge(props: ReporterTypeBadgeProps): ReactElement {
 }
 
 function useReporterTypeTooltip(reporterType: string): string {
+  const t = useTranslations('runs.pii.reporters');
   return useMemo(() => {
     switch (reporterType) {
       case 'regex':
-        return 'Classified using regular expressions';
+        return t('regex');
       case 'llm':
-        return 'Classified using an LLM';
+        return t('llm');
       default:
         return reporterType;
     }
-  }, [reporterType]);
+  }, [reporterType, t]);
 }

@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ReactElement, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   categories: string[];
@@ -56,14 +57,15 @@ function CategoryBadge(props: CategoryBadgeProps): ReactElement {
 }
 
 function useCategoryTooltip(category: string): string {
+  const t = useTranslations('runs.pii.categories');
   return useMemo(() => {
     switch (category) {
       case 'personal':
-        return 'Personal information';
+        return t('personal');
       case 'financial':
-        return 'Financial information';
+        return t('financial');
       default:
         return category;
     }
-  }, [category]);
+  }, [category, t]);
 }

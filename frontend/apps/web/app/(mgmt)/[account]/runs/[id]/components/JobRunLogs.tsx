@@ -14,6 +14,7 @@ import {
 import { ReloadIcon } from '@radix-ui/react-icons';
 import { format } from 'date-fns';
 import { ReactElement, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface JobRunLogsProps {
   accountId: string;
@@ -24,12 +25,13 @@ interface JobRunLogsProps {
 
 const TEN_SECONDS = 5 * 1000;
 
-const LEVELS: { value: LogLevel; label: string }[] = [
-  { value: LogLevel.UNSPECIFIED, label: 'All' },
-  { value: LogLevel.INFO, label: 'Info' },
-  { value: LogLevel.WARN, label: 'Warn' },
-  { value: LogLevel.ERROR, label: 'Error' },
-];
+const LEVELS: { value: LogLevel; label: 'all' | 'info' | 'warn' | 'error' }[] =
+  [
+    { value: LogLevel.UNSPECIFIED, label: 'all' },
+    { value: LogLevel.INFO, label: 'info' },
+    { value: LogLevel.WARN, label: 'warn' },
+    { value: LogLevel.ERROR, label: 'error' },
+  ];
 
 /**
  * The run's log, read like a terminal. It keeps the dark terminal look in both
@@ -41,6 +43,7 @@ export default function JobRunLogs({
   isRunning,
   className,
 }: JobRunLogsProps): ReactElement {
+  const t = useTranslations('runs.logs');
   const hidden = useRunLogsHidden();
   const [selectedLogLevel, setSelectedLogLevel] = useState<LogLevel>(
     LogLevel.UNSPECIFIED
@@ -96,8 +99,8 @@ export default function JobRunLogs({
 
   if (hidden) {
     return (
-      <Panel aria-label="Logs" className={className}>
-        <PanelHeader title="Logs" />
+      <Panel aria-label={t('title')} className={className}>
+        <PanelHeader title={t('title')} />
         <div className="p-5">
           <LicenseFeatureNotice feature="run_logs" />
         </div>
@@ -107,7 +110,7 @@ export default function JobRunLogs({
 
   return (
     <section
-      aria-label="Logs"
+      aria-label={t('title')}
       className={cn(
         'dark flex flex-col overflow-hidden rounded-2xl border border-line-soft bg-background text-foreground',
         className
@@ -115,11 +118,11 @@ export default function JobRunLogs({
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-line-soft bg-card px-3.5 py-3">
         <h2 className="m-0 mr-1.5 font-display text-base font-semibold">
-          Logs
+          {t('title')}
         </h2>
         <div
           role="group"
-          aria-label="Log level"
+          aria-label={t('level')}
           className="flex flex-wrap gap-1.5"
         >
           {LEVELS.map((l) => {
@@ -137,7 +140,7 @@ export default function JobRunLogs({
                     : 'border-border text-muted-foreground hover:text-foreground'
                 )}
               >
-                {l.label}
+                {t(`levels.${l.label}`)}
               </button>
             );
           })}
@@ -150,14 +153,14 @@ export default function JobRunLogs({
               onChange={(e) => setFollow(e.target.checked)}
               className="accent-primary"
             />
-            Follow
+            {t('follow')}
           </label>
           <Button
             disabled={isLogsValidating}
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            aria-label="Refresh logs"
+            aria-label={t('refresh')}
             onClick={() => onRefreshClick()}
           >
             <ReloadIcon
@@ -170,7 +173,7 @@ export default function JobRunLogs({
         <div className="border-b border-line-soft bg-danger-soft px-3.5 py-2 text-xs text-danger-fg">
           {logsError
             ? logsError.message
-            : `${errorCount} error ${errorCount === 1 ? 'line' : 'lines'} in this log: filter by Error to see them alone.`}
+            : t('errorLines', { count: errorCount })}
         </div>
       )}
       <div
@@ -181,15 +184,13 @@ export default function JobRunLogs({
         className="flex max-h-[460px] min-h-[200px] flex-col gap-1 overflow-y-auto px-3.5 py-3 font-mono text-xs leading-relaxed"
       >
         {isLogsLoading && (
-          <span className="text-muted-foreground">Loading the log…</span>
+          <span className="text-muted-foreground">{t('loading')}</span>
         )}
         {!isLogsLoading && lines.length === 0 && !logsError && (
           <span className="text-muted-foreground">
-            No log line
             {selectedLogLevel !== LogLevel.UNSPECIFIED
-              ? ' at this level'
-              : ' yet'}
-            .
+              ? t('noneAtLevel')
+              : t('noneYet')}
           </span>
         )}
         {lines.map((l, i) => (

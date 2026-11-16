@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { useLocalStorage } from 'usehooks-ts';
 import { DataTableToolbar, RunStatusGroup } from './data-table-toolbar';
+import { useTranslations } from 'next-intl';
 
 interface DataTableProps<
   TData extends RowData,
@@ -53,6 +54,7 @@ export function DataTable<
   isRefreshing,
   statusCounts,
 }: DataTableProps<TData, TAutoRefreshInterval>) {
+  const t = useTranslations('runs.table');
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<ColumnVisibilityState>({
@@ -138,7 +140,7 @@ export function DataTable<
                 colSpan={columns.length}
                 className="h-24 text-center text-muted-foreground"
               >
-                No run matches these filters.
+                {t('noMatch')}
               </TableCell>
             </TableRow>
           )}

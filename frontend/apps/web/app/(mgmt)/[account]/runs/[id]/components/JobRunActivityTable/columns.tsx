@@ -4,32 +4,37 @@ import { ColumnDef, Row } from '@tanstack/react-table';
 
 import { SchemaColumnHeader } from '@/components/jobs/SchemaTable/SchemaColumnHeader';
 import { AppTableFeatures } from '@/components/table/features';
-import { formatDateTimeMilliseconds } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRunEvent, JobRunEventTaskError } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { RunFormat } from '../../../components/run-format';
 import { getJobSyncMetadata } from './data-table';
 import { DataTableRowActions } from './data-table-row-actions';
+import { useTranslations } from 'next-intl';
 interface GetColumnsProps {
   onViewSelectClicked(schema: string, table: string): void;
+  t: ReturnType<typeof useTranslations<'runs.activity'>>;
+  fmt: RunFormat;
 }
 
 export function getColumns(
   props: GetColumnsProps
 ): ColumnDef<AppTableFeatures, JobRunEvent>[] {
-  const { onViewSelectClicked } = props;
+  const { onViewSelectClicked, t, fmt } = props;
 
   return [
     {
       accessorKey: 'id',
-      header: ({ column }) => <SchemaColumnHeader column={column} title="Id" />,
+      header: ({ column }) => (
+        <SchemaColumnHeader column={column} title={t('columns.id')} />
+      ),
       cell: ({ row }) => <div>{row.getValue<number>('id').toString()}</div>,
       filterFn: 'includesString',
     },
     {
       accessorKey: 'scheduleTime',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Scheduled" />
+        <SchemaColumnHeader column={column} title={t('columns.scheduled')} />
       ),
       enableColumnFilter: false,
       cell: ({ row }) => {
@@ -42,7 +47,7 @@ export function getColumns(
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
               {scheduledTime &&
-                formatDateTimeMilliseconds(timestampDate(scheduledTime))}
+                fmt.date(timestampDate(scheduledTime), 'dateTimeMs')}
             </span>
           </div>
         );
@@ -51,7 +56,7 @@ export function getColumns(
     {
       accessorKey: 'startTime',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Start Time" />
+        <SchemaColumnHeader column={column} title={t('columns.startTime')} />
       ),
       enableColumnFilter: false,
       cell: ({ row }) => {
@@ -59,8 +64,7 @@ export function getColumns(
         return (
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
-              {startTime &&
-                formatDateTimeMilliseconds(timestampDate(startTime))}
+              {startTime && fmt.date(timestampDate(startTime), 'dateTimeMs')}
             </span>
           </div>
         );
@@ -69,7 +73,7 @@ export function getColumns(
     {
       accessorKey: 'closeTime',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Completed" />
+        <SchemaColumnHeader column={column} title={t('columns.completed')} />
       ),
       enableColumnFilter: false,
       cell: ({ row }) => {
@@ -93,8 +97,8 @@ export function getColumns(
           <div className="flex space-x-2">
             <span className="max-w-[500px] truncate font-mono text-xs text-muted-foreground">
               {closeTime
-                ? formatDateTimeMilliseconds(timestampDate(closeTime))
-                : 'N/A'}
+                ? fmt.date(timestampDate(closeTime), 'dateTimeMs')
+                : t('notAvailable')}
             </span>
           </div>
         );
@@ -103,7 +107,7 @@ export function getColumns(
     {
       accessorKey: 'type',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Type" />
+        <SchemaColumnHeader column={column} title={t('columns.type')} />
       ),
       cell: ({ row }) => {
         return (
@@ -118,7 +122,7 @@ export function getColumns(
     {
       accessorKey: 'schema',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Schema" />
+        <SchemaColumnHeader column={column} title={t('columns.schema')} />
       ),
       cell: ({ row }) => {
         const metadata = getJobSyncMetadata(
@@ -140,7 +144,7 @@ export function getColumns(
     {
       accessorKey: 'table',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Table" />
+        <SchemaColumnHeader column={column} title={t('columns.table')} />
       ),
       cell: ({ row }) => {
         const metadata = getJobSyncMetadata(
@@ -165,7 +169,7 @@ export function getColumns(
       accessorFn: (originalRow, _) =>
         originalRow.tasks.find((t) => t.error)?.error,
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Error" />
+        <SchemaColumnHeader column={column} title={t('columns.error')} />
       ),
       enableColumnFilter: false,
       cell: ({ row }) => {
@@ -176,7 +180,7 @@ export function getColumns(
               <div className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-xs text-danger-fg">
                 <p className="mb-1 flex items-center gap-1.5 font-medium">
                   <ExclamationTriangleIcon aria-hidden="true" />
-                  Error
+                  {t('errorLabel')}
                 </p>
                 <pre className="whitespace-pre-wrap break-words font-mono">
                   {JSON.stringify(err, undefined, 2)}

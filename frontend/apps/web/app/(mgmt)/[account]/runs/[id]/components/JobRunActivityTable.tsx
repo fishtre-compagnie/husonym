@@ -5,7 +5,9 @@ import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { JobRunEvent, JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
 import { ReactElement, useMemo, useState } from 'react';
 import { getColumns } from './JobRunActivityTable/columns';
+import { useRunFormat } from '../../components/run-format';
 import { DataTable } from './JobRunActivityTable/data-table';
+import { useTranslations } from 'next-intl';
 
 interface JobRunActivityTableProps {
   jobRunEvents?: JobRunEvent[];
@@ -22,26 +24,31 @@ export default function JobRunActivityTable(
 ): ReactElement {
   const { jobRunEvents, onViewSelectClicked, jobStatus, isRefreshing } = props;
   const [view, setView] = useState<ActivityView>('timeline');
+  const t = useTranslations('runs.activity');
+  const fmt = useRunFormat();
 
-  const columns = useMemo(() => getColumns({ onViewSelectClicked }), []);
+  const columns = useMemo(
+    () => getColumns({ onViewSelectClicked, t, fmt }),
+    [t, fmt]
+  );
 
   const isError =
     jobRunEvents?.some((e) => e.tasks.some((t) => t.error)) ?? false;
 
   return (
-    <Panel aria-label="Activity">
+    <Panel aria-label={t('title')}>
       <PanelHeader
-        title="Activity"
+        title={t('title')}
         actions={
           <>
             {isRefreshing && <Spinner className="h-4 w-4" />}
             <Segmented<ActivityView>
-              ariaLabel="Show the activity as"
+              ariaLabel={t('showAs')}
               value={view}
               onChange={setView}
               options={[
-                { value: 'timeline', label: 'Timeline' },
-                { value: 'table', label: 'Table' },
+                { value: 'timeline', label: t('timeline') },
+                { value: 'table', label: t('table') },
               ]}
             />
           </>

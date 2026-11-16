@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService } from '@husonym/sdk';
 import { ArrowTopRightIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo, useState } from 'react';
 import { GoStack } from 'react-icons/go';
 import { getColumns } from './JobRunsTable/columns';
@@ -32,6 +33,8 @@ interface RunsTableProps {}
 export default function RunsTable(props: RunsTableProps): ReactElement {
   const {} = props;
   const { account } = useAccount();
+  const t = useTranslations('runs.list');
+  const tTable = useTranslations('runs.table');
   const [refreshInterval, setAutoRefreshInterval] =
     useState<JobRunsAutoRefreshInterval>('1m');
   const {
@@ -83,8 +86,9 @@ export default function RunsTable(props: RunsTableProps): ReactElement {
         },
         accountName: account?.name ?? '',
         jobNameMap: jobNameMap,
+        t: tTable,
       }),
-    [account?.name ?? '', jobNameMap]
+    [account?.name ?? '', jobNameMap, tTable]
   );
 
   const runs = useMemo(() => data?.jobRuns ?? [], [data?.jobRuns]);
@@ -109,13 +113,13 @@ export default function RunsTable(props: RunsTableProps): ReactElement {
 
   const header = (
     <PageHeader
-      title="Runs"
-      description="Every execution of your jobs, with its status and how long it took."
+      title={t('title')}
+      description={t('description')}
       actions={
         statusCounts.live > 0 ? (
           <Pill tone="live">
             <StatusDot tone="live" pulse />
-            {statusCounts.live} running now
+            {t('runningNow', { count: statusCounts.live })}
           </Pill>
         ) : undefined
       }
@@ -141,12 +145,12 @@ export default function RunsTable(props: RunsTableProps): ReactElement {
       {header}
       {runs.length == 0 ? (
         <EmptyState
-          title="No runs yet"
-          description="A run is one execution of a job. Start a job to see its runs here."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
           icon={<GoStack className="w-8 h-8 text-primary" />}
           extra={
             <EmptyStateLinkButton
-              buttonText="Go to jobs"
+              buttonText={t('goToJobs')}
               buttonIcon={<ArrowTopRightIcon />}
               buttonIconSide="right"
               href={`/${account?.name}/jobs`}
