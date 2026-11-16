@@ -30,18 +30,20 @@ import {
 } from '@/components/ui/table';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useRoleControls } from '@/libs/hooks/useRoleControls';
-import {
-  formatDateTime,
-  getAccountRoleString,
-  getErrorMessage,
-} from '@/util/util';
+import { formatDateTime, getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { AccountRole, UserAccountService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { buildInviteLink } from './InviteUserForm';
+import { useAccountRoleLabel } from './SelectAccountRole';
+
+type TableTranslator = ReturnType<
+  typeof useTranslations<'settings.members.table'>
+>;
 
 interface MemberInviteRow {
   id: string;
@@ -52,33 +54,35 @@ interface MemberInviteRow {
   role: AccountRole;
 }
 
-function getColumns(showRoles: boolean) {
+function getColumns(
+  showRoles: boolean,
+  t: TableTranslator,
+  roleLabel: (role: AccountRole) => string
+) {
   const columnHelper = createColumnHelper<AppTableFeatures, MemberInviteRow>();
   const emailColumn = columnHelper.accessor('email', {
-    header: 'Email',
+    header: t('email'),
     cell: ({ getValue }) => <div>{getValue()}</div>,
   });
 
   const createdAtColumn = columnHelper.accessor('createdAt', {
-    header: 'Created At',
+    header: t('createdAt'),
     cell: ({ getValue }) => {
       return <div className="flex space-x-2">{formatDateTime(getValue())}</div>;
     },
   });
 
   const expiresAtColumn = columnHelper.accessor('expiresAt', {
-    header: 'Expires At',
+    header: t('expiresAt'),
     cell: ({ getValue }) => {
       return <div className="flex space-x-2">{formatDateTime(getValue())}</div>;
     },
   });
 
   const roleColumn = columnHelper.accessor('role', {
-    header: 'Role',
+    header: t('role'),
     cell: ({ getValue }) => (
-      <span className="truncate font-medium">
-        {getAccountRoleString(getValue())}
-      </span>
+      <span className="truncate font-medium">{roleLabel(getValue())}</span>
     ),
   });
 
@@ -119,9 +123,11 @@ function getColumns(showRoles: boolean) {
 
 function useGetColumns(): ColumnDef<AppTableFeatures, MemberInviteRow>[] {
   const showRoles = useRoleControls();
+  const t = useTranslations('settings.members.table');
+  const roleLabel = useAccountRoleLabel();
   return useMemo(() => {
-    return getColumns(showRoles);
-  }, [showRoles]);
+    return getColumns(showRoles, t, roleLabel);
+  }, [showRoles, t, roleLabel]);
 }
 
 interface Props {
@@ -189,6 +195,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
   const [columnVisibility, setColumnVisibility] =
     useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
+  const t = useTranslations('settings.members.table');
 
   const table = useTable({
     features: paginatedTableFeatures,
@@ -215,7 +222,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
     <div className="w-full">
       <div className="flex items-center py-4 justify-between">
         <Input
-          placeholder="Filter emails..."
+          placeholder={t('filterEmails')}
           value={(table.getColumn('email')?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
             table.getColumn('email')?.setFilterValue(event.target.value)
@@ -260,7 +267,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('noResults')}
                 </TableCell>
               </TableRow>
             )}
@@ -280,15 +287,16 @@ function DeleteInviteButton({ inviteId, onDeleted }: DeleteInviteButtonProps) {
   const { mutateAsync } = useMutation(
     UserAccountService.method.removeTeamAccountInvite
   );
+  const t = useTranslations('settings.members.invites');
 
   async function onRemove(): Promise<void> {
     try {
       await mutateAsync({ id: inviteId });
-      toast.success('Invite deleted successfully!');
+      toast.success(t('deleted'));
       onDeleted(inviteId);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to delete user invite', {
+      toast.error(t('deleteError'), {
         description: getErrorMessage(err),
       });
     }
@@ -301,7 +309,7 @@ function DeleteInviteButton({ inviteId, onDeleted }: DeleteInviteButtonProps) {
           <TrashIcon />
         </Button>
       }
-      headerText="Are you sure you want to delete this invite?"
+      headerText={t('deleteHeader')}
       description=""
       onConfirm={async () => onRemove()}
     />
@@ -315,13 +323,14 @@ interface CopyInviteButtonProps {
 function CopyInviteButton({ token }: CopyInviteButtonProps) {
   const { data: systemAppData } = useGetSystemAppConfig();
   const link = buildInviteLink(systemAppData?.publicAppBaseUrl ?? '', token);
+  const t = useTranslations('settings.members.invites');
 
   return (
     <CopyButton
       buttonVariant="outline"
       textToCopy={link}
-      onCopiedText="Success!"
-      onHoverText="Copy the invite link"
+      onCopiedText={t('copied')}
+      onHoverText={t('copyLink')}
     />
   );
 }

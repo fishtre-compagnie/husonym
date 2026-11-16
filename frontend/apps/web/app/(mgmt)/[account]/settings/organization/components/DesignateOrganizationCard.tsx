@@ -30,6 +30,7 @@ import {
   UserAccountService,
   UserAccountType,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -44,6 +45,7 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
   const { account } = props;
   const isPersonal = account.type === UserAccountType.PERSONAL;
   const router = useRouter();
+  const t = useTranslations('settings.organization.designate');
   const { mutateAsync: setInstanceOrganization } = useMutation(
     UserAccountService.method.setInstanceOrganization
   );
@@ -77,7 +79,7 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
       setRefusal(refusalMessage(err));
       return;
     }
-    toast.success('This account is now the organization of this instance');
+    toast.success(t('success'));
     // Outside of what catches a refusal: the organization is retained by now. The
     // accounts are read again before the page moves, for the account may have changed
     // its name and the app must know it under the new one.
@@ -89,9 +91,7 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
       (a) => a.id === organizationId
     );
     if (!organization) {
-      toast.error(
-        'The organization was set, but the page could not follow it. Please try refreshing the page.'
-      );
+      toast.error(t('followError'));
       return;
     }
     router.push(`/${organization.name}/jobs`);
@@ -100,24 +100,19 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Make this account the organization</CardTitle>
-        <CardDescription>
-          This instance has no organization yet: each person who signs in works
-          in an account of their own.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {refusal && (
           <Alert variant="destructive">
-            <AlertTitle>The organization was not set</AlertTitle>
+            <AlertTitle>{t('refused')}</AlertTitle>
             <AlertDescription>{refusal}</AlertDescription>
           </Alert>
         )}
         <p className="text-sm">
-          People who sign in to this instance will join this account as viewers.
-          {isPersonal &&
-            ' This personal account becomes a team account under the name given below, and keeps its connections, jobs and API keys.'}{' '}
-          This cannot be undone from the interface.
+          {t('joinAsViewers')}
+          {isPersonal && t('personalBecomesTeam')} {t('cannotUndo')}
         </p>
         {isPersonal && (
           <Form {...form}>
@@ -126,10 +121,8 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organization name</FormLabel>
-                  <FormDescription>
-                    The name this account takes as a team account.
-                  </FormDescription>
+                  <FormLabel>{t('nameLabel')}</FormLabel>
+                  <FormDescription>{t('nameDescription')}</FormDescription>
                   <FormControl>
                     <Input
                       autoCapitalize="off" // we don't allow capitals in team names
@@ -152,12 +145,12 @@ export default function DesignateOrganizationCard(props: Props): ReactElement {
                 type="button"
                 disabled={isPersonal && !form.formState.isValid}
               >
-                Make it the organization
+                {t('button')}
               </Button>
             }
-            headerText="Make this account the organization of this instance?"
-            description="People who sign in to this instance will join it as viewers. This cannot be undone from the interface."
-            buttonText="Make it the organization"
+            headerText={t('confirmHeader')}
+            description={t('confirmDescription')}
+            buttonText={t('button')}
             onConfirm={onDesignate}
           />
         </div>

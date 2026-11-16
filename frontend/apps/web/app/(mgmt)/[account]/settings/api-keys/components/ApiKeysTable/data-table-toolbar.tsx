@@ -6,6 +6,7 @@ import { ReactTable, RowData } from '@tanstack/react-table';
 import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 import { DataTableViewOptions } from './data-table-view-options';
 
@@ -16,13 +17,14 @@ interface DataTableToolbarProps<TData extends RowData> {
 export function DataTableToolbar<TData extends RowData>({
   table,
 }: DataTableToolbarProps<TData>) {
+  const t = useTranslations('settings.apiKeys.list');
   const isFiltered = table.state.columnFilters.length > 0;
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filter API keys..."
+          placeholder={t('filterPlaceholder')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
             table.getColumn('name')?.setFilterValue(event.target.value)
@@ -35,7 +37,7 @@ export function DataTableToolbar<TData extends RowData>({
             onClick={() => table.resetColumnFilters()}
             className="h-8 px-2 lg:px-3"
           >
-            Reset
+            {t('reset')}
             <Cross2Icon className="ml-2 h-4 w-4" />
           </Button>
         )}

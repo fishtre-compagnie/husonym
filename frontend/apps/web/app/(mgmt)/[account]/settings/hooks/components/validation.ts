@@ -10,19 +10,53 @@ import {
   NewAccountHook,
   NewAccountHookSchema,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import * as yup from 'yup';
+
+// The messages of the schemas below are keys of `settings.hooks.validation`, turned into
+// words by the form that shows them.
+const VALIDATION_KEYS = [
+  'urlRequired',
+  'secretRequired',
+  'webhookOnly',
+  'hookTypeRequired',
+  'enabledRequired',
+  'nameRequired',
+  'nameMin',
+  'nameMax',
+  'nameFormat',
+  'descriptionRequired',
+  'webhookConfigRequired',
+  'eventRequired',
+  'eventsMin',
+  'eventsRequired',
+] as const;
+type ValidationKey = (typeof VALIDATION_KEYS)[number];
+
+function isValidationKey(message: string): message is ValidationKey {
+  return (VALIDATION_KEYS as readonly string[]).includes(message);
+}
+
+// The words of a validation message: one of ours is translated, any other (from yup
+// itself) is shown as it is.
+export function hookValidationMessage(
+  message: string,
+  t: ReturnType<typeof useTranslations<'settings.hooks.validation'>>
+): string {
+  return isValidationKey(message) ? t(message) : message;
+}
 
 const AccountHookWebhookFormValues = yup.object().shape({
   // The hook type context must be provided to disable the required validation all the way down.
   // Simply telling yup that the parent config is nullable is not sufficient.
   url: yup.string().when('$hookType', {
     is: 'webhook',
-    then: (schema) => schema.required('URL is required'),
+    then: (schema) => schema.required('urlRequired'),
     otherwise: (schema) => schema.notRequired(),
   }),
   secret: yup.string().when('$hookType', {
     is: 'webhook',
-    then: (schema) => schema.required('Secret is required'),
+    then: (schema) => schema.required('secretRequired'),
     otherwise: (schema) => schema.notRequired(),
   }),
   disableSslVerification: yup.boolean().optional(),
@@ -34,36 +68,29 @@ export type AccountHookWebhookFormValues = yup.InferType<
 
 const HookTypeFormValue = yup
   .string()
-  .oneOf(['webhook'], 'Only webhook hooks are currently supported')
-  .required('Hook type is required');
+  .oneOf(['webhook'], 'webhookOnly')
+  .required('hookTypeRequired');
 export type HookTypeFormValue = yup.InferType<typeof HookTypeFormValue>;
 
-const EnabledFormValue = yup
-  .boolean()
-  .required('Must provide an enabled value');
+const EnabledFormValue = yup.boolean().required('enabledRequired');
 
 const AccountHookNameFormValue = yup
   .string()
-  .required('Name is required')
-  .min(3, 'Name must be at least 3 characters')
-  .max(100, 'The Hook name must be at most 100 characters')
-  .test(
-    'resourceName',
-    'Name must be between 3-100 characters and may only include lowercase letters, numbers, and hyphens',
-    (value) => {
-      return RESOURCE_NAME_REGEX.test(value);
-    }
-  );
+  .required('nameRequired')
+  .min(3, 'nameMin')
+  .max(100, 'nameMax')
+  .test('resourceName', 'nameFormat', (value) => {
+    return RESOURCE_NAME_REGEX.test(value);
+  });
 
 const AccountHookDescriptionFormValue = yup
   .string()
-  .required('Description is required');
+  .required('descriptionRequired');
 
 const AccountHookConfigFormValues = yup.object().shape({
   webhook: AccountHookWebhookFormValues.when('$hookType', {
     is: 'webhook',
-    then: (schema) =>
-      schema.required('Webhook config is required when hook type is webhook'),
+    then: (schema) => schema.required('webhookConfigRequired'),
     otherwise: (schema) => schema.notRequired(),
   }),
 });
@@ -74,7 +101,7 @@ export type AccountHookConfigFormValues = yup.InferType<
 const AccountHookEventFormValue = yup
   .string()
   .default(AccountHookEvent.UNSPECIFIED.toString())
-  .required('An event is required');
+  .required('eventRequired');
 type AccountHookEventFormValue = yup.InferType<
   typeof AccountHookEventFormValue
 >;
@@ -82,7 +109,7 @@ type AccountHookEventFormValue = yup.InferType<
 const AccountHookEventsFormValue = yup
   .array()
   .of(AccountHookEventFormValue)
-  .min(1, 'At least one event is required');
+  .min(1, 'eventsMin');
 export type AccountHookEventsFormValue = yup.InferType<
   typeof AccountHookEventsFormValue
 >;
@@ -95,7 +122,7 @@ export const EditAccountHookFormValues = yup
     enabled: EnabledFormValue,
     hookType: HookTypeFormValue,
     config: AccountHookConfigFormValues,
-    events: AccountHookEventsFormValue.required('Events are required'),
+    events: AccountHookEventsFormValue.required('eventsRequired'),
   });
 export type EditAccountHookFormValues = yup.InferType<
   typeof EditAccountHookFormValues
@@ -126,7 +153,7 @@ export const NewAccountHookFormValues = yup
     enabled: EnabledFormValue,
     hookType: HookTypeFormValue,
     config: AccountHookConfigFormValues,
-    events: AccountHookEventsFormValue.required('Events are required'),
+    events: AccountHookEventsFormValue.required('eventsRequired'),
   });
 export type NewAccountHookFormValues = yup.InferType<
   typeof NewAccountHookFormValues

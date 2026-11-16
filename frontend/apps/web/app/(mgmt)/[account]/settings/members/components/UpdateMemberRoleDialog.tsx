@@ -12,6 +12,7 @@ import { getErrorMessage } from '@/util/util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountUser, ConnectError, UserAccountService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import UpdateMemberRoleForm from './UpdateMemberRoleForm';
@@ -30,6 +31,7 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
   const { account } = useAccount();
   const [open, setOpen] = useState(false);
   const [refusal, setRefusal] = useState<string>();
+  const t = useTranslations('settings.members.updateRole');
 
   async function onUpdate(values: UpdateMemberRoleFormValues): Promise<void> {
     if (!account) {
@@ -42,7 +44,7 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
         role: values.role,
         accountId: account.id,
       });
-      toast.success('Successfully updated user role!');
+      toast.success(t('success'));
       onUpdated();
       setOpen(false);
     } catch (err) {
@@ -70,13 +72,13 @@ export default function UpdateMemberRoleDialog(props: Props): ReactElement {
       >
         <DialogHeader>
           <DialogTitle>
-            Update role for {member.name} ({member.email})
+            {t('title', { name: member.name, email: member.email })}
           </DialogTitle>
-          <DialogDescription>Change the role of the user.</DialogDescription>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         {refusal && (
           <Alert variant="destructive">
-            <AlertTitle>The role was not updated</AlertTitle>
+            <AlertTitle>{t('refused')}</AlertTitle>
             <AlertDescription>{refusal}</AlertDescription>
           </Alert>
         )}

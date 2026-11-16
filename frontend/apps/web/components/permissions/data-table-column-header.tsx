@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 import { Input } from '../ui/input';
 
 interface DataTableColumnHeaderProps<
@@ -23,14 +24,18 @@ interface DataTableColumnHeaderProps<
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<AppTableFeatures, TData, TValue>;
-  title: string;
+  // The key of the title under settings.permissions.columns.
+  titleKey:
+    'collection' | 'role' | 'table' | 'read' | 'create' | 'update' | 'truncate';
 }
 
 export function DataTableColumnHeader<TData extends RowData, TValue>({
   column,
-  title,
+  titleKey,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const t = useTranslations('settings.permissions');
+  const title = t(`columns.${titleKey}`);
   if (!column.getCanSort()) {
     return <div className={cn(className, 'text-xs')}>{title}</div>;
   }
@@ -59,21 +64,21 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
             type="text"
             value={(column.getFilterValue() ?? '') as string}
             onChange={(e) => column.setFilterValue(e.target.value)}
-            placeholder={`Search...`}
+            placeholder={t('header.search')}
             className="w-36 border rounded"
           />
           <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
             <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-            Asc
+            {t('header.asc')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
             <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-            Desc
+            {t('header.desc')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
             <EyeNoneIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-            Hide
+            {t('header.hide')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

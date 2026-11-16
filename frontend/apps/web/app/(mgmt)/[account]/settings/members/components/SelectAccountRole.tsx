@@ -9,7 +9,31 @@ import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { isRoleSelectable } from '@/libs/license/license';
 import { getAccountRoleString } from '@/util/util';
 import { AccountRole } from '@husonym/sdk';
-import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
+import { ReactElement, useCallback } from 'react';
+
+// The name of a role as the members pages show it.
+export function useAccountRoleLabel(): (role: AccountRole) => string {
+  const t = useTranslations('settings.members.roles');
+  return useCallback(
+    (role) => {
+      switch (role) {
+        case AccountRole.ADMIN:
+          return t('admin');
+        case AccountRole.JOB_DEVELOPER:
+          return t('jobDeveloper');
+        case AccountRole.JOB_EXECUTOR:
+          return t('jobExecutor');
+        case AccountRole.JOB_VIEWER:
+          return t('jobViewer');
+        default:
+          // A role without a name of its own reads as the API names it.
+          return getAccountRoleString(role);
+      }
+    },
+    [t]
+  );
+}
 
 interface Props {
   role: AccountRole;
@@ -19,6 +43,7 @@ interface Props {
 export default function SelectAccountRole(props: Props): ReactElement {
   const { role, onChange } = props;
   const { allowed } = useLicenseFeature('rbac');
+  const roleLabel = useAccountRoleLabel();
 
   return (
     <Select
@@ -45,7 +70,7 @@ export default function SelectAccountRole(props: Props): ReactElement {
             value={role.toString()}
             disabled={!isRoleSelectable(allowed, role)}
           >
-            {getAccountRoleString(role)}
+            {roleLabel(role)}
           </SelectItem>
         ))}
       </SelectContent>

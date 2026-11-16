@@ -2,6 +2,7 @@ import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { NewAccountHook } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { FormEvent, ReactElement } from 'react';
 import { ValidationError } from 'yup';
 import {
@@ -14,6 +15,7 @@ import {
 } from './FormInputs';
 import { useNewHookStore } from './stores';
 import {
+  hookValidationMessage,
   NewAccountHookFormValues,
   newFormDataToNewAccountHook,
 } from './validation';
@@ -32,6 +34,8 @@ export default function NewHookForm(props: Props): ReactElement {
     setSubmitting,
     isSubmitting,
   } = useNewHookStore();
+  const t = useTranslations('settings.hooks.new');
+  const tValidation = useTranslations('settings.hooks.validation');
 
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
@@ -55,7 +59,10 @@ export default function NewHookForm(props: Props): ReactElement {
         const validationErrors: Record<string, string> = {};
         err.inner.forEach((error) => {
           if (error.path) {
-            validationErrors[error.path] = error.message;
+            validationErrors[error.path] = hookValidationMessage(
+              error.message,
+              tValidation
+            );
           }
         });
         setErrors(validationErrors);
@@ -107,7 +114,7 @@ export default function NewHookForm(props: Props): ReactElement {
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Create"
+            text={t('submit')}
           />
         </Button>
       </div>

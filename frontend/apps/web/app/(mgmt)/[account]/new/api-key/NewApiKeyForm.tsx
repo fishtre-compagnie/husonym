@@ -36,6 +36,8 @@ import { CalendarIcon } from '@radix-ui/react-icons';
 import { PopoverTrigger } from '@radix-ui/react-popover';
 import { addDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useDateFnsLocale } from '@/i18n/date-fns';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -49,6 +51,9 @@ export default function NewApiKeyForm(): ReactElement {
   const { account } = useAccount();
   const { allowed } = useLicenseFeature('api_keys');
   const router = useRouter();
+  const t = useTranslations('settings.apiKeys.new');
+  const tForm = useTranslations('settings.apiKeys.form');
+  const dateLocale = useDateFnsLocale();
   const form = useForm({
     mode: 'onChange',
     resolver: yupResolver(ApiKeyFormValues),
@@ -86,10 +91,10 @@ export default function NewApiKeyForm(): ReactElement {
       } else {
         router.push(`/${account?.name}/settings/api-keys`);
       }
-      toast.success('Successfully created API key!');
+      toast.success(t('success'));
     } catch (err) {
       console.error(err);
-      toast.error('Unable to create api key', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -108,14 +113,12 @@ export default function NewApiKeyForm(): ReactElement {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Name <RequiredLabel />
+                {tForm('name')} <RequiredLabel />
               </FormLabel>
               <FormControl>
-                <Input placeholder="API Key Name" {...field} />
+                <Input placeholder={tForm('namePlaceholder')} {...field} />
               </FormControl>
-              <FormDescription>
-                The unique, friendly name of the api key.
-              </FormDescription>
+              <FormDescription>{tForm('nameDescription')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -127,7 +130,7 @@ export default function NewApiKeyForm(): ReactElement {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Expiration <RequiredLabel />
+                {tForm('expiration')} <RequiredLabel />
               </FormLabel>
               <Select
                 onValueChange={(value) => {
@@ -143,30 +146,33 @@ export default function NewApiKeyForm(): ReactElement {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an expiration date" />
+                    <SelectValue placeholder={tForm('expirationPlaceholder')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   <SelectItem className="cursor-pointer" value="7">
-                    7 days
+                    {tForm('days', { count: 7 })}
                   </SelectItem>
                   <SelectItem className="cursor-pointer" value="30">
-                    30 days
+                    {tForm('days', { count: 30 })}
                   </SelectItem>
                   <SelectItem className="cursor-pointer" value="60">
-                    60 days
+                    {tForm('days', { count: 60 })}
                   </SelectItem>
                   <SelectItem className="cursor-pointer" value="90">
-                    90 days
+                    {tForm('days', { count: 90 })}
                   </SelectItem>
                   <SelectItem className="cursor-pointer" value="custom">
-                    Custom
+                    {tForm('custom')}
                   </SelectItem>
                 </SelectContent>
               </Select>
               <FormDescription>
-                The token will expire on{' '}
-                {format(form.getValues().expiresAt, 'PPP')}
+                {tForm('expiresOn', {
+                  date: format(form.getValues().expiresAt, 'PPP', {
+                    locale: dateLocale,
+                  }),
+                })}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -195,9 +201,9 @@ export default function NewApiKeyForm(): ReactElement {
                       )}
                     >
                       {field.value ? (
-                        format(field.value, 'PPP')
+                        format(field.value, 'PPP', { locale: dateLocale })
                       ) : (
-                        <span>Pick a date</span>
+                        <span>{tForm('pickDate')}</span>
                       )}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
@@ -229,11 +235,10 @@ export default function NewApiKeyForm(): ReactElement {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Permissions <RequiredLabel />
+                {tForm('permissions')} <RequiredLabel />
               </FormLabel>
               <FormDescription>
-                What the key may do. It can do nothing you leave unchecked, and
-                nothing you cannot do yourself.
+                {tForm('permissionsDescription')}
               </FormDescription>
               <FormControl>
                 <PermissionsField
@@ -247,7 +252,7 @@ export default function NewApiKeyForm(): ReactElement {
         />
         <div className="flex flex-row justify-end">
           <Button type="submit" disabled={!allowed}>
-            Submit
+            {tForm('submit')}
           </Button>
         </div>
       </form>

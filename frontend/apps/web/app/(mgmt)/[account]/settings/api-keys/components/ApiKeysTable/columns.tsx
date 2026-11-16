@@ -10,23 +10,25 @@ import { Pill, StatusDot } from '@/components/ds';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
 import { AccountApiKey } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
 
 interface GetColumnsProps {
   onDeleted(id: string): void;
   accountName: string;
+  t: ReturnType<typeof useTranslations<'settings.apiKeys.list'>>;
 }
 
 export function getColumns(
   props: GetColumnsProps
 ): ColumnDef<AppTableFeatures, AccountApiKey>[] {
-  const { onDeleted, accountName } = props;
+  const { onDeleted, accountName, t } = props;
   return [
     {
       accessorKey: 'id',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Id" />
+        <DataTableColumnHeader column={column} title={t('columns.id')} />
       ),
       cell: ({ row }) => (
         <div>
@@ -44,7 +46,7 @@ export function getColumns(
     {
       accessorKey: 'name',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
+        <DataTableColumnHeader column={column} title={t('columns.name')} />
       ),
       cell: ({ row }) => {
         return (
@@ -59,7 +61,7 @@ export function getColumns(
     {
       accessorKey: 'status',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title={t('columns.status')} />
       ),
       cell: ({ row }) => {
         const expiresAt = row.getValue<Timestamp>('expiresAt')
@@ -73,7 +75,7 @@ export function getColumns(
           <div className="flex space-x-2">
             <Pill tone={tone}>
               <StatusDot tone={tone} />
-              {text === 'active' ? 'Active' : 'Expired'}
+              {text === 'active' ? t('active') : t('expired')}
             </Pill>
           </div>
         );
@@ -82,7 +84,7 @@ export function getColumns(
     {
       accessorKey: 'expiresAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Expires At" />
+        <DataTableColumnHeader column={column} title={t('columns.expiresAt')} />
       ),
       cell: ({ row }) => {
         const expiresAt = row.getValue<Timestamp>('expiresAt');
@@ -103,7 +105,7 @@ export function getColumns(
     {
       accessorKey: 'createdAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
+        <DataTableColumnHeader column={column} title={t('columns.createdAt')} />
       ),
       cell: ({ row }) => {
         const createdAt = row.getValue<Timestamp>('createdAt');
@@ -124,7 +126,7 @@ export function getColumns(
     {
       accessorKey: 'updatedAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Updated At" />
+        <DataTableColumnHeader column={column} title={t('columns.updatedAt')} />
       ),
       cell: ({ row }) => {
         const updatedAt = row.getValue<Timestamp>('updatedAt');

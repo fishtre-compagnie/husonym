@@ -22,7 +22,10 @@ import {
   SystemLicense,
   UserAccountService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
+
+type KeyTranslator = ReturnType<typeof useTranslations<'settings.license.key'>>;
 import { toast } from 'sonner';
 
 interface Props {
@@ -40,6 +43,7 @@ export default function LicenseKeyCard(props: Props): ReactElement {
   );
   const [key, setKey] = useState('');
   const [refusal, setRefusal] = useState<string>();
+  const t = useTranslations('settings.license.key');
 
   async function onInstall(): Promise<void> {
     setRefusal(undefined);
@@ -51,7 +55,7 @@ export default function LicenseKeyCard(props: Props): ReactElement {
     } catch (err) {
       // Kept on the page rather than in a toast: a refusal gives a reason, dates
       // included, that is worth reading twice.
-      setRefusal(refusalMessage(err));
+      setRefusal(refusalMessage(err, t));
       return;
     }
     setKey('');
@@ -59,9 +63,9 @@ export default function LicenseKeyCard(props: Props): ReactElement {
     // installed then, and the page does not say that something was.
     toast.success(
       isKeyAlreadyInForce(current, installed)
-        ? 'This key is already in force'
-        : 'License key installed',
-      { description: installedDescription(installed) }
+        ? t('alreadyInForce')
+        : t('installed'),
+      { description: installedDescription(installed, t) }
     );
     // Outside of what catches a refusal: the key is installed by now, and a page that
     // fails to read itself again must not say it was not.
@@ -71,21 +75,18 @@ export default function LicenseKeyCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>License key</CardTitle>
-        <CardDescription>
-          The key applies to the whole instance, every account included. The key
-          in force is never shown here.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {refusal && (
           <Alert variant="destructive">
-            <AlertTitle>The license key was not installed</AlertTitle>
+            <AlertTitle>{t('refused')}</AlertTitle>
             <AlertDescription>{refusal}</AlertDescription>
           </Alert>
         )}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="license-key">Paste a new key</Label>
+          <Label htmlFor="license-key">{t('pasteLabel')}</Label>
           <Textarea
             id="license-key"
             autoComplete="off"
@@ -100,12 +101,12 @@ export default function LicenseKeyCard(props: Props): ReactElement {
           <ConfirmationDialog
             trigger={
               <Button type="button" disabled={!key.trim()}>
-                Install key
+                {t('install')}
               </Button>
             }
-            headerText="Install this license key?"
-            description="It replaces the key in force for the whole instance."
-            buttonText="Install key"
+            headerText={t('confirmHeader')}
+            description={t('confirmDescription')}
+            buttonText={t('install')}
             onConfirm={onInstall}
           />
         </div>
@@ -115,25 +116,28 @@ export default function LicenseKeyCard(props: Props): ReactElement {
 }
 
 function installedDescription(
-  license: SystemLicense | undefined
+  license: SystemLicense | undefined,
+  t: KeyTranslator
 ): string | undefined {
   if (!license) {
     return undefined;
   }
   const parts: string[] = [];
   if (license.issuedTo) {
-    parts.push(`Issued to ${license.issuedTo}`);
+    parts.push(t('issuedTo', { name: license.issuedTo }));
   }
   if (license.expiresAt) {
-    parts.push(`expires on ${formatDate(timestampDate(license.expiresAt))}`);
+    parts.push(
+      t('expiresOn', { date: formatDate(timestampDate(license.expiresAt)) })
+    );
   }
   return parts.join(', ') || undefined;
 }
 
-function refusalMessage(err: unknown): string {
+function refusalMessage(err: unknown, t: KeyTranslator): string {
   if (err instanceof ConnectError) {
     if (err.code === Code.PermissionDenied) {
-      return 'An administrator of this account must install the license key.';
+      return t('adminRequired');
     }
     // The message of the API is written to be read as it is, and never holds the key.
     return err.rawMessage;

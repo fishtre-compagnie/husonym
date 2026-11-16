@@ -34,6 +34,7 @@ import { yupResolver } from '@/util/yup-form-resolver';
 import { AccountRole, UserAccountService } from '@husonym/sdk';
 import { DialogClose } from '@radix-ui/react-dialog';
 import { PlusIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ export default function InviteUserForm(props: Props): ReactElement {
   const [showNewInviteDialog, setShowNewinviteDialog] = useState(false);
   const [newInviteToken, setNewInviteToken] = useState('');
   const [openInviteCreated, setOpenInviteCreated] = useState(false);
+  const t = useTranslations('settings.members.invite');
 
   const form = useForm<InviteMembersForm>({
     resolver: yupResolver(InviteMembersForm),
@@ -77,11 +79,11 @@ export default function InviteUserForm(props: Props): ReactElement {
         setOpenInviteCreated(true);
       }
       onInvited();
-      toast.success('Successfuly created user invite!');
+      toast.success(t('success'));
       form.reset();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to create user invite.', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -97,15 +99,13 @@ export default function InviteUserForm(props: Props): ReactElement {
       <Dialog open={showNewInviteDialog} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>
           <Button type="button">
-            <ButtonText leftIcon={<PlusIcon />} text="Invite Member" />
+            <ButtonText leftIcon={<PlusIcon />} text={t('button')} />
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add new member</DialogTitle>
-            <DialogDescription>
-              Invite a new member to your account.
-            </DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
@@ -115,10 +115,8 @@ export default function InviteUserForm(props: Props): ReactElement {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormDescription>
-                      The email of the user that will be invited.
-                    </FormDescription>
+                    <FormLabel>{t('email')}</FormLabel>
+                    <FormDescription>{t('emailDescription')}</FormDescription>
                     <FormControl>
                       <Input
                         autoCapitalize="off"
@@ -139,10 +137,8 @@ export default function InviteUserForm(props: Props): ReactElement {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <FormDescription>
-                        The role of the user that will be invited.
-                      </FormDescription>
+                      <FormLabel>{t('role')}</FormLabel>
+                      <FormDescription>{t('roleDescription')}</FormDescription>
                       <FormControl>
                         <SelectAccountRole
                           role={field.value}
@@ -161,9 +157,9 @@ export default function InviteUserForm(props: Props): ReactElement {
                   onClick={() => setShowNewinviteDialog(false)}
                   type="button"
                 >
-                  Cancel
+                  {t('cancel')}
                 </Button>
-                <Button type="submit">Submit</Button>
+                <Button type="submit">{t('submit')}</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -187,16 +183,18 @@ function InviteCreatedDialog(props: InviteCreatedDialogProps): ReactElement {
   const { open, setOpen, token } = props;
   const { data: systemAppData } = useGetSystemAppConfig();
   const link = buildInviteLink(systemAppData?.publicAppBaseUrl ?? '', token);
+  const t = useTranslations('settings.members.invite');
+  const tInvites = useTranslations('settings.members.invites');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
           <h3 className="font-semibold leading-none tracking-tight">
-            Invite created!
+            {t('createdTitle')}
           </h3>
           <p className="text-sm text-muted-foreground">
-            Copy the invite link below and send it to the user.
+            {t('createdDescription')}
           </p>
         </DialogHeader>
         <div className="flex flex-row gap-2">
@@ -204,14 +202,14 @@ function InviteCreatedDialog(props: InviteCreatedDialogProps): ReactElement {
           <CopyButton
             buttonVariant="outline"
             textToCopy={link}
-            onCopiedText="Success!"
-            onHoverText="Copy the invite link"
+            onCopiedText={tInvites('copied')}
+            onHoverText={tInvites('copyLink')}
           />
         </div>
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button">
-              <ButtonText text="Close" />
+              <ButtonText text={t('close')} />
             </Button>
           </DialogClose>
         </DialogFooter>

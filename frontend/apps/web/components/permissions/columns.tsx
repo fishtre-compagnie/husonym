@@ -36,7 +36,7 @@ export function getPermissionColumns(
           },
           id: 'schemaTable',
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Collection" />
+            <DataTableColumnHeader column={column} titleKey="collection" />
           ),
           cell: ({ getValue }) => {
             return <p className="truncate">{getValue<string>()}</p>;
@@ -48,7 +48,7 @@ export function getPermissionColumns(
         {
           accessorKey: 'grantee',
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Role" />
+            <DataTableColumnHeader column={column} titleKey="role" />
           ),
           cell: ({ getValue }) => {
             return <p className="truncate">{getValue<string>()}</p>;
@@ -69,7 +69,7 @@ export function getPermissionColumns(
           accessorFn: (row) => `${row.schema}.${row.table}`,
           id: 'schemaTable',
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Table" />
+            <DataTableColumnHeader column={column} titleKey="table" />
           ),
           cell: ({ getValue }) => {
             return <p className="truncate">{getValue<string>()}</p>;
@@ -79,7 +79,7 @@ export function getPermissionColumns(
           id: 'read',
           accessorFn: (row) => row.privilegeType.includes('SELECT'),
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Read" />
+            <DataTableColumnHeader column={column} titleKey="read" />
           ),
           cell: ({ getValue }) => {
             return (
@@ -97,7 +97,7 @@ export function getPermissionColumns(
           id: 'create',
           accessorFn: (row) => row.privilegeType.includes('INSERT'),
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Create" />
+            <DataTableColumnHeader column={column} titleKey="create" />
           ),
           cell: ({ getValue }) => {
             return (
@@ -115,7 +115,7 @@ export function getPermissionColumns(
           id: 'update',
           accessorFn: (row) => row.privilegeType.includes('UPDATE'),
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Update" />
+            <DataTableColumnHeader column={column} titleKey="update" />
           ),
           cell: ({ getValue }) => {
             return (
@@ -135,7 +135,7 @@ export function getPermissionColumns(
             row.privilegeType.includes('TRUNCATE') ||
             row.privilegeType.includes('DELETE'),
           header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Truncate" />
+            <DataTableColumnHeader column={column} titleKey="truncate" />
           ),
           cell: ({ getValue }) => {
             return (

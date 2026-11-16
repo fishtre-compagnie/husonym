@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { AccountHookService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode, useMemo } from 'react';
 import { MdWebhook } from 'react-icons/md';
 import HookCard from './HookCard';
@@ -17,6 +18,7 @@ interface Props {
 
 export default function HooksCard(props: Props): ReactElement {
   const { accountId } = props;
+  const t = useTranslations('settings.hooks');
   const {
     data: getAccountHooksResp,
     isLoading: isGetAccountHooksLoading,
@@ -47,7 +49,7 @@ export default function HooksCard(props: Props): ReactElement {
   return (
     <div className="job-hooks-card-container flex flex-col gap-5">
       <SubPageHeader
-        header="Account Hooks"
+        header={t('title')}
         rightHeaderIcon={
           isGetAccountHooksFetching ? (
             <div>
@@ -55,7 +57,7 @@ export default function HooksCard(props: Props): ReactElement {
             </div>
           ) : null
         }
-        description="Manage hooks that execute when events occur"
+        description={t('description')}
         extraHeading={
           <NewHookButton accountId={accountId} onCreated={refetch} />
         }
@@ -90,10 +92,11 @@ interface NoAccountHooksProps {
 
 function NoAccountHooks(props: NoAccountHooksProps): ReactElement {
   const { button } = props;
+  const t = useTranslations('settings.hooks');
   return (
     <EmptyState
-      title="No Hooks yet"
-      description="Hooks are invoked when specified events occur in your account to notify you or trigger further actions"
+      title={t('emptyTitle')}
+      description={t('emptyDescription')}
       icon={<MdWebhook className="w-8 h-8 text-primary" />}
       extra={button}
     />

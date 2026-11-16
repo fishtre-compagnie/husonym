@@ -26,7 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useRoleControls } from '@/libs/hooks/useRoleControls';
-import { getAccountRoleString, getErrorMessage } from '@/util/util';
+import { getErrorMessage } from '@/util/util';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { AccountRole, AccountUser, UserAccountService } from '@husonym/sdk';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
@@ -40,9 +40,15 @@ import {
   createColumnHelper,
   useTable,
 } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { useAccountRoleLabel } from './SelectAccountRole';
 import UpdateMemberRoleDialog from './UpdateMemberRoleDialog';
+
+type TableTranslator = ReturnType<
+  typeof useTranslations<'settings.members.table'>
+>;
 
 interface MemberRow {
   id: string;
@@ -52,10 +58,14 @@ interface MemberRow {
   role: AccountRole;
 }
 
-function getColumns(showRoles: boolean) {
+function getColumns(
+  showRoles: boolean,
+  t: TableTranslator,
+  roleLabel: (role: AccountRole) => string
+) {
   const columnHelper = createColumnHelper<AppTableFeatures, MemberRow>();
   const nameColumn = columnHelper.accessor('name', {
-    header: 'Name',
+    header: t('name'),
     cell: ({ row, getValue }) => (
       <div className="flex flex-row items-center gap-4">
         <Avatar className="mr-2 h-12 w-12">
@@ -70,18 +80,16 @@ function getColumns(showRoles: boolean) {
   });
 
   const emailColumn = columnHelper.accessor('email', {
-    header: 'Email',
+    header: t('email'),
     cell: ({ getValue }) => (
       <span className="truncate font-medium">{getValue()}</span>
     ),
   });
 
   const roleColumn = columnHelper.accessor('role', {
-    header: 'Role',
+    header: t('role'),
     cell: ({ getValue }) => (
-      <span className="truncate font-medium">
-        {getAccountRoleString(getValue())}
-      </span>
+      <span className="truncate font-medium">{roleLabel(getValue())}</span>
     ),
   });
 
@@ -161,9 +169,11 @@ export default function MembersTable(props: Props): ReactElement {
 
 function useGetColumns(): ColumnDef<AppTableFeatures, MemberRow>[] {
   const showRoles = useRoleControls();
+  const t = useTranslations('settings.members.table');
+  const roleLabel = useAccountRoleLabel();
   return useMemo(() => {
-    return getColumns(showRoles);
-  }, [showRoles]);
+    return getColumns(showRoles, t, roleLabel);
+  }, [showRoles, t, roleLabel]);
 }
 
 declare module '@tanstack/react-table' {
@@ -190,6 +200,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
   const [columnVisibility, setColumnVisibility] =
     useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
+  const t = useTranslations('settings.members.table');
 
   const table = useTable({
     features: paginatedTableFeatures,
@@ -217,7 +228,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter emails..."
+          placeholder={t('filterEmails')}
           value={(table.getColumn('email')?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
             table.getColumn('email')?.setFilterValue(event.target.value)
@@ -262,7 +273,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('noResults')}
                 </TableCell>
               </TableRow>
             )}
@@ -277,7 +288,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            {t('previous')}
           </Button>
           <Button
             variant="outline"
@@ -285,7 +296,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            {t('next')}
           </Button>
         </div>
       </div>
@@ -310,6 +321,7 @@ function DataTableRowActions({
     UserAccountService.method.removeTeamAccountMember
   );
   const showRoles = useRoleControls();
+  const t = useTranslations('settings.members.table');
 
   async function onRemove(): Promise<void> {
     if (!account?.id) {
@@ -317,11 +329,11 @@ function DataTableRowActions({
     }
     try {
       await mutateAsync({ accountId: account.id, userId: member.id });
-      toast.success('User removed from account!');
+      toast.success(t('removed'));
       onDeleted();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove user from account!', {
+      toast.error(t('removeError'), {
         description: getErrorMessage(err),
       });
     }
@@ -337,7 +349,7 @@ function DataTableRowActions({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -350,7 +362,7 @@ function DataTableRowActions({
                 className="cursor-pointer"
                 onSelect={(e) => e.preventDefault()}
               >
-                Update Role
+                {t('updateRole')}
               </DropdownMenuItem>
             }
           />
@@ -361,10 +373,10 @@ function DataTableRowActions({
               className="cursor-pointer"
               onSelect={(e) => e.preventDefault()} // needed for the delete modal to not automatically close
             >
-              Remove
+              {t('remove')}
             </DropdownMenuItem>
           }
-          headerText="Are you sure you want to remove this user?"
+          headerText={t('removeHeader')}
           description=""
           onConfirm={() => onRemove()}
         />

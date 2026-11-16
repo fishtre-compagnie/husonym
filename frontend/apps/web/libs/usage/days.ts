@@ -13,14 +13,15 @@ interface DayPoint {
 // oldest first, a day without a run at zero: nothing is filled or sorted here. A day
 // that tells no date cannot be placed and is left out.
 export function dayPoints(
-  days: readonly Pick<UsageDay, 'day' | 'rowsRead' | 'runs'>[]
+  days: readonly Pick<UsageDay, 'day' | 'rowsRead' | 'runs'>[],
+  locale?: string
 ): DayPoint[] {
   return days.flatMap(({ day, rowsRead, runs }) =>
     day
       ? [
           {
             key: `${day.year}-${day.month}-${day.day}`,
-            label: dayLabel(day),
+            label: dayLabel(day, locale),
             rowsRead: Number(rowsRead),
             runs: Number(runs),
           },

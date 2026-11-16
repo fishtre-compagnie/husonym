@@ -16,6 +16,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { AccountApiKey, ApiKeyService } from '@husonym/sdk';
 import { InfoCircledIcon, ReloadIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import Error from 'next/error';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,7 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
   const id = params?.id ?? '';
   const router = useRouter();
   const { account } = useAccount();
+  const t = useTranslations('settings.apiKeys.detail');
   const { data, isLoading } = useQuery(
     ApiKeyService.method.getAccountApiKey,
     { id },
@@ -61,7 +63,7 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
     return (
       <div className="mt-10">
         <Alert variant="destructive">
-          <AlertTitle>{`Error: Unable to retrieve api key`}</AlertTitle>
+          <AlertTitle>{t('loadError')}</AlertTitle>
         </Alert>
       </div>
     );
@@ -72,7 +74,7 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
         <div className="flex min-w-0 flex-col justify-start gap-1">
           <h2 className="m-0">
             <TruncatedText
-              text={`API Key: ${data.apiKey.name}`}
+              text={t('title', { name: data.apiKey.name })}
               align="start"
               maxWidth={500}
               truncatedContainerClassName="font-display text-xl font-semibold tracking-[-0.01em]"
@@ -91,7 +93,7 @@ export default function AccountApiKeyPage(props: PageProps): ReactElement {
             <Button type="button">
               <ButtonText
                 leftIcon={<ReloadIcon className="h-4 w-4" />}
-                text="Regenerate"
+                text={t('regenerate')}
               />
             </Button>
           </Link>
@@ -111,16 +113,15 @@ interface ApiKeyDetailsProps {
 
 function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
   const { apiKey, keyValue } = props;
+  const t = useTranslations('settings.apiKeys.detail');
+  const tPermissions = useTranslations('settings.apiKeys.permissions');
   return (
     <div className="flex flex-col gap-3">
       {keyValue && (
         <Alert variant="success">
           <div className="flex flex-row items-center gap-3">
             <InfoCircledIcon />
-            <div className="font-semibold">
-              Make sure to copy this access token now as you will not be able to
-              see it again!
-            </div>
+            <div className="font-semibold">{t('copyWarning')}</div>
           </div>
         </Alert>
       )}
@@ -131,40 +132,40 @@ function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
             <CopyButton
               buttonVariant="outline"
               textToCopy={keyValue ?? ''}
-              onCopiedText="Success!"
-              onHoverText="Copy the API key"
+              onCopiedText={t('copied')}
+              onHoverText={t('copyHover')}
             />
           </div>
         )}
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-[140px_1fr]">
-          <dt className="text-muted-foreground">Created</dt>
+          <dt className="text-muted-foreground">{t('created')}</dt>
           <dd className="m-0 tabular-nums">
             {formatDateTime(
               apiKey.createdAt ? timestampDate(apiKey.createdAt) : new Date()
             )}
           </dd>
-          <dt className="text-muted-foreground">Updated</dt>
+          <dt className="text-muted-foreground">{t('updated')}</dt>
           <dd className="m-0 tabular-nums">
             {formatDateTime(
               apiKey.updatedAt ? timestampDate(apiKey.updatedAt) : new Date()
             )}
           </dd>
-          <dt className="text-muted-foreground">Expires</dt>
+          <dt className="text-muted-foreground">{t('expires')}</dt>
           <dd className="m-0 tabular-nums">
             {formatDateTime(
               apiKey.expiresAt ? timestampDate(apiKey.expiresAt) : new Date()
             )}
           </dd>
-          <dt className="text-muted-foreground">User ID</dt>
+          <dt className="text-muted-foreground">{t('userId')}</dt>
           <dd className="m-0 break-all font-mono text-xs">{apiKey.userId}</dd>
-          <dt className="text-muted-foreground">Permissions</dt>
+          <dt className="text-muted-foreground">{t('permissions')}</dt>
           <dd className="m-0 flex flex-row flex-wrap gap-1.5">
             {apiKey.permissions.length === 0 ? (
-              <Pill tone="warn">None: the key can do nothing</Pill>
+              <Pill tone="warn">{t('noPermissions')}</Pill>
             ) : (
               apiKey.permissions.map((p) => (
                 <Pill key={p} className="font-mono">
-                  {permissionLabel(p)}
+                  {permissionLabel(p, tPermissions)}
                 </Pill>
               ))
             )}

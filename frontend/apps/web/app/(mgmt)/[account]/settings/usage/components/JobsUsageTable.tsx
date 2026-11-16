@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { jobsEmptyLine, jobsTable } from '@/libs/usage/rows';
+import { useUsageI18n } from '@/libs/usage/useUsageI18n';
 import { JobUsage, UsageTotals } from '@husonym/sdk';
 import Link from 'next/link';
 import { ReactElement } from 'react';
@@ -23,33 +24,35 @@ interface Props {
 // What each job of the account ran in the period. A row leads to the usage of its job.
 export default function JobsUsageTable(props: Props): ReactElement {
   const { accountName, jobs, totals } = props;
-  const { rows, note } = jobsTable(jobs, accountName);
+  const i18n = useUsageI18n();
+  const { t } = i18n;
+  const { rows, note } = jobsTable(jobs, accountName, i18n);
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Jobs</CardTitle>
+        <CardTitle>{t('jobsTable.title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {jobsEmptyLine(totals)}
+            {jobsEmptyLine(totals, i18n)}
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">Job</TableHead>
+                <TableHead scope="col">{t('jobsTable.job')}</TableHead>
                 <TableHead scope="col" className="text-right">
-                  Rows read
+                  {t('jobsTable.rowsRead')}
                 </TableHead>
                 <TableHead scope="col" className="text-right">
-                  Runs
+                  {t('jobsTable.runs')}
                 </TableHead>
                 <TableHead scope="col" className="text-right">
-                  Success
+                  {t('jobsTable.success')}
                 </TableHead>
                 <TableHead scope="col" className="text-right">
-                  Median duration
+                  {t('jobsTable.medianDuration')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -60,7 +63,7 @@ export default function JobsUsageTable(props: Props): ReactElement {
                     <Link
                       href={row.href}
                       className="hover:underline"
-                      aria-label={`Usage of the job ${row.name}`}
+                      aria-label={t('jobsTable.jobUsage', { name: row.name })}
                     >
                       {row.name}
                     </Link>

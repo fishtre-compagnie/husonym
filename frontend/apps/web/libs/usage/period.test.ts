@@ -190,7 +190,7 @@ describe('periodRange', () => {
 
 describe('periodLabel', () => {
   it('names every period', () => {
-    expect(USAGE_PERIODS.map(periodLabel)).toEqual([
+    expect(USAGE_PERIODS.map((period) => periodLabel(period))).toEqual([
       'Last 7 days',
       'Last 30 days',
       'Last 90 days',

@@ -8,6 +8,7 @@ import { useUsageReporting } from '@/libs/hooks/useUsageReporting';
 import { getErrorMessage } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import LicenseFeaturesCard from './components/LicenseFeaturesCard';
 import LicenseKeyCard from './components/LicenseKeyCard';
@@ -18,6 +19,7 @@ import UsageReportCard from './components/UsageReportCard';
 export default function Page(): ReactElement {
   const { account } = useAccount();
   const accountId = account?.id ?? '';
+  const t = useTranslations('settings.license');
   const systemInfo = useQuery(UserAccountService.method.getSystemInformation);
   const usage = useQuery(
     UserAccountService.method.getLicenseUsage,
@@ -39,13 +41,10 @@ export default function Page(): ReactElement {
 
   return (
     <div className="flex flex-col gap-5">
-      <SubPageHeader
-        header="License"
-        description="The license of this instance, and what this account uses of it"
-      />
+      <SubPageHeader header={t('title')} description={t('description')} />
       {systemInfo.error ? (
         <Alert variant="destructive">
-          <AlertTitle>Unable to read the license of this instance</AlertTitle>
+          <AlertTitle>{t('readError')}</AlertTitle>
           <AlertDescription>
             {getErrorMessage(systemInfo.error)}
           </AlertDescription>

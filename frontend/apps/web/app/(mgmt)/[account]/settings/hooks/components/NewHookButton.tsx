@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHookService, NewAccountHook } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 import NewHookForm from './NewHookForm';
@@ -29,6 +30,7 @@ export default function NewHookButton(props: Props): ReactElement {
   );
   const [open, setOpen] = useState(false);
   const { allowed } = useLicenseFeature('account_hooks');
+  const t = useTranslations('settings.hooks.new');
 
   async function onCreate(values: NewAccountHook): Promise<void> {
     try {
@@ -42,12 +44,12 @@ export default function NewHookButton(props: Props): ReactElement {
           events: values.events,
         },
       });
-      toast.success('Successfully created account hook!');
+      toast.success(t('success'));
       onCreated();
       setOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to create account hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -57,7 +59,7 @@ export default function NewHookButton(props: Props): ReactElement {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" disabled={!allowed}>
-          <ButtonText leftIcon={<PlusIcon />} text="New Hook" />
+          <ButtonText leftIcon={<PlusIcon />} text={t('button')} />
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -65,10 +67,8 @@ export default function NewHookButton(props: Props): ReactElement {
         className="lg:max-w-4xl max-h-[85vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Create new Account Hook</DialogTitle>
-          <DialogDescription>
-            Configure values for a new account hook
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <NewHookForm onSubmit={onCreate} />
       </DialogContent>

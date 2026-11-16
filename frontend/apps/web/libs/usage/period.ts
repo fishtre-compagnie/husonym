@@ -1,3 +1,5 @@
+import { ENGLISH_USAGE_I18N, UsageI18n } from './i18n';
+
 // The periods the Usage pages offer, in the order they are listed.
 export const USAGE_PERIODS = [
   'last-7-days',
@@ -11,16 +13,11 @@ export type UsagePeriod = (typeof USAGE_PERIODS)[number];
 
 export const DEFAULT_USAGE_PERIOD: UsagePeriod = 'last-30-days';
 
-const PERIOD_LABELS: Record<UsagePeriod, string> = {
-  'last-7-days': 'Last 7 days',
-  'last-30-days': 'Last 30 days',
-  'last-90-days': 'Last 90 days',
-  'this-month': 'This month',
-  'last-month': 'Last month',
-};
-
-export function periodLabel(period: UsagePeriod): string {
-  return PERIOD_LABELS[period];
+export function periodLabel(
+  period: UsagePeriod,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  return i18n.t(`periods.${period}`);
 }
 
 export function isUsagePeriod(value: string): value is UsagePeriod {
@@ -96,24 +93,18 @@ function daysBefore(day: CalendarDay, count: number): CalendarDay {
   };
 }
 
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-// A day as an axis or a row names it: "Oct 9".
-export function dayLabel(day: Omit<CalendarDay, 'year'>): string {
-  return `${MONTHS[day.month - 1]} ${day.day}`;
+// A day as an axis or a row names it, in the language given: "Oct 9", "9 oct.". The
+// day is of no zone: it is written as the UTC calendar reads it.
+export function dayLabel(
+  day: Omit<CalendarDay, 'year'>,
+  locale: string = ENGLISH_USAGE_I18N.locale
+): string {
+  // Any year will do to place a month and a day; a leap one keeps February 29.
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(2024, day.month - 1, day.day)));
 }
 
 // The days of a range and the zone they were counted in, as the line under the title
@@ -122,19 +113,31 @@ export function dayLabel(day: Omit<CalendarDay, 'year'>): string {
 // are said alone.
 export function rangeLabel(
   range: UsageRange,
-  timeZone: string | undefined
+  timeZone: string | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
 ): string {
-  const days = daysLabel(range);
-  return timeZone ? `${days} · days in ${timeZone}` : days;
+  const days = daysLabel(range, i18n);
+  return timeZone ? i18n.t('range.withZone', { days, timeZone }) : days;
 }
 
-function daysLabel({ fromDay, toDay }: UsageRange): string {
-  const to = `${dayLabel(toDay)}, ${toDay.year}`;
+function daysLabel({ fromDay, toDay }: UsageRange, i18n: UsageI18n): string {
+  const { t, locale } = i18n;
+  // The years are given as text: a number would have its digits grouped.
+  const to = dayLabel(toDay, locale);
   if (fromDay.year !== toDay.year) {
-    return `${dayLabel(fromDay)}, ${fromDay.year} – ${to}`;
+    return t('range.otherYears', {
+      from: dayLabel(fromDay, locale),
+      fromYear: String(fromDay.year),
+      to,
+      toYear: String(toDay.year),
+    });
   }
   if (fromDay.month === toDay.month && fromDay.day === toDay.day) {
-    return to;
+    return t('range.sameDay', { day: to, year: String(toDay.year) });
   }
-  return `${dayLabel(fromDay)} – ${to}`;
+  return t('range.sameYear', {
+    from: dayLabel(fromDay, locale),
+    to,
+    year: String(toDay.year),
+  });
 }

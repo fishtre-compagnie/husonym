@@ -12,6 +12,7 @@ import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHook, AccountHookService } from '@husonym/sdk';
 import { Pencil1Icon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 import { EditHookForm } from './EditHookForm';
@@ -28,6 +29,7 @@ export default function EditHookButton(props: Props): ReactElement {
   );
   const [open, setOpen] = useState(false);
   const { allowed } = useLicenseFeature('account_hooks');
+  const t = useTranslations('settings.hooks.edit');
 
   async function onUpdate(values: Partial<AccountHook>): Promise<void> {
     try {
@@ -39,12 +41,12 @@ export default function EditHookButton(props: Props): ReactElement {
         name: values.name,
         events: values.events,
       });
-      toast.success('Successfully updated account hook!');
+      toast.success(t('success'));
       onEdited();
       setOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update account hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -62,10 +64,8 @@ export default function EditHookButton(props: Props): ReactElement {
         className="lg:max-w-4xl max-h-[85vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Edit Account Hook: {hook.name}</DialogTitle>
-          <DialogDescription>
-            Change any of the available account hook settings
-          </DialogDescription>
+          <DialogTitle>{t('title', { name: hook.name })}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <EditHookForm key={hook.id} hook={hook} onSubmit={onUpdate} />
       </DialogContent>

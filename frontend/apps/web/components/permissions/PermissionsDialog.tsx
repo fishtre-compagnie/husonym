@@ -18,6 +18,7 @@ import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo } from 'react';
 import { IoWarning } from 'react-icons/io5';
 import Spinner from '../Spinner';
@@ -49,6 +50,7 @@ export default function PermissionsDialog(props: Props): ReactElement {
     connectionType,
     checkedRole,
   } = props;
+  const t = useTranslations('settings.permissions.dialog');
 
   const columns = useMemo(
     () => getPermissionColumns(connectionType),
@@ -60,11 +62,11 @@ export default function PermissionsDialog(props: Props): ReactElement {
       <DialogContent className="max-w-5xl flex flex-col gap-4">
         <DialogHeader>
           <div className="flex flex-col md:flex-row gap-2 items-center">
-            <DialogTitle>Connection Permissions</DialogTitle>
+            <DialogTitle>{t('title')}</DialogTitle>
             {isValidating ? <Spinner /> : null}
           </div>
           <DialogDescription className="text-muted-foreground text-sm">
-            Review the permissions that Husonym needs for your connection.{' '}
+            {t('description')}{' '}
             <LearnMoreLink href="https://docs.husonym.com/connections/postgres#permissions" />{' '}
           </DialogDescription>
         </DialogHeader>
@@ -88,7 +90,7 @@ export default function PermissionsDialog(props: Props): ReactElement {
               type="button"
               onClick={() => setOpenPermissionDialog(false)}
             >
-              Close
+              {t('close')}
             </Button>
           </div>
         </DialogFooter>
@@ -106,18 +108,20 @@ interface RoleChecksProps {
 // tables of a job, only what concerns the server as a whole is checked.
 function RoleChecks(props: RoleChecksProps): ReactElement {
   const { role, checks } = props;
-  const roleName = role === ConnectionRole.SOURCE ? 'source' : 'destination';
+  const t = useTranslations('settings.permissions.dialog');
+  const isSource = role === ConnectionRole.SOURCE;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">As a {roleName}</h3>
+      <h3 className="text-sm font-semibold">
+        {isSource ? t('asSource') : t('asDestination')}
+      </h3>
       <ConnectionCheckList
         checks={checks}
-        allClearText={`Nothing missing for a ${roleName} at server level.`}
+        allClearText={isSource ? t('allClearSource') : t('allClearDestination')}
       />
       <p className="flex flex-row items-center gap-2 text-xs text-muted-foreground">
         <InfoCircledIcon className="h-4 w-4 shrink-0" />
-        Only server-wide checks run here. A job&apos;s tables are checked when
-        the job is created or edited.
+        {t('serverWideOnly')}
       </p>
     </div>
   );
@@ -133,21 +137,18 @@ export function TestConnectionResult(
   props: TestConnectionResultProps
 ): ReactElement {
   const { isConnected, connectionName, hasPrivileges } = props;
+  const t = useTranslations('settings.permissions.result');
 
   if (isConnected && !hasPrivileges) {
     return (
-      <WarningAlert
-        description={`We were able to connect to: ${connectionName}, but were not able to find any schema(s) or table(s). Does your role have permissions? `}
-      />
+      <WarningAlert description={t('noPrivileges', { name: connectionName })} />
     );
   } else if (isConnected) {
     return (
-      <SuccessAlert
-        description={`Successfully connected to: ${connectionName}!`}
-      />
+      <SuccessAlert description={t('connected', { name: connectionName })} />
     );
   }
-  return <ErrorAlert description="Not currently connected." />;
+  return <ErrorAlert description={t('notConnected')} />;
 }
 
 interface SuccessAlertProps {

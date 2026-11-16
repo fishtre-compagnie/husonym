@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AccountHookEvent } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import AccountHookWebhookForm from './AccountHookWebhookForm';
 import {
@@ -19,13 +20,14 @@ interface NameProps {
 
 export function Name(props: NameProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.hooks.form');
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="name"
-        title="Name"
-        description="Name of the hook for display and reference, must be unique"
+        title={t('name')}
+        description={t('nameDescription')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -35,7 +37,7 @@ export function Name(props: NameProps): ReactElement {
         data-1p-ignore // tells 1password extension to not autofill this field
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Hook name"
+        placeholder={t('namePlaceholder')}
       />
       <FormErrorMessage message={error} />
     </div>
@@ -50,13 +52,14 @@ interface DescriptionProps {
 
 export function Description(props: DescriptionProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.hooks.form');
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="description"
-        title="Description"
-        description="What this hook does"
+        title={t('description')}
+        description={t('descriptionDescription')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -64,7 +67,7 @@ export function Description(props: DescriptionProps): ReactElement {
         id="description"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Hook description"
+        placeholder={t('descriptionPlaceholder')}
         rows={3}
       />
       <FormErrorMessage message={error} />
@@ -80,13 +83,14 @@ interface EnabledProps {
 
 export function Enabled(props: EnabledProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.hooks.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
         htmlFor="enabled"
-        title="Enabled"
-        description="Whether or not this hook will be invoked when events occur"
+        title={t('enabled')}
+        description={t('enabledDescription')}
         isErrored={!!error}
         isRequired={true}
       />
@@ -101,8 +105,8 @@ export function Enabled(props: EnabledProps): ReactElement {
         }}
         value={value ? 'yes' : 'no'}
       >
-        <ToggleGroupItem value="yes">Yes</ToggleGroupItem>
-        <ToggleGroupItem value="no">No</ToggleGroupItem>
+        <ToggleGroupItem value="yes">{t('yes')}</ToggleGroupItem>
+        <ToggleGroupItem value="no">{t('no')}</ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={error} />
     </div>
@@ -117,11 +121,12 @@ interface HookTypeProps {
 
 export function HookType(props: HookTypeProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.hooks.form');
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Hook Type"
-        description="The type of hook"
+        title={t('hookType')}
+        description={t('hookTypeDescription')}
         isErrored={!!error}
       />
       <ToggleGroup
@@ -174,12 +179,13 @@ interface AccountHookEventsProps {
 
 export function AccountHookEvents(props: AccountHookEventsProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('settings.hooks.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Events"
-        description="The events that will trigger this hook. Wildcard will trigger for all events"
+        title={t('events')}
+        description={t('eventsDescription')}
         isErrored={!!error}
       />
       <ToggleGroup
@@ -195,28 +201,28 @@ export function AccountHookEvents(props: AccountHookEventsProps): ReactElement {
           value={AccountHookEvent.UNSPECIFIED.toString()}
           className="border-2"
         >
-          Wildcard
+          {t('wildcard')}
         </ToggleGroupItem>
         <ToggleGroupItem
           key={AccountHookEvent.JOB_RUN_CREATED}
           value={AccountHookEvent.JOB_RUN_CREATED.toString()}
           className="border-2"
         >
-          Job Run Created
+          {t('jobRunCreated')}
         </ToggleGroupItem>
         <ToggleGroupItem
           key={AccountHookEvent.JOB_RUN_FAILED}
           value={AccountHookEvent.JOB_RUN_FAILED.toString()}
           className="border-2"
         >
-          Job Run Failed
+          {t('jobRunFailed')}
         </ToggleGroupItem>
         <ToggleGroupItem
           key={AccountHookEvent.JOB_RUN_SUCCEEDED}
           value={AccountHookEvent.JOB_RUN_SUCCEEDED.toString()}
           className="border-2"
         >
-          Job Run Succeeded
+          {t('jobRunSucceeded')}
         </ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={error} />

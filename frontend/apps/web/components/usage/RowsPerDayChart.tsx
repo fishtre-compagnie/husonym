@@ -3,6 +3,8 @@
 import { Panel, PanelHeader } from '@/components/ds';
 import { dayPoints } from '@/libs/usage/days';
 import { countFormat, formatCount } from '@/libs/usage/numbers';
+import { useUsageI18n } from '@/libs/usage/useUsageI18n';
+import type { UsageI18n } from '@/libs/usage/i18n';
 import { UsageDay } from '@husonym/sdk';
 import { ReactElement, ReactNode } from 'react';
 import {
@@ -34,13 +36,15 @@ const TICK = { fill: 'var(--muted-foreground)', fontSize: 12 };
 // The drawing is for the eye only; the same numbers are in a table for a screen reader.
 export default function RowsPerDayChart(props: Props): ReactElement {
   const { days, emptyLine } = props;
-  const points = dayPoints(days);
+  const i18n = useUsageI18n();
+  const { t, locale } = i18n;
+  const points = dayPoints(days, locale);
   // Made here, not once for the module: the module is also loaded where there is no
   // browser to tell its languages.
-  const axisNumbers = countFormat({ maximumFractionDigits: 1 });
+  const axisNumbers = countFormat({ maximumFractionDigits: 1 }, locale);
   return (
     <Panel>
-      <PanelHeader title="Rows read per day" />
+      <PanelHeader title={t('chart.title')} />
       <div className="p-5">
         {emptyLine ? (
           <p className="text-sm text-muted-foreground">{emptyLine}</p>
@@ -79,7 +83,9 @@ export default function RowsPerDayChart(props: Props): ReactElement {
                   />
                   <Tooltip
                     cursor={{ fill: 'var(--hover)' }}
-                    content={DayTooltip}
+                    content={(tooltip: TooltipContentProps) =>
+                      dayTooltip(tooltip, i18n)
+                    }
                   />
                   <Bar
                     dataKey="rowsRead"
@@ -92,20 +98,20 @@ export default function RowsPerDayChart(props: Props): ReactElement {
               </ResponsiveContainer>
             </div>
             <table className="sr-only">
-              <caption>Rows read per day</caption>
+              <caption>{t('chart.title')}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Day</th>
-                  <th scope="col">Rows read</th>
-                  <th scope="col">Runs</th>
+                  <th scope="col">{t('chart.day')}</th>
+                  <th scope="col">{t('chart.rowsRead')}</th>
+                  <th scope="col">{t('chart.runs')}</th>
                 </tr>
               </thead>
               <tbody>
                 {points.map((point) => (
                   <tr key={point.key}>
                     <th scope="row">{point.label}</th>
-                    <td>{formatCount(point.rowsRead)}</td>
-                    <td>{formatCount(point.runs)}</td>
+                    <td>{formatCount(point.rowsRead, locale)}</td>
+                    <td>{formatCount(point.runs, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -118,7 +124,10 @@ export default function RowsPerDayChart(props: Props): ReactElement {
 }
 
 // What the pointer shows over a day: the day, its rows and its runs.
-function DayTooltip({ active, payload }: TooltipContentProps): ReactNode {
+function dayTooltip(
+  { active, payload }: TooltipContentProps,
+  { t, locale }: UsageI18n
+): ReactNode {
   const point: DayPoint | undefined = active
     ? payload?.[0]?.payload
     : undefined;
@@ -129,9 +138,13 @@ function DayTooltip({ active, payload }: TooltipContentProps): ReactNode {
     <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-pop">
       <div className="font-medium">{point.label}</div>
       <div className="tabular-nums">
-        Rows read: {formatCount(point.rowsRead)}
+        {t('chart.tooltipRowsRead', {
+          count: formatCount(point.rowsRead, locale),
+        })}
       </div>
-      <div className="tabular-nums">Runs: {formatCount(point.runs)}</div>
+      <div className="tabular-nums">
+        {t('chart.tooltipRuns', { count: formatCount(point.runs, locale) })}
+      </div>
     </div>
   );
 }

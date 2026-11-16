@@ -1,23 +1,16 @@
 import { JobKind } from '@husonym/sdk';
 import type { UsageTotals } from '@husonym/sdk';
+import { ENGLISH_USAGE_I18N, UsageI18n } from './i18n';
 import { formatCount } from './numbers';
 
 // What a tile or a cell shows when there is nothing to say.
 const NO_VALUE = '—';
 
-// Why a job that looks for personal data shows no row count.
-const NO_ROWS_HINT = 'PII detection jobs count no rows.';
-
 const ZERO = BigInt(0);
-const ONE = BigInt(1);
 const HUNDRED = BigInt(100);
 const MINUTE = BigInt(60);
 const HOUR = BigInt(3600);
 const DAY = BigInt(86_400);
-
-function plural(count: bigint, one: string, many: string): string {
-  return count === ONE ? one : many;
-}
 
 type RunCounts = Pick<UsageTotals, 'runs' | 'runsCompleted' | 'runsCanceled'>;
 
@@ -39,20 +32,35 @@ export function successRateLabel(totals: RunCounts | undefined): string {
 }
 
 // A duration in its two largest units: "59s", "3m 20s", "1h 5m", "1d 1h".
-export function durationLabel(seconds: bigint | undefined): string {
+// The numbers are given as text: a number would have its digits grouped, a bigint
+// would not be taken.
+export function durationLabel(
+  seconds: bigint | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  const { t, locale } = i18n;
   if (seconds === undefined) {
     return NO_VALUE;
   }
   if (seconds < MINUTE) {
-    return `${seconds}s`;
+    return t('duration.seconds', { s: String(seconds) });
   }
   if (seconds < HOUR) {
-    return `${seconds / MINUTE}m ${seconds % MINUTE}s`;
+    return t('duration.minutes', {
+      m: String(seconds / MINUTE),
+      s: String(seconds % MINUTE),
+    });
   }
   if (seconds < DAY) {
-    return `${seconds / HOUR}h ${(seconds % HOUR) / MINUTE}m`;
+    return t('duration.hours', {
+      h: String(seconds / HOUR),
+      m: String((seconds % HOUR) / MINUTE),
+    });
   }
-  return `${formatCount(seconds / DAY)}d ${(seconds % DAY) / HOUR}h`;
+  return t('duration.days', {
+    d: formatCount(seconds / DAY, locale),
+    h: String((seconds % DAY) / HOUR),
+  });
 }
 
 // Whether the runs of a kind of job count the rows they read. Looking for personal
@@ -68,18 +76,23 @@ function countsRows(kind: JobKind | undefined): boolean {
 export function rowsLabel(
   kind: JobKind | undefined,
   rowsRead: bigint,
-  uncounted: bigint = ZERO
+  uncounted: bigint = ZERO,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
 ): string {
   if (!countsRows(kind)) {
     return NO_VALUE;
   }
-  const rows = formatCount(rowsRead);
-  return uncounted > ZERO ? `${rows} (incomplete)` : rows;
+  const rows = formatCount(rowsRead, i18n.locale);
+  return uncounted > ZERO ? i18n.t('incomplete', { rows }) : rows;
 }
 
-// What to say next to a row count that is not shown.
-export function rowsHint(kind: JobKind | undefined): string | undefined {
-  return countsRows(kind) ? undefined : NO_ROWS_HINT;
+// What to say next to a row count that is not shown: why a job that looks for
+// personal data shows none.
+export function rowsHint(
+  kind: JobKind | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string | undefined {
+  return countsRows(kind) ? undefined : i18n.t('noRowsHint');
 }
 
 interface Tile {
@@ -91,24 +104,36 @@ interface Tile {
 // The four tiles of a Usage page: rows read, runs, success rate, and a duration that
 // each page names (the total run time of an account, the median of a job). A page of a
 // job tells its kind; the tiles of an account are of every kind.
-export function usageTiles(usage: {
-  totals: UsageTotals | undefined;
-  kind?: JobKind;
-  duration: { label: string; seconds?: bigint };
-}): Tile[] {
+export function usageTiles(
+  usage: {
+    totals: UsageTotals | undefined;
+    kind?: JobKind;
+    duration: { label: string; seconds?: bigint };
+  },
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): Tile[] {
   const { totals, kind, duration } = usage;
+  const { t, locale } = i18n;
   const canceled = totals?.runsCanceled ?? ZERO;
   return [
     withNote(
-      { label: 'Rows read', value: rowsLabel(kind, totals?.rowsRead ?? ZERO) },
-      rowsHint(kind)
+      {
+        label: t('tiles.rowsRead'),
+        value: rowsLabel(kind, totals?.rowsRead ?? ZERO, ZERO, i18n),
+      },
+      rowsHint(kind, i18n)
     ),
     withNote(
-      { label: 'Runs', value: formatCount(totals?.runs ?? ZERO) },
-      canceled > ZERO ? `${formatCount(canceled)} canceled` : undefined
+      {
+        label: t('tiles.runs'),
+        value: formatCount(totals?.runs ?? ZERO, locale),
+      },
+      canceled > ZERO
+        ? t('tiles.canceled', { count: formatCount(canceled, locale) })
+        : undefined
     ),
-    { label: 'Success rate', value: successRateLabel(totals) },
-    { label: duration.label, value: durationLabel(duration.seconds) },
+    { label: t('tiles.successRate'), value: successRateLabel(totals) },
+    { label: duration.label, value: durationLabel(duration.seconds, i18n) },
   ];
 }
 
@@ -118,10 +143,11 @@ function withNote(tile: Tile, note: string | undefined): Tile {
 
 // What stands in place of what a period without a run cannot show. Nothing when the
 // period has runs.
-export function noRunLine(totals: UsageTotals | undefined): string | undefined {
-  return (totals?.runs ?? ZERO) > ZERO
-    ? undefined
-    : 'No run ended in this period.';
+export function noRunLine(
+  totals: UsageTotals | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string | undefined {
+  return (totals?.runs ?? ZERO) > ZERO ? undefined : i18n.t('noRun');
 }
 
 // What stands in place of the rows per day of a job when there is nothing to plot: a
@@ -129,9 +155,10 @@ export function noRunLine(totals: UsageTotals | undefined): string | undefined {
 // Nothing when there are rows to plot.
 export function noRowsPerDayLine(
   kind: JobKind,
-  totals: UsageTotals | undefined
+  totals: UsageTotals | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
 ): string | undefined {
-  return rowsHint(kind) ?? noRunLine(totals);
+  return rowsHint(kind, i18n) ?? noRunLine(totals, i18n);
 }
 
 // Whether the account has no such job: the API tells the kind of every job of the
@@ -143,7 +170,11 @@ export function isUnknownJob(kind: JobKind): boolean {
 // What the tiles do not say: the runs whose rows are not all counted, and the rows that
 // were set aside instead of being written. One line each, only when there is something
 // to say.
-export function usageNotes(totals: UsageTotals | undefined): string[] {
+export function usageNotes(
+  totals: UsageTotals | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string[] {
+  const { t, locale } = i18n;
   const notes: string[] = [];
   if (!totals) {
     return notes;
@@ -151,12 +182,19 @@ export function usageNotes(totals: UsageTotals | undefined): string[] {
   const { runs, runsWithUncountedRows: uncounted, rowsDiscarded } = totals;
   if (uncounted > ZERO) {
     notes.push(
-      `The rows of ${formatCount(uncounted)} of ${formatCount(runs)} ${plural(runs, 'run', 'runs')} are not all counted.`
+      t('notes.uncounted', {
+        uncounted: formatCount(uncounted, locale),
+        runs: formatCount(runs, locale),
+        runCount: Number(runs),
+      })
     );
   }
   if (rowsDiscarded > ZERO) {
     notes.push(
-      `${formatCount(rowsDiscarded)} ${plural(rowsDiscarded, 'row', 'rows')} set aside.`
+      t('notes.discarded', {
+        rows: formatCount(rowsDiscarded, locale),
+        rowCount: Number(rowsDiscarded),
+      })
     );
   }
   return notes;

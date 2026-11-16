@@ -1,77 +1,95 @@
 'use client';
 import { Switch } from '@/components/ui/switch';
 import { Permission } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
+
+type PermissionsTranslator = ReturnType<
+  typeof useTranslations<'settings.apiKeys.permissions'>
+>;
 
 interface PermissionOption {
   value: Permission;
-  label: string;
-  hint?: string;
+  label:
+    | 'view'
+    | 'create'
+    | 'edit'
+    | 'run'
+    | 'delete'
+    | 'seeSecrets'
+    | 'createAccounts';
+  hint?: 'jobEdit' | 'jobRun' | 'connectionSecrets' | 'accountEdit';
 }
 
 interface PermissionGroup {
-  title: string;
+  title: 'jobs' | 'connections' | 'account';
   options: PermissionOption[];
 }
 
 // Every permission, by what it applies to. A key can do nothing that is not checked here.
 const PERMISSION_GROUPS: PermissionGroup[] = [
   {
-    title: 'Jobs',
+    title: 'jobs',
     options: [
-      { value: Permission.JOB_VIEW, label: 'View' },
-      { value: Permission.JOB_CREATE, label: 'Create' },
+      { value: Permission.JOB_VIEW, label: 'view' },
+      { value: Permission.JOB_CREATE, label: 'create' },
       {
         value: Permission.JOB_EDIT,
-        label: 'Edit',
-        hint: 'On a scheduled job, changes what its next run does: grant it as you would Run.',
+        label: 'edit',
+        hint: 'jobEdit',
       },
       {
         value: Permission.JOB_EXECUTE,
-        label: 'Run',
-        hint: 'A run writes to a real destination. Also needed to schedule or resume a job.',
+        label: 'run',
+        hint: 'jobRun',
       },
-      { value: Permission.JOB_DELETE, label: 'Delete' },
+      { value: Permission.JOB_DELETE, label: 'delete' },
     ],
   },
   {
-    title: 'Connections',
+    title: 'connections',
     options: [
-      { value: Permission.CONNECTION_VIEW, label: 'View' },
+      { value: Permission.CONNECTION_VIEW, label: 'view' },
       {
         value: Permission.CONNECTION_VIEW_SENSITIVE,
-        label: 'See secrets',
-        hint: 'Needed to use a connection: read its schema, scan or preview its data, sync. Also returns passwords and keys in clear.',
+        label: 'seeSecrets',
+        hint: 'connectionSecrets',
       },
-      { value: Permission.CONNECTION_CREATE, label: 'Create' },
-      { value: Permission.CONNECTION_EDIT, label: 'Edit' },
-      { value: Permission.CONNECTION_DELETE, label: 'Delete' },
+      { value: Permission.CONNECTION_CREATE, label: 'create' },
+      { value: Permission.CONNECTION_EDIT, label: 'edit' },
+      { value: Permission.CONNECTION_DELETE, label: 'delete' },
     ],
   },
   {
-    title: 'Account',
+    title: 'account',
     options: [
-      { value: Permission.ACCOUNT_VIEW, label: 'View' },
+      { value: Permission.ACCOUNT_VIEW, label: 'view' },
       {
         value: Permission.ACCOUNT_EDIT,
-        label: 'Edit',
-        hint: 'Settings, members and hooks, including giving a person the admin role.',
+        label: 'edit',
+        hint: 'accountEdit',
       },
-      { value: Permission.ACCOUNT_CREATE, label: 'Create accounts' },
-      { value: Permission.ACCOUNT_DELETE, label: 'Delete' },
+      { value: Permission.ACCOUNT_CREATE, label: 'createAccounts' },
+      { value: Permission.ACCOUNT_DELETE, label: 'delete' },
     ],
   },
 ];
 
 // The name of a permission as a person reads it, such as "Jobs: Run".
-export function permissionLabel(permission: Permission): string {
+export function permissionLabel(
+  permission: Permission,
+  t: PermissionsTranslator
+): string {
   for (const group of PERMISSION_GROUPS) {
     const option = group.options.find((o) => o.value === permission);
     if (option) {
-      return `${group.title}: ${option.label}`;
+      return t('label', {
+        group: t(`groups.${group.title}`),
+        option: t(`options.${option.label}`),
+      });
     }
   }
-  return 'Unknown';
+  return t('unknown');
 }
 
 interface Props {
@@ -81,6 +99,7 @@ interface Props {
 
 export function PermissionsField(props: Props): ReactElement {
   const { value, onChange } = props;
+  const t = useTranslations('settings.apiKeys.permissions');
   const toggle = (permission: Permission, checked: boolean): void => {
     onChange(
       checked ? [...value, permission] : value.filter((p) => p !== permission)
@@ -90,7 +109,7 @@ export function PermissionsField(props: Props): ReactElement {
     <div className="grid gap-4 sm:grid-cols-3">
       {PERMISSION_GROUPS.map((group) => (
         <div key={group.title} className="flex flex-col gap-2">
-          <p className="text-sm font-medium">{group.title}</p>
+          <p className="text-sm font-medium">{t(`groups.${group.title}`)}</p>
           {group.options.map((option) => {
             const id = `permission-${option.value}`;
             return (
@@ -101,10 +120,10 @@ export function PermissionsField(props: Props): ReactElement {
                   onCheckedChange={(checked) => toggle(option.value, checked)}
                 />
                 <label htmlFor={id} className="flex flex-col text-sm">
-                  <span>{option.label}</span>
+                  <span>{t(`options.${option.label}`)}</span>
                   {option.hint && (
                     <span className="text-xs text-muted-foreground">
-                      {option.hint}
+                      {t(`hints.${option.hint}`)}
                     </span>
                   )}
                 </label>

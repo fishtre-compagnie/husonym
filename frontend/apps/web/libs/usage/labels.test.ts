@@ -12,7 +12,7 @@ describe('errorCategoryLabel', () => {
     expect(
       CATEGORIES.filter(
         (category) => category !== RunErrorCategory.UNSPECIFIED
-      ).map(errorCategoryLabel)
+      ).map((category) => errorCategoryLabel(category))
     ).toEqual([
       'Connection refused',
       'Authentication refused',
@@ -35,7 +35,7 @@ describe('errorCategoryLabel', () => {
         category !== RunErrorCategory.OTHER
     );
     expect(named).toHaveLength(10);
-    const labels = named.map(errorCategoryLabel);
+    const labels = named.map((category) => errorCategoryLabel(category));
     for (const label of labels) {
       expect(label).not.toBe('');
       expect(label).not.toBe('Other');
@@ -56,8 +56,8 @@ const STEPS = Object.values(RunErrorStep).filter(
 describe('errorStepLabel', () => {
   it('names the six steps', () => {
     expect(
-      STEPS.filter((step) => step !== RunErrorStep.UNSPECIFIED).map(
-        errorStepLabel
+      STEPS.filter((step) => step !== RunErrorStep.UNSPECIFIED).map((step) =>
+        errorStepLabel(step)
       )
     ).toEqual([
       'Preflight',
@@ -74,7 +74,7 @@ describe('errorStepLabel', () => {
       (step) => step !== RunErrorStep.UNSPECIFIED && step !== RunErrorStep.OTHER
     );
     expect(named).toHaveLength(5);
-    const labels = named.map(errorStepLabel);
+    const labels = named.map((step) => errorStepLabel(step));
     for (const label of labels) {
       expect(label).not.toBe('');
       expect(label).not.toBe('Other');

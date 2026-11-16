@@ -9,6 +9,7 @@ import type {
   UsageErrorCount,
   UsageTotals,
 } from '@husonym/sdk';
+import { ENGLISH_USAGE_I18N, UsageI18n } from './i18n';
 import { errorCategoryLabel, errorStepLabel } from './labels';
 import { formatCount } from './numbers';
 import {
@@ -39,7 +40,8 @@ interface JobRow {
 // once, why some jobs show no row count.
 export function jobsTable(
   jobs: readonly JobUsage[],
-  accountName: string
+  accountName: string,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
 ): { rows: JobRow[]; note: string | undefined } {
   return {
     rows: jobs.map((job) => ({
@@ -49,27 +51,34 @@ export function jobsTable(
       rowsRead: rowsLabel(
         job.kind,
         job.totals?.rowsRead ?? ZERO,
-        job.totals?.runsWithUncountedRows
+        job.totals?.runsWithUncountedRows,
+        i18n
       ),
-      runs: formatCount(job.totals?.runs ?? ZERO),
+      runs: formatCount(job.totals?.runs ?? ZERO, i18n.locale),
       success: successRateLabel(job.totals),
-      duration: durationLabel(job.durationMedianSeconds),
+      duration: durationLabel(job.durationMedianSeconds, i18n),
     })),
-    note: jobs.map((job) => rowsHint(job.kind)).find((hint) => hint),
+    note: jobs.map((job) => rowsHint(job.kind, i18n)).find((hint) => hint),
   };
 }
 
 // What the table of jobs says when it has no row. Jobs deleted since are not listed
 // while their runs stay counted: runs without a job are not "no job ran".
-export function jobsEmptyLine(totals: UsageTotals | undefined): string {
-  return noRunLine(totals) === undefined
-    ? 'The jobs that ran in this period no longer exist.'
-    : 'No job ran in this period.';
+export function jobsEmptyLine(
+  totals: UsageTotals | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  return noRunLine(totals, i18n) === undefined
+    ? i18n.t('jobsGone')
+    : i18n.t('noJobRan');
 }
 
 // What the errors say when there is none.
-export function errorsEmptyLine(totals: UsageTotals | undefined): string {
-  return noRunLine(totals) ?? 'Every run of this period completed.';
+export function errorsEmptyLine(
+  totals: UsageTotals | undefined,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): string {
+  return noRunLine(totals, i18n) ?? i18n.t('allCompleted');
 }
 
 // A row of a table of counts: what is counted, and how many.
@@ -81,11 +90,14 @@ interface CountRow {
 
 // The runs that did not complete, by category, in the order the API gives them (the
 // category with the most runs first).
-export function errorRows(errors: readonly UsageErrorCount[]): CountRow[] {
+export function errorRows(
+  errors: readonly UsageErrorCount[],
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
+): CountRow[] {
   return errors.map((error) => ({
     key: String(error.category),
-    label: errorCategoryLabel(error.category),
-    count: formatCount(error.runs),
+    label: errorCategoryLabel(error.category, i18n),
+    count: formatCount(error.runs, i18n.locale),
   }));
 }
 
@@ -108,7 +120,8 @@ interface RunRow {
 // so when the period counts more runs than are listed.
 export function runsTable(
   usage: Pick<GetJobUsageResponse, 'runs' | 'totals' | 'kind'>,
-  accountName: string
+  accountName: string,
+  i18n: UsageI18n = ENGLISH_USAGE_I18N
 ): { rows: RunRow[]; caption: string | undefined } {
   const { runs, totals, kind } = usage;
   return {
@@ -117,13 +130,15 @@ export function runsTable(
       href: `/${accountName}/runs/${run.runId}`,
       startedAt: run.startedAt ? timestampDate(run.startedAt) : undefined,
       status: run.status,
-      duration: durationLabel(runSeconds(run)),
-      rowsRead: rowsLabel(kind, run.rowsRead, run.tablesUncounted),
-      error: runErrorLabel(run),
+      duration: durationLabel(runSeconds(run), i18n),
+      rowsRead: rowsLabel(kind, run.rowsRead, run.tablesUncounted, i18n),
+      error: runErrorLabel(run, i18n),
     })),
     caption:
       (totals?.runs ?? ZERO) > BigInt(runs.length)
-        ? `The ${formatCount(runs.length)} most recent runs of the period.`
+        ? i18n.t('recentRuns', {
+            count: formatCount(runs.length, i18n.locale),
+          })
         : undefined,
   };
 }
@@ -144,27 +159,34 @@ function runSeconds(
 
 // What kept a run from completing and, when it says something, the step it was at.
 function runErrorLabel(
-  run: Pick<RunUsage, 'status' | 'errorCategory' | 'errorStep'>
+  run: Pick<RunUsage, 'status' | 'errorCategory' | 'errorStep'>,
+  i18n: UsageI18n
 ): string {
   if (run.status === JobRunStatus.COMPLETE) {
     return '';
   }
-  const category = errorCategoryLabel(run.errorCategory);
+  const category = errorCategoryLabel(run.errorCategory, i18n);
   const saysNothing =
     run.errorStep === RunErrorStep.UNSPECIFIED ||
     run.errorStep === RunErrorStep.OTHER;
   return saysNothing
     ? category
-    : `${category} · ${errorStepLabel(run.errorStep)}`;
+    : i18n.t('errorWithStep', {
+        category,
+        step: errorStepLabel(run.errorStep, i18n),
+      });
 }
 
 // What the license refused, by gate. A gate that refused nothing is no row.
-export function refusalRows(refusals: readonly GateRefusalCount[]): CountRow[] {
+export function refusalRows(
+  refusals: readonly GateRefusalCount[],
+  locale?: string
+): CountRow[] {
   return refusals
     .filter((refusal) => refusal.refusals > ZERO)
     .map((refusal) => ({
       key: refusal.gate,
       label: gateLabel(refusal.gate),
-      count: formatCount(refusal.refusals),
+      count: formatCount(refusal.refusals, locale),
     }));
 }

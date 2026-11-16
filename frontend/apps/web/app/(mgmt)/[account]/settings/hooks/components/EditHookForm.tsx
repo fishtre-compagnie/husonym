@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { FormEvent, useEffect } from 'react';
 import * as yup from 'yup';
 
@@ -17,6 +18,7 @@ import { useEditHookStore } from './stores';
 import {
   EditAccountHookFormValues,
   editFormDataToAccountHook,
+  hookValidationMessage,
   toEditFormData,
 } from './validation';
 
@@ -34,6 +36,8 @@ export function EditHookForm({ hook, onSubmit }: EditHookFormProps) {
     setSubmitting,
     isSubmitting,
   } = useEditHookStore();
+  const t = useTranslations('settings.hooks.edit');
+  const tValidation = useTranslations('settings.hooks.validation');
 
   useEffect(() => {
     // Initialize form with hook data
@@ -64,7 +68,10 @@ export function EditHookForm({ hook, onSubmit }: EditHookFormProps) {
         const validationErrors: Record<string, string> = {};
         err.inner.forEach((error) => {
           if (error.path) {
-            validationErrors[error.path] = error.message;
+            validationErrors[error.path] = hookValidationMessage(
+              error.message,
+              tValidation
+            );
           }
         });
         setErrors(validationErrors);
@@ -116,7 +123,7 @@ export function EditHookForm({ hook, onSubmit }: EditHookFormProps) {
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Update"
+            text={t('submit')}
           />
         </Button>
       </div>

@@ -8,13 +8,25 @@ import { toTitleCase } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService, UserAccountType } from '@husonym/sdk';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { ReactElement } from 'react';
+
+type NavKey =
+  | 'apiKeys'
+  | 'temporal'
+  | 'members'
+  | 'organization'
+  | 'billing'
+  | 'usage'
+  | 'hooks'
+  | 'anonymization'
+  | 'license';
 
 interface Item {
   href: string;
   ref: string;
-  title: string;
+  titleKey: NavKey;
 }
 
 export default function SettingsLayout({
@@ -23,11 +35,12 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const { account } = useAccount();
+  const t = useTranslations('settings.layout');
   return (
     <PageBody>
       <div className="flex flex-col gap-1.5">
         <PageHeader
-          title="Settings"
+          title={t('title')}
           description={toTitleCase(account?.name ?? '')}
         />
         {/* The id holds a copy button, which a paragraph cannot hold. */}
@@ -35,7 +48,7 @@ export default function SettingsLayout({
           <ResourceId
             labelText={account?.id ?? ''}
             copyText={account?.id ?? ''}
-            onHoverText="Copy account Id"
+            onHoverText={t('copyAccountId')}
           />
         </div>
       </div>
@@ -50,9 +63,10 @@ export default function SettingsLayout({
 function NavSettings(): ReactElement {
   const pathname = usePathname();
   const items = useGetNavSettings();
+  const t = useTranslations('settings.layout.nav');
   return (
     <nav
-      aria-label="Settings"
+      aria-label={t('label')}
       className="-mx-4 flex shrink-0 gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:w-52 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
     >
       {items.map((item) => {
@@ -69,7 +83,7 @@ function NavSettings(): ReactElement {
                 : 'text-muted-foreground hover:bg-hover hover:text-foreground'
             )}
           >
-            {item.title}
+            {t(item.titleKey)}
           </Link>
         );
       })}
@@ -128,47 +142,47 @@ function getAllNavSettings(accountName: string): Item[] {
     {
       href: `/${accountName}/settings/api-keys`,
       ref: 'api-keys',
-      title: 'API Keys',
+      titleKey: 'apiKeys',
     },
     {
       href: `/${accountName}/settings/temporal`,
       ref: 'temporal',
-      title: 'Temporal',
+      titleKey: 'temporal',
     },
     {
       href: `/${accountName}/settings/members`,
       ref: 'members',
-      title: 'Members',
+      titleKey: 'members',
     },
     {
       href: `/${accountName}/settings/organization`,
       ref: 'organization',
-      title: 'Organization',
+      titleKey: 'organization',
     },
     {
       href: `/${accountName}/settings/billing`,
       ref: 'billing',
-      title: 'Billing',
+      titleKey: 'billing',
     },
     {
       href: `/${accountName}/settings/usage`,
       ref: 'usage',
-      title: 'Usage',
+      titleKey: 'usage',
     },
     {
       href: `/${accountName}/settings/hooks`,
       ref: 'hooks',
-      title: 'Hooks',
+      titleKey: 'hooks',
     },
     {
       href: `/${accountName}/settings/anonymization`,
       ref: 'anonymization',
-      title: 'Anonymization',
+      titleKey: 'anonymization',
     },
     {
       href: `/${accountName}/settings/license`,
       ref: 'license',
-      title: 'License',
+      titleKey: 'license',
     },
   ];
 }

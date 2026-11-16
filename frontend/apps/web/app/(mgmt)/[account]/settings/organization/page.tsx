@@ -8,11 +8,13 @@ import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { getErrorMessage } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import DesignateOrganizationCard from './components/DesignateOrganizationCard';
 
 export default function Page(): ReactElement {
   const { account } = useAccount();
+  const t = useTranslations('settings.organization');
   const { data: systemAppConfig, isLoading: isSystemAppConfigLoading } =
     useGetSystemAppConfig();
   const systemInfo = useQuery(UserAccountService.method.getSystemInformation);
@@ -28,48 +30,38 @@ export default function Page(): ReactElement {
 
   return (
     <div className="flex flex-col gap-5">
-      <SubPageHeader
-        header="Organization"
-        description="The account people who sign in to this instance work in"
-      />
+      <SubPageHeader header={t('title')} description={t('description')} />
       {systemInfo.error ? (
         <Alert variant="destructive">
-          <AlertTitle>
-            Unable to read the organization of this instance
-          </AlertTitle>
+          <AlertTitle>{t('readError')}</AlertTitle>
           <AlertDescription>
             {getErrorMessage(systemInfo.error)}
           </AlertDescription>
         </Alert>
       ) : systemAppConfig?.isHusonymCloud ? (
         <Alert>
-          <AlertTitle>Nothing to designate</AlertTitle>
-          <AlertDescription>
-            An organization is designated on a self-hosted instance only.
-          </AlertDescription>
+          <AlertTitle>{t('nothingToDesignate')}</AlertTitle>
+          <AlertDescription>{t('selfHostedOnly')}</AlertDescription>
         </Alert>
       ) : organizationId ? (
         // The entry leaves the settings once an organization is retained; the page
         // still answers whoever comes to it by its address.
         <Alert>
-          <AlertTitle>This instance has its organization</AlertTitle>
+          <AlertTitle>{t('hasOrganization')}</AlertTitle>
           <AlertDescription>
             {organizationStatement(
               organizationId,
               account.id,
-              accountsData?.accounts.find((a) => a.id === organizationId)?.name
+              accountsData?.accounts.find((a) => a.id === organizationId)?.name,
+              t
             )}{' '}
-            People who sign in to this instance join it as viewers. This cannot
-            be changed from the interface.
+            {t('joinAsViewers')}
           </AlertDescription>
         </Alert>
       ) : !systemAppConfig?.isAuthEnabled ? (
         <Alert>
-          <AlertTitle>Nothing to designate</AlertTitle>
-          <AlertDescription>
-            This instance runs without authentication: it has a single user, and
-            no organization for others to join.
-          </AlertDescription>
+          <AlertTitle>{t('nothingToDesignate')}</AlertTitle>
+          <AlertDescription>{t('noAuth')}</AlertDescription>
         </Alert>
       ) : (
         <DesignateOrganizationCard account={account} />
@@ -82,13 +74,14 @@ function organizationStatement(
   organizationId: string,
   activeAccountId: string,
   // Known only when the user is in the organization.
-  organizationName: string | undefined
+  organizationName: string | undefined,
+  t: ReturnType<typeof useTranslations<'settings.organization'>>
 ): string {
   if (organizationId === activeAccountId) {
-    return 'This account is the organization of this instance.';
+    return t('statementSelf');
   }
   if (organizationName) {
-    return `The account "${organizationName}" is the organization of this instance.`;
+    return t('statementNamed', { name: organizationName });
   }
-  return 'Another account is the organization of this instance.';
+  return t('statementOther');
 }
