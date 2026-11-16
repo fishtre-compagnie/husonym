@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 import { GoWorkflow } from 'react-icons/go';
 
 interface DataTableProps<TData extends RowData> {
@@ -47,6 +48,7 @@ export default function AiSchemaPageTable<TData extends RowData>({
 
   const { rows } = table.getRowModel();
 
+  const t = useTranslations('mapping.schemaTable.aiSchema');
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -67,11 +69,10 @@ export default function AiSchemaPageTable<TData extends RowData>({
         <div className="flex">
           <GoWorkflow className="h-4 w-4" />
         </div>
-        <CardTitle>Table Schema</CardTitle>
+        <CardTitle>{t('schemaTitle')}</CardTitle>
       </div>
       <CardDescription className="py-2">
-        The schema of the currently selected table that will be used to generate
-        synthetic data.
+        {t('schemaDescription')}
       </CardDescription>
       <div
         className={cn(
@@ -113,7 +114,7 @@ export default function AiSchemaPageTable<TData extends RowData>({
           >
             {rows.length === 0 && (
               <TableRow className="flex justify-center items-center py-10 text-muted-foreground">
-                <td>No Schema(s) or Table(s) selected.</td>
+                <td>{t('empty')}</td>
               </TableRow>
             )}
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {

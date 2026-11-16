@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/libs/utils';
 import { VirtualForeignConstraintFormValues } from '@/yup-validations/jobs';
+import { useFormatter, useTranslations } from 'next-intl';
 
 export type Row = VirtualForeignConstraintFormValues;
 
@@ -30,6 +31,8 @@ export default function VirtualFkPageTable<TData extends RowData>({
   columns,
   data,
 }: DataTableProps<TData>): ReactElement {
+  const t = useTranslations('mapping.schemaTable.virtualForeignKeys');
+  const format = useFormatter();
   const table = useTable({
     features: unpaginatedTableFeatures,
     data,
@@ -89,7 +92,7 @@ export default function VirtualFkPageTable<TData extends RowData>({
           >
             {rows.length === 0 && (
               <TableRow className="flex justify-center items-center py-10 text-muted-foreground">
-                <td>No Virtual Foreign Keys</td>
+                <td>{t('empty')}</td>
               </TableRow>
             )}
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -126,10 +129,10 @@ export default function VirtualFkPageTable<TData extends RowData>({
         </StickyHeaderTable>
       </div>
       <div className="text-xs text-muted-foreground pt-4">
-        Total rows: ({new Intl.NumberFormat('en-US').format(data.length)}) Rows
-        visible: (
-        {new Intl.NumberFormat('en-US').format(table.getRowModel().rows.length)}
-        )
+        {t('totals', {
+          total: format.number(data.length),
+          visible: format.number(table.getRowModel().rows.length),
+        })}
       </div>
     </div>
   );

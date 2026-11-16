@@ -7,6 +7,7 @@ import {
 } from '@/app/(mgmt)/[account]/jobs/util';
 import { DestinationOptionsFormValues } from '@/yup-validations/jobs';
 import { Connection } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { FieldErrors } from 'react-hook-form';
 import { DestinationDetails } from '../NosqlTable/TableMappings/Columns';
@@ -42,6 +43,7 @@ export default function DestinationOptionsForm(
     destinationDetailsRecord,
     errors,
   } = props;
+  const t = useTranslations('mapping.form.destinationOptions');
 
   if (!connection) {
     return <></>;
@@ -137,8 +139,9 @@ export default function DestinationOptionsForm(
     default:
       return (
         <div>
-          No connection component found for: (
-          {connection?.name ?? 'unknown name'})
+          {t('noConnectionComponent', {
+            name: connection?.name ?? t('unknownName'),
+          })}
         </div>
       );
   }

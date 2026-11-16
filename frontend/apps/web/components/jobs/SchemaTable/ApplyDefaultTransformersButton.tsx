@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/form';
 import { DefaultTransformerFormValues } from '@/yup-validations/jobs';
 import { yupResolver } from '@/util/yup-form-resolver';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 interface Props {
@@ -24,6 +25,7 @@ export default function ApplyDefaultTransformersButton(
   props: Props
 ): ReactElement {
   const { isDisabled, onClick } = props;
+  const t = useTranslations('mapping.schemaTable.applyDefault');
   const form = useForm<DefaultTransformerFormValues>({
     resolver: yupResolver(DefaultTransformerFormValues),
     defaultValues: {
@@ -34,13 +36,14 @@ export default function ApplyDefaultTransformersButton(
     <ConfirmationDialog
       trigger={
         <Button variant="outline" type="button" disabled={isDisabled}>
-          <ButtonText text="Apply Default Transformers" />
+          <ButtonText text={t('button')} />
         </Button>
       }
-      headerText="Apply Default Transformers?"
-      description="This setting will apply the 'Passthrough' Transformer to every column that is not Generated, while applying the 'Use Column Default' Transformer to all Generated (non-Identity)columns."
+      headerText={t('header')}
+      description={t('description')}
       body={<FormBody form={form} />}
       containerClassName="max-w-xl"
+      buttonText={t('confirm')}
       onConfirm={() => {
         const override = form.getValues('overrideTransformers');
         onClick(override);
@@ -54,6 +57,7 @@ interface FormBodyProps {
 }
 function FormBody(props: FormBodyProps): ReactElement {
   const { form } = props;
+  const t = useTranslations('mapping.schemaTable.applyDefault');
   return (
     <div>
       <Form {...form}>
@@ -67,8 +71,8 @@ function FormBody(props: FormBodyProps): ReactElement {
                   <SwitchCard
                     isChecked={field.value}
                     onCheckedChange={field.onChange}
-                    title="Override Mapped Transformers"
-                    description="Do you want to overwrite the Transformers you have already mapped?"
+                    title={t('overrideTitle')}
+                    description={t('overrideDescription')}
                   />
                 </FormControl>
                 <FormMessage />

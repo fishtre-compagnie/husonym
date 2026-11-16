@@ -12,6 +12,7 @@ import {
 import { getStorageClassString } from '@/util/util';
 import { AwsS3DestinationOptionsFormValues } from '@/yup-validations/jobs';
 import { AwsS3DestinationConnectionOptions_StorageClass } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 import { FieldErrors } from 'react-hook-form';
 
@@ -35,6 +36,7 @@ export default function AwsS3DestinationOptionsForm(
   props: Props
 ): ReactElement {
   const { value, setValue, errors } = props;
+  const t = useTranslations('mapping.form.destinationOptions');
 
   return (
     <div className="flex flex-col gap-6 rounded-lg border p-4">
@@ -44,9 +46,8 @@ export default function AwsS3DestinationOptionsForm(
       <div className="flex flex-col gap-2">
         <FormItemContainer>
           <FormHeader
-            title="Storage Class"
-            description="The storage class that will be used when records are written to in
-              S3"
+            title={t('storageClass')}
+            description={t('storageClassDescription')}
             isErrored={!!errors?.storageClass}
           />
           <FormInputContainer>
@@ -79,8 +80,8 @@ export default function AwsS3DestinationOptionsForm(
         </FormItemContainer>
         <FormItemContainer>
           <FormHeader
-            title="Max in Flight"
-            description="The max number of batched records to have in flight at a given time. Increase to improve throughput."
+            title={t('maxInFlight')}
+            description={t('maxInFlightDescription')}
             isErrored={!!errors?.maxInFlight}
           />
           <div>
@@ -93,8 +94,8 @@ export default function AwsS3DestinationOptionsForm(
         </FormItemContainer>
         <FormItemContainer>
           <FormHeader
-            title="Upload Timeout"
-            description="The maximum period to wait on an upload before abandoning and re-attempting. Ex: 5s, 1m"
+            title={t('uploadTimeout')}
+            description={t('uploadTimeoutDescription')}
             isErrored={!!errors?.timeout}
           />
           <FormInputContainer>
@@ -107,8 +108,8 @@ export default function AwsS3DestinationOptionsForm(
         </FormItemContainer>
         <FormItemContainer>
           <FormHeader
-            title="Batch Count"
-            description="The max allowed per batch before flushing to S3. 0 to disable count-based batching."
+            title={t('batchCount')}
+            description={t('batchCountS3Description')}
             isErrored={!!errors?.batch?.count}
           />
           <FormInputContainer>
@@ -123,8 +124,8 @@ export default function AwsS3DestinationOptionsForm(
         </FormItemContainer>
         <FormItemContainer>
           <FormHeader
-            title="Batch Period"
-            description="Time in which an incomplete batch should be flushed regardless of the count. Ex: 1s, 1m, 500ms. Empty to disable time-based batching (not recommended)."
+            title={t('batchPeriod')}
+            description={t('batchPeriodDescription')}
             isErrored={!!errors?.batch?.period}
           />
           <FormInputContainer>
@@ -146,12 +147,11 @@ export default function AwsS3DestinationOptionsForm(
 }
 
 function Header(): ReactElement {
+  const t = useTranslations('mapping.form.destinationOptions');
   return (
     <div>
-      <h2 className="text-md font-semibold tracking-tight">S3 Configuration</h2>
-      <p className="text-sm tracking-tight">
-        Change how Husonym handles sending records to the bucket.
-      </p>
+      <h2 className="text-md font-semibold tracking-tight">{t('s3Title')}</h2>
+      <p className="text-sm tracking-tight">{t('s3Description')}</p>
     </div>
   );
 }

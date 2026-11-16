@@ -10,6 +10,7 @@ import {
 import { FormDescription, FormLabel } from '@/components/ui/form';
 import { VirtualForeignConstraintFormValues } from '@/yup-validations/jobs';
 import { GetConnectionSchemaResponse } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { GoWorkflow } from 'react-icons/go';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
     constraintHandler,
     addVirtualForeignKey,
   } = props;
+  const t = useTranslations('mapping.schemaTable.virtualForeignKeyForm');
 
   const srcTable = virtualForeignKey
     ? `${virtualForeignKey?.schema}-${virtualForeignKey?.table}`
@@ -84,26 +86,24 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
             <div className="flex">
               <GoWorkflow className="h-4 w-4" />
             </div>
-            <CardTitle>Add Virtual Foreign Key</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
           </div>
-          <CardDescription>
-            Select the source table and columns, as well as the target table and
-            columns, to create a virtual foreign key. Add additional columns to
-            create a composite virtual foreign key.
-          </CardDescription>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col md:flex-row gap-12">
               <div className="flex flex-col gap-2">
-                <FormLabel>Source</FormLabel>
-                <FormDescription>The primary key</FormDescription>
+                <FormLabel>{t('source')}</FormLabel>
+                <FormDescription>{t('sourceHint')}</FormDescription>
                 <div className="flex flex-col md:flex-row gap-3">
                   <StringSelect
                     value={sourceTable}
                     values={Array.from(selectedTables)}
                     setValue={setSourceTable}
-                    text="table"
+                    placeholder={t('selectTable')}
+                    searchPlaceholder={t('searchTable')}
+                    emptyText={t('noTable')}
                   />
                   <div className="flex flex-col gap-3">
                     {sourceColumns.map((col, index) => (
@@ -120,21 +120,25 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
                           sourceTable
                         )}
                         setValue={(value) => updateSourceColumn(index, value)}
-                        text="column"
+                        placeholder={t('selectColumn')}
+                        searchPlaceholder={t('searchColumn')}
+                        emptyText={t('noColumn')}
                       />
                     ))}
                   </div>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <FormLabel>Target</FormLabel>
-                <FormDescription>The foreign key</FormDescription>
+                <FormLabel>{t('target')}</FormLabel>
+                <FormDescription>{t('targetHint')}</FormDescription>
                 <div className="flex flex-col md:flex-row gap-3">
                   <StringSelect
                     value={targetTable}
                     values={Array.from(selectedTables)}
                     setValue={setTargetTable}
-                    text="table"
+                    placeholder={t('selectTable')}
+                    searchPlaceholder={t('searchTable')}
+                    emptyText={t('noTable')}
                   />
                   <div className="flex flex-row items-start gap-4">
                     <div className="flex flex-col gap-3">
@@ -148,7 +152,9 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
                             targetTable
                           )}
                           setValue={(value) => updateTargetColumn(index, value)}
-                          text="column"
+                          placeholder={t('selectColumn')}
+                          searchPlaceholder={t('searchColumn')}
+                          emptyText={t('noColumn')}
                         />
                       ))}
                     </div>
@@ -163,8 +169,8 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
                           !targetTable ||
                           targetColumns.includes('')
                         ) {
-                          toast.error('Unable to add virtual foreign key', {
-                            description: 'Missing required field',
+                          toast.error(t('addFailed'), {
+                            description: t('missingField'),
                           });
                           return;
                         }
@@ -186,7 +192,7 @@ export function VirtualForeignKeyForm(props: Props): ReactElement {
                         setTargetColumns(['']);
                       }}
                     >
-                      Save
+                      {t('save')}
                     </Button>
                   </div>
                 </div>

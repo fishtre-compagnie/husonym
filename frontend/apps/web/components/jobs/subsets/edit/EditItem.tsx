@@ -19,6 +19,7 @@ import {
   ConnectionService,
   GetTableRowCountResponse,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import ValidateQueryErrorAlert from '../SubsetErrorAlert';
 import { SubsetTableRow } from '../SubsetTable/Columns';
@@ -49,6 +50,7 @@ export default function EditItem(props: Props): ReactElement {
     connectionType,
     columns,
   } = props;
+  const t = useTranslations('mapping.subsets.edit');
   const [validateResp, setValidateResp] = useState<
     CheckSqlQueryResponse | undefined
   >();
@@ -159,7 +161,9 @@ export default function EditItem(props: Props): ReactElement {
                 showSchema(connectionType) ? undefined : 'hidden'
               )}
             >
-              <span className="font-semibold tracking-tight">Schema</span>
+              <span className="font-semibold tracking-tight">
+                {t('schema')}
+              </span>
               <Badge
                 className="px-4 py-2 font-mono"
                 variant={item?.schema ? 'outline' : 'secondary'}
@@ -170,7 +174,7 @@ export default function EditItem(props: Props): ReactElement {
           )}
           {item?.table && (
             <div className="flex flex-row gap-2 items-center">
-              <span className="font-semibold tracking-tight">Table</span>
+              <span className="font-semibold tracking-tight">{t('table')}</span>
               <Badge
                 className="px-4 py-2 font-mono"
                 variant={item?.table ? 'outline' : 'secondary'}
@@ -200,7 +204,7 @@ export default function EditItem(props: Props): ReactElement {
           disabled={!item}
           onClick={() => onCancelClick()}
         >
-          <ButtonText text="Cancel" />
+          <ButtonText text={t('cancel')} />
         </Button>
         <div className="flex flex-row gap-2">
           {showRowCountButton && (
@@ -217,16 +221,12 @@ export default function EditItem(props: Props): ReactElement {
                       {calculatingRowCount ? (
                         <Spinner className="text-foreground" />
                       ) : (
-                        <ButtonText text={'Row Count'} />
+                        <ButtonText text={t('rowCount')} />
                       )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>
-                      Attempts to run a SQL COUNT(*) statement against the
-                      source connection for the table with the included WHERE
-                      clause
-                    </p>
+                    <p>{t('rowCountTooltip')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -247,14 +247,11 @@ export default function EditItem(props: Props): ReactElement {
                     disabled={!item}
                     onClick={() => onValidate()}
                   >
-                    <ButtonText text="Validate" />
+                    <ButtonText text={t('validate')} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    Attempts to run a SQL PREPARE statement against the source
-                    connection for the table with the included WHERE clause
-                  </p>
+                  <p>{t('validateTooltip')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -269,14 +266,11 @@ export default function EditItem(props: Props): ReactElement {
                     onSaveClick();
                   }}
                 >
-                  <ButtonText text="Apply" />
+                  <ButtonText text={t('apply')} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  Applies changes to table only, click Save below to fully
-                  submit changes
-                </p>
+                <p>{t('applyTooltip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

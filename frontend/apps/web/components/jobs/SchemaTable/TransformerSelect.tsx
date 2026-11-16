@@ -27,6 +27,7 @@ import {
   UserDefinedTransformerConfigSchema,
 } from '@husonym/sdk';
 import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useState } from 'react';
 import { TransformerResult } from './transformer-handler';
 
@@ -58,8 +59,9 @@ export default function TransformerSelect(props: Props): ReactElement {
     disabled,
     buttonClassName,
     buttonTextClassName = 'lg:w-[200px]',
-    notFoundText = 'No transformers found.',
+    notFoundText,
   } = props;
+  const t = useTranslations('mapping.schemaTable.transformerSelect');
   const [open, setOpen] = useState(false);
 
   const [{ system, userDefined }, setTransformerResult] =
@@ -101,12 +103,12 @@ export default function TransformerSelect(props: Props): ReactElement {
         side={side}
       >
         <Command>
-          <CommandInput placeholder={'Search...'} />
+          <CommandInput placeholder={t('search')} />
           <div>
             <CommandList className="max-h-[600px]">
-              <CommandEmpty>{notFoundText}</CommandEmpty>
+              <CommandEmpty>{notFoundText ?? t('notFound')}</CommandEmpty>
               {userDefined.length > 0 && (
-                <CommandGroup heading="Custom">
+                <CommandGroup heading={t('custom')}>
                   {userDefined.map((t) => {
                     return (
                       <CommandItem
@@ -156,7 +158,7 @@ export default function TransformerSelect(props: Props): ReactElement {
                 </CommandGroup>
               )}
               {system.length > 0 && (
-                <CommandGroup heading="System">
+                <CommandGroup heading={t('system')}>
                   {system.map((t) => {
                     return (
                       <CommandItem

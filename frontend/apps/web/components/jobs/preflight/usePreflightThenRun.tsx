@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Job } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useRef, useState } from 'react';
 import PreflightReportView from './PreflightReportView';
 import { countReport, summarize } from './report';
@@ -34,6 +35,7 @@ export function usePreflightThenRun(
   job: Job | undefined,
   run: () => Promise<void>
 ): PreflightThenRun {
+  const t = useTranslations('mapping.preflight');
   const { check, isChecking, outcome } = usePreflightCheck(job?.id ?? '');
   const connections = useJobConnections(job, job?.accountId);
   const [open, setOpen] = useState(false);
@@ -97,30 +99,26 @@ export function usePreflightThenRun(
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-3xl flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Pre-flight</DialogTitle>
+            <DialogTitle>{t('title')}</DialogTitle>
             <DialogDescription>
               {isChecking
-                ? 'Checking what the run will meet before starting it…'
+                ? t('dialog.checking')
                 : counts
-                  ? summarize(counts)
-                  : 'The check did not end.'}
+                  ? summarize(counts, t)
+                  : t('dialog.didNotEnd')}
             </DialogDescription>
           </DialogHeader>
           {isChecking ? (
             <div className="flex flex-row items-center gap-3 rounded-lg border p-4 text-sm text-muted-foreground">
               <Spinner />
-              <span>
-                A worker computes the plan of the run and asks the connections
-                of the job. It takes a few seconds, up to a minute on a large
-                schema. Nothing is read from the tables nor written.
-              </span>
+              <span>{t('dialog.inProgress')}</span>
             </div>
           ) : null}
           {!isChecking && outcome?.error ? (
             <Alert variant="destructive">
-              <AlertTitle>The check did not end</AlertTitle>
+              <AlertTitle>{t('checkDidNotEnd')}</AlertTitle>
               <AlertDescription>
-                {outcome.error} The run checks again at its start.
+                {outcome.error} {t('dialog.checksAgain')}
               </AlertDescription>
             </Alert>
           ) : null}
@@ -141,12 +139,12 @@ export function usePreflightThenRun(
                 disabled={isRunning}
                 onClick={() => void check()}
               >
-                Check again
+                {t('dialog.checkAgain')}
               </Button>
             ) : null}
             {blocked ? (
               <Button type="button" onClick={() => onOpenChange(false)}>
-                Close
+                {t('dialog.close')}
               </Button>
             ) : (
               <>
@@ -156,7 +154,7 @@ export function usePreflightThenRun(
                   disabled={isRunning}
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('dialog.cancel')}
                 </Button>
                 {!isChecking ? (
                   <Button
@@ -168,8 +166,8 @@ export function usePreflightThenRun(
                       leftIcon={isRunning ? <Spinner /> : undefined}
                       text={
                         counts && counts.warnings === 0 && !outcome?.error
-                          ? 'Run'
-                          : 'Run anyway'
+                          ? t('dialog.run')
+                          : t('dialog.runAnyway')
                       }
                     />
                   </Button>

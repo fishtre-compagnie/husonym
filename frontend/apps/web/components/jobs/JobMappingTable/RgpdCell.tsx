@@ -5,50 +5,63 @@ import {
   QuestionMarkCircledIcon,
 } from '@radix-ui/react-icons';
 import { PiiConfidence, PiiDetectionMethod } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { rgpdState } from './rgpd-state';
 
-// Libellés lisibles des catégories détectées (backend pkg/piidetect + entités Presidio).
-const CATEGORY_LABELS: Record<string, string> = {
-  email: 'Email',
-  phone_number: 'Phone number',
-  person_first_name: 'First name',
-  person_last_name: 'Last name',
-  person_full_name: 'Full name',
-  username: 'Username',
-  street_address: 'Street address',
-  city: 'City',
-  state: 'State',
-  postal_code: 'Postal code',
-  country: 'Country',
-  ssn: 'Social security number',
-  nir: 'Social security number',
-  national_id: 'National identifier',
-  secret: 'Password, token or key',
-  password_hash: 'Password hash',
-  iban: 'IBAN',
-  bank_account: 'Bank account',
-  salary: 'Salary',
-  age: 'Age',
-  ethnicity: 'Ethnicity',
-  marital_status: 'Marital status',
-  mac_address: 'MAC address',
-  siret: 'SIRET',
-  credit_card: 'Credit card',
-  ip_address: 'IP address',
-  gender: 'Gender',
-  birth_date: 'Date of birth',
-  date: 'Date',
-};
+// Les catégories détectées (backend pkg/piidetect + entités Presidio), sous la clé de
+// leur libellé dans les messages.
+const CATEGORY_KEYS = {
+  email: 'email',
+  phone_number: 'phone_number',
+  person_first_name: 'person_first_name',
+  person_last_name: 'person_last_name',
+  person_full_name: 'person_full_name',
+  username: 'username',
+  street_address: 'street_address',
+  city: 'city',
+  state: 'state',
+  postal_code: 'postal_code',
+  country: 'country',
+  ssn: 'ssn',
+  nir: 'ssn',
+  national_id: 'national_id',
+  secret: 'secret',
+  password_hash: 'password_hash',
+  iban: 'iban',
+  bank_account: 'bank_account',
+  salary: 'salary',
+  age: 'age',
+  ethnicity: 'ethnicity',
+  marital_status: 'marital_status',
+  mac_address: 'mac_address',
+  siret: 'siret',
+  credit_card: 'credit_card',
+  ip_address: 'ip_address',
+  gender: 'gender',
+  birth_date: 'birth_date',
+  date: 'date',
+} as const;
+
+function categoryKey(
+  category: string
+): (typeof CATEGORY_KEYS)[keyof typeof CATEGORY_KEYS] | undefined {
+  return Object.hasOwn(CATEGORY_KEYS, category)
+    ? CATEGORY_KEYS[category as keyof typeof CATEGORY_KEYS]
+    : undefined;
+}
 
 // Moteur de reconnaissance qui a identifié la colonne. Nommé du point de vue de
 // l'utilisateur : ce qui compte pour lui est de savoir à quel point le résultat
 // est fiable, pas le détail de l'implémentation.
-const ENGINE_LABELS: Record<number, string> = {
-  [PiiDetectionMethod.COLUMN_NAME]: 'the dictionary',
-  [PiiDetectionMethod.CHECKSUM]: 'a checksum',
-  [PiiDetectionMethod.CONTENT]: 'AI',
-  [PiiDetectionMethod.FORMAT]: 'format analysis',
+const ENGINE_KEYS: Record<
+  number,
+  'columnName' | 'checksum' | 'content' | 'format'
+> = {
+  [PiiDetectionMethod.COLUMN_NAME]: 'columnName',
+  [PiiDetectionMethod.CHECKSUM]: 'checksum',
+  [PiiDetectionMethod.CONTENT]: 'content',
+  [PiiDetectionMethod.FORMAT]: 'format',
 };
 
 interface Props {
@@ -93,6 +106,7 @@ export default function RgpdCell({
   hasSuggestion,
   contentNotAnalyzed,
 }: Props): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.rgpdCell');
   const state = rgpdState({
     isSensitive,
     confidence,
@@ -108,15 +122,14 @@ export default function RgpdCell({
     return (
       <span
         className="text-xs text-muted-foreground"
-        aria-label="No personal data detected"
+        aria-label={t('noPersonalData')}
       >
         —
       </span>
     );
   }
   if (state === 'not_analyzed') {
-    const notAnalyzed =
-      'The content of this column could not be analyzed: whether it holds personal data is not known. Scan again.';
+    const notAnalyzed = t('notAnalyzedTitle');
     return (
       <span
         title={notAnalyzed}
@@ -124,27 +137,31 @@ export default function RgpdCell({
         className="inline-flex items-center gap-1 rounded-full bg-quiet-soft px-2 py-0.5 text-xs font-medium text-quiet-fg"
       >
         <QuestionMarkCircledIcon className="h-3.5 w-3.5" />
-        Not analyzed
+        {t('notAnalyzed')}
       </span>
     );
   }
 
-  const category = dataCategory ? CATEGORY_LABELS[dataCategory] : undefined;
-  const engine = method !== undefined ? ENGINE_LABELS[method] : undefined;
+  const catKey = dataCategory ? categoryKey(dataCategory) : undefined;
+  const category = catKey ? t(`categories.${catKey}`) : undefined;
+  const engineKey = method !== undefined ? ENGINE_KEYS[method] : undefined;
+  const engine = engineKey ? t(`engines.${engineKey}`) : undefined;
 
   // Une phrase, trois variantes. Le détail de la preuve (nombre de valeurs
   // vérifiées, formats candidats...) est volontairement omis : l'utilisateur a
   // besoin de savoir quoi faire, pas comment le calcul a été mené.
   // Le point est porté par le fragment, pas par la phrase : autrement, un moteur
   // absent laissait un point suivi d'une virgule au milieu de l'infobulle.
-  const source = engine ? ` Recognized by ${engine}.` : '';
-  const tooltip = needsReview
-    ? `GDPR data, but ambiguous.${source}`
-    : nonTraite
-      ? hasSuggestion
-        ? `GDPR data, but not anonymized.${source}`
-        : `GDPR data, but no compatible transformer.${source}`
-      : `GDPR data.${source}`;
+  const source = engine ? ` ${t('recognizedBy', { engine })}` : '';
+  const tooltip = `${
+    needsReview
+      ? t('ambiguous')
+      : nonTraite
+        ? hasSuggestion
+          ? t('notAnonymizedTooltip')
+          : t('noCompatibleTransformer')
+        : t('gdprData')
+  }${source}`;
 
   return (
     <span
@@ -167,7 +184,7 @@ export default function RgpdCell({
         ) : (
           <CheckCircledIcon className="h-3.5 w-3.5" />
         )}
-        {needsReview ? 'Review' : nonTraite ? 'Not anonymized' : 'GDPR'}
+        {needsReview ? t('review') : nonTraite ? t('notAnonymized') : t('gdpr')}
       </span>
       {category && (
         <span className="max-w-full truncate text-xs text-muted-foreground">

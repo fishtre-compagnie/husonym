@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/accordion';
 import { useQuery } from '@connectrpc/connect-query';
 import { Code, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import PreflightReportView from './PreflightReportView';
 import {
@@ -45,6 +46,7 @@ export default function JobRunPreflight(props: Props): ReactElement {
 
 function KeptReport(props: Props): ReactElement | null {
   const { jobRunId, accountId, jobId, isRunning } = props;
+  const t = useTranslations('mapping.preflight');
   const { data: jobData } = useQuery(
     JobService.method.getJob,
     { id: jobId },
@@ -79,9 +81,9 @@ function KeptReport(props: Props): ReactElement | null {
       <AccordionItem value="preflight">
         <AccordionTrigger>
           <div className="flex flex-col items-start gap-1 text-left">
-            <span className="font-semibold">Pre-flight of this run</span>
+            <span className="font-semibold">{t('run.title')}</span>
             <span className="text-sm font-normal text-muted-foreground">
-              {engineLabel(report.engine)} · {summarize(counts)}
+              {engineLabel(report.engine, t)} · {summarize(counts, t)}
             </span>
           </div>
         </AccordionTrigger>
@@ -92,8 +94,7 @@ function KeptReport(props: Props): ReactElement | null {
             copyableRemedies={false}
           />
           <p className="pt-3 text-sm text-muted-foreground">
-            The statements that grant what is missing are given by the
-            pre-flight check of the job.
+            {t('run.remediesHint')}
           </p>
         </AccordionContent>
       </AccordionItem>

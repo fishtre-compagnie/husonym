@@ -7,12 +7,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ColumnDef } from '@tanstack/react-table';
+import type { useTranslations } from 'next-intl';
 import { SchemaColumnHeader } from './SchemaColumnHeader';
 import { SchemaConstraintHandler } from './schema-constraint-handler';
 import { handleDataTypeBadge, toColKey } from './util';
 
 interface Props {
   constraintHandler: SchemaConstraintHandler;
+  t: ReturnType<typeof useTranslations<'mapping.schemaTable.aiSchema'>>;
 }
 
 interface Row {
@@ -24,7 +26,7 @@ interface Row {
 export function getSchemaColumns(
   props: Props
 ): ColumnDef<AppTableFeatures, Row>[] {
-  const { constraintHandler } = props;
+  const { constraintHandler, t } = props;
 
   return [
     {
@@ -41,7 +43,7 @@ export function getSchemaColumns(
       accessorFn: (row) => `${row.schema}.${row.table}`,
       id: 'schemaTable',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Table" />
+        <SchemaColumnHeader column={column} title={t('table')} />
       ),
       cell: ({ getValue }) => {
         return (
@@ -58,7 +60,7 @@ export function getSchemaColumns(
     {
       accessorKey: 'column',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Column" />
+        <SchemaColumnHeader column={column} title={t('column')} />
       ),
       cell: ({ row }) => {
         return (
@@ -74,7 +76,7 @@ export function getSchemaColumns(
       id: 'constraints',
       accessorKey: 'constraints',
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Constraints" />
+        <SchemaColumnHeader column={column} title={t('constraints')} />
       ),
       accessorFn: (row) => {
         const key = toColKey(row.schema, row.table, row.column);
@@ -83,10 +85,12 @@ export function getSchemaColumns(
 
         const pieces: string[] = [];
         if (isPrimaryKey) {
-          pieces.push('Primary Key');
+          pieces.push(t('primaryKey'));
         }
         if (isForeignKey) {
-          fkCols.forEach((col) => pieces.push(`Foreign Key: ${col}`));
+          fkCols.forEach((col) =>
+            pieces.push(t('foreignKeyOf', { column: col }))
+          );
         }
         return pieces.join('\n');
       },
@@ -108,7 +112,7 @@ export function getSchemaColumns(
                     variant="outline"
                     className="cursor-default border-transparent bg-brand-soft font-mono text-[11px] text-link"
                   >
-                    Primary Key
+                    {t('primaryKey')}
                   </Badge>
                 )}
               </div>
@@ -121,11 +125,13 @@ export function getSchemaColumns(
                           variant="outline"
                           className="cursor-default border-transparent bg-warn-soft font-mono text-[11px] text-warn-fg"
                         >
-                          Foreign Key
+                          {t('foreignKey')}
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {fkCols.map((col) => `Primary Key: ${col}`).join('\n')}
+                        {fkCols
+                          .map((col) => t('primaryKeyOf', { column: col }))
+                          .join('\n')}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -137,7 +143,7 @@ export function getSchemaColumns(
                     variant="outline"
                     className="cursor-default border-transparent bg-quiet-soft font-mono text-[11px] text-quiet-fg"
                   >
-                    Unique
+                    {t('unique')}
                   </Badge>
                 )}
               </div>
@@ -150,10 +156,10 @@ export function getSchemaColumns(
       accessorKey: 'isNullable',
       accessorFn: (row) => {
         const key = toColKey(row.schema, row.table, row.column);
-        return constraintHandler.getIsNullable(key) ? 'Yes' : 'No';
+        return constraintHandler.getIsNullable(key) ? t('yes') : t('no');
       },
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Nullable" />
+        <SchemaColumnHeader column={column} title={t('nullable')} />
       ),
       cell: ({ row }) => {
         const key = {
@@ -162,7 +168,7 @@ export function getSchemaColumns(
           column: row.getValue<string>('column'),
         };
         const isNullable = constraintHandler.getIsNullable(key);
-        const text = isNullable ? 'Yes' : 'No';
+        const text = isNullable ? t('yes') : t('no');
         return (
           <span className="max-w-[500px] truncate font-medium">
             <Badge variant="outline">{text}</Badge>
@@ -177,7 +183,7 @@ export function getSchemaColumns(
         return handleDataTypeBadge(constraintHandler.getDataType(key));
       },
       header: ({ column }) => (
-        <SchemaColumnHeader column={column} title="Data Type" />
+        <SchemaColumnHeader column={column} title={t('dataType')} />
       ),
       cell: ({ row }) => {
         const key = {

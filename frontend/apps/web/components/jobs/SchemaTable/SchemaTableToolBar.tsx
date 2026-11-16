@@ -7,6 +7,7 @@ import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { useTranslations } from 'next-intl';
 import { ReactNode } from 'react';
 import { JobMapping } from '@husonym/sdk';
 import {
@@ -58,6 +59,7 @@ export function SchemaTableToolbar<TData extends RowData>({
   isScanningPii,
   leading,
 }: DataTableToolbarProps<TData>) {
+  const t = useTranslations('mapping.schemaTable.toolbar');
   const isFiltered = table.state.columnFilters.length > 0;
   // The content scan is the pii_detection feature: without it the API refuses every
   // table, so the button is greyed and the notice below says why.
@@ -78,7 +80,7 @@ export function SchemaTableToolbar<TData extends RowData>({
             >
               <ButtonText
                 leftIcon={<Cross2Icon className="h-3 w-3" />}
-                text="Clear filters"
+                text={t('clearFilters')}
               />
             </Button>
           )}
@@ -89,7 +91,7 @@ export function SchemaTableToolbar<TData extends RowData>({
               disabled={!hasMissingSourceColumnMappings}
               onClick={onRemoveMissingSourceColumnMappings}
             >
-              <ButtonText text="Remove Missing Source Column Mappings" />
+              <ButtonText text={t('removeMissing')} />
             </Button>
           )}
           {showPiiScan && (
@@ -98,7 +100,7 @@ export function SchemaTableToolbar<TData extends RowData>({
               type="button"
               disabled={isScanningPii || !isPiiDetectionAllowed}
               onClick={() => onScanContent?.()}
-              title="Scans the sampled content of the columns (Presidio) to find personal data, including in columns whose name says nothing. The suggested transformers are applied automatically."
+              title={t('scanTitle')}
             >
               <ButtonText
                 leftIcon={
@@ -108,7 +110,7 @@ export function SchemaTableToolbar<TData extends RowData>({
                     <MagnifyingGlassIcon className="h-3 w-3" />
                   )
                 }
-                text={isScanningPii ? 'Scanning…' : 'Content scan (GDPR)'}
+                text={isScanningPii ? t('scanning') : t('scan')}
               />
             </Button>
           )}

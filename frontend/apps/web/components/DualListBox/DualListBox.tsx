@@ -10,6 +10,7 @@ import {
   DoubleArrowUpIcon,
 } from '@radix-ui/react-icons';
 import { RowSelectionState, useTable } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo, useState } from 'react';
 import ListBox from '../ListBox/ListBox';
 import { unpaginatedTableFeatures } from '../table/features';
@@ -43,17 +44,18 @@ export default function DualListBox(props: Props): ReactElement {
     leftEmptyState,
     rightEmptyState,
   } = props;
+  const t = useTranslations('mapping.dualListBox');
 
   const [leftSelected, setLeftSelected] = useState<RowSelectionState>({});
   const [rightSelected, setRightSelected] = useState<RowSelectionState>({});
 
   const leftCols = useMemo(
-    () => getListBoxColumns({ title: 'Source', mode }),
-    [mode]
+    () => getListBoxColumns({ title: t('source'), mode }),
+    [mode, t]
   );
   const rightCols = useMemo(
-    () => getListBoxColumns({ title: 'Destination', mode }),
-    [mode]
+    () => getListBoxColumns({ title: t('destination'), mode }),
+    [mode, t]
   );
 
   // left/right data must be stable in order to not cause infinite re-renders
@@ -105,6 +107,7 @@ export default function DualListBox(props: Props): ReactElement {
             options,
             leftData,
             mode,
+            t,
             leftEmptyState
           )}
         />
@@ -198,6 +201,7 @@ export default function DualListBox(props: Props): ReactElement {
             options,
             rightData,
             mode,
+            t,
             rightEmptyState
           )}
         />
@@ -210,16 +214,15 @@ function getLeftBoxNoMessage(
   options: Option[],
   leftData: Row[],
   _mode: Mode,
+  t: ReturnType<typeof useTranslations<'mapping.dualListBox'>>,
   leftEmptyState?: EmptyStateMessage
 ): string {
   // this isnt super useful right now because the options are always a combination of schema+jobmappings
   if (options.length === 0) {
-    return (
-      leftEmptyState?.noOptions ?? 'Unable to load schema or found no tables'
-    );
+    return leftEmptyState?.noOptions ?? t('noTables');
   }
   if (leftData.length === 0) {
-    return leftEmptyState?.noSelected ?? 'All tables have been added!';
+    return leftEmptyState?.noSelected ?? t('allTablesAdded');
   }
   return '';
 }
@@ -228,18 +231,17 @@ function getRightBoxNoMessage(
   options: Option[],
   rightData: Row[],
   mode: Mode,
+  t: ReturnType<typeof useTranslations<'mapping.dualListBox'>>,
   rightEmptyState?: EmptyStateMessage
 ): string {
   if (options.length === 0) {
-    return (
-      rightEmptyState?.noOptions ?? 'Unable to load schema or found no tables'
-    );
+    return rightEmptyState?.noOptions ?? t('noTables');
   }
   if (rightData.length === 0) {
     if (mode === 'many') {
-      return rightEmptyState?.noSelected ?? 'Add tables to get started!';
+      return rightEmptyState?.noSelected ?? t('addTables');
     } else {
-      return rightEmptyState?.noSelected ?? 'Add a table to get started!';
+      return rightEmptyState?.noSelected ?? t('addTable');
     }
   }
   return '';

@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/card';
 import { EditDestinationOptionsFormValues } from '@/yup-validations/jobs';
 import { TableIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo } from 'react';
 import {
   DestinationDetails,
@@ -24,9 +25,10 @@ export interface Props {
 
 export default function TableMappingsCard(props: Props): ReactElement {
   const { mappings, onUpdate, destinationDetailsRecord } = props;
+  const t = useTranslations('mapping.nosql.tableMappings');
   const columns = useMemo(
-    () => getTableMappingsColumns({ destinationDetailsRecord, onUpdate }),
-    [destinationDetailsRecord, onUpdate]
+    () => getTableMappingsColumns({ destinationDetailsRecord, onUpdate, t }),
+    [destinationDetailsRecord, onUpdate, t]
   );
   return (
     <Card className="w-full">
@@ -35,13 +37,10 @@ export default function TableMappingsCard(props: Props): ReactElement {
           <div className="flex">
             <TableIcon className="h-4 w-4" />
           </div>
-          <CardTitle>DynamoDB Table Mappings</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
         </div>
         <CardDescription className="max-w-2xl">
-          Map a table from source to destination. As tables are added in the
-          form above, they will dynamically be added to this section. A mapping
-          is required to denote which table each source table should be synced
-          to for each corresponding DynamoDB destination.
+          {t('cardDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>

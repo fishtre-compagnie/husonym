@@ -9,6 +9,7 @@ import { Pill } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useState } from 'react';
 
 export interface ColumnDecisionTarget {
@@ -45,6 +46,7 @@ export default function MappingDecisionPanel(props: Props): ReactElement {
     onApply,
   } = props;
 
+  const t = useTranslations('mapping.jobMappingTable.decisionPanel');
   const [draft, setDraft] = useState<JobMappingTransformerForm>(
     target.transformer
   );
@@ -70,30 +72,28 @@ export default function MappingDecisionPanel(props: Props): ReactElement {
           )}
           {target.isSensitive && (
             <Pill tone="warn">
-              Personal data
+              {t('personalData')}
               {target.dataCategory ? `: ${target.dataCategory}` : ''}
             </Pill>
           )}
         </>
       }
-      meta="Applied to the mapping right away; the job is saved when you press Update."
+      meta={t('meta')}
       footer={
         <>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             type="button"
             disabled={!changed || !draft.config.case || !optionsValid}
-            title={
-              changed ? undefined : 'Pick another transformer or option first'
-            }
+            title={changed ? undefined : t('pickFirst')}
             onClick={() => {
               onApply(draft);
               onClose();
             }}
           >
-            Apply
+            {t('apply')}
           </Button>
         </>
       }

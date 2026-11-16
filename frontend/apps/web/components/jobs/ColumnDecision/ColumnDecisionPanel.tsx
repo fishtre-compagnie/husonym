@@ -8,6 +8,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { ChevronDownIcon, ChevronUpIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 
 export interface PanelNavigation {
@@ -40,6 +41,7 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
     children,
     footer,
   } = props;
+  const t = useTranslations('mapping.columnDecision.panel');
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -59,7 +61,7 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  aria-label="Previous column"
+                  aria-label={t('previous')}
                   disabled={!navigation.onPrevious}
                   onClick={navigation.onPrevious}
                 >
@@ -70,14 +72,17 @@ export default function ColumnDecisionPanel(props: Props): ReactElement {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  aria-label="Next column"
+                  aria-label={t('next')}
                   disabled={!navigation.onNext}
                   onClick={navigation.onNext}
                 >
                   <ChevronDownIcon />
                 </Button>
                 <span className="text-xs text-muted-foreground">
-                  {navigation.position} of {navigation.total}
+                  {t('position', {
+                    position: navigation.position,
+                    total: navigation.total,
+                  })}
                 </span>
               </div>
             )}

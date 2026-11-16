@@ -6,6 +6,7 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface SubsetOptionsProps {
@@ -15,6 +16,7 @@ export default function SubsetOptionsForm(
   props: SubsetOptionsProps
 ): ReactElement {
   const { maxColNum } = props;
+  const t = useTranslations('mapping.form.subsetOptions');
   const grid = maxColNum ? `lg:grid-cols-${maxColNum}` : 'lg:grid-cols-3';
   return (
     <div className={`grid grid-cols-1 md:grid-cols-1 ${grid} gap-4`}>
@@ -27,8 +29,8 @@ export default function SubsetOptionsForm(
                 <SwitchCard
                   isChecked={field.value || false}
                   onCheckedChange={field.onChange}
-                  title="Subset using foreign key constraints"
-                  description="Subsets tables based on foreign key relationships"
+                  title={t('byForeignKeys')}
+                  description={t('byForeignKeysDescription')}
                 />
               </FormControl>
               <FormMessage />

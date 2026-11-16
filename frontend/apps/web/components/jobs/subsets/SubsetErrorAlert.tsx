@@ -1,5 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckSqlQueryResponse } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -11,6 +12,7 @@ export default function ValidateQueryErrorAlert(
   props: Props
 ): ReactElement | null {
   const { validateResp, rowCountError } = props;
+  const t = useTranslations('mapping.subsets.errorAlert');
 
   const hasSqlError =
     validateResp && !validateResp.isValid && validateResp.erorrMessage;
@@ -24,19 +26,19 @@ export default function ValidateQueryErrorAlert(
     <div className="flex flex-col gap-2">
       {!validateResp?.isValid && (
         <Alert variant="destructive">
-          <AlertTitle>Invalid SQL Query</AlertTitle>
+          <AlertTitle>{t('invalidSql')}</AlertTitle>
           <AlertDescription>
             {validateResp?.erorrMessage
               ? validateResp?.erorrMessage
-              : 'unknown error message'}
+              : t('unknownError')}
           </AlertDescription>
         </Alert>
       )}
       {rowCountError && (
         <Alert variant="destructive">
-          <AlertTitle>Unable to get table row count</AlertTitle>
+          <AlertTitle>{t('rowCountFailed')}</AlertTitle>
           <AlertDescription>
-            {rowCountError ? rowCountError : 'unknown error message'}
+            {rowCountError ? rowCountError : t('unknownError')}
           </AlertDescription>
         </Alert>
       )}

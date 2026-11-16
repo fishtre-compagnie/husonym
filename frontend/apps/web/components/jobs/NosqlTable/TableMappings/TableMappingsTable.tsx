@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/libs/utils';
+import { useFormatter, useTranslations } from 'next-intl';
 import { GoWorkflow } from 'react-icons/go';
 
 interface DataTableProps<TData extends RowData> {
@@ -29,6 +30,8 @@ export default function TableMappingsTable<TData extends RowData>({
   columns,
   data,
 }: DataTableProps<TData>): ReactElement {
+  const t = useTranslations('mapping.nosql.tableMappings');
+  const format = useFormatter();
   const table = useTable({
     features: unpaginatedTableFeatures,
     data,
@@ -59,10 +62,10 @@ export default function TableMappingsTable<TData extends RowData>({
         <div className="flex">
           <GoWorkflow className="h-4 w-4" />
         </div>
-        <CardTitle>Table Mappings</CardTitle>
+        <CardTitle>{t('tableTitle')}</CardTitle>
       </div>
       <CardDescription className="pt-2">
-        Map Tables between data sources
+        {t('tableDescription')}
       </CardDescription>
       <div
         className={cn(
@@ -103,7 +106,7 @@ export default function TableMappingsTable<TData extends RowData>({
           >
             {rows.length === 0 && (
               <TableRow className="flex justify-center items-center py-10 text-muted-foreground">
-                <td>No Schema(s) or Table(s) selected.</td>
+                <td>{t('empty')}</td>
               </TableRow>
             )}
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -140,10 +143,10 @@ export default function TableMappingsTable<TData extends RowData>({
         </StickyHeaderTable>
       </div>
       <div className="text-xs text-muted-foreground pt-4">
-        Total rows: ({new Intl.NumberFormat('en-US').format(data.length)}) Rows
-        visible: (
-        {new Intl.NumberFormat('en-US').format(table.getRowModel().rows.length)}
-        )
+        {t('rowCounts', {
+          total: format.number(data.length),
+          visible: format.number(table.getRowModel().rows.length),
+        })}
       </div>
     </div>
   );

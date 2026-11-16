@@ -15,6 +15,7 @@ import {
   PlusIcon,
   ResetIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo, useState } from 'react';
 import IndeterminateCheckbox from '../../JobMappingTable/IndeterminateCheckbox';
 import { SubsetTableRow } from './Columns';
@@ -41,6 +42,7 @@ const GRID =
  */
 export default function SubsetTable(props: Props): ReactElement {
   const { data, onEdit, onReset, hasLocalChange, onBulkEdit } = props;
+  const t = useTranslations('mapping.subsets.table');
 
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
@@ -90,14 +92,14 @@ export default function SubsetTable(props: Props): ReactElement {
       <div className="flex flex-wrap items-end gap-3 border-b border-line-soft">
         <div
           role="tablist"
-          aria-label="Tables"
+          aria-label={t('tabs')}
           className="-mb-px flex flex-wrap gap-0.5"
         >
           {(
             [
-              ['all', 'All tables'],
-              ['filtered', 'With a filter'],
-              ['root', 'Root tables'],
+              ['all', t('all')],
+              ['filtered', t('filtered')],
+              ['root', t('root')],
             ] as [Filter, string][]
           ).map(([value, label]) => (
             <button
@@ -127,7 +129,7 @@ export default function SubsetTable(props: Props): ReactElement {
         {selectedRows.length > 0 && (
           <div className="mb-2 flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {selectedRows.length} selected
+              {t('selected', { count: selectedRows.length })}
             </span>
             <Button
               type="button"
@@ -139,7 +141,7 @@ export default function SubsetTable(props: Props): ReactElement {
                 )
               }
             >
-              Edit the filter of {selectedRows.length}
+              {t('editSelected', { count: selectedRows.length })}
             </Button>
             <Button
               type="button"
@@ -147,12 +149,12 @@ export default function SubsetTable(props: Props): ReactElement {
               variant="ghost"
               onClick={() => setSelected(new Set())}
             >
-              Clear
+              {t('clear')}
             </Button>
           </div>
         )}
         <label className="relative mb-2 w-full sm:w-72">
-          <span className="sr-only">Search a table</span>
+          <span className="sr-only">{t('search')}</span>
           <MagnifyingGlassIcon
             aria-hidden="true"
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -164,7 +166,7 @@ export default function SubsetTable(props: Props): ReactElement {
               setSearch(e.target.value);
               setLimit(PAGE);
             }}
-            placeholder="Schema or table"
+            placeholder={t('searchPlaceholder')}
             className="h-9 pl-9"
           />
         </label>
@@ -186,23 +188,25 @@ export default function SubsetTable(props: Props): ReactElement {
                 (e.target as HTMLInputElement).checked
               )
             }
-            aria-label="Select the tables shown"
+            aria-label={t('selectShown')}
           />
-          <span>Table</span>
+          <span>{t('table')}</span>
           <span className="hidden md:block" />
-          <span className="hidden md:block">Rows copied</span>
-          <span className="sr-only md:not-sr-only md:text-right">Actions</span>
+          <span className="hidden md:block">{t('rowsCopied')}</span>
+          <span className="sr-only md:not-sr-only md:text-right">
+            {t('actions')}
+          </span>
         </div>
 
         {shown.length === 0 && (
           <p className="m-0 px-4 py-10 text-center text-sm text-muted-foreground">
             {rows.length === 0
-              ? 'No table is in this job.'
+              ? t('emptyJob')
               : needle
-                ? 'No table matches this search.'
+                ? t('emptySearch')
                 : filter === 'filtered'
-                  ? 'No table has a filter: every row of every table is copied.'
-                  : 'No root table.'}
+                  ? t('emptyFiltered')
+                  : t('emptyRoot')}
           </p>
         )}
 
@@ -224,7 +228,7 @@ export default function SubsetTable(props: Props): ReactElement {
                   onChange={(e) =>
                     toggle([key], (e.target as HTMLInputElement).checked)
                   }
-                  aria-label={`Select ${key}`}
+                  aria-label={t('select', { table: key })}
                 />
                 <span className="flex min-w-0 items-center gap-2">
                   <span
@@ -237,8 +241,8 @@ export default function SubsetTable(props: Props): ReactElement {
                   {changed && (
                     <span
                       className="size-2 shrink-0 rounded-full bg-warn"
-                      title="Changed, not saved yet"
-                      aria-label="Changed, not saved yet"
+                      title={t('changed')}
+                      aria-label={t('changed')}
                     />
                   )}
                 </span>
@@ -255,7 +259,7 @@ export default function SubsetTable(props: Props): ReactElement {
                         ? 'border-line-soft bg-surface-2'
                         : 'border-dashed border-border text-muted-foreground'
                     )}
-                    aria-label={`Edit the filter of ${key}`}
+                    aria-label={t('editFilterOf', { table: key })}
                   >
                     {row.where ? (
                       <code className="block whitespace-pre-wrap break-all font-mono text-xs text-foreground">
@@ -264,10 +268,10 @@ export default function SubsetTable(props: Props): ReactElement {
                       </code>
                     ) : (
                       <span className="flex items-center gap-1.5 text-[13px]">
-                        All rows
+                        {t('allRows')}
                         <span className="ml-auto flex items-center gap-1 text-xs text-link">
                           <PlusIcon className="size-3" />
-                          Add a filter
+                          {t('addFilter')}
                         </span>
                       </span>
                     )}
@@ -279,8 +283,8 @@ export default function SubsetTable(props: Props): ReactElement {
                     variant="ghost"
                     size="icon"
                     className="size-8"
-                    aria-label={`Edit the filter of ${key}`}
-                    title="Edit the filter"
+                    aria-label={t('editFilterOf', { table: key })}
+                    title={t('editFilter')}
                     onClick={() => onEdit(index, row.schema, row.table)}
                   >
                     <Pencil1Icon />
@@ -291,8 +295,8 @@ export default function SubsetTable(props: Props): ReactElement {
                     size="icon"
                     className="size-8"
                     disabled={!changed}
-                    aria-label={`Undo the unsaved change of ${key}`}
-                    title="Undo the change not saved yet"
+                    aria-label={t('undoOf', { table: key })}
+                    title={t('undo')}
                     onClick={() => onReset(index, row.schema, row.table)}
                   >
                     <ResetIcon />
@@ -311,8 +315,10 @@ export default function SubsetTable(props: Props): ReactElement {
               size="sm"
               onClick={() => setLimit((l) => l + PAGE)}
             >
-              Show {Math.min(PAGE, shown.length - limit)} more tables (
-              {shown.length - limit} left)
+              {t('showMore', {
+                count: Math.min(PAGE, shown.length - limit),
+                left: shown.length - limit,
+              })}
             </Button>
           </div>
         )}
@@ -322,17 +328,17 @@ export default function SubsetTable(props: Props): ReactElement {
 }
 
 function RootBadge(): ReactElement {
+  const t = useTranslations('mapping.subsets.table');
   return (
     <TooltipProvider>
       <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>
           <span className="inline-flex cursor-help rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-link">
-            Root
+            {t('rootBadge')}
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-center">
-          A root table: no table it references. Filtering it also narrows the
-          tables that reference it, when the subset follows the foreign keys.
+          {t('rootTooltip')}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

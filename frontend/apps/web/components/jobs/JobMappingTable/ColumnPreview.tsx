@@ -8,7 +8,8 @@ import {
   TransformerConfig,
   TransformerConfigSchema,
 } from '@husonym/sdk';
-import { ReactElement, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { ReactElement, ReactNode, useEffect, useState } from 'react';
 
 interface Props {
   // Faux tant que l'aperçu n'est pas visible : il ne lit rien.
@@ -62,6 +63,7 @@ export default function ColumnPreview({
   transformer,
   maxHeightClassName = 'max-h-[55vh]',
 }: Props): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.preview');
   const { mutateAsync: getSample } = useMutation(
     ConnectionDataService.method.getColumnSampleValues
   );
@@ -133,7 +135,7 @@ export default function ColumnPreview({
         if (!cancelled) {
           setResult({
             key: requestKey,
-            error: e instanceof Error ? e.message : 'erreur inconnue',
+            error: e instanceof Error ? e.message : t('unknownError'),
           });
         }
       });
@@ -169,7 +171,7 @@ export default function ColumnPreview({
   if (error) {
     return (
       <p className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger-fg">
-        Could not read the column: {error}
+        {t('couldNotRead', { error })}
       </p>
     );
   }
@@ -195,30 +197,25 @@ export default function ColumnPreview({
       {/* Compteurs : ils portent souvent la réponse à eux seuls (une colonne
           entièrement nulle, ou à valeur unique, se juge sans lire le détail). */}
       <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <span>{t.rich('rows', { count: rows.length, strong })}</span>
         <span>
-          <strong className="text-foreground">{rows.length}</strong> row(s)
+          {distinct?.outputs !== undefined
+            ? t.rich('distinctBeforeAfter', {
+                inputs: distinct.inputs,
+                outputs: distinct.outputs,
+                strong,
+              })
+            : t.rich('distinct', { inputs: distinct?.inputs ?? 0, strong })}
         </span>
-        <span>
-          <strong className="text-foreground">{distinct?.inputs}</strong>{' '}
-          distinct value(s)
-          {distinct?.outputs !== undefined && (
-            <>
-              {' '}
-              before,{' '}
-              <strong className="text-foreground">
-                {distinct.outputs}
-              </strong>{' '}
-              after
-            </>
-          )}
-        </span>
-        {nulls > 0 && <span>{nulls} NULL</span>}
-        {empties > 0 && <span>{empties} empty</span>}
+        {nulls > 0 && <span>{t('nulls', { count: nulls })}</span>}
+        {empties > 0 && <span>{t('empties', { count: empties })}</span>}
         {failures > 0 && (
-          <span className="text-danger-fg">{failures} failed</span>
+          <span className="text-danger-fg">
+            {t('failed', { count: failures })}
+          </span>
         )}
         {filled === 0 && rows.length > 0 && (
-          <span className="text-warn-fg">no usable value</span>
+          <span className="text-warn-fg">{t('noUsableValue')}</span>
         )}
       </div>
 
@@ -226,9 +223,10 @@ export default function ColumnPreview({
         // Le seul signal qui vaille avant un run : des valeurs différentes
         // deviennent la même. Sur une colonne unique, l'écriture échouerait.
         <p className="rounded-lg border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn-fg">
-          The transformer turns {distinct?.inputs} distinct values into{' '}
-          {distinct?.outputs}: on a column under a unique constraint, the write
-          would fail.
+          {t('collapses', {
+            inputs: distinct?.inputs ?? 0,
+            outputs: distinct?.outputs ?? 0,
+          })}
         </p>
       )}
 
@@ -245,11 +243,11 @@ export default function ColumnPreview({
                 #
               </th>
               <th className="text-muted-foreground px-3 py-2 text-left text-xs font-medium">
-                {transformer ? 'Before' : 'Value'}
+                {transformer ? t('before') : t('value')}
               </th>
               {transformer && (
                 <th className="text-muted-foreground px-3 py-2 text-left text-xs font-medium">
-                  After
+                  {t('after')}
                 </th>
               )}
             </tr>
@@ -261,7 +259,7 @@ export default function ColumnPreview({
                   colSpan={transformer ? 3 : 2}
                   className="text-muted-foreground px-3 py-6 text-center text-sm"
                 >
-                  The table holds no rows.
+                  {t('noRows')}
                 </td>
               </tr>
             )}
@@ -295,22 +293,28 @@ export default function ColumnPreview({
         </table>
       </div>
       <p className="text-muted-foreground text-xs">
-        Read-only sample of the first {limit} rows
-        {transformer &&
-          ': it shows what the transformer does, it proves nothing about the whole table'}
-        .
+        {transformer
+          ? t('footerTransformer', { limit })
+          : t('footer', { limit })}
       </p>
     </div>
   );
 }
 
+function strong(chunks: ReactNode): ReactElement {
+  return <strong className="text-foreground">{chunks}</strong>;
+}
+
 function SampleValue({ value }: { value: ColumnSampleValue }): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.preview');
   if (value.isNull) {
     return <span className="text-muted-foreground/60 italic">NULL</span>;
   }
   if (value.value === '') {
     return (
-      <span className="text-muted-foreground/60 italic">(empty string)</span>
+      <span className="text-muted-foreground/60 italic">
+        {t('emptyString')}
+      </span>
     );
   }
   return <>{value.value}</>;

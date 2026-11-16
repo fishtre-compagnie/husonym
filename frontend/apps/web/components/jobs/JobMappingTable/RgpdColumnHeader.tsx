@@ -5,6 +5,7 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props<TData extends RowData, TValue> {
@@ -19,6 +20,7 @@ export default function RgpdColumnHeader<TData extends RowData, TValue>({
   column,
   title,
 }: Props<TData, TValue>): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.rgpdHeader');
   const sorted = column.getIsSorted();
   return (
     <div className="flex w-full min-w-0 items-center gap-1">
@@ -29,12 +31,12 @@ export default function RgpdColumnHeader<TData extends RowData, TValue>({
           className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-hover hover:text-foreground"
           aria-label={
             sorted === 'desc'
-              ? `Sorted by ${title}, the columns to decide first. Clear the sort`
+              ? t('sortedDesc', { title })
               : sorted === 'asc'
-                ? `Sorted by ${title}, ascending. Sort the columns to decide first`
-                : `Sort by ${title}`
+                ? t('sortedAsc', { title })
+                : t('sortBy', { title })
           }
-          title={`Sort by ${title}`}
+          title={t('sortBy', { title })}
           onClick={(e) => {
             if (!sorted) {
               column.toggleSorting(false, e.shiftKey);

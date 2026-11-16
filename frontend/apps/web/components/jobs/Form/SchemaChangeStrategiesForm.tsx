@@ -9,6 +9,7 @@ import {
   ExternalLinkIcon,
   InfoCircledIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ReactElement, ReactNode } from 'react';
 
@@ -21,52 +22,22 @@ interface Props {
 
 interface Choice<T extends string> {
   value: T;
-  label: string;
-  // What a run does with the column, told under the choice once it is made.
-  effect: string;
   // A choice that may copy personal data in clear is told in the warning tone.
   warn?: boolean;
 }
 
+// Each choice has its label and its effect (what a run does with the column, told
+// under the choice once it is made) in the messages, under its value.
 const NEW_COLUMN: Choice<NewColumnAdditionStrategy>[] = [
-  {
-    value: 'halt',
-    label: 'Halt',
-    effect: 'The run stops and names the column, until someone maps it.',
-  },
-  {
-    value: 'automap',
-    label: 'Auto-map & review',
-    effect:
-      'The column is mapped as the PII detection suggests, or copied as it is when nothing fits. The change waits in Review until someone accepts it.',
-  },
-  {
-    value: 'passthrough',
-    label: 'Passthrough',
-    effect:
-      'The column is copied as it is, in clear, until someone maps it: personal data may reach the destination.',
-    warn: true,
-  },
-  {
-    value: 'continue',
-    label: 'Ignore',
-    effect:
-      'The column is left out of the copy. Writing fails if the destination column has no default.',
-  },
+  { value: 'halt' },
+  { value: 'automap' },
+  { value: 'passthrough', warn: true },
+  { value: 'continue' },
 ];
 
 const REMOVED_COLUMN: Choice<ColumnRemovalStrategy>[] = [
-  {
-    value: 'halt',
-    label: 'Halt',
-    effect: 'The run stops and names the column missing from the source.',
-  },
-  {
-    value: 'continue',
-    label: 'Continue',
-    effect:
-      'The run goes on without the column. Its mapping stays until it is removed in Mapping.',
-  },
+  { value: 'halt' },
+  { value: 'continue' },
 ];
 
 /**
@@ -76,28 +47,36 @@ const REMOVED_COLUMN: Choice<ColumnRemovalStrategy>[] = [
 export default function SchemaChangeStrategiesForm(props: Props): ReactElement {
   const { newColumn, removedColumn, onNewColumnChange, onRemovedColumnChange } =
     props;
+  const t = useTranslations('mapping.form.schemaChange');
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <h3 className="m-0 font-display text-[15px] font-semibold">
-          When the source schema changes
+          {t('title')}
         </h3>
         <p className="m-0 text-[13px] text-muted-foreground">
-          A run compares the columns of the source with the mapping before it
-          copies anything.
+          {t('description')}
         </p>
       </div>
       <StrategyRow
-        label="A new column appears"
+        label={t('newColumn')}
         learnMore="https://docs.husonym.com/guides/new-column-addition-strategies"
-        choices={NEW_COLUMN}
+        choices={NEW_COLUMN.map((c) => ({
+          ...c,
+          label: t(`newColumnChoices.${c.value}.label`),
+          effect: t(`newColumnChoices.${c.value}.effect`),
+        }))}
         value={newColumn}
         onChange={onNewColumnChange}
       />
       <StrategyRow
-        label="A mapped column disappears"
+        label={t('removedColumn')}
         learnMore="https://docs.husonym.com/guides/column-removal-strategies"
-        choices={REMOVED_COLUMN}
+        choices={REMOVED_COLUMN.map((c) => ({
+          ...c,
+          label: t(`removedColumnChoices.${c.value}.label`),
+          effect: t(`removedColumnChoices.${c.value}.effect`),
+        }))}
         value={removedColumn}
         onChange={onRemovedColumnChange}
       />
@@ -108,12 +87,13 @@ export default function SchemaChangeStrategiesForm(props: Props): ReactElement {
 function StrategyRow<T extends string>(props: {
   label: string;
   learnMore: string;
-  choices: Choice<T>[];
+  choices: (Choice<T> & { label: string; effect: string })[];
   value: T;
   onChange(value: T): void;
 }): ReactElement {
   const { label, learnMore, choices, value, onChange } = props;
   const chosen = choices.find((c) => c.value === value);
+  const t = useTranslations('mapping.form.schemaChange');
   return (
     <div className="grid gap-x-6 gap-y-2 md:grid-cols-[220px_1fr]">
       <div className="flex flex-col gap-0.5 pt-1.5">
@@ -123,7 +103,7 @@ function StrategyRow<T extends string>(props: {
           target="_blank"
           className="inline-flex w-fit items-center gap-1 text-[12px] text-muted-foreground hover:underline"
         >
-          Learn more
+          {t('learnMore')}
           <ExternalLinkIcon className="size-3" />
         </Link>
       </div>

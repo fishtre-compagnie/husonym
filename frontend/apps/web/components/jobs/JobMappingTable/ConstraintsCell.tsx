@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
   const { isPrimaryKey, foreignKey, virtualForeignKey, isUnique } = props;
   const [isForeignKey, fkCols] = foreignKey;
   const [isVirtualForeignKey, vfkCols] = virtualForeignKey;
+  const t = useTranslations('mapping.jobMappingTable.constraints');
   return (
     <span className="max-w-[500px] truncate font-medium">
       <div className="flex flex-col lg:flex-row items-start gap-1">
@@ -26,7 +28,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
           <div>
             <HoverBadge
               badgeText="P"
-              tooltipContent="Primary Key"
+              tooltipContent={t('primaryKey')}
               badgeClassName="bg-brand-soft text-link"
             />
           </div>
@@ -36,7 +38,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
             <HoverBadge
               badgeText="FK"
               tooltipContent={`FK: ${fkCols
-                .map((col) => `Primary Key: ${col}`)
+                .map((col) => t('referencedKey', { column: col }))
                 .join('\n')}`}
               badgeClassName="bg-warn-soft text-warn-fg"
             />
@@ -47,7 +49,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
             <HoverBadge
               badgeText="VFK"
               tooltipContent={`VFK: ${vfkCols
-                .map((col) => `Primary Key: ${col}`)
+                .map((col) => t('referencedKey', { column: col }))
                 .join('\n')}`}
               badgeClassName="border-dashed bg-warn-soft text-warn-fg"
             />
@@ -57,7 +59,7 @@ export default function ConstraintsCell(props: Props): ReactElement {
           <div>
             <HoverBadge
               badgeText="U"
-              tooltipContent="Unique Key"
+              tooltipContent={t('uniqueKey')}
               badgeClassName="bg-quiet-soft text-quiet-fg"
             />
           </div>

@@ -3,6 +3,7 @@ import { getDefaultUnmappedTransformConfig } from '@/app/(mgmt)/[account]/jobs/u
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import { SourceOptionsFormValues } from '@/yup-validations/jobs';
 import { Connection } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import DynamoDBSourceOptionsForm from './DynamoDBSourceOptionsForm';
 import MssqlDBSourceOptionsForm from './MssqlDBSourceOptionsForm';
@@ -18,6 +19,7 @@ export default function SourceOptionsForm(
   props: SourceOptionsProps
 ): ReactElement {
   const { connection, value, setValue } = props;
+  const t = useTranslations('mapping.form.destinationOptions');
 
   const {
     handler: transformersHandler,
@@ -118,8 +120,9 @@ export default function SourceOptionsForm(
     default:
       return (
         <div>
-          No connection component found for: (
-          {connection?.name ?? 'unknown name'})
+          {t('noConnectionComponent', {
+            name: connection?.name ?? t('unknownName'),
+          })}
         </div>
       );
   }

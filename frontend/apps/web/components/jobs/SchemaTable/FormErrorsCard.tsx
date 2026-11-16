@@ -15,6 +15,7 @@ import {
   ExclamationTriangleIcon,
   ReloadIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 export type ErrorLevel = 'error' | 'warning';
@@ -34,6 +35,7 @@ interface Props {
 
 export default function FormErrorsCard(props: Props): ReactElement {
   const { formErrors, isValidating, onValidate } = props;
+  const t = useTranslations('mapping.schemaTable.formErrors');
 
   const { errors, warnings } = formErrorsToMessages(formErrors);
   return (
@@ -46,19 +48,15 @@ export default function FormErrorsCard(props: Props): ReactElement {
             ) : (
               <CheckCircledIcon className="h-4 w-4 text-ok" />
             )}
-            <CardTitle>Validations</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
             {errors.length != 0 && (
               <Badge variant="destructive">
-                {errors.length == 1
-                  ? `${errors.length} Error`
-                  : `${errors.length} Errors`}
+                {t('errors', { count: errors.length })}
               </Badge>
             )}
             {warnings.length != 0 && (
               <Badge className="border-transparent bg-warn-soft text-warn-fg">
-                {warnings.length == 1
-                  ? `${warnings.length} Warning`
-                  : `${warnings.length} Warnings`}
+                {t('warnings', { count: warnings.length })}
               </Badge>
             )}
           </div>
@@ -70,7 +68,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
                 size="icon"
                 key="validate"
                 type="button"
-                aria-label="Validate the mapping again"
+                aria-label={t('validateAgain')}
                 disabled={isValidating}
                 onClick={() => onValidate()}
               >
@@ -83,9 +81,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
             )}
           </div>
         </div>
-        <CardDescription>
-          A list of schema validation errors to resolve before moving forward.
-        </CardDescription>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col flex-1">
         {formErrors.length === 0 && warnings.length === 0 ? (
@@ -94,7 +90,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
               <div className="flex">
                 <CheckIcon />
               </div>
-              <p>Everything looks good!</p>
+              <p>{t('allGood')}</p>
             </div>
           </div>
         ) : (
