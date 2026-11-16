@@ -24,6 +24,7 @@ export default function JobPauseButton({
   jobId,
 }: Props): ReactElement {
   const t = useTranslations('jobs.job.pause');
+  const tLicense = useTranslations('settings.license');
   const { allowed, license } = useLicenseFeature('scheduling');
   // Pausing stays possible without the feature, resuming does not.
   const isResumeRefused = !allowed && status === JobStatus.PAUSED;
@@ -72,8 +73,8 @@ export default function JobPauseButton({
         title={
           isResumeRefused
             ? t('resumeRefused', {
-                feature: featureLabel('scheduling'),
-                notice: featureNoticeMessage(license),
+                feature: featureLabel('scheduling', tLicense),
+                notice: featureNoticeMessage(license, tLicense),
               })
             : undefined
         }

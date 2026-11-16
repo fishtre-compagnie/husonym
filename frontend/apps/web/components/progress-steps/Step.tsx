@@ -2,6 +2,7 @@ import { cn } from '@/libs/utils';
 import { toTitleCase } from '@/util/util';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   isCompleted: boolean;
@@ -20,6 +21,7 @@ interface Props {
  */
 export default function Step(props: Props): ReactElement {
   const { isActive, isCompleted, name, label, position } = props;
+  const t = useTranslations('common.wizard');
 
   return (
     <li>
@@ -48,7 +50,7 @@ export default function Step(props: Props): ReactElement {
           {isCompleted ? <CheckIcon className="size-3.5" /> : position}
         </span>
         {label ?? toTitleCase(name)}
-        {isCompleted && <span className="sr-only">(done)</span>}
+        {isCompleted && <span className="sr-only">{t('done')}</span>}
       </span>
     </li>
   );

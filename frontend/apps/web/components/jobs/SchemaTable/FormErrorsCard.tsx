@@ -16,6 +16,7 @@ import {
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { useTranslations } from 'next-intl';
+import { useValidationMessage } from '@/yup-validations/use-validation-message';
 import { ReactElement } from 'react';
 
 export type ErrorLevel = 'error' | 'warning';
@@ -37,7 +38,11 @@ export default function FormErrorsCard(props: Props): ReactElement {
   const { formErrors, isValidating, onValidate } = props;
   const t = useTranslations('mapping.schemaTable.formErrors');
 
-  const { errors, warnings } = formErrorsToMessages(formErrors);
+  const validationMessage = useValidationMessage();
+  const { errors, warnings } = formErrorsToMessages(
+    formErrors,
+    validationMessage
+  );
   return (
     <Card className="w-full flex flex-col">
       <CardHeader className="flex flex-col">
@@ -126,7 +131,8 @@ interface FormErrorMesageResponse {
 }
 
 function formErrorsToMessages(
-  formErrors: FormError[]
+  formErrors: FormError[],
+  validationMessage: (message: string) => string
 ): FormErrorMesageResponse {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -135,7 +141,7 @@ function formErrorsToMessages(
     if (error.type) {
       pieces.push(`[${error.type}]`);
     }
-    pieces.push(error.message);
+    pieces.push(validationMessage(error.message));
 
     if (error.level == 'warning') {
       warnings.push(pieces.join(' '));

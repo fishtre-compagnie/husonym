@@ -46,7 +46,7 @@ import {
   UsageReportSummary,
   UsageService,
 } from '@husonym/sdk';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Fragment, ReactElement, useState } from 'react';
 import { toast } from 'sonner';
@@ -120,14 +120,20 @@ function ReportingDetails({
   reporting: GetUsageReportingResponse;
 }): ReactElement {
   const t = useTranslations('settings.license.report');
+  const tLicense = useTranslations('settings.license');
+  const locale = useLocale();
   const label = reportingLabel(
     reporting.mode,
     reporting.licenseMode,
-    reporting.belowLicense
+    reporting.belowLicense,
+    tLicense
   );
   const sends = reporting.mode === UsageReportingMode.ONLINE;
   const next = nextReport(reporting.reports);
-  const firstAt = formatOptionalDate(firstReportAt(reporting, new Date()));
+  const firstAt = formatOptionalDate(
+    firstReportAt(reporting, new Date()),
+    locale
+  );
 
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm">
@@ -141,7 +147,7 @@ function ReportingDetails({
       {sends && (
         <>
           <dt className="text-muted-foreground">{t('lastSent')}</dt>
-          <dd>{formatTimestamp(reporting.lastSentAt) ?? t('never')}</dd>
+          <dd>{formatTimestamp(reporting.lastSentAt, locale) ?? t('never')}</dd>
         </>
       )}
       {sends && next && (
@@ -195,6 +201,7 @@ function ReportsTable({
 }): ReactElement {
   const [openDay, setOpenDay] = useState<string>();
   const t = useTranslations('settings.license.report');
+  const locale = useLocale();
 
   return (
     <div className="flex flex-col gap-2">
@@ -222,7 +229,7 @@ function ReportsTable({
                     <TableCell>
                       <StatusBadge status={report.status} />
                     </TableCell>
-                    <TableCell>{sentColumn(report, t)}</TableCell>
+                    <TableCell>{sentColumn(report, t, locale)}</TableCell>
                     <TableCell className="text-right">
                       <ShowButton
                         open={isOpen}
@@ -248,8 +255,12 @@ function ReportsTable({
 }
 
 // The date a report was sent on, or how many times it was tried when it was not.
-function sentColumn(report: UsageReportSummary, t: ReportTranslator): string {
-  const sentAt = formatTimestamp(report.sentAt);
+function sentColumn(
+  report: UsageReportSummary,
+  t: ReportTranslator,
+  locale: string
+): string {
+  const sentAt = formatTimestamp(report.sentAt, locale);
   if (sentAt) {
     return sentAt;
   }
@@ -260,7 +271,8 @@ function sentColumn(report: UsageReportSummary, t: ReportTranslator): string {
 }
 
 function StatusBadge({ status }: { status: UsageReportStatus }): ReactElement {
-  const { text, variant } = reportStatusLabel(status);
+  const t = useTranslations('settings.license');
+  const { text, variant } = reportStatusLabel(status, t);
   return variant === 'warning' ? (
     <Badge variant="outline" className={WARNING_BORDER}>
       {text}
@@ -451,14 +463,20 @@ function refusalMessage(err: unknown): string {
   return getErrorMessage(err);
 }
 
-function formatOptionalDate(date: Date | undefined): string | undefined {
-  return date ? formatDate(date) : undefined;
+function formatOptionalDate(
+  date: Date | undefined,
+  locale: string
+): string | undefined {
+  return date ? formatDate(date, locale) : undefined;
 }
 
-function formatTimestamp(timestamp: Timestamp | undefined): string | undefined {
+function formatTimestamp(
+  timestamp: Timestamp | undefined,
+  locale: string
+): string | undefined {
   if (!timestamp) {
     return undefined;
   }
   const date = timestampDate(timestamp);
-  return date.getTime() === 0 ? undefined : formatDate(date);
+  return date.getTime() === 0 ? undefined : formatDate(date, locale);
 }

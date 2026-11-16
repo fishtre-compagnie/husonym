@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatDateTime, getErrorMessage } from '@/util/util';
+import { getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { JobRunStatus as JobRunStatusEnum, JobService } from '@husonym/sdk';
@@ -36,6 +36,7 @@ import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
 import JobRunStatus from '../../../runs/components/JobRunStatus';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 interface Props {
   jobId: string;
@@ -43,6 +44,7 @@ interface Props {
 
 export default function JobRecentRuns({ jobId }: Props): ReactElement {
   const t = useTranslations('jobs.overview.recentRuns');
+  const formatDateTime = useFormatDateTime();
   const { account } = useAccount();
   const {
     data: recentRunsData,

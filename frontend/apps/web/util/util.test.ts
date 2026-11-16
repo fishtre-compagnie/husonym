@@ -48,6 +48,13 @@ describe('formatDateTime', () => {
     expect(result).toBe(expected);
   });
 
+  it('should format a date the French way, on a 24-hour clock', () => {
+    const dateStr = '2024-08-16T14:30:00Z';
+    const expected = format(new Date(dateStr), 'dd/MM/yyyy HH:mm:ss');
+    expect(formatDateTime(dateStr, false, 'fr')).toBe(expected);
+    expect(formatDateTime(dateStr, true, 'fr')).toBe(expected);
+  });
+
   it('should return undefined for no input', () => {
     const result = formatDateTime();
     expect(result).toBeUndefined();
@@ -219,6 +226,14 @@ describe('getTransformerJobTypesString', () => {
     const value = [SupportedJobType.SYNC, SupportedJobType.UNSPECIFIED];
     const result = getTransformerJobTypesString(value);
     expect(result).toStrictEqual(['Sync', 'Unspecified']);
+  });
+  it('should read the job types in the words it is given', () => {
+    const value = [SupportedJobType.SYNC, SupportedJobType.GENERATE];
+    const result = getTransformerJobTypesString(value, {
+      sync: 'Synchro',
+      generate: 'Génération',
+    });
+    expect(result).toStrictEqual(['Synchro', 'Génération']);
   });
   it('should return empty string if empty array', () => {
     const value: SupportedJobType[] = [];

@@ -61,6 +61,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
     onApply,
   } = props;
   const t = useTranslations('jobs.review.panel');
+  const tKinds = useTranslations('jobs.review.changeKinds');
   const optionText = useOptionText();
   const runChoice = change.transformer
     ? convertJobMappingTransformerToForm(change.transformer)
@@ -106,7 +107,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
           <Badge variant="outline" className="font-mono font-normal">
             {change.dataType}
           </Badge>
-          <Badge variant="outline">{changeLabel(change)}</Badge>
+          <Badge variant="outline">{changeLabel(change, tKinds)}</Badge>
           {change.piiCategory && (
             <Badge
               variant={

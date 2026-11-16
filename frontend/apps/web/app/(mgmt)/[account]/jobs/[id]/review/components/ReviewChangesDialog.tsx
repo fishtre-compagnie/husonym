@@ -31,6 +31,7 @@ interface Props {
 export default function ReviewChangesDialog(props: Props): ReactElement {
   const { open, onOpenChange, changes, onConfirm } = props;
   const t = useTranslations('jobs.review.dialog');
+  const tKinds = useTranslations('jobs.review.changeKinds');
   const [note, setNote] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -69,7 +70,7 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
         <ul className="max-h-40 overflow-auto text-xs font-mono flex flex-col gap-1">
           {changes.map((c) => (
             <li key={c.id}>
-              {columnName(c)} — {changeLabel(c)}
+              {columnName(c)} — {changeLabel(c, tKinds)}
             </li>
           ))}
         </ul>

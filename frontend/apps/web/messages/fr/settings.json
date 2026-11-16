@@ -426,7 +426,9 @@
         "graceEndsOn": "Fin de la période de grâce",
         "key": "Clé",
         "installedOn": "le {date}",
-        "usageReport": "Rapport d'utilisation"
+        "usageReport": "Rapport d'utilisation",
+        "missingKeyUnreadable": "Une clé de licence a été fournie mais n'a pas pu être lue : aucune n'est en vigueur. Vous pouvez en coller une ci-dessous.",
+        "missingKeyNone": "Aucune clé de licence n'est installée. Vous pouvez en coller une ci-dessous."
       },
       "key": {
         "alreadyInForce": "Cette clé est déjà en vigueur",
@@ -450,7 +452,9 @@
         "blocking": "Les jobs qui utilisent une fonctionnalité non comprise dans la licence ne démarrent pas.",
         "notTracked": "L'utilisation du serveur MCP, de la revue des mappings et des journaux d'exécution n'est pas suivie ici.",
         "included": "Comprise",
-        "notIncluded": "Non comprise"
+        "notIncluded": "Non comprise",
+        "inUseNotIncluded": "Utilisée, non incluse — l'existant continue de fonctionner, les modifications sont refusées",
+        "inUse": "Utilisée par ce compte"
       },
       "limits": {
         "title": "Limites",
@@ -498,7 +502,61 @@
         "downloadRefused": "Le rapport n'a pas pu être téléchargé",
         "from": "Du",
         "to": "Au",
-        "download": "Télécharger"
+        "download": "Télécharger",
+        "modes": {
+          "online": "Envoyé chaque jour",
+          "offline": "Non envoyé — un fichier de rapport est attendu",
+          "none": "Non envoyé",
+          "unspecified": "Aucun rapport n'est préparé"
+        },
+        "licensedModes": {
+          "online": "Envoyé chaque jour",
+          "offline": "Fichier de rapport",
+          "none": "Aucun"
+        },
+        "belowLicense": "réglé en deçà de ce que prévoit votre licence",
+        "asLicense": "comme le prévoit votre licence",
+        "statuses": {
+          "sent": "envoyé",
+          "toBeSent": "à envoyer",
+          "notSent": "non envoyé",
+          "kept": "conservé",
+          "unknown": "inconnu"
+        },
+        "notice": {
+          "silentTitle": "Aucun rapport d'utilisation n'a pu être envoyé depuis 30 jours",
+          "silentDescription": "Les rapports sont conservés et renvoyés. Rien n'est bloqué.",
+          "providesFile": "Votre licence prévoit un fichier de rapport d'utilisation",
+          "providesDaily": "Votre licence prévoit un rapport d'utilisation quotidien",
+          "belowDescription": "Le rapport est réglé sur « {mode} » sur cette instance. Rien n'est bloqué."
+        }
+      },
+      "featureNames": {
+        "job_hooks": "Hooks de job",
+        "account_hooks": "Hooks de compte",
+        "pii_text": "Anonymisation de texte PII",
+        "pii_detection": "Détection PII",
+        "custom_transformers": "Transformers personnalisés",
+        "subsetting": "Sous-ensembles",
+        "scheduling": "Planification",
+        "mapping_review": "Revue des mappings",
+        "api_keys": "Clés d'API",
+        "mcp": "Serveur MCP",
+        "rbac": "Rôles des membres",
+        "sso": "Authentification unique (OIDC)",
+        "run_logs": "Journaux d'exécution"
+      },
+      "gates": {
+        "license_not_in_force": "Aucune licence en vigueur",
+        "source_cap": "Limite de sources",
+        "job_cap": "Limite de jobs",
+        "connection_cap": "Limite de connexions",
+        "connection_type": "Type de connexion",
+        "other": "Autre"
+      },
+      "notice": {
+        "notIncluded": "Cette fonctionnalité n'est pas incluse dans votre licence.",
+        "noneInForce": "Aucune licence n'est en vigueur."
       }
     },
     "usage": {

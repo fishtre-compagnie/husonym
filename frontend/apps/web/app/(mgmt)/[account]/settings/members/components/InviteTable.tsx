@@ -1,4 +1,5 @@
 'use client';
+import DateTime from '@/components/DateTime';
 
 import {
   ColumnDef,
@@ -30,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useRoleControls } from '@/libs/hooks/useRoleControls';
-import { formatDateTime, getErrorMessage } from '@/util/util';
+import { getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { AccountRole, UserAccountService } from '@husonym/sdk';
@@ -68,14 +69,22 @@ function getColumns(
   const createdAtColumn = columnHelper.accessor('createdAt', {
     header: t('createdAt'),
     cell: ({ getValue }) => {
-      return <div className="flex space-x-2">{formatDateTime(getValue())}</div>;
+      return (
+        <div className="flex space-x-2">
+          <DateTime value={getValue()} />
+        </div>
+      );
     },
   });
 
   const expiresAtColumn = columnHelper.accessor('expiresAt', {
     header: t('expiresAt'),
     cell: ({ getValue }) => {
-      return <div className="flex space-x-2">{formatDateTime(getValue())}</div>;
+      return (
+        <div className="flex space-x-2">
+          <DateTime value={getValue()} />
+        </div>
+      );
     },
   });
 

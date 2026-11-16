@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ReactElement, ReactNode } from 'react';
 import { useAccount } from './account-provider';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   children: ReactNode;
@@ -14,6 +15,8 @@ interface Props {
 // pages wait for an account, and would wait for ever.
 export default function AccountEntryGate(props: Props): ReactElement {
   const { children } = props;
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
   const { entryError, isRetryingEntry, retryEntry } = useAccount();
   if (!entryError) {
     return <>{children}</>;
@@ -21,7 +24,7 @@ export default function AccountEntryGate(props: Props): ReactElement {
   return (
     <div className="flex justify-center mt-24">
       <Alert variant="destructive" className="max-w-xl">
-        <AlertTitle>Unable to open your account</AlertTitle>
+        <AlertTitle>{t('entryError')}</AlertTitle>
         <AlertDescription className="flex flex-col gap-4">
           <p>{entryError}</p>
           <div>
@@ -33,7 +36,7 @@ export default function AccountEntryGate(props: Props): ReactElement {
             >
               <ButtonText
                 leftIcon={isRetryingEntry ? <Spinner /> : undefined}
-                text="Try again"
+                text={tCommon('tryAgain')}
               />
             </Button>
           </div>

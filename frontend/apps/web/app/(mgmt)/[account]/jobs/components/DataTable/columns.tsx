@@ -5,8 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Pill, StatusDot, Tone } from '@/components/ds';
 import { AppTableFeatures } from '@/components/table/features';
 import { cn } from '@/libs/utils';
-import { useDateFnsLocale } from '@/i18n/date-fns';
-import { formatDateTime } from '@/util/util';
+import { useDateFnsLocale, useFormatDateTime } from '@/i18n/date-fns';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRun, JobRunStatus } from '@husonym/sdk';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -242,7 +241,11 @@ function runTone(s: JobRunStatus): { bar: string; label: RunToneLabel } {
   return { bar: 'h-4 bg-muted-foreground', label: 'unknown' };
 }
 
-function runTitle(r: JobRun, label: string): string {
+function runTitle(
+  r: JobRun,
+  label: string,
+  formatDateTime: ReturnType<typeof useFormatDateTime>
+): string {
   return r.startedAt
     ? `${label} · ${formatDateTime(timestampDate(r.startedAt))}`
     : label;
@@ -251,6 +254,7 @@ function runTitle(r: JobRun, label: string): string {
 function RunHistory({ row }: { row: JobRow }) {
   const t = useTranslations('jobs.list.runs');
   const dateLocale = useDateFnsLocale();
+  const formatDateTime = useFormatDateTime();
   const runs = row.recentRuns;
   const empty = RECENT_RUNS - runs.length;
   const failed = runs.filter((r) => isRunFailed(r.status)).length;
@@ -276,7 +280,7 @@ function RunHistory({ row }: { row: JobRow }) {
           return (
             <span
               key={r.id}
-              title={runTitle(r, t(`status.${tone.label}`))}
+              title={runTitle(r, t(`status.${tone.label}`), formatDateTime)}
               className={cn('w-[9px] rounded-[2px]', tone.bar)}
             />
           );

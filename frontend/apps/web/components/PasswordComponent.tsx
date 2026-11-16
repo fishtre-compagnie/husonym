@@ -4,8 +4,10 @@ import { EyeNoneIcon, EyeOpenIcon } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input, InputProps } from './ui/input';
+import { useTranslations } from 'next-intl';
 
 export const PasswordInput = ({ className, ...props }: InputProps) => {
+  const t = useTranslations('common.password');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const disabled =
     props.value === '' || props.value === undefined || props.disabled;
@@ -30,9 +32,7 @@ export const PasswordInput = ({ className, ...props }: InputProps) => {
         ) : (
           <EyeNoneIcon className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="sr-only">
-          {showPassword ? 'Hide password' : 'Show password'}
-        </span>
+        <span className="sr-only">{showPassword ? t('hide') : t('show')}</span>
       </Button>
     </div>
   );

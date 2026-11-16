@@ -25,6 +25,19 @@ const NEW_THINGS = {
   'api-key': 'newApiKey',
 } as const;
 
+// The settings' pages, in the settings' navigation messages.
+const SETTINGS_PAGES = {
+  'api-keys': 'apiKeys',
+  temporal: 'temporal',
+  members: 'members',
+  organization: 'organization',
+  billing: 'billing',
+  usage: 'usage',
+  hooks: 'hooks',
+  anonymization: 'anonymization',
+  license: 'license',
+} as const;
+
 function lookup<T extends object>(
   table: T,
   key: string | undefined
@@ -47,6 +60,7 @@ function titleCase(segment: string): string {
 export default function Breadcrumb(): ReactElement | null {
   const t = useTranslations('breadcrumb');
   const tNav = useTranslations('nav');
+  const tSettings = useTranslations('settings.layout.nav');
   const pathname = usePathname() ?? '';
   const { account } = useAccount();
   const accountId = account?.id ?? '';
@@ -95,6 +109,9 @@ export default function Breadcrumb(): ReactElement | null {
         crumbs.push({ label: itemId, mono: true });
       } else if (section === 'transformers') {
         crumbs.push({ label: t('transformer') });
+      } else if (section === 'settings') {
+        const page = lookup(SETTINGS_PAGES, itemId);
+        crumbs.push({ label: page ? tSettings(page) : titleCase(itemId) });
       } else {
         crumbs.push({ label: titleCase(itemId) });
       }

@@ -15,6 +15,7 @@ import {
   ReactNode,
   forwardRef,
 } from 'react';
+import { useTranslations } from 'next-intl';
 
 /** The page of a wizard: its top bar, then the current step's content. */
 export function WizardFrame(props: {
@@ -74,13 +75,12 @@ export function WizardHeading(props: {
   actions?: ReactNode;
 }): ReactElement {
   const { position, title, description, mascot, actions } = props;
+  const t = useTranslations('common.wizard');
   return (
     <div className="flex flex-wrap items-center gap-5">
       <div className="min-w-0 flex-[1_1_400px]">
         {position && (
-          <Eyebrow className="text-xs">
-            Step {position.index} of {position.total}
-          </Eyebrow>
+          <Eyebrow className="text-xs">{t('stepOf', position)}</Eyebrow>
         )}
         <h1 className="mb-0 mt-1.5 font-display text-[32px] font-semibold leading-tight tracking-[-0.02em]">
           {title}

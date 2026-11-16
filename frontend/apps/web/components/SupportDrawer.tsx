@@ -3,26 +3,28 @@ import { ArrowTopRightIcon, GitHubLogoIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
 import { ReactElement } from 'react';
 import { PiBookOpenText, PiEnvelopeSimple } from 'react-icons/pi';
+import { useTranslations } from 'next-intl';
 
 export default function SupportDrawer(): ReactElement {
+  const t = useTranslations('header.supportLinks');
   const supportLinks = [
     {
-      name: 'Documentation',
+      name: t('documentation'),
       href: siteConfig.links.docs,
       icon: <PiBookOpenText className="h-4 w-4" />,
-      description: 'Guides, useful information and more. ',
+      description: t('documentationDescription'),
     },
     {
-      name: 'Github',
+      name: t('github'),
       href: siteConfig.links.github,
       icon: <GitHubLogoIcon />,
-      description: 'Check out our source code.',
+      description: t('githubDescription'),
     },
     {
-      name: 'Email support',
+      name: t('email'),
       href: siteConfig.links.support,
       icon: <PiEnvelopeSimple className="h-4 w-4" />,
-      description: 'Ask us a question directly!',
+      description: t('emailDescription'),
     },
   ];
 

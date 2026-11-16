@@ -9,6 +9,7 @@ import {
   TrashIcon,
   UploadIcon,
 } from '@radix-ui/react-icons';
+import { useDateFnsLocale } from '@/i18n/date-fns';
 import { format } from 'date-fns';
 import { filesize } from 'filesize';
 import {
@@ -20,6 +21,7 @@ import {
 } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 import { LuFileJson } from 'react-icons/lu';
+import { useTranslations } from 'next-intl';
 
 interface FileValidation {
   validateType(file: File): boolean;
@@ -55,6 +57,7 @@ export function FileUpload<T>({
   onRemove,
   renderFileExtra,
 }: FileUploadProps<T>): ReactElement {
+  const t = useTranslations('common.fileUpload');
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,7 +69,7 @@ export function FileUpload<T>({
       if (!validation.validateType(file)) {
         setErrors((prev) => ({
           ...prev,
-          [file.name]: 'Invalid file type',
+          [file.name]: t('invalidType'),
         }));
         return;
       }
@@ -74,7 +77,9 @@ export function FileUpload<T>({
       if (!validation.validateSize(file)) {
         setErrors((prev) => ({
           ...prev,
-          [file.name]: `File size must be less than ${validation.maxSizeDisplay || 'maximum size'}`,
+          [file.name]: t('tooLarge', {
+            size: validation.maxSizeDisplay || t('maximumSize'),
+          }),
         }));
         return;
       }
@@ -90,7 +95,7 @@ export function FileUpload<T>({
         const result = await onProcess(file);
 
         if (!result.success || !result.data) {
-          const error = result.error || 'Processing failed';
+          const error = result.error || t('processingFailed');
           setErrors((prev) => ({ ...prev, [file.name]: error }));
           onError?.(file.name, error);
         } else {
@@ -98,14 +103,15 @@ export function FileUpload<T>({
           onSuccess?.(file, result.data);
         }
       } catch (err) {
-        const error = err instanceof Error ? err.message : 'Processing failed';
+        const error =
+          err instanceof Error ? err.message : t('processingFailed');
         setErrors((prev) => ({ ...prev, [file.name]: error }));
         onError?.(file.name, error);
       } finally {
         setProcessing((prev) => ({ ...prev, [file.name]: false }));
       }
     },
-    [onProcess, onSuccess, onError, validation]
+    [onProcess, onSuccess, onError, validation, t]
   );
 
   const onDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -177,13 +183,11 @@ export function FileUpload<T>({
           onClick={() => document.getElementById(fileUploadInputId)?.click()}
         >
           <UploadIcon className="w-12 h-12 mb-4 text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-semibold">Drop Files Here</h3>
-          <p className="mb-4 text-sm text-muted-foreground">
-            or click to browse
-          </p>
+          <h3 className="mb-2 text-lg font-semibold">{t('drop')}</h3>
+          <p className="mb-4 text-sm text-muted-foreground">{t('browse')}</p>
           {validation.maxSizeDisplay && (
             <p className="text-xs text-muted-foreground">
-              Maximum file size: {validation.maxSizeDisplay}
+              {t('maxSize', { size: validation.maxSizeDisplay })}
             </p>
           )}
           <Input
@@ -228,6 +232,7 @@ function UploadedFiles<T>(props: UploadedFilesProps<T>): ReactElement {
     renderFileExtra,
     removeFile,
   } = props;
+  const dateLocale = useDateFnsLocale();
 
   return (
     <>
@@ -245,7 +250,9 @@ function UploadedFiles<T>(props: UploadedFilesProps<T>): ReactElement {
                         {filesize(file.size)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(file.lastModified), 'PPpp')}
+                        {format(new Date(file.lastModified), 'PPpp', {
+                          locale: dateLocale,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -295,11 +302,14 @@ interface InvalidFileAlertProps {
 }
 function InvalidFileAlert(props: InvalidFileAlertProps) {
   const { fileName, error } = props;
+  const t = useTranslations('common.fileUpload');
   return (
     <Alert variant="destructive">
       <div className="flex flex-row items-center gap-2">
         <IoAlertCircleOutline className="h-6 w-6" />
-        <AlertTitle className="font-semibold">Issue with {fileName}</AlertTitle>
+        <AlertTitle className="font-semibold">
+          {t('issueWith', { name: fileName })}
+        </AlertTitle>
       </div>
       <AlertDescription className="pl-8">{error}</AlertDescription>
     </Alert>

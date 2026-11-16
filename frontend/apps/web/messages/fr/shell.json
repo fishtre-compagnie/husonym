@@ -1,7 +1,54 @@
 {
   "common": {
     "close": "Fermer",
-    "search": "Rechercher"
+    "search": "Rechercher",
+    "cancel": "Annuler",
+    "continue": "Continuer",
+    "delete": "Supprimer",
+    "tryAgain": "Réessayer",
+    "learnMore": "En savoir plus",
+    "somethingWentWrong": "Une erreur est survenue",
+    "copyError": "Impossible de copier le texte",
+    "confirm": {
+      "trigger": "Confirmer",
+      "header": "Êtes-vous sûr ?",
+      "description": "Cela confirme l'action choisie.",
+      "button": "Confirmer"
+    },
+    "pagination": {
+      "rowsPerPage": "Lignes par page",
+      "page": "Page {page} sur {count}",
+      "first": "Aller à la première page",
+      "previous": "Aller à la page précédente",
+      "next": "Aller à la page suivante",
+      "last": "Aller à la dernière page"
+    },
+    "wizard": {
+      "stepOf": "Étape {index} sur {total}",
+      "done": "(terminée)"
+    },
+    "fileUpload": {
+      "drop": "Déposez des fichiers ici",
+      "browse": "ou cliquez pour parcourir",
+      "maxSize": "Taille maximale du fichier : {size}",
+      "invalidType": "Type de fichier non valide",
+      "tooLarge": "La taille du fichier doit être inférieure à {size}",
+      "maximumSize": "la taille maximale",
+      "processingFailed": "Le traitement a échoué",
+      "issueWith": "Problème avec {name}"
+    },
+    "password": {
+      "show": "Afficher le mot de passe",
+      "hide": "Masquer le mot de passe"
+    },
+    "jobTypes": {
+      "sync": "Synchro",
+      "generate": "Génération"
+    },
+    "notFound": {
+      "title": "Erreur 404",
+      "description": "La page que vous cherchez n'existe pas ou a peut-être été déplacée."
+    }
   },
   "nav": {
     "mainNavigation": "Navigation principale",
@@ -43,7 +90,15 @@
     "switchToLight": "Passer au thème clair",
     "switchToDark": "Passer au thème sombre",
     "trialExpired": "Essai expiré",
-    "trialDaysLeft": "{count, plural, one {# jour d'essai restant} other {# jours d'essai restants}}"
+    "trialDaysLeft": "{count, plural, one {# jour d'essai restant} other {# jours d'essai restants}}",
+    "supportLinks": {
+      "documentation": "Documentation",
+      "documentationDescription": "Guides, informations utiles et plus encore.",
+      "github": "Github",
+      "githubDescription": "Consultez notre code source.",
+      "email": "Support par e-mail",
+      "emailDescription": "Posez-nous directement une question !"
+    }
   },
   "palette": {
     "button": "Rechercher (Ctrl+K)",
@@ -72,7 +127,16 @@
     "empty": "Aucun compte trouvé.",
     "personalGroup": "Personnel",
     "teamGroup": "Équipe",
-    "createTeam": "Créer une équipe"
+    "createTeam": "Créer une équipe",
+    "entryError": "Impossible d'ouvrir votre compte",
+    "createTeamDialog": {
+      "description": "Créez un compte d'équipe pour collaborer avec vos collègues.",
+      "name": "Nom de l'équipe",
+      "convert": "Conversion du compte personnel",
+      "convertDescription": "Déplacer tous les paramètres du compte personnel vers le compte d'équipe.",
+      "subscription": "Continuer démarre un abonnement mensuel au plan Team.",
+      "learnMore": "En savoir plus"
+    }
   },
   "reviews": {
     "nothing": "Rien à revoir",

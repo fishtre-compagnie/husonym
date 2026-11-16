@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatDateTime } from '@/util/util';
 import { Job } from '@husonym/sdk';
 import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
@@ -18,6 +17,7 @@ import PreflightReportView from './PreflightReportView';
 import { countReport, engineLabel, summarize } from './report';
 import { useJobConnections } from './useJobConnections';
 import { usePreflightCheck } from './usePreflightCheck';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 interface Props {
   job: Job;
@@ -28,6 +28,7 @@ interface Props {
 export default function PreflightCard(props: Props): ReactElement {
   const { job } = props;
   const t = useTranslations('mapping.preflight');
+  const formatDateTime = useFormatDateTime();
   const { check, isChecking, outcome } = usePreflightCheck(job.id);
   const connections = useJobConnections(job, job.accountId);
   const report = outcome?.report;

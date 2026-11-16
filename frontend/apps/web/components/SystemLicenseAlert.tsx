@@ -2,7 +2,7 @@ import { formatDate, licenseState } from '@/libs/license/license';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -26,6 +26,7 @@ export default function SystemLicenseAlert(props: Props): ReactElement | null {
     UserAccountService.method.getSystemInformation
   );
   const t = useTranslations('settings.licenseAlert');
+  const locale = useLocale();
 
   const license = systemInfo?.license;
   const expiresAt = license?.expiresAt
@@ -48,13 +49,15 @@ export default function SystemLicenseAlert(props: Props): ReactElement | null {
         return {
           title: t('expiringTitle', { count: daysUntil(expiresAt!) }),
           description: t('expiringDescription', {
-            date: formatDate(expiresAt!),
+            date: formatDate(expiresAt!, locale),
           }),
         };
       case 'grace':
         return {
           title: t('graceTitle'),
-          description: t('graceDescription', { date: formatDate(expiresAt!) }),
+          description: t('graceDescription', {
+            date: formatDate(expiresAt!, locale),
+          }),
         };
       case 'frozen':
         return {

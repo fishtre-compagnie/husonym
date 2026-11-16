@@ -393,6 +393,12 @@
         "notePlaceholder": "e.g. internal references, hold no personal data",
         "cancel": "Cancel",
         "confirm": "Mark reviewed"
+      },
+      "changeKinds": {
+        "added": "New column",
+        "removed": "Column removed",
+        "typeChanged": "Type changed: {from} → {to}",
+        "changed": "Changed"
       }
     },
     "source": {

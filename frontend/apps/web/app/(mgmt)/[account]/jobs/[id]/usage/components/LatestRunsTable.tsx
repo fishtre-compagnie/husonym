@@ -9,12 +9,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { runsTable } from '@/libs/usage/rows';
-import { formatDateTime } from '@/util/util';
 import { GetJobUsageResponse } from '@husonym/sdk';
 import Link from 'next/link';
 import { ReactElement } from 'react';
 import { useUsageI18n } from '@/libs/usage/useUsageI18n';
 import { useTranslations } from 'next-intl';
+import { useFormatDateTime } from '@/i18n/date-fns';
 
 interface Props {
   accountName: string;
@@ -28,6 +28,7 @@ interface Props {
 export default function LatestRunsTable(props: Props): ReactElement {
   const { accountName, usage, emptyLine } = props;
   const t = useTranslations('jobs.usage.latestRuns');
+  const formatDateTime = useFormatDateTime();
   const { rows, caption } = runsTable(usage, accountName, useUsageI18n());
   return (
     <Card>
@@ -41,16 +42,24 @@ export default function LatestRunsTable(props: Props): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">{t('run')}</TableHead>
-                <TableHead scope="col">{t('started')}</TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2">
+                  {t('run')}
+                </TableHead>
+                <TableHead scope="col" className="px-2">
+                  {t('started')}
+                </TableHead>
+                <TableHead scope="col" className="px-2 text-right">
                   {t('duration')}
                 </TableHead>
-                <TableHead scope="col">{t('status')}</TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2">
+                  {t('status')}
+                </TableHead>
+                <TableHead scope="col" className="px-2 text-right">
                   {t('rowsRead')}
                 </TableHead>
-                <TableHead scope="col">{t('error')}</TableHead>
+                <TableHead scope="col" className="px-2">
+                  {t('error')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -41,8 +41,10 @@ export default function CountsCard(props: Props): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">{columns[0]}</TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" className="px-2">
+                  {columns[0]}
+                </TableHead>
+                <TableHead scope="col" className="px-2 text-right">
                   {columns[1]}
                 </TableHead>
               </TableRow>

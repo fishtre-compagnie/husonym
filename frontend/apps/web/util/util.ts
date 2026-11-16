@@ -16,10 +16,16 @@ import {
   UserDefinedTransformer,
 } from '@husonym/sdk';
 import { format } from 'date-fns';
+import type { Locale } from '@/i18n/config';
 
+// A date and time, written the way the UI language writes them: in English
+// 04/16/2024 02:30:00 PM (or 14:30:00 with is24Hour), in French 16/04/2024 14:30:00,
+// the French clock being a 24-hour one. Components get it bound to the UI language
+// from useFormatDateTime (i18n/date-fns.ts).
 export function formatDateTime(
   dateStr?: string | Date | number,
-  is24Hour = false
+  is24Hour = false,
+  locale: Locale = 'en'
 ): string | undefined {
   if (!dateStr) {
     return undefined;
@@ -32,9 +38,12 @@ export function formatDateTime(
     return undefined;
   }
 
+  if (locale === 'fr') {
+    return format(date, 'dd/MM/yyyy HH:mm:ss');
+  }
   const hourFormat = is24Hour ? 'HH' : 'hh';
   const amPm = is24Hour ? '' : ' a';
-  return format(new Date(dateStr), `MM/dd/yyyy ${hourFormat}:mm:ss${amPm}`);
+  return format(date, `MM/dd/yyyy ${hourFormat}:mm:ss${amPm}`);
 }
 
 export function getErrorMessage(error: unknown): string {
@@ -91,15 +100,29 @@ export function getTransformerDataTypesString(
   return dts.map((dt) => getTransformerDataTypeString(dt)).join(' | ');
 }
 
-function getTransformerJobTypeString(dt: SupportedJobType): string {
+// What a job type reads as, by the words of common.jobTypes; without them, its name in
+// title case, in English.
+export type JobTypeLabels = Partial<Record<'sync' | 'generate', string>>;
+
+function getTransformerJobTypeString(
+  dt: SupportedJobType,
+  labels: JobTypeLabels = {}
+): string {
+  switch (dt) {
+    case SupportedJobType.SYNC:
+      return labels.sync ?? 'Sync';
+    case SupportedJobType.GENERATE:
+      return labels.generate ?? 'Generate';
+  }
   const value = SupportedJobType[dt];
   return value ? toTitleCase(value) : 'unspecified';
 }
 
 export function getTransformerJobTypesString(
-  dts: SupportedJobType[]
+  dts: SupportedJobType[],
+  labels?: JobTypeLabels
 ): string[] {
-  return dts.map((dt) => getTransformerJobTypeString(dt));
+  return dts.map((dt) => getTransformerJobTypeString(dt, labels));
 }
 
 export function getTransformerSourceString(ds: TransformerSource): string {

@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   onHoverText: string;
@@ -31,6 +32,7 @@ export function CopyButton(props: Props): ReactElement {
     buttonText,
   } = props;
 
+  const t = useTranslations('common');
   const [tooltipText, setTooltipText] = useState(onHoverText);
   const [justCopied, setJustCopied] = useState(false);
   const [, copyToClipboard] = useCopyToClipboard();
@@ -51,7 +53,7 @@ export function CopyButton(props: Props): ReactElement {
       .then(() => setJustCopied(true))
       .catch((err) => {
         console.error(err);
-        toast.error('Unable to copy text', {
+        toast.error(t('copyError'), {
           description: getErrorMessage(err),
         });
       });

@@ -6,6 +6,7 @@ import {
   getTransformerDataTypesString,
   getTransformerJobTypesString,
   getTransformerSourceString,
+  JobTypeLabels,
 } from '@/util/util';
 import { SystemTransformer } from '@husonym/sdk';
 import { ColumnDef } from '@tanstack/react-table';
@@ -17,12 +18,13 @@ import { DataTableRowActions } from './data-table-row-actions';
 interface GetSystemTransformercolumnsProps {
   accountName: string;
   t: ReturnType<typeof useTranslations<'connections.transformers.table'>>;
+  jobTypeLabels?: JobTypeLabels;
 }
 
 export function getSystemTransformerColumns(
   props: GetSystemTransformercolumnsProps
 ): ColumnDef<AppTableFeatures, SystemTransformer>[] {
-  const { accountName, t } = props;
+  const { accountName, t, jobTypeLabels } = props;
   return [
     {
       id: 'name',
@@ -65,7 +67,8 @@ export function getSystemTransformerColumns(
     {
       id: 'jobTypes',
       accessorKey: 'jobTypes',
-      accessorFn: (row) => getTransformerJobTypesString(row.supportedJobTypes),
+      accessorFn: (row) =>
+        getTransformerJobTypesString(row.supportedJobTypes, jobTypeLabels),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('jobTypes')} />
       ),
