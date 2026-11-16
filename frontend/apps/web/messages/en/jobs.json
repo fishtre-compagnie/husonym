@@ -1,3 +1,457 @@
 {
-  "jobs": {}
+  "jobs": {
+    "schedule": {
+      "manual": "Manual",
+      "hourly": "Hourly",
+      "daily": "Daily at 00:00 UTC",
+      "weekly": "Every Sunday at 00:00 UTC",
+      "monthly": "Monthly on day 1 at 00:00 UTC",
+      "everyMinutes": "Every {count} min",
+      "everyHours": "Every {count} h",
+      "dailyAt": "Daily at {time} UTC",
+      "weekdaysAt": "Weekdays at {time} UTC",
+      "everyDayAt": "Every {day, select, 0 {Sunday} 1 {Monday} 2 {Tuesday} 3 {Wednesday} 4 {Thursday} 5 {Friday} other {Saturday}} at {time} UTC",
+      "monthlyAt": "Monthly on day {day} at {time} UTC"
+    },
+    "list": {
+      "title": "Jobs",
+      "description": "Each job copies a source to one or more destinations, anonymizing the data on the way.",
+      "newJob": "New job",
+      "generatedData": "Generated data",
+      "aiGeneratedData": "AI-generated data",
+      "unknownConnection": "Unknown connection",
+      "empty": {
+        "title": "No jobs yet",
+        "description": "Jobs are async workflows that transform data and sync it between source and destination systems.",
+        "button": "Create your first job"
+      },
+      "search": {
+        "label": "Filter jobs",
+        "placeholder": "Filter by name, connection, table…"
+      },
+      "noMatch": "No job matches this filter.",
+      "filters": {
+        "ariaLabel": "Filter jobs by state",
+        "all": "All",
+        "active": "Active",
+        "paused": "Paused",
+        "failing": "Failing"
+      },
+      "state": {
+        "running": "Running",
+        "active": "Active",
+        "failing": "Last run failed",
+        "paused": "Paused",
+        "disabled": "Disabled",
+        "unknown": "Status unknown"
+      },
+      "type": {
+        "sync": "Sync",
+        "generate": "Generate",
+        "aiGenerate": "AI Generate",
+        "piiDetect": "PII Detection"
+      },
+      "columns": {
+        "job": "Job",
+        "connections": "Source → destination",
+        "columns": "Columns",
+        "lastRuns": "Last {count} runs",
+        "action": "Action"
+      },
+      "tables": "{count, plural, one {# table} other {# tables}}",
+      "noDestination": "No destination",
+      "to": "to",
+      "transformedOf": "/ {count} transformed",
+      "transformedAria": "{transformed} of {count} columns transformed",
+      "personalInClear": "{count} personal in clear",
+      "toReview": "{count} to review",
+      "runs": {
+        "neverRanAria": "{name} has never run",
+        "summary": "Last {count} runs of {name}: {failed} failed",
+        "neverRun": "Never run",
+        "status": {
+          "completed": "Completed",
+          "failed": "Failed",
+          "pending": "Pending",
+          "running": "Running",
+          "canceled": "Canceled",
+          "terminated": "Terminated",
+          "unknown": "Unknown"
+        }
+      },
+      "rowActions": {
+        "deleted": "Job removed successfully!",
+        "deleteError": "Unable to remove job",
+        "resumed": "{name} resumed",
+        "paused": "{name} paused",
+        "pauseError": "Unable to update job paused status",
+        "moreActions": "More actions for {name}",
+        "view": "View",
+        "clone": "Clone",
+        "noSchedulingLicense": "Your license does not include scheduling",
+        "resumeSchedule": "Resume schedule",
+        "pauseSchedule": "Pause schedule",
+        "delete": "Delete",
+        "deleteTitle": "Are you sure you want to delete this job?",
+        "deleteDescription": "Deleting this job will also delete all job runs."
+      },
+      "runButton": {
+        "started": "Run of {name} started",
+        "viewRun": "View run",
+        "error": "Unable to trigger job run",
+        "ariaLabel": "Run {name} now",
+        "label": "Run"
+      }
+    },
+    "job": {
+      "breadcrumb": "Jobs",
+      "runTriggered": "Job run triggered successfully!",
+      "viewRun": "View run",
+      "runError": "Unable to trigger job run",
+      "deleted": "Job removed successfully!",
+      "deleteError": "Unable to remove job",
+      "to": "to",
+      "copyId": "Copy the Job ID",
+      "delete": "Delete",
+      "deleteTitle": "Are you sure you want to delete this job?",
+      "deleteDescription": "Deleting this job will also delete all job runs.",
+      "triggerRun": "Trigger run",
+      "clone": "Clone Job",
+      "type": {
+        "sync": "Sync Job",
+        "generate": "Generate Job",
+        "aiGenerate": "AI Generate Job",
+        "piiDetect": "PII Detect Job"
+      },
+      "status": {
+        "enabled": "Enabled",
+        "paused": "Paused",
+        "disabled": "Disabled"
+      },
+      "tabs": {
+        "ariaLabel": "Job sections",
+        "overview": "Overview",
+        "source": "Source",
+        "mapping": "Mapping",
+        "destinations": "Destinations",
+        "review": "Review",
+        "subsets": "Subsets",
+        "usage": "Usage",
+        "hooks": "Hooks"
+      },
+      "pause": {
+        "pause": "Pause Job",
+        "resume": "Resume Job",
+        "paused": "Successfully paused  job!",
+        "resumed": "Successfully unpaused  job!",
+        "error": "Unable to update job paused status",
+        "resumeRefused": "Resuming a schedule needs the {feature} feature. {notice}"
+      }
+    },
+    "overview": {
+      "advancedSettings": "Advanced settings",
+      "schedule": {
+        "title": "Schedule",
+        "invalidCron": "Not a valid cron schedule",
+        "updated": "Successfully updated job schedule!",
+        "updateError": "Unable to update job schedule",
+        "notScheduled": "Not currently scheduled",
+        "description": "The schedule to run the job against if not a oneoff.",
+        "placeholder": "Cron schedule, e.g. 0 3 * * *",
+        "save": "Save"
+      },
+      "nextRuns": {
+        "title": "Upcoming runs",
+        "error": "Error: Unable to retrieve upcoming runs",
+        "paused": "The job is paused: no upcoming runs.",
+        "none": "No upcoming runs"
+      },
+      "recentRuns": {
+        "title": "Recent runs",
+        "loadError": "Error: Unable to retrieve recent runs",
+        "refresh": "Refresh the runs",
+        "empty": "This job has not run yet.",
+        "columns": {
+          "runId": "Run ID",
+          "started": "Started",
+          "completed": "Completed",
+          "status": "Status",
+          "action": "Action"
+        },
+        "openMenu": "Open menu",
+        "view": "View",
+        "cancel": "Cancel",
+        "cancelTitle": "Cancel Job Run?",
+        "cancelDescription": "Are you sure you want to cancel this job run?",
+        "canceling": "Canceling Job Run. This may take a minute to cancel!",
+        "cancelError": "Unable to cancel job run",
+        "terminate": "Terminate",
+        "terminateTitle": "Terminate Job Run?",
+        "terminateDescription": "Are you sure you want to terminate this job run?",
+        "terminating": "Terminating Job Run. This may take a minute to terminate!",
+        "terminateError": "Unable to terminate job run",
+        "delete": "Delete",
+        "deleteTitle": "Delete Job Run?",
+        "deleteDescription": "Are you sure you want to delete this job run?",
+        "deleting": "Removing Job Run. This may take a minute to delete!",
+        "deleteError": "Unable to remove job run"
+      },
+      "workflow": {
+        "updated": "Successfully updated job workflow options!",
+        "updateError": "Unable to update job workflow options",
+        "runTimeout": "Job Run Timeout",
+        "runTimeoutDescription": "The maximum length of time (in minutes) that a single job run is allowed to span before it times out. <code>0</code> means no overall timeout.",
+        "runTimeoutTables": "A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.",
+        "engine": "Engine",
+        "engineDescription": "Transformation engine used to run this job. <code>Default</code> follows the deployment setting.",
+        "engineDefault": "Default (deployment)",
+        "engineBenthos": "Benthos (legacy)",
+        "consistencyScope": "Consistency scope",
+        "consistencyScopeDescription": "Deterministic consistency (Athanor engine only): the same source value gets the same anonymized value everywhere in this scope. Beyond a single run, outputs stay linkable over time.",
+        "save": "Save"
+      }
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "What this job ran, from the counters of this instance",
+      "error": "Unable to read the usage of this job",
+      "medianDuration": "Median duration",
+      "latestRuns": {
+        "title": "Latest runs",
+        "run": "Run",
+        "started": "Started",
+        "duration": "Duration",
+        "status": "Status",
+        "rowsRead": "Rows read",
+        "error": "Error"
+      }
+    },
+    "destinations": {
+      "title": "Destinations",
+      "description": "Where the anonymized data is written, and how.",
+      "new": "New destination",
+      "alerts": {
+        "columnIssues": "Found issues with columns in schema. Please resolve before next job run.",
+        "missingColumns": "Columns Missing in Destination:",
+        "extraColumns": "Columns Not Found in Job Mappings:",
+        "noDifferences": "No differences found.",
+        "tableIssues": "This destination is missing tables found in Job Mappings. Either enable Init Table Schema or create the tables manually.",
+        "missingSchemas": "Schemas Missing in Destination:",
+        "missingTables": "Tables Missing in Destination:"
+      },
+      "card": {
+        "updated": "Successfully updated job destination!",
+        "updateError": "Unable to update job destination",
+        "deleted": "Successfully deleted job destination!",
+        "deleteError": "Unable to delete job destination",
+        "connectionDescription": "The location of the destination data set.",
+        "save": "Save",
+        "lastDestination": "A job keeps at least one destination",
+        "delete": "Delete",
+        "deleteTitle": "Are you sure you want to delete this destination connection?",
+        "deleteDescription": "Deleting this is irreversable and will cause data to stop syncing to this destination!"
+      }
+    },
+    "subsets": {
+      "title": "Subsets",
+      "description": "Which rows of each table the job copies, with a WHERE clause per table.",
+      "card": {
+        "unsupportedTitle": "Heads up!",
+        "unsupportedDescription": "The source connection configured does not currently support subsettings",
+        "updated": "Successfully updated database subsets",
+        "updateError": "Unable to update database subsets",
+        "save": "Save"
+      }
+    },
+    "hooks": {
+      "title": "Job Hooks",
+      "description": "Manage hooks that execute at specific points in a job run's lifecycle",
+      "disabled": {
+        "title": "Job Hooks are not currently enabled",
+        "description": "To enable them, please update Husonym configuration or contact your system administrator."
+      },
+      "empty": {
+        "title": "No Hooks yet",
+        "description": "Hooks are invoked during specific lifecycles of a job run to allow for further customization of a run"
+      },
+      "card": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "unknownConnection": "Unknown Connection",
+        "timing": {
+          "preSync": "Pre Sync",
+          "postSync": "Post Sync",
+          "unknown": "Unknown"
+        }
+      },
+      "new": {
+        "button": "New Hook",
+        "title": "Create new Job Hook",
+        "description": "Configure values for a new job hook that will be invoked during a job run",
+        "created": "Successfully created job hook!",
+        "error": "Unable to create job hook"
+      },
+      "edit": {
+        "title": "Edit Job Hook: {name}",
+        "description": "Change any of the available job hook settings.",
+        "updated": "Successfully updated job hook!",
+        "error": "Unable to update job hook"
+      },
+      "remove": {
+        "title": "Are you sure you want to delete job hook: {name}?",
+        "description": "Deleting this hook is irreversable!",
+        "removed": "Successfully removed job hook!",
+        "error": "Unable to remove job hook"
+      },
+      "disable": {
+        "button": "Disable",
+        "disabled": "Successfully disabled job hook!",
+        "error": "Unable to disable job hook"
+      },
+      "form": {
+        "name": "Name",
+        "nameDescription": "Name of the hook for display and reference, must be unique",
+        "namePlaceholder": "Hook name",
+        "description": "Description",
+        "descriptionDescription": "What this hook does",
+        "descriptionPlaceholder": "Hook description",
+        "priority": "Priority (0-100)",
+        "priorityDescription": "Determines execution order. Lower values are higher priority",
+        "enabled": "Enabled",
+        "enabledDescription": "Whether or not this hook will be invoked during a job run",
+        "yes": "Yes",
+        "no": "No",
+        "hookType": "Hook Type",
+        "hookTypeDescription": "The type of hook. Currently only SQL hooks are supported",
+        "query": "Query",
+        "queryDescription": "The SQL query that will be invoked",
+        "timing": "Timing",
+        "timingDescription": "The lifecycle of when the hook will run",
+        "timingPlaceholder": "Select a timing value",
+        "preSync": "Pre Sync - Before first table sync, truncation, schema init",
+        "postSync": "Post Sync - After the last table sync",
+        "connection": "Connection",
+        "connectionDescription": "The connection that this hook will be invoked against",
+        "connectionPlaceholder": "Select a connection...",
+        "create": "Create",
+        "update": "Update"
+      },
+      "validation": {
+        "timingRequired": "Must select preSync or postSync",
+        "queryRequired": "SQL query is required",
+        "connectionRequired": "Connection ID is required",
+        "sqlOnly": "Only SQL hooks are currently supported",
+        "hookTypeRequired": "Hook type is required",
+        "enabledRequired": "Must provide an enabled value",
+        "nameRequired": "Name is required",
+        "nameMin": "Name must be at least 3 characters",
+        "nameMax": "The Hook name must be at most 100 characters",
+        "nameFormat": "Name must be between 3-100 characters and may only include lowercase letters, numbers, and hyphens",
+        "descriptionRequired": "Description is required",
+        "priorityRequired": "Priority is required",
+        "priorityRange": "Priority must be between 0 and 100",
+        "sqlConfigRequired": "SQL config is required when hook type is sql"
+      }
+    },
+    "review": {
+      "title": "Changes to review",
+      "description": "What this job's runs changed in its mappings as its source evolved. Open a change to keep what the run chose or pick another transformer; select several to confirm them at once.",
+      "nothing": "Nothing waiting: every change the runs made has been reviewed.",
+      "reviewed": "{count, plural, one {# change reviewed} other {# changes reviewed}}",
+      "reviewError": "Unable to mark these changes reviewed",
+      "applied": "{column} mapped from the next run",
+      "applyError": "Unable to apply this transformer",
+      "selectTable": "Select every change of {table}",
+      "changes": "{count, plural, one {# change} other {# changes}}",
+      "selectedRegion": "Selected changes",
+      "selected": "{count, plural, one {# change selected} other {# changes selected}}",
+      "markReviewed": "Mark reviewed…",
+      "clear": "Clear",
+      "row": {
+        "select": "Select {column}",
+        "was": "was {transformer}",
+        "inClear": "Passthrough — copied in clear",
+        "removed": "Mapping removed from the job",
+        "personalData": "Personal data: {category}"
+      },
+      "panel": {
+        "personalData": "Personal data: {category}",
+        "keep": "Keep the run's choice",
+        "markReviewed": "Mark reviewed",
+        "pickFirst": "Pick another transformer or option first",
+        "apply": "Apply",
+        "changed": "Changed from what the run chose.",
+        "asChosen": "As the run chose it.",
+        "removed": "The column left the source; the job mapped it with <strong>{transformer}</strong>{options}. Its mapping has been removed from the job.",
+        "note": "Why is this fine? (optional)",
+        "notePlaceholder": "e.g. internal references, hold no personal data"
+      },
+      "dialog": {
+        "title": "{count, plural, one {Mark this change reviewed} other {Mark # changes reviewed}}",
+        "description": "{count, plural, one {The job keeps its mappings as the runs left them, and this change stops being reported.} other {The job keeps its mappings as the runs left them, and these changes stop being reported.}}",
+        "note": "Why is this fine? (optional)",
+        "notePlaceholder": "e.g. internal references, hold no personal data",
+        "cancel": "Cancel",
+        "confirm": "Mark reviewed"
+      }
+    },
+    "source": {
+      "title": "Source",
+      "otherDescription": "Where the data comes from, and what the job does with it. Changes are kept once you save them.",
+      "syncDescription": "Where the data comes from, and what a run does when its schema changes. Changes are kept once you save them.",
+      "mappingTitle": "Mapping",
+      "mappingDescription": "The tables the job copies, and what leaves each of their columns. Changes are kept once you save them.",
+      "saveBar": {
+        "region": "Save the job",
+        "unsaved": "Unsaved changes",
+        "saved": "No unsaved changes",
+        "save": "Save"
+      },
+      "import": {
+        "imported": "Successfully imported {count} mappings!",
+        "nothing": "Import succeeded but did not add or replace any new mappings.",
+        "merged": "Import succeeded with {replaced, plural, =0 {no} other {#}} mappings replaced and {added, plural, =0 {none} other {#}} added."
+      },
+      "sync": {
+        "schemaError": "Unable to get connection schema",
+        "sourceUpdated": "Successfully updated source connection!",
+        "sourceUpdateError": "Unable to update job source connnection",
+        "destinationsUpdated": "Successfully updated job destination connection(s)",
+        "destinationsUpdateError": "Unable to update one or all job destination connections",
+        "validateMappingsError": "Unable to validate job mappings",
+        "validateVfkError": "Unable to validate virtual foreign keys",
+        "sourceDescription": "The location of the source data set.",
+        "sourceChanged": "The mapping follows the new source: {kept} of {saved} mapped columns exist there and are kept. Review the mapping once this is saved.",
+        "save": "Save",
+        "unknownDestination": "Unknown Name"
+      },
+      "generate": {
+        "sourceUpdated": "Successfully updated job source connection!",
+        "sourceUpdateError": "Unable to update job source connection",
+        "validateMappingsError": "Unable to validate job mappings",
+        "sampleError": "Unable to generate sample data",
+        "schemaError": "Unable to get connection schema on table constraint source change.",
+        "schemaConnection": "Table Schema Connection",
+        "schemaConnectionDescription": "Connection used for table schema. Must be of the same type as the destination.",
+        "openaiConnection": "OpenAI Connection Source",
+        "openaiConnectionDescription": "The OpenAI SDK connection in use.",
+        "model": "Model Name",
+        "modelDescription": "The name of the model to use.",
+        "prompt": "Prompt",
+        "promptDescription": "Optionally provide a prompt to give further context to the model. This is highly recommended! The table schema will be appended to the end of this prompt automatically.",
+        "numRows": "Number of Rows",
+        "numRowsDescription": "The number of rows to generate.",
+        "batchSize": "Batch Size",
+        "batchSizeDescription": "The batch size used when asking the model to generate records. Useful for large datasets or prompts that may exceed AI token limits. Smaller is generally better.",
+        "fixErrors": "Please fix form errors and try again.",
+        "sample": "Sample",
+        "update": "Update"
+      },
+      "pii": {
+        "sourceUpdated": "Successfully updated source connection!",
+        "sourceUpdateError": "Unable to update job source connection",
+        "update": "Update"
+      }
+    }
+  }
 }

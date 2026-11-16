@@ -16,6 +16,7 @@ import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { Connection, ConnectionService, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import {
   FormEvent,
   ReactElement,
@@ -34,6 +35,7 @@ interface Props {
 export default function PiiDetectConnectionCard({
   jobId,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.source.pii');
   const {
     data,
     refetch: mutate,
@@ -107,13 +109,13 @@ export default function PiiDetectConnectionCard({
               },
             },
           });
-          toast.success('Successfully updated source connection!');
+          toast.success(t('sourceUpdated'));
           const updatedJobResp = await mutate();
           if (updatedJobResp.data?.job) {
             setFromRemote(updatedJobResp.data?.job);
           }
         } catch (err) {
-          toast.error('Unable to update job source connection', {
+          toast.error(t('sourceUpdateError'), {
             description: getErrorMessage(err),
           });
         }
@@ -202,7 +204,7 @@ export default function PiiDetectConnectionCard({
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Update"
+            text={t('update')}
           />
         </Button>
       </div>

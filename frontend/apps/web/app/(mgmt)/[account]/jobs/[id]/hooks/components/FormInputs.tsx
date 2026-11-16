@@ -7,6 +7,7 @@ import { ReactElement } from 'react';
 import FormHeader from './FormHeader';
 import JobConfigSqlForm from './JobConfigSqlForm';
 import { HookTypeFormValue, JobHookConfigFormValues } from './validation';
+import { useTranslations } from 'next-intl';
 
 interface NameProps {
   error?: string;
@@ -16,13 +17,14 @@ interface NameProps {
 
 export function Name(props: NameProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('jobs.hooks.form');
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="name"
-        title="Name"
-        description="Name of the hook for display and reference, must be unique"
+        title={t('name')}
+        description={t('nameDescription')}
         isErrored={!!error}
       />
       <Input
@@ -31,7 +33,7 @@ export function Name(props: NameProps): ReactElement {
         data-1p-ignore // tells 1password extension to not autofill this field
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Hook name"
+        placeholder={t('namePlaceholder')}
       />
       <FormErrorMessage message={error} />
     </div>
@@ -46,20 +48,21 @@ interface DescriptionProps {
 
 export function Description(props: DescriptionProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('jobs.hooks.form');
 
   return (
     <div className="space-y-2">
       <FormHeader
         htmlFor="description"
-        title="Description"
-        description="What this hook does"
+        title={t('description')}
+        description={t('descriptionDescription')}
         isErrored={!!error}
       />
       <Textarea
         id="description"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Hook description"
+        placeholder={t('descriptionPlaceholder')}
         rows={3}
       />
       <FormErrorMessage message={error} />
@@ -75,14 +78,15 @@ interface PriorityProps {
 
 export function Priority(props: PriorityProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('jobs.hooks.form');
 
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <FormHeader
           htmlFor="priority"
-          title="Priority (0-100)"
-          description="Determines execution order. Lower values are higher priority"
+          title={t('priority')}
+          description={t('priorityDescription')}
           isErrored={!!error}
         />
         <Input
@@ -105,13 +109,14 @@ interface EnabledProps {
 
 export function Enabled(props: EnabledProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('jobs.hooks.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
         htmlFor="enabled"
-        title="Enabled"
-        description="Whether or not this hook will be invoked during a job run"
+        title={t('enabled')}
+        description={t('enabledDescription')}
         isErrored={!!error}
       />
       <ToggleGroup
@@ -125,8 +130,8 @@ export function Enabled(props: EnabledProps): ReactElement {
         }}
         value={value ? 'yes' : 'no'}
       >
-        <ToggleGroupItem value="yes">Yes</ToggleGroupItem>
-        <ToggleGroupItem value="no">No</ToggleGroupItem>
+        <ToggleGroupItem value="yes">{t('yes')}</ToggleGroupItem>
+        <ToggleGroupItem value="no">{t('no')}</ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={error} />
     </div>
@@ -141,12 +146,13 @@ interface HookTypeProps {
 
 export function HookType(props: HookTypeProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('jobs.hooks.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Hook Type"
-        description="The type of hook. Currently only SQL hooks are supported"
+        title={t('hookType')}
+        description={t('hookTypeDescription')}
         isErrored={!!error}
       />
       <ToggleGroup

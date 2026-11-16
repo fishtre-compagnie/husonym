@@ -33,6 +33,7 @@ import {
   JobService,
 } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -66,6 +67,7 @@ export default function DestinationConnectionCard({
   jobmappings,
   job,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.destinations.card');
   const { mutateAsync: setJobDestConnection } = useMutation(
     JobService.method.updateJobDestinationConnection
   );
@@ -108,10 +110,10 @@ export default function DestinationConnectionCard({
         options,
       });
       mutate();
-      toast.success('Successfully updated job destination!');
+      toast.success(t('updated'));
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job destination', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -123,10 +125,10 @@ export default function DestinationConnectionCard({
         destinationId: destination.id,
       });
       mutate();
-      toast.success('Successfully deleted job destination!');
+      toast.success(t('deleted'));
     } catch (err) {
       console.error(err);
-      toast.error('Unable to delete job destination', {
+      toast.error(t('deleteError'), {
         description: getErrorMessage(err),
       });
     }
@@ -191,7 +193,7 @@ export default function DestinationConnectionCard({
                       </Select>
                     </FormControl>
                     <FormDescription>
-                      The location of the destination data set.
+                      {t('connectionDescription')}
                     </FormDescription>
                   </FormItem>
                 )}
@@ -226,7 +228,7 @@ export default function DestinationConnectionCard({
             <div className="flex w-full flex-row items-center justify-between">
               <DeleteButton isDisabled={isDeleteDisabled} onDelete={onDelete} />
               <Button disabled={!form.formState.isDirty} type="submit">
-                Save
+                {t('save')}
               </Button>
             </div>
           </CardFooter>
@@ -254,6 +256,7 @@ interface DeleteButtonProps {
 
 function DeleteButton(props: DeleteButtonProps): ReactElement {
   const { isDisabled, onDelete } = props;
+  const t = useTranslations('jobs.destinations.card');
   return (
     <DeleteConfirmationDialog
       trigger={
@@ -262,15 +265,13 @@ function DeleteButton(props: DeleteButtonProps): ReactElement {
           variant="outline"
           className="text-danger-fg hover:bg-danger-soft"
           disabled={isDisabled}
-          title={
-            isDisabled ? 'A job keeps at least one destination' : undefined
-          }
+          title={isDisabled ? t('lastDestination') : undefined}
         >
-          <ButtonText leftIcon={<TrashIcon />} text="Delete" />
+          <ButtonText leftIcon={<TrashIcon />} text={t('delete')} />
         </Button>
       }
-      headerText="Are you sure you want to delete this destination connection?"
-      description="Deleting this is irreversable and will cause data to stop syncing to this destination!"
+      headerText={t('deleteTitle')}
+      description={t('deleteDescription')}
       onConfirm={async () => onDelete()}
     />
   );

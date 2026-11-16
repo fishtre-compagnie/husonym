@@ -53,6 +53,7 @@ import {
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -71,6 +72,7 @@ interface Props {
 export default function AiDataGenConnectionCard({
   jobId,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.source.generate');
   const { account } = useAccount();
 
   const {
@@ -226,11 +228,11 @@ export default function AiDataGenConnectionCard({
         mappings: [],
         source: toSingleTableEditAiGenerateJobSource(values),
       });
-      toast.success('Successfully updated job source connection!');
+      toast.success(t('sourceUpdated'));
       mutate();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job source connection', {
+      toast.error(t('sourceUpdateError'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -249,7 +251,7 @@ export default function AiDataGenConnectionCard({
       );
       setaioutput(output.records);
     } catch (err) {
-      toast.error('Unable to generate sample data', {
+      toast.error(t('sampleError'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -320,12 +322,9 @@ export default function AiDataGenConnectionCard({
         ...form.getValues(),
         source: { ...form.getValues('source'), fkSourceConnectionId: value },
       });
-      toast.error(
-        'Unable to get connection schema on table constraint source change.',
-        {
-          description: getErrorMessage(err),
-        }
-      );
+      toast.error(t('schemaError'), {
+        description: getErrorMessage(err),
+      });
     }
   }
 
@@ -338,9 +337,9 @@ export default function AiDataGenConnectionCard({
           name="source.sourceId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>OpenAI Connection Source</FormLabel>
+              <FormLabel>{t('openaiConnection')}</FormLabel>
               <FormDescription>
-                The OpenAI SDK connection in use.
+                {t('openaiConnectionDescription')}
               </FormDescription>
               <FormControl>
                 <Select
@@ -384,10 +383,9 @@ export default function AiDataGenConnectionCard({
           name="source.fkSourceConnectionId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Table Schema Connection</FormLabel>
+              <FormLabel>{t('schemaConnection')}</FormLabel>
               <FormDescription>
-                Connection used for table schema. Must be of the same type as
-                the destination.
+                {t('schemaConnectionDescription')}
               </FormDescription>
               <FormControl>
                 <Select
@@ -456,9 +454,9 @@ export default function AiDataGenConnectionCard({
           name="schema.model"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Model Name</FormLabel>
+              <FormLabel>{t('model')}</FormLabel>
               <div className="flex flex-col md:flex-row gap-2 md:items-center">
-                <FormDescription>The name of the model to use.</FormDescription>
+                <FormDescription>{t('modelDescription')}</FormDescription>
                 <div>
                   <SelectModelNames
                     onSelected={(modelName) => field.onChange(modelName)}
@@ -478,12 +476,8 @@ export default function AiDataGenConnectionCard({
           name="schema.userPrompt"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Prompt</FormLabel>
-              <FormDescription>
-                Optionally provide a prompt to give further context to the
-                model. This is highly recommended! The table schema will be
-                appended to the end of this prompt automatically.
-              </FormDescription>
+              <FormLabel>{t('prompt')}</FormLabel>
+              <FormDescription>{t('promptDescription')}</FormDescription>
               <FormControl>
                 <Textarea
                   {...field}
@@ -503,8 +497,8 @@ export default function AiDataGenConnectionCard({
           name="schema.numRows"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Number of Rows</FormLabel>
-              <FormDescription>The number of rows to generate.</FormDescription>
+              <FormLabel>{t('numRows')}</FormLabel>
+              <FormDescription>{t('numRowsDescription')}</FormDescription>
               <FormControl>
                 <Input
                   {...field}
@@ -526,12 +520,8 @@ export default function AiDataGenConnectionCard({
           name="schema.generateBatchSize"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Batch Size</FormLabel>
-              <FormDescription>
-                The batch size used when asking the model to generate records.
-                Useful for large datasets or prompts that may exceed AI token
-                limits. Smaller is generally better.
-              </FormDescription>
+              <FormLabel>{t('batchSize')}</FormLabel>
+              <FormDescription>{t('batchSizeDescription')}</FormDescription>
               <FormControl>
                 <Input
                   {...field}
@@ -553,7 +543,7 @@ export default function AiDataGenConnectionCard({
           <Alert variant="destructive">
             <AlertTitle className="flex flex-row space-x-2 justify-center">
               <ExclamationTriangleIcon />
-              <p>Please fix form errors and try again.</p>
+              <p>{t('fixErrors')}</p>
             </AlertTitle>
           </Alert>
         )}
@@ -567,13 +557,13 @@ export default function AiDataGenConnectionCard({
           >
             <ButtonText
               leftIcon={isSampling ? <Spinner /> : undefined}
-              text="Sample"
+              text={t('sample')}
             />
           </Button>
           <Button type="submit">
             <ButtonText
               leftIcon={isUpdating ? <Spinner /> : undefined}
-              text="Update"
+              text={t('update')}
             />
           </Button>
         </div>

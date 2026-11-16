@@ -1,3 +1,457 @@
 {
-  "jobs": {}
+  "jobs": {
+    "schedule": {
+      "manual": "Manuel",
+      "hourly": "Toutes les heures",
+      "daily": "Tous les jours à 00:00 UTC",
+      "weekly": "Chaque dimanche à 00:00 UTC",
+      "monthly": "Tous les mois le 1er à 00:00 UTC",
+      "everyMinutes": "Toutes les {count} min",
+      "everyHours": "Toutes les {count} h",
+      "dailyAt": "Tous les jours à {time} UTC",
+      "weekdaysAt": "En semaine à {time} UTC",
+      "everyDayAt": "Chaque {day, select, 0 {dimanche} 1 {lundi} 2 {mardi} 3 {mercredi} 4 {jeudi} 5 {vendredi} other {samedi}} à {time} UTC",
+      "monthlyAt": "Tous les mois le {day} à {time} UTC"
+    },
+    "list": {
+      "title": "Jobs",
+      "description": "Chaque job copie une source vers une ou plusieurs destinations, en anonymisant les données au passage.",
+      "newJob": "Nouveau job",
+      "generatedData": "Données générées",
+      "aiGeneratedData": "Données générées par IA",
+      "unknownConnection": "Connexion inconnue",
+      "empty": {
+        "title": "Aucun job pour l'instant",
+        "description": "Les jobs sont des workflows asynchrones qui transforment les données et les synchronisent entre une source et des destinations.",
+        "button": "Créer votre premier job"
+      },
+      "search": {
+        "label": "Filtrer les jobs",
+        "placeholder": "Filtrer par nom, connexion, table…"
+      },
+      "noMatch": "Aucun job ne correspond à ce filtre.",
+      "filters": {
+        "ariaLabel": "Filtrer les jobs par état",
+        "all": "Tous",
+        "active": "Actifs",
+        "paused": "En pause",
+        "failing": "En échec"
+      },
+      "state": {
+        "running": "En cours",
+        "active": "Actif",
+        "failing": "Dernière exécution échouée",
+        "paused": "En pause",
+        "disabled": "Désactivé",
+        "unknown": "État inconnu"
+      },
+      "type": {
+        "sync": "Synchro",
+        "generate": "Génération",
+        "aiGenerate": "Génération IA",
+        "piiDetect": "Détection PII"
+      },
+      "columns": {
+        "job": "Job",
+        "connections": "Source → destination",
+        "columns": "Colonnes",
+        "lastRuns": "{count} dernières exécutions",
+        "action": "Action"
+      },
+      "tables": "{count, plural, one {# table} other {# tables}}",
+      "noDestination": "Aucune destination",
+      "to": "vers",
+      "transformedOf": "/ {count} transformées",
+      "transformedAria": "{transformed} colonnes transformées sur {count}",
+      "personalInClear": "{count} personnelles en clair",
+      "toReview": "{count} à revoir",
+      "runs": {
+        "neverRanAria": "{name} n'a jamais été exécuté",
+        "summary": "{count} dernières exécutions de {name} : {failed} échouées",
+        "neverRun": "Jamais exécuté",
+        "status": {
+          "completed": "Terminée",
+          "failed": "Échouée",
+          "pending": "En attente",
+          "running": "En cours",
+          "canceled": "Annulée",
+          "terminated": "Interrompue",
+          "unknown": "Inconnu"
+        }
+      },
+      "rowActions": {
+        "deleted": "Job supprimé.",
+        "deleteError": "Impossible de supprimer le job",
+        "resumed": "{name} a repris",
+        "paused": "{name} mis en pause",
+        "pauseError": "Impossible de modifier la mise en pause du job",
+        "moreActions": "Plus d'actions pour {name}",
+        "view": "Voir",
+        "clone": "Dupliquer",
+        "noSchedulingLicense": "Votre licence n'inclut pas la planification",
+        "resumeSchedule": "Reprendre la planification",
+        "pauseSchedule": "Mettre la planification en pause",
+        "delete": "Supprimer",
+        "deleteTitle": "Voulez-vous vraiment supprimer ce job ?",
+        "deleteDescription": "Supprimer ce job supprimera aussi toutes ses exécutions."
+      },
+      "runButton": {
+        "started": "Exécution de {name} lancée",
+        "viewRun": "Voir l'exécution",
+        "error": "Impossible de lancer l'exécution du job",
+        "ariaLabel": "Exécuter {name} maintenant",
+        "label": "Exécuter"
+      }
+    },
+    "job": {
+      "breadcrumb": "Jobs",
+      "runTriggered": "Exécution du job lancée.",
+      "viewRun": "Voir l'exécution",
+      "runError": "Impossible de lancer l'exécution du job",
+      "deleted": "Job supprimé.",
+      "deleteError": "Impossible de supprimer le job",
+      "to": "vers",
+      "copyId": "Copier l'ID du job",
+      "delete": "Supprimer",
+      "deleteTitle": "Voulez-vous vraiment supprimer ce job ?",
+      "deleteDescription": "Supprimer ce job supprimera aussi toutes ses exécutions.",
+      "triggerRun": "Lancer une exécution",
+      "clone": "Dupliquer le job",
+      "type": {
+        "sync": "Job de synchro",
+        "generate": "Job de génération",
+        "aiGenerate": "Job de génération IA",
+        "piiDetect": "Job de détection PII"
+      },
+      "status": {
+        "enabled": "Activé",
+        "paused": "En pause",
+        "disabled": "Désactivé"
+      },
+      "tabs": {
+        "ariaLabel": "Sections du job",
+        "overview": "Vue d'ensemble",
+        "source": "Source",
+        "mapping": "Mapping",
+        "destinations": "Destinations",
+        "review": "Revue",
+        "subsets": "Subsets",
+        "usage": "Utilisation",
+        "hooks": "Hooks"
+      },
+      "pause": {
+        "pause": "Mettre en pause",
+        "resume": "Reprendre le job",
+        "paused": "Job mis en pause.",
+        "resumed": "Job repris.",
+        "error": "Impossible de modifier la mise en pause du job",
+        "resumeRefused": "Reprendre une planification nécessite la fonctionnalité {feature}. {notice}"
+      }
+    },
+    "overview": {
+      "advancedSettings": "Paramètres avancés",
+      "schedule": {
+        "title": "Planification",
+        "invalidCron": "Planification cron invalide",
+        "updated": "Planification du job mise à jour.",
+        "updateError": "Impossible de mettre à jour la planification du job",
+        "notScheduled": "Aucune planification",
+        "description": "La planification selon laquelle exécuter le job, s'il n'est pas ponctuel.",
+        "placeholder": "Planification cron, ex. 0 3 * * *",
+        "save": "Enregistrer"
+      },
+      "nextRuns": {
+        "title": "Prochaines exécutions",
+        "error": "Erreur : impossible de récupérer les prochaines exécutions",
+        "paused": "Le job est en pause : aucune exécution à venir.",
+        "none": "Aucune exécution à venir"
+      },
+      "recentRuns": {
+        "title": "Exécutions récentes",
+        "loadError": "Erreur : impossible de récupérer les exécutions récentes",
+        "refresh": "Actualiser les exécutions",
+        "empty": "Ce job n'a encore jamais été exécuté.",
+        "columns": {
+          "runId": "ID d'exécution",
+          "started": "Début",
+          "completed": "Fin",
+          "status": "Statut",
+          "action": "Action"
+        },
+        "openMenu": "Ouvrir le menu",
+        "view": "Voir",
+        "cancel": "Annuler",
+        "cancelTitle": "Annuler l'exécution ?",
+        "cancelDescription": "Voulez-vous vraiment annuler cette exécution ?",
+        "canceling": "Annulation de l'exécution en cours. Cela peut prendre une minute.",
+        "cancelError": "Impossible d'annuler l'exécution",
+        "terminate": "Interrompre",
+        "terminateTitle": "Interrompre l'exécution ?",
+        "terminateDescription": "Voulez-vous vraiment interrompre cette exécution ?",
+        "terminating": "Interruption de l'exécution en cours. Cela peut prendre une minute.",
+        "terminateError": "Impossible d'interrompre l'exécution",
+        "delete": "Supprimer",
+        "deleteTitle": "Supprimer l'exécution ?",
+        "deleteDescription": "Voulez-vous vraiment supprimer cette exécution ?",
+        "deleting": "Suppression de l'exécution en cours. Cela peut prendre une minute.",
+        "deleteError": "Impossible de supprimer l'exécution"
+      },
+      "workflow": {
+        "updated": "Options du workflow mises à jour.",
+        "updateError": "Impossible de mettre à jour les options du workflow",
+        "runTimeout": "Délai maximal d'exécution",
+        "runTimeoutDescription": "La durée maximale (en minutes) d'une exécution du job avant son expiration. <code>0</code> signifie aucune limite globale.",
+        "runTimeoutTables": "Une table n'a pas de limite propre : elle est arrêtée quand elle ne progresse plus. À cette limite, l'exécution arrête les tables encore en cours de copie et rétablit les triggers de la destination.",
+        "engine": "Moteur",
+        "engineDescription": "Moteur de transformation utilisé pour exécuter ce job. <code>Par défaut</code> suit le réglage du déploiement.",
+        "engineDefault": "Par défaut (déploiement)",
+        "engineBenthos": "Benthos (historique)",
+        "consistencyScope": "Portée de cohérence",
+        "consistencyScopeDescription": "Cohérence déterministe (moteur Athanor uniquement) : une même valeur source reçoit la même valeur anonymisée partout dans cette portée. Au-delà d'une seule exécution, les sorties restent rapprochables dans le temps.",
+        "save": "Enregistrer"
+      }
+    },
+    "usage": {
+      "title": "Utilisation",
+      "description": "Ce que ce job a exécuté, d'après les compteurs de cette instance",
+      "error": "Impossible de lire l'utilisation de ce job",
+      "medianDuration": "Durée médiane",
+      "latestRuns": {
+        "title": "Dernières exécutions",
+        "run": "Exécution",
+        "started": "Début",
+        "duration": "Durée",
+        "status": "Statut",
+        "rowsRead": "Lignes lues",
+        "error": "Erreur"
+      }
+    },
+    "destinations": {
+      "title": "Destinations",
+      "description": "Où les données anonymisées sont écrites, et comment.",
+      "new": "Nouvelle destination",
+      "alerts": {
+        "columnIssues": "Des problèmes ont été trouvés sur les colonnes du schéma. Corrigez-les avant la prochaine exécution.",
+        "missingColumns": "Colonnes absentes de la destination :",
+        "extraColumns": "Colonnes absentes des mappings du job :",
+        "noDifferences": "Aucune différence trouvée.",
+        "tableIssues": "Il manque à cette destination des tables présentes dans les mappings du job. Activez « Initialiser le schéma des tables » ou créez les tables à la main.",
+        "missingSchemas": "Schémas absents de la destination :",
+        "missingTables": "Tables absentes de la destination :"
+      },
+      "card": {
+        "updated": "Destination du job mise à jour.",
+        "updateError": "Impossible de mettre à jour la destination du job",
+        "deleted": "Destination du job supprimée.",
+        "deleteError": "Impossible de supprimer la destination du job",
+        "connectionDescription": "L'emplacement du jeu de données de destination.",
+        "save": "Enregistrer",
+        "lastDestination": "Un job garde au moins une destination",
+        "delete": "Supprimer",
+        "deleteTitle": "Voulez-vous vraiment supprimer cette connexion de destination ?",
+        "deleteDescription": "Cette suppression est irréversible : les données ne seront plus synchronisées vers cette destination !"
+      }
+    },
+    "subsets": {
+      "title": "Subsets",
+      "description": "Les lignes de chaque table que le job copie, avec une clause WHERE par table.",
+      "card": {
+        "unsupportedTitle": "Attention !",
+        "unsupportedDescription": "La connexion source configurée ne prend pas en charge les subsets pour l'instant",
+        "updated": "Subsets de la base mis à jour",
+        "updateError": "Impossible de mettre à jour les subsets de la base",
+        "save": "Enregistrer"
+      }
+    },
+    "hooks": {
+      "title": "Hooks du job",
+      "description": "Gérez les hooks exécutés à des moments précis du cycle de vie d'une exécution",
+      "disabled": {
+        "title": "Les hooks de job ne sont pas activés",
+        "description": "Pour les activer, modifiez la configuration de Husonym ou contactez votre administrateur système."
+      },
+      "empty": {
+        "title": "Aucun hook pour l'instant",
+        "description": "Les hooks sont invoqués à des étapes précises d'une exécution pour la personnaliser davantage"
+      },
+      "card": {
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "unknownConnection": "Connexion inconnue",
+        "timing": {
+          "preSync": "Avant synchro",
+          "postSync": "Après synchro",
+          "unknown": "Inconnu"
+        }
+      },
+      "new": {
+        "button": "Nouveau hook",
+        "title": "Créer un hook de job",
+        "description": "Configurez un nouveau hook de job, invoqué pendant une exécution",
+        "created": "Hook de job créé.",
+        "error": "Impossible de créer le hook de job"
+      },
+      "edit": {
+        "title": "Modifier le hook : {name}",
+        "description": "Modifiez les réglages du hook de job.",
+        "updated": "Hook de job mis à jour.",
+        "error": "Impossible de mettre à jour le hook de job"
+      },
+      "remove": {
+        "title": "Voulez-vous vraiment supprimer le hook {name} ?",
+        "description": "La suppression de ce hook est irréversible !",
+        "removed": "Hook de job supprimé.",
+        "error": "Impossible de supprimer le hook de job"
+      },
+      "disable": {
+        "button": "Désactiver",
+        "disabled": "Hook de job désactivé.",
+        "error": "Impossible de désactiver le hook de job"
+      },
+      "form": {
+        "name": "Nom",
+        "nameDescription": "Nom du hook, pour l'affichage et la référence ; doit être unique",
+        "namePlaceholder": "Nom du hook",
+        "description": "Description",
+        "descriptionDescription": "Ce que fait ce hook",
+        "descriptionPlaceholder": "Description du hook",
+        "priority": "Priorité (0-100)",
+        "priorityDescription": "Détermine l'ordre d'exécution. Plus la valeur est basse, plus la priorité est haute",
+        "enabled": "Activé",
+        "enabledDescription": "Si ce hook est invoqué ou non pendant une exécution",
+        "yes": "Oui",
+        "no": "Non",
+        "hookType": "Type de hook",
+        "hookTypeDescription": "Le type de hook. Seuls les hooks SQL sont pris en charge pour l'instant",
+        "query": "Requête",
+        "queryDescription": "La requête SQL invoquée",
+        "timing": "Moment",
+        "timingDescription": "L'étape de l'exécution à laquelle le hook s'exécute",
+        "timingPlaceholder": "Choisissez un moment",
+        "preSync": "Avant synchro - Avant la première table, la troncature et l'initialisation du schéma",
+        "postSync": "Après synchro - Après la dernière table",
+        "connection": "Connexion",
+        "connectionDescription": "La connexion sur laquelle ce hook est invoqué",
+        "connectionPlaceholder": "Choisissez une connexion…",
+        "create": "Créer",
+        "update": "Mettre à jour"
+      },
+      "validation": {
+        "timingRequired": "Choisissez preSync ou postSync",
+        "queryRequired": "La requête SQL est obligatoire",
+        "connectionRequired": "L'ID de connexion est obligatoire",
+        "sqlOnly": "Seuls les hooks SQL sont pris en charge pour l'instant",
+        "hookTypeRequired": "Le type de hook est obligatoire",
+        "enabledRequired": "Indiquez si le hook est activé",
+        "nameRequired": "Le nom est obligatoire",
+        "nameMin": "Le nom doit comporter au moins 3 caractères",
+        "nameMax": "Le nom du hook doit comporter au plus 100 caractères",
+        "nameFormat": "Le nom doit comporter entre 3 et 100 caractères et ne contenir que des minuscules, des chiffres et des tirets",
+        "descriptionRequired": "La description est obligatoire",
+        "priorityRequired": "La priorité est obligatoire",
+        "priorityRange": "La priorité doit être comprise entre 0 et 100",
+        "sqlConfigRequired": "La configuration SQL est obligatoire pour un hook SQL"
+      }
+    },
+    "review": {
+      "title": "Changements à revoir",
+      "description": "Ce que les exécutions de ce job ont changé dans ses mappings à mesure que sa source évoluait. Ouvrez un changement pour garder le choix de l'exécution ou choisir un autre transformer ; sélectionnez-en plusieurs pour les confirmer d'un coup.",
+      "nothing": "Rien en attente : chaque changement fait par les exécutions a été revu.",
+      "reviewed": "{count, plural, one {# changement revu} other {# changements revus}}",
+      "reviewError": "Impossible de marquer ces changements comme revus",
+      "applied": "{column} mappée à partir de la prochaine exécution",
+      "applyError": "Impossible d'appliquer ce transformer",
+      "selectTable": "Sélectionner tous les changements de {table}",
+      "changes": "{count, plural, one {# changement} other {# changements}}",
+      "selectedRegion": "Changements sélectionnés",
+      "selected": "{count, plural, one {# changement sélectionné} other {# changements sélectionnés}}",
+      "markReviewed": "Marquer comme revu…",
+      "clear": "Effacer",
+      "row": {
+        "select": "Sélectionner {column}",
+        "was": "était {transformer}",
+        "inClear": "Passthrough — copiée en clair",
+        "removed": "Mapping retiré du job",
+        "personalData": "Données personnelles : {category}"
+      },
+      "panel": {
+        "personalData": "Données personnelles : {category}",
+        "keep": "Garder le choix de l'exécution",
+        "markReviewed": "Marquer comme revu",
+        "pickFirst": "Choisissez d'abord un autre transformer ou une autre option",
+        "apply": "Appliquer",
+        "changed": "Modifié par rapport au choix de l'exécution.",
+        "asChosen": "Tel que l'exécution l'a choisi.",
+        "removed": "La colonne a quitté la source ; le job la mappait avec <strong>{transformer}</strong>{options}. Son mapping a été retiré du job.",
+        "note": "Pourquoi est-ce acceptable ? (facultatif)",
+        "notePlaceholder": "ex. références internes, aucune donnée personnelle"
+      },
+      "dialog": {
+        "title": "{count, plural, one {Marquer ce changement comme revu} other {Marquer # changements comme revus}}",
+        "description": "{count, plural, one {Le job garde ses mappings tels que les exécutions les ont laissés, et ce changement n'est plus signalé.} other {Le job garde ses mappings tels que les exécutions les ont laissés, et ces changements ne sont plus signalés.}}",
+        "note": "Pourquoi est-ce acceptable ? (facultatif)",
+        "notePlaceholder": "ex. références internes, aucune donnée personnelle",
+        "cancel": "Annuler",
+        "confirm": "Marquer comme revu"
+      }
+    },
+    "source": {
+      "title": "Source",
+      "otherDescription": "D'où viennent les données, et ce que le job en fait. Les modifications sont conservées une fois enregistrées.",
+      "syncDescription": "D'où viennent les données, et ce que fait une exécution quand leur schéma change. Les modifications sont conservées une fois enregistrées.",
+      "mappingTitle": "Mapping",
+      "mappingDescription": "Les tables que le job copie, et ce qui sort de chacune de leurs colonnes. Les modifications sont conservées une fois enregistrées.",
+      "saveBar": {
+        "region": "Enregistrer le job",
+        "unsaved": "Modifications non enregistrées",
+        "saved": "Aucune modification non enregistrée",
+        "save": "Enregistrer"
+      },
+      "import": {
+        "imported": "{count} mappings importés.",
+        "nothing": "Import réussi, mais aucun mapping n'a été ajouté ni remplacé.",
+        "merged": "Import réussi : {replaced, plural, =0 {aucun mapping remplacé} one {# mapping remplacé} other {# mappings remplacés}} et {added, plural, =0 {aucun ajouté} one {# ajouté} other {# ajoutés}}."
+      },
+      "sync": {
+        "schemaError": "Impossible de récupérer le schéma de la connexion",
+        "sourceUpdated": "Connexion source mise à jour.",
+        "sourceUpdateError": "Impossible de mettre à jour la connexion source du job",
+        "destinationsUpdated": "Connexion(s) de destination du job mise(s) à jour",
+        "destinationsUpdateError": "Impossible de mettre à jour une ou plusieurs connexions de destination du job",
+        "validateMappingsError": "Impossible de valider les mappings du job",
+        "validateVfkError": "Impossible de valider les clés étrangères virtuelles",
+        "sourceDescription": "L'emplacement du jeu de données source.",
+        "sourceChanged": "Le mapping suit la nouvelle source : {kept} des {saved} colonnes mappées y existent et sont conservées. Revoyez le mapping une fois ceci enregistré.",
+        "save": "Enregistrer",
+        "unknownDestination": "Nom inconnu"
+      },
+      "generate": {
+        "sourceUpdated": "Connexion source du job mise à jour.",
+        "sourceUpdateError": "Impossible de mettre à jour la connexion source du job",
+        "validateMappingsError": "Impossible de valider les mappings du job",
+        "sampleError": "Impossible de générer un échantillon de données",
+        "schemaError": "Impossible de récupérer le schéma de la connexion choisie pour les contraintes de table.",
+        "schemaConnection": "Connexion du schéma de table",
+        "schemaConnectionDescription": "Connexion utilisée pour le schéma de table. Doit être du même type que la destination.",
+        "openaiConnection": "Connexion source OpenAI",
+        "openaiConnectionDescription": "La connexion au SDK OpenAI utilisée.",
+        "model": "Nom du modèle",
+        "modelDescription": "Le nom du modèle à utiliser.",
+        "prompt": "Prompt",
+        "promptDescription": "Fournissez éventuellement un prompt pour donner plus de contexte au modèle. C'est vivement recommandé ! Le schéma de la table est ajouté automatiquement à la fin de ce prompt.",
+        "numRows": "Nombre de lignes",
+        "numRowsDescription": "Le nombre de lignes à générer.",
+        "batchSize": "Taille de lot",
+        "batchSizeDescription": "La taille de lot utilisée pour demander au modèle de générer des enregistrements. Utile pour les gros jeux de données ou les prompts qui risquent de dépasser la limite de tokens de l'IA. Plus petit vaut généralement mieux.",
+        "fixErrors": "Corrigez les erreurs du formulaire et réessayez.",
+        "sample": "Échantillon",
+        "update": "Mettre à jour"
+      },
+      "pii": {
+        "sourceUpdated": "Connexion source mise à jour.",
+        "sourceUpdateError": "Impossible de mettre à jour la connexion source du job",
+        "update": "Mettre à jour"
+      }
+    }
+  }
 }

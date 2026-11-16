@@ -18,14 +18,15 @@ export type JobState =
 
 export type JobFilter = 'all' | 'active' | 'paused' | 'failing';
 
-export const JOB_STATE_LABEL: Record<JobState, string> = {
-  running: 'Running',
-  active: 'Active',
-  failing: 'Last run failed',
-  paused: 'Paused',
-  disabled: 'Disabled',
-  unknown: 'Status unknown',
-};
+// The kind of a job; its label is the message `jobs.list.type.<kind>`.
+type JobType = 'sync' | 'generate' | 'aiGenerate' | 'piiDetect';
+
+// The words a row says of a source or a destination it cannot name from a connection.
+export interface JobRowLabels {
+  generated: string;
+  aiGenerated: string;
+  unknownConnection: string;
+}
 
 // How many of the latest runs a row shows.
 export const RECENT_RUNS = 10;
@@ -36,7 +37,7 @@ export interface JobRow {
   job: Job;
   status: JobStatus;
   state: JobState;
-  type: string;
+  type: JobType;
   schedule: ScheduleLabel;
   // The engine of the source, short (MySQL, PG…), when the source is a connection.
   engine?: string;
@@ -67,17 +68,17 @@ const ENGINE: Record<string, string> = {
   localDirConfig: 'Local',
 };
 
-function jobType(j: Job): string {
+function jobType(j: Job): JobType {
   if (j.source?.options?.config.case === 'generate') {
-    return 'Generate';
+    return 'generate';
   }
   if (j.source?.options?.config.case === 'aiGenerate') {
-    return 'AI Generate';
+    return 'aiGenerate';
   }
   if (j.jobType?.jobType.case === 'piiDetect') {
-    return 'PII Detection';
+    return 'piiDetect';
   }
-  return 'Sync';
+  return 'sync';
 }
 
 export function isRunLive(s: JobRunStatus): boolean {
@@ -149,8 +150,9 @@ export function buildJobRows(input: {
   runs: JobRun[];
   connections: Connection[];
   pendingChanges: JobMappingChange[];
+  labels: JobRowLabels;
 }): JobRow[] {
-  const { jobs, statuses, runs, connections, pendingChanges } = input;
+  const { jobs, statuses, runs, connections, pendingChanges, labels } = input;
   const connById = new Map(connections.map((c) => [c.id, c] as const));
 
   const runsByJob = new Map<string, JobRun[]>();
@@ -192,11 +194,11 @@ export function buildJobRows(input: {
           : undefined;
     let source: string;
     if (sourceCase === 'generate') {
-      source = 'Generated data';
+      source = labels.generated;
     } else if (sourceCase === 'aiGenerate') {
-      source = 'AI-generated data';
+      source = labels.aiGenerated;
     } else {
-      source = sourceConn?.name ?? 'Unknown connection';
+      source = sourceConn?.name ?? labels.unknownConnection;
     }
     const engineCase = sourceConn?.connectionConfig?.config.case;
 
@@ -218,7 +220,7 @@ export function buildJobRows(input: {
       engine: engineCase ? ENGINE[engineCase] : undefined,
       source,
       destinations: j.destinations.map(
-        (d) => connById.get(d.connectionId)?.name ?? 'Unknown connection'
+        (d) => connById.get(d.connectionId)?.name ?? labels.unknownConnection
       ),
       tables: tables.size,
       columns: j.mappings.length,

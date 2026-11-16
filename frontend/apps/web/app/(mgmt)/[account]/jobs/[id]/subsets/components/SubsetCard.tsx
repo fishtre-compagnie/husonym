@@ -44,6 +44,7 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -57,6 +58,7 @@ interface Props {
 
 export default function SubsetCard(props: Props): ReactElement {
   const { jobId } = props;
+  const t = useTranslations('jobs.subsets.card');
   const { allowed } = useLicenseFeature('subsetting');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -205,11 +207,8 @@ export default function SubsetCard(props: Props): ReactElement {
     return (
       <Alert variant="warning">
         <ExclamationTriangleIcon className="h-4 w-4" />
-        <AlertTitle>Heads up!</AlertTitle>
-        <AlertDescription>
-          The source connection configured does not currently support
-          subsettings
-        </AlertDescription>
+        <AlertTitle>{t('unsupportedTitle')}</AlertTitle>
+        <AlertDescription>{t('unsupportedDescription')}</AlertDescription>
       </Alert>
     );
   }
@@ -226,7 +225,7 @@ export default function SubsetCard(props: Props): ReactElement {
           values.subsetOptions.subsetByForeignKeyConstraints,
         schemas: toJobSourceSqlSubsetSchemas(values, connectionType),
       });
-      toast.success('Successfully updated database subsets');
+      toast.success(t('updated'));
       queryclient.setQueryData(
         createConnectQueryKey({
           schema: JobService.method.getJob,
@@ -237,7 +236,7 @@ export default function SubsetCard(props: Props): ReactElement {
       );
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update database subsets', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -384,7 +383,7 @@ export default function SubsetCard(props: Props): ReactElement {
                 type="submit"
                 disabled={!allowed && addsWhereClause(formSubsets)}
               >
-                Save
+                {t('save')}
               </Button>
             </div>
           </div>

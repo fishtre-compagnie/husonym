@@ -54,6 +54,7 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -76,6 +77,7 @@ interface Props {
 }
 
 export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
+  const t = useTranslations('jobs.source.generate');
   const { account } = useAccount();
 
   const [validateMappingsResponse, setValidateMappingsResponse] = useState<
@@ -348,11 +350,11 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
         mappings: values.mappings.map(convertJobMappingFormToJobMapping),
         source: toSingleTableEditGenerateJobSource(values),
       });
-      toast.success('Successfully updated job source connection!');
+      toast.success(t('sourceUpdated'));
       mutate();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job source connection', {
+      toast.error(t('sourceUpdateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -374,7 +376,7 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
       setValidateMappingsResponse(res);
     } catch (error) {
       console.error('Failed to validate job mappings:', error);
-      toast.error('Unable to validate job mappings', {
+      toast.error(t('validateMappingsError'), {
         description: getErrorMessage(error),
       });
     } finally {
@@ -436,12 +438,9 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
         ...form.getValues(),
         source: { ...form.getValues('source'), fkSourceConnectionId: value },
       });
-      toast.error(
-        'Unable to get connection schema on table constraint source change.',
-        {
-          description: getErrorMessage(err),
-        }
-      );
+      toast.error(t('schemaError'), {
+        description: getErrorMessage(err),
+      });
     }
   }
 
@@ -456,10 +455,9 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
           name="source.fkSourceConnectionId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Table Schema Connection</FormLabel>
+              <FormLabel>{t('schemaConnection')}</FormLabel>
               <FormDescription>
-                Connection used for table schema. Must be of the same type as
-                the destination.
+                {t('schemaConnectionDescription')}
               </FormDescription>
               <FormControl>
                 <Select
@@ -519,8 +517,8 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
           name="numRows"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Number of Rows</FormLabel>
-              <FormDescription>The number of rows to generate.</FormDescription>
+              <FormLabel>{t('numRows')}</FormLabel>
+              <FormDescription>{t('numRowsDescription')}</FormDescription>
               <FormControl>
                 <Input
                   {...field}
@@ -584,13 +582,13 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
           <Alert variant="destructive">
             <AlertTitle className="flex flex-row space-x-2 justify-center">
               <ExclamationTriangleIcon />
-              <p>Please fix form errors and try again.</p>
+              <p>{t('fixErrors')}</p>
             </AlertTitle>
           </Alert>
         )}
         <div className="flex flex-row gap-1 justify-end">
           <Button key="submit" type="submit">
-            Update
+            {t('update')}
           </Button>
         </div>
       </form>

@@ -25,6 +25,7 @@ import {
   JobMappingTransformerForm,
 } from '@/yup-validations/jobs';
 import { JobMappingChange, JobMappingChangeKind } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useState } from 'react';
 
 interface Props {
@@ -58,6 +59,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
     onReview,
     onApply,
   } = props;
+  const t = useTranslations('jobs.review.panel');
   const runChoice = change.transformer
     ? convertJobMappingTransformerToForm(change.transformer)
     : NO_TRANSFORMER;
@@ -112,7 +114,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
                   : 'secondary'
               }
             >
-              Personal data: {change.piiCategory}
+              {t('personalData', { category: change.piiCategory })}
             </Badge>
           )}
         </>
@@ -129,7 +131,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
               leftIcon={
                 pending === 'review' ? <Spinner className="h-4 w-4" /> : null
               }
-              text={correctable ? "Keep the run's choice" : 'Mark reviewed'}
+              text={correctable ? t('keep') : t('markReviewed')}
             />
           </Button>
           {correctable && (
@@ -142,16 +144,14 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
                 !optionsValid ||
                 pending !== null
               }
-              title={
-                changed ? undefined : 'Pick another transformer or option first'
-              }
+              title={changed ? undefined : t('pickFirst')}
               onClick={() => act('apply')}
             >
               <ButtonText
                 leftIcon={
                   pending === 'apply' ? <Spinner className="h-4 w-4" /> : null
                 }
-                text="Apply"
+                text={t('apply')}
               />
             </Button>
           )}
@@ -173,9 +173,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
           onValidChange={onValidChange}
           origin={
             <span className="text-xs text-muted-foreground">
-              {changed
-                ? 'Changed from what the run chose.'
-                : 'As the run chose it.'}
+              {changed ? t('changed') : t('asChosen')}
             </span>
           }
           preview={
@@ -191,23 +189,24 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
         />
       ) : (
         <p className="text-sm">
-          The column left the source; the job mapped it with{' '}
-          <strong>{getTransformerFromField(handler, runChoice).name}</strong>
-          {summarizeOptions(toConfig(runChoice)).length > 0 &&
-            ` (${summarizeOptions(toConfig(runChoice)).join(' · ')})`}
-          . Its mapping has been removed from the job.
+          {t.rich('removed', {
+            transformer: getTransformerFromField(handler, runChoice).name,
+            options:
+              summarizeOptions(toConfig(runChoice)).length > 0
+                ? ` (${summarizeOptions(toConfig(runChoice)).join(' · ')})`
+                : '',
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
       )}
 
       <section className="flex flex-col gap-2">
-        <Label htmlFor="change-decision-note">
-          Why is this fine? (optional)
-        </Label>
+        <Label htmlFor="change-decision-note">{t('note')}</Label>
         <Textarea
           id="change-decision-note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. internal references, hold no personal data"
+          placeholder={t('notePlaceholder')}
         />
       </section>
     </ColumnDecisionPanel>

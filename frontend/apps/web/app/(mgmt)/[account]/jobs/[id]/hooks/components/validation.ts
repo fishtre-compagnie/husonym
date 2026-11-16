@@ -1,4 +1,5 @@
 import { RESOURCE_NAME_REGEX } from '@/yup-validations/connections';
+import { useTranslations } from 'next-intl';
 import { create } from '@bufbuild/protobuf';
 import {
   JobHook,
@@ -15,58 +16,81 @@ import {
 } from '@husonym/sdk';
 import * as yup from 'yup';
 
+// The messages of the schemas below are keys of `jobs.hooks.validation`: a form shows
+// them through useHookErrorMessage.
+const VALIDATION_KEYS = [
+  'timingRequired',
+  'queryRequired',
+  'connectionRequired',
+  'sqlOnly',
+  'hookTypeRequired',
+  'enabledRequired',
+  'nameRequired',
+  'nameMin',
+  'nameMax',
+  'nameFormat',
+  'descriptionRequired',
+  'priorityRequired',
+  'priorityRange',
+  'sqlConfigRequired',
+] as const;
+type ValidationKey = (typeof VALIDATION_KEYS)[number];
+
+function isValidationKey(message: string): message is ValidationKey {
+  return (VALIDATION_KEYS as readonly string[]).includes(message);
+}
+
+// The text of a validation message of the schemas: its translation, or the message as
+// yup gave it when it is not one of ours.
+export function useHookErrorMessage(): (message: string) => string {
+  const t = useTranslations('jobs.hooks.validation');
+  return (message) => (isValidationKey(message) ? t(message) : message);
+}
+
 const SqlTimingFormValue = yup
   .string()
   .oneOf(['preSync', 'postSync'])
-  .required('Must select preSync or postSync');
+  .required('timingRequired');
 export type SqlTimingFormValue = yup.InferType<typeof SqlTimingFormValue>;
 
 const JobHookSqlFormValues = yup.object({
-  query: yup.string().required('SQL query is required'),
-  connectionId: yup.string().uuid().required('Connection ID is required'),
+  query: yup.string().required('queryRequired'),
+  connectionId: yup.string().uuid().required('connectionRequired'),
   timing: SqlTimingFormValue,
 });
 export type JobHookSqlFormValues = yup.InferType<typeof JobHookSqlFormValues>;
 
 const HookTypeFormValue = yup
   .string()
-  .oneOf(['sql'], 'Only SQL hooks are currently supported')
-  .required('Hook type is required');
+  .oneOf(['sql'], 'sqlOnly')
+  .required('hookTypeRequired');
 export type HookTypeFormValue = yup.InferType<typeof HookTypeFormValue>;
 
-const EnabledFormValue = yup
-  .boolean()
-  .required('Must provide an enabled value');
+const EnabledFormValue = yup.boolean().required('enabledRequired');
 
 const JobHookNameFormValue = yup
   .string()
-  .required('Name is required')
-  .min(3, 'Name must be at least 3 characters')
-  .max(100, 'The Hook name must be at most 100 characters')
-  .test(
-    'resourceName',
-    'Name must be between 3-100 characters and may only include lowercase letters, numbers, and hyphens',
-    (value) => {
-      return RESOURCE_NAME_REGEX.test(value);
-    }
-  );
+  .required('nameRequired')
+  .min(3, 'nameMin')
+  .max(100, 'nameMax')
+  .test('resourceName', 'nameFormat', (value) => {
+    return RESOURCE_NAME_REGEX.test(value);
+  });
 
 const JobHookDescriptionFormValue = yup
   .string()
-  .required('Description is required');
+  .required('descriptionRequired');
 
 const JobHookPriorityFormValue = yup
   .number()
-  .required('Priority is required')
-  .min(0, 'Priority must be between 0 and 100')
-  .max(100, 'Priority must be between 0 and 100');
+  .required('priorityRequired')
+  .min(0, 'priorityRange')
+  .max(100, 'priorityRange');
 
 const JobHookConfigFormValues = yup.object({
   sql: JobHookSqlFormValues.when('hookType', (values, schema) => {
     const [hooktype] = values;
-    return hooktype === 'sql'
-      ? schema.required('SQL config is required when hook type is sql')
-      : schema;
+    return hooktype === 'sql' ? schema.required('sqlConfigRequired') : schema;
   }),
 });
 export type JobHookConfigFormValues = yup.InferType<

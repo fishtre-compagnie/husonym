@@ -6,6 +6,7 @@ import {
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
 import { JobMapping, JobMappingTransformerSchema } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface Props {
@@ -35,6 +36,7 @@ export function useOnImportMappings(props: Props): UseOnImportMappingsResponse {
     triggerUpdate,
     setSelectedTables,
   } = props;
+  const t = useTranslations('jobs.source.import');
 
   return {
     onClick(importedJobMappings, importConfig) {
@@ -61,7 +63,7 @@ export function useOnImportMappings(props: Props): UseOnImportMappingsResponse {
         // Setting this here in a timeout so that the UI goes through a full render cycle prior to updating the values again
         setTimeout(() => {
           setMappings(formValues);
-          toast.success(`Successfully imported ${formValues.length} mappings!`);
+          toast.success(t('imported', { count: formValues.length }));
         }, 0);
       } else {
         const existingValues = getMappings();
@@ -100,7 +102,11 @@ export function useOnImportMappings(props: Props): UseOnImportMappingsResponse {
         if (toAdd.length > 0) {
           appendNewMappings(toAdd);
         }
-        toast.success(buildOverlapMessage(numReplaced, toAdd.length));
+        toast.success(
+          numReplaced === 0 && toAdd.length === 0
+            ? t('nothing')
+            : t('merged', { replaced: numReplaced, added: toAdd.length })
+        );
       }
       setSelectedTables(newSelectedTables);
       // wrapping this in a set timeout so the form can go through a render cycle prior to triggering the validation
@@ -109,12 +115,4 @@ export function useOnImportMappings(props: Props): UseOnImportMappingsResponse {
       }, 0);
     },
   };
-}
-
-function buildOverlapMessage(numReplaced: number, numAdded: number): string {
-  if (numReplaced === 0 && numAdded === 0) {
-    return 'Import succeeded but did not add or replace any new mappings.';
-  }
-
-  return `Import succeeded with ${numReplaced || 'no'} mappings replaced and ${numAdded || 'none'} added.`;
 }

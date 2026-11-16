@@ -10,15 +10,16 @@ import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRun, JobRunStatus } from '@husonym/sdk';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import NextLink from 'next/link';
 import {
   isRunFailed,
   isRunLive,
-  JOB_STATE_LABEL,
   JobRow,
   JobState,
   RECENT_RUNS,
 } from '../job-rows';
+import { ScheduleText } from '../ScheduleText';
 import { DataTableRowActions } from './data-table-row-actions';
 import { RunJobButton } from './run-job-button';
 import { SortHeader } from './sort-header';
@@ -32,8 +33,12 @@ const STATE_TONE: Record<JobState, Tone> = {
   unknown: 'muted',
 };
 
+// The translator of the list's messages.
+type JobListT = ReturnType<typeof useTranslations<'jobs.list'>>;
+
 interface GetColumnsProps {
   accountName: string;
+  t: JobListT;
   onDeleted(id: string): void;
   onStatusChanged(): void;
   onRunStarted(): void;
@@ -42,15 +47,17 @@ interface GetColumnsProps {
 export function getColumns(
   props: GetColumnsProps
 ): ColumnDef<AppTableFeatures, JobRow>[] {
-  const { onDeleted, onStatusChanged, onRunStarted, accountName } = props;
+  const { onDeleted, onStatusChanged, onRunStarted, accountName, t } = props;
   return [
     {
       accessorKey: 'name',
-      header: ({ column }) => <SortHeader column={column} title="Job" />,
+      header: ({ column }) => (
+        <SortHeader column={column} title={t('columns.job')} />
+      ),
       sortFn: 'alphanumeric',
       cell: ({ row }) => {
         const j = row.original;
-        const state = JOB_STATE_LABEL[j.state];
+        const state = t(`state.${j.state}`);
         return (
           <NextLink
             href={`/${accountName}/jobs/${j.id}`}
@@ -65,12 +72,14 @@ export function getColumns(
               <span className="truncate font-semibold group-hover:underline">
                 {j.name}
               </span>
-              {j.type !== 'Sync' && <Pill className="shrink-0">{j.type}</Pill>}
+              {j.type !== 'sync' && (
+                <Pill className="shrink-0">{t(`type.${j.type}`)}</Pill>
+              )}
             </span>
             <span className="truncate text-xs text-muted-foreground">
-              {state} · {j.tables} {j.tables === 1 ? 'table' : 'tables'} ·{' '}
+              {state} · {t('tables', { count: j.tables })} ·{' '}
               <span className={cn(j.schedule.isCron && 'font-mono')}>
-                {j.schedule.text}
+                <ScheduleText label={j.schedule} />
               </span>
             </span>
           </NextLink>
@@ -81,12 +90,12 @@ export function getColumns(
       id: 'connections',
       accessorFn: (j) => j.source,
       header: ({ column }) => (
-        <SortHeader column={column} title="Source → destination" />
+        <SortHeader column={column} title={t('columns.connections')} />
       ),
       sortFn: 'alphanumeric',
       cell: ({ row }) => {
         const j = row.original;
-        const destinations = j.destinations.join(', ') || 'No destination';
+        const destinations = j.destinations.join(', ') || t('noDestination');
         return (
           <span className="flex min-w-0 items-center gap-2 text-[13px]">
             {j.engine && (
@@ -106,7 +115,7 @@ export function getColumns(
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              aria-label="to"
+              aria-label={t('to')}
               role="img"
               className="shrink-0 text-muted-foreground"
             >
@@ -124,7 +133,9 @@ export function getColumns(
     },
     {
       accessorKey: 'transformed',
-      header: ({ column }) => <SortHeader column={column} title="Columns" />,
+      header: ({ column }) => (
+        <SortHeader column={column} title={t('columns.columns')} />
+      ),
       sortDescFirst: true,
       cell: ({ row }) => {
         const j = row.original;
@@ -135,12 +146,15 @@ export function getColumns(
               <span className="font-mono">{j.transformed}</span>
               <span className="text-muted-foreground">
                 {' '}
-                / {j.columns} transformed
+                {t('transformedOf', { count: j.columns })}
               </span>
             </span>
             <span
               role="img"
-              aria-label={`${j.transformed} of ${j.columns} columns transformed`}
+              aria-label={t('transformedAria', {
+                transformed: j.transformed,
+                count: j.columns,
+              })}
               className="flex h-1.5 overflow-hidden rounded-full bg-surface-2"
             >
               <span className="bg-primary" style={{ width: `${pct}%` }} />
@@ -152,8 +166,8 @@ export function getColumns(
               >
                 <Pill tone={j.pendingPersonal > 0 ? 'danger' : 'warn'}>
                   {j.pendingPersonal > 0
-                    ? `${j.pendingPersonal} personal in clear`
-                    : `${j.pendingReviews} to review`}
+                    ? t('personalInClear', { count: j.pendingPersonal })
+                    : t('toReview', { count: j.pendingReviews })}
                 </Pill>
               </NextLink>
             )}
@@ -165,14 +179,19 @@ export function getColumns(
       id: 'lastRun',
       accessorFn: (j) => j.lastRunAt?.getTime() ?? 0,
       header: ({ column }) => (
-        <SortHeader column={column} title={`Last ${RECENT_RUNS} runs`} />
+        <SortHeader
+          column={column}
+          title={t('columns.lastRuns', { count: RECENT_RUNS })}
+        />
       ),
       sortDescFirst: true,
       cell: ({ row }) => <RunHistory row={row.original} />,
     },
     {
       id: 'actions',
-      header: () => <span className="block text-right">Action</span>,
+      header: () => (
+        <span className="block text-right">{t('columns.action')}</span>
+      ),
       enableSorting: false,
       cell: ({ row }) => (
         <span className="flex justify-end gap-1.5">
@@ -189,12 +208,21 @@ export function getColumns(
   ];
 }
 
-function runTone(s: JobRunStatus): { bar: string; label: string } {
+type RunToneLabel =
+  | 'completed'
+  | 'failed'
+  | 'pending'
+  | 'running'
+  | 'canceled'
+  | 'terminated'
+  | 'unknown';
+
+function runTone(s: JobRunStatus): { bar: string; label: RunToneLabel } {
   if (s === JobRunStatus.COMPLETE) {
-    return { bar: 'h-4 bg-ok', label: 'Completed' };
+    return { bar: 'h-4 bg-ok', label: 'completed' };
   }
   if (isRunFailed(s)) {
-    return { bar: 'h-6 bg-danger', label: 'Failed' };
+    return { bar: 'h-6 bg-danger', label: 'failed' };
   }
   if (isRunLive(s)) {
     return {
@@ -202,16 +230,16 @@ function runTone(s: JobRunStatus): { bar: string; label: string } {
         s === JobRunStatus.PENDING
           ? 'h-4 bg-pending animate-pulse-soft'
           : 'h-4 bg-live animate-pulse-soft',
-      label: s === JobRunStatus.PENDING ? 'Pending' : 'Running',
+      label: s === JobRunStatus.PENDING ? 'pending' : 'running',
     };
   }
   if (s === JobRunStatus.CANCELED || s === JobRunStatus.TERMINATED) {
     return {
       bar: 'h-4 bg-stopped',
-      label: s === JobRunStatus.CANCELED ? 'Canceled' : 'Terminated',
+      label: s === JobRunStatus.CANCELED ? 'canceled' : 'terminated',
     };
   }
-  return { bar: 'h-4 bg-muted-foreground', label: 'Unknown' };
+  return { bar: 'h-4 bg-muted-foreground', label: 'unknown' };
 }
 
 function runTitle(r: JobRun, label: string): string {
@@ -221,14 +249,15 @@ function runTitle(r: JobRun, label: string): string {
 }
 
 function RunHistory({ row }: { row: JobRow }) {
+  const t = useTranslations('jobs.list.runs');
   const dateLocale = useDateFnsLocale();
   const runs = row.recentRuns;
   const empty = RECENT_RUNS - runs.length;
   const failed = runs.filter((r) => isRunFailed(r.status)).length;
   const summary =
     runs.length === 0
-      ? `${row.name} has never run`
-      : `Last ${runs.length} runs of ${row.name}: ${failed} failed`;
+      ? t('neverRanAria', { name: row.name })
+      : t('summary', { count: runs.length, name: row.name, failed });
   return (
     <span className="flex flex-col gap-1">
       <span
@@ -243,12 +272,12 @@ function RunHistory({ row }: { row: JobRow }) {
           />
         ))}
         {runs.map((r) => {
-          const t = runTone(r.status);
+          const tone = runTone(r.status);
           return (
             <span
               key={r.id}
-              title={runTitle(r, t.label)}
-              className={cn('w-[9px] rounded-[2px]', t.bar)}
+              title={runTitle(r, t(`status.${tone.label}`))}
+              className={cn('w-[9px] rounded-[2px]', tone.bar)}
             />
           );
         })}
@@ -259,7 +288,7 @@ function RunHistory({ row }: { row: JobRow }) {
               addSuffix: true,
               locale: dateLocale,
             })}`
-          : 'Never run'}
+          : t('neverRun')}
       </span>
     </span>
   );

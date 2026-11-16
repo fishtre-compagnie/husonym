@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { JobService, JobStatus } from '@husonym/sdk';
 import { PauseIcon, PlayIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
@@ -22,20 +23,17 @@ export default function JobPauseButton({
   onNewStatus,
   jobId,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.job.pause');
   const { allowed, license } = useLicenseFeature('scheduling');
   // Pausing stays possible without the feature, resuming does not.
   const isResumeRefused = !allowed && status === JobStatus.PAUSED;
   const { mutateAsync: setJobPaused } = useMutation(JobService.method.pauseJob);
-  const [buttonText, setButtonText] = useState(
-    status === JobStatus.PAUSED ? 'Resume Job' : 'Pause Job'
-  );
   const [buttonIcon, setButtonIcon] = useState<JSX.Element>(
     status === JobStatus.PAUSED ? <PlayIcon /> : <PauseIcon />
   );
   const [isTrying, setIsTrying] = useState<boolean>(false);
 
   useEffect(() => {
-    setButtonText(status === JobStatus.PAUSED ? 'Resume Job' : 'Pause Job');
     if (isTrying) {
       setButtonIcon(<Spinner />);
     } else {
@@ -53,11 +51,11 @@ export default function JobPauseButton({
         id: jobId,
         pause: isPaused,
       });
-      toast.success(`Successfully ${isPaused ? 'paused' : 'unpaused'}  job!`);
+      toast.success(isPaused ? t('paused') : t('resumed'));
       onNewStatus(isPaused ? JobStatus.PAUSED : JobStatus.ENABLED);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job paused status', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -73,7 +71,10 @@ export default function JobPauseButton({
         // A greyed button says why.
         title={
           isResumeRefused
-            ? `Resuming a schedule needs the ${featureLabel('scheduling')} feature. ${featureNoticeMessage(license)}`
+            ? t('resumeRefused', {
+                feature: featureLabel('scheduling'),
+                notice: featureNoticeMessage(license),
+              })
             : undefined
         }
         onClick={async () => {
@@ -81,7 +82,10 @@ export default function JobPauseButton({
           updateJobStatus(!isCurrentlyPaused);
         }}
       >
-        <ButtonText leftIcon={buttonIcon} text={buttonText} />
+        <ButtonText
+          leftIcon={buttonIcon}
+          text={status === JobStatus.PAUSED ? t('resume') : t('pause')}
+        />
       </Button>
     </div>
   );

@@ -13,6 +13,7 @@ import { formatDateTime } from '@/util/util';
 import { GetJobUsageResponse } from '@husonym/sdk';
 import Link from 'next/link';
 import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   accountName: string;
@@ -25,11 +26,12 @@ interface Props {
 // The latest runs of a job in the period, the most recent first. A run leads to its page.
 export default function LatestRunsTable(props: Props): ReactElement {
   const { accountName, usage, emptyLine } = props;
+  const t = useTranslations('jobs.usage.latestRuns');
   const { rows, caption } = runsTable(usage, accountName);
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Latest runs</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {emptyLine ? (
@@ -38,16 +40,16 @@ export default function LatestRunsTable(props: Props): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">Run</TableHead>
-                <TableHead scope="col">Started</TableHead>
+                <TableHead scope="col">{t('run')}</TableHead>
+                <TableHead scope="col">{t('started')}</TableHead>
                 <TableHead scope="col" className="text-right">
-                  Duration
+                  {t('duration')}
                 </TableHead>
-                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col">{t('status')}</TableHead>
                 <TableHead scope="col" className="text-right">
-                  Rows read
+                  {t('rowsRead')}
                 </TableHead>
-                <TableHead scope="col">Error</TableHead>
+                <TableHead scope="col">{t('error')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

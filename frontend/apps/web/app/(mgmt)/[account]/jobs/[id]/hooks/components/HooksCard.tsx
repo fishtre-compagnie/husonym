@@ -13,6 +13,7 @@ import { MdWebhook } from 'react-icons/md';
 import { getConnectionIdFromSource } from '../../source/components/util';
 import HookCard from './HookCard';
 import NewHookButton from './NewHookButton';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   jobId: string;
@@ -20,6 +21,7 @@ interface Props {
 
 export default function HooksCard(props: Props): ReactElement {
   const { jobId } = props;
+  const t = useTranslations('jobs.hooks');
   const {
     data: getJobHooksResp,
     isLoading: isGetJobHooksLoading,
@@ -81,7 +83,7 @@ export default function HooksCard(props: Props): ReactElement {
   return (
     <div className="job-hooks-card-container flex flex-col gap-5">
       <SubPageHeader
-        header="Job Hooks"
+        header={t('title')}
         rightHeaderIcon={
           isGetJobHooksFetching || isGetJobFetching ? (
             <div>
@@ -89,7 +91,7 @@ export default function HooksCard(props: Props): ReactElement {
             </div>
           ) : null
         }
-        description="Manage hooks that execute at specific points in a job run's lifecycle"
+        description={t('description')}
         extraHeading={
           <NewHookButton
             jobId={jobId}
@@ -136,10 +138,11 @@ interface NoJobHooksProps {
 
 function NoJobHooks(props: NoJobHooksProps): ReactElement {
   const { button } = props;
+  const t = useTranslations('jobs.hooks.empty');
   return (
     <EmptyState
-      title="No Hooks yet"
-      description="Hooks are invoked during specific lifecycles of a job run to allow for further customization of a run"
+      title={t('title')}
+      description={t('description')}
       icon={<MdWebhook className="w-8 h-8 text-primary" />}
       extra={button}
     />

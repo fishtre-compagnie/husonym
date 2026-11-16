@@ -15,6 +15,7 @@ import { Pencil1Icon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 import { EditHookForm } from './EditHookForm';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   onEdited(): void;
@@ -24,6 +25,7 @@ interface Props {
 
 export default function EditHookButton(props: Props): ReactElement {
   const { hook, onEdited, jobConnections } = props;
+  const t = useTranslations('jobs.hooks.edit');
   const { mutateAsync: updateHook } = useMutation(
     JobService.method.updateJobHook
   );
@@ -40,12 +42,12 @@ export default function EditHookButton(props: Props): ReactElement {
         name: values.name,
         priority: values.priority,
       });
-      toast.success('Successfully updated job hook!');
+      toast.success(t('updated'));
       onEdited();
       setOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -63,10 +65,8 @@ export default function EditHookButton(props: Props): ReactElement {
         className="lg:max-w-4xl max-h-[85vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Edit Job Hook: {hook.name}</DialogTitle>
-          <DialogDescription>
-            Change any of the available job hook settings.
-          </DialogDescription>
+          <DialogTitle>{t('title', { name: hook.name })}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <EditHookForm
           key={hook.id}

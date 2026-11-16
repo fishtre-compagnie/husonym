@@ -2,6 +2,7 @@ import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { Connection, NewJobHook } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { FormEvent, ReactElement } from 'react';
 import { ValidationError } from 'yup';
 import {
@@ -13,7 +14,11 @@ import {
   Priority,
 } from './FormInputs';
 import { useNewHookStore } from './stores';
-import { newFormDataToNewJobHook, NewJobHookFormValues } from './validation';
+import {
+  newFormDataToNewJobHook,
+  NewJobHookFormValues,
+  useHookErrorMessage,
+} from './validation';
 
 interface Props {
   onSubmit(values: NewJobHook): Promise<void>;
@@ -22,6 +27,8 @@ interface Props {
 
 export default function NewHookForm(props: Props): ReactElement {
   const { onSubmit, jobConnections } = props;
+  const t = useTranslations('jobs.hooks.form');
+  const errorMessage = useHookErrorMessage();
   const {
     formData,
     errors,
@@ -50,7 +57,7 @@ export default function NewHookForm(props: Props): ReactElement {
         const validationErrors: Record<string, string> = {};
         err.inner.forEach((error) => {
           if (error.path) {
-            validationErrors[error.path] = error.message;
+            validationErrors[error.path] = errorMessage(error.message);
           }
         });
         setErrors(validationErrors);
@@ -103,7 +110,7 @@ export default function NewHookForm(props: Props): ReactElement {
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Create"
+            text={t('create')}
           />
         </Button>
       </div>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { Job, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ interface Props {
 // pre-flight check goes first when the job has one.
 export function RunJobButton(props: Props): ReactElement {
   const { job, onStarted } = props;
+  const t = useTranslations('jobs.list.runButton');
   const router = useRouter();
   const { account } = useAccount();
   const { mutateAsync: triggerJobRun } = useMutation(
@@ -39,10 +41,10 @@ export function RunJobButton(props: Props): ReactElement {
       // A run that comes back without its start cannot be read yet: runs are found
       // through an index that sees a new one a moment late.
       const visible = !!jobRun?.startedAt;
-      toast.success(`Run of ${job.name} started`, {
+      toast.success(t('started', { name: job.name }), {
         action: visible
           ? {
-              label: 'View run',
+              label: t('viewRun'),
               onClick: () => router.push(`/${account?.name}/runs/${jobRun.id}`),
             }
           : undefined,
@@ -53,7 +55,7 @@ export function RunJobButton(props: Props): ReactElement {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to trigger job run', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     } finally {
@@ -69,7 +71,7 @@ export function RunJobButton(props: Props): ReactElement {
         size="sm"
         className="h-[34px] gap-1.5 border-border px-2.5 text-[13px] font-normal"
         disabled={isStarting}
-        aria-label={`Run ${job.name} now`}
+        aria-label={t('ariaLabel', { name: job.name })}
         onClick={() =>
           hasPreflight(job) ? startWithPreflight() : onTriggerJobRun()
         }
@@ -87,7 +89,7 @@ export function RunJobButton(props: Props): ReactElement {
             <path d="M7 4v16l13-8z" />
           </svg>
         )}
-        Run
+        {t('label')}
       </Button>
       {dialog}
     </>

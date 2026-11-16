@@ -32,6 +32,7 @@ import {
 } from '@radix-ui/react-icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
 import JobRunStatus from '../../../runs/components/JobRunStatus';
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export default function JobRecentRuns({ jobId }: Props): ReactElement {
+  const t = useTranslations('jobs.overview.recentRuns');
   const { account } = useAccount();
   const {
     data: recentRunsData,
@@ -92,10 +94,10 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
     try {
       await removeJobRunAsync({ accountId: account?.id, jobRunId: runId });
       onRefreshClick();
-      toast.success('Removing Job Run. This may take a minute to delete!');
+      toast.success(t('deleting'));
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove job run', {
+      toast.error(t('deleteError'), {
         description: getErrorMessage(err),
       });
     }
@@ -104,11 +106,11 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
   async function onCancel(runId: string): Promise<void> {
     try {
       await cancelJobRunAsync({ accountId: account?.id, jobRunId: runId });
-      toast.success('Canceling Job Run. This may take a minute to cancel!');
+      toast.success(t('canceling'));
       onRefreshClick();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to cancel job run', {
+      toast.error(t('cancelError'), {
         description: getErrorMessage(err),
       });
     }
@@ -117,13 +119,11 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
   async function onTerminate(runId: string): Promise<void> {
     try {
       await terminateJobRunAsync({ accountId: account?.id, jobRunId: runId });
-      toast.success(
-        'Terminating Job Run. This may take a minute to terminate!'
-      );
+      toast.success(t('terminating'));
       onRefreshClick();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to terminate job run', {
+      toast.error(t('terminateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -133,12 +133,12 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
     <Panel>
       {recentRunsError ? (
         <Alert variant="destructive">
-          <AlertTitle>{`Error: Unable to retrieve recent runs`}</AlertTitle>
+          <AlertTitle>{t('loadError')}</AlertTitle>
         </Alert>
       ) : (
         <div>
           <PanelHeader
-            title="Recent runs"
+            title={t('title')}
             actions={
               <Button
                 className={
@@ -147,7 +147,7 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                 disabled={isValidating || jobRunsValidating}
                 variant="ghost"
                 size="icon"
-                aria-label="Refresh the runs"
+                aria-label={t('refresh')}
                 onClick={() => onRefreshClick()}
               >
                 <ReloadIcon className="h-4 w-4" />
@@ -156,18 +156,20 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
           />
           {recentRuns.length === 0 && (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-              This job has not run yet.
+              {t('empty')}
             </p>
           )}
           <div className="overflow-x-auto">
             <Table className={recentRuns.length === 0 ? 'hidden' : undefined}>
               <TableHeader className="bg-surface-2">
                 <TableRow>
-                  <TableHead className="px-6">Run ID</TableHead>
-                  <TableHead className="px-6">Started</TableHead>
-                  <TableHead className="px-6">Completed</TableHead>
-                  <TableHead className="px-6">Status</TableHead>
-                  <TableHead className="px-6">Action</TableHead>
+                  <TableHead className="px-6">{t('columns.runId')}</TableHead>
+                  <TableHead className="px-6">{t('columns.started')}</TableHead>
+                  <TableHead className="px-6">
+                    {t('columns.completed')}
+                  </TableHead>
+                  <TableHead className="px-6">{t('columns.status')}</TableHead>
+                  <TableHead className="px-6">{t('columns.action')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -218,7 +220,7 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                                 className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
                               >
                                 <DotsHorizontalIcon className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
+                                <span className="sr-only">{t('openMenu')}</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -233,7 +235,7 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                                   )
                                 }
                               >
-                                View
+                                {t('view')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {(jobRun.status === JobRunStatusEnum.RUNNING ||
@@ -245,13 +247,13 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                                         className="cursor-pointer"
                                         onSelect={(e) => e.preventDefault()}
                                       >
-                                        Cancel
+                                        {t('cancel')}
                                       </DropdownMenuItem>
                                     }
-                                    headerText="Cancel Job Run?"
-                                    description="Are you sure you want to cancel this job run?"
+                                    headerText={t('cancelTitle')}
+                                    description={t('cancelDescription')}
                                     onConfirm={async () => onCancel(jobRun.id)}
-                                    buttonText="Cancel"
+                                    buttonText={t('cancel')}
                                     buttonVariant="default"
                                     buttonIcon={<Cross2Icon />}
                                   />
@@ -262,15 +264,15 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                                         className="cursor-pointer"
                                         onSelect={(e) => e.preventDefault()}
                                       >
-                                        Terminate
+                                        {t('terminate')}
                                       </DropdownMenuItem>
                                     }
-                                    headerText="Terminate Job Run?"
-                                    description="Are you sure you want to terminate this job run?"
+                                    headerText={t('terminateTitle')}
+                                    description={t('terminateDescription')}
                                     onConfirm={async () =>
                                       onTerminate(jobRun.id)
                                     }
-                                    buttonText="Terminate"
+                                    buttonText={t('terminate')}
                                     buttonVariant="default"
                                     buttonIcon={<Cross2Icon />}
                                   />
@@ -284,11 +286,11 @@ export default function JobRecentRuns({ jobId }: Props): ReactElement {
                                     className="cursor-pointer"
                                     onSelect={(e) => e.preventDefault()}
                                   >
-                                    Delete
+                                    {t('delete')}
                                   </DropdownMenuItem>
                                 }
-                                headerText="Delete Job Run?"
-                                description="Are you sure you want to delete this job run?"
+                                headerText={t('deleteTitle')}
+                                description={t('deleteDescription')}
                                 onConfirm={async () => onDelete(jobRun.id)}
                               />
                             </DropdownMenuContent>

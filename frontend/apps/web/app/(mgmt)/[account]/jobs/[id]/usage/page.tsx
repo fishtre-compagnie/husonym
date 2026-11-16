@@ -23,6 +23,7 @@ import { useQuery } from '@connectrpc/connect-query';
 import { UsageService } from '@husonym/sdk';
 import { ReactElement, use, useState } from 'react';
 import LatestRunsTable from './components/LatestRunsTable';
+import { useTranslations } from 'next-intl';
 
 // What a job ran over a period, from the counters of the instance. As on the Usage page
 // of the account, the period is cut in the zone of the browser and the line under the
@@ -30,6 +31,7 @@ import LatestRunsTable from './components/LatestRunsTable';
 export default function UsagePage(props: PageProps): ReactElement {
   const params = use(props.params);
   const id = params?.id ?? '';
+  const t = useTranslations('jobs.usage');
   const { account } = useAccount();
   const accountId = account?.id ?? '';
   const [period, setPeriod] = useState<UsagePeriod>(DEFAULT_USAGE_PERIOD);
@@ -56,8 +58,8 @@ export default function UsagePage(props: PageProps): ReactElement {
     <div className="job-details-usage-container flex flex-col gap-5">
       <ReportingNotice accountId={accountId} />
       <SubPageHeader
-        header="Usage"
-        description="What this job ran, from the counters of this instance"
+        header={t('title')}
+        description={t('description')}
         subHeadings={
           error ? (
             rangeLabel(range, undefined)
@@ -73,7 +75,7 @@ export default function UsagePage(props: PageProps): ReactElement {
       />
       {error ? (
         <Alert variant="destructive">
-          <AlertTitle>Unable to read the usage of this job</AlertTitle>
+          <AlertTitle>{t('error')}</AlertTitle>
           <AlertDescription>{getErrorMessage(error)}</AlertDescription>
         </Alert>
       ) : data ? (
@@ -82,7 +84,7 @@ export default function UsagePage(props: PageProps): ReactElement {
             totals={data.totals}
             kind={data.kind}
             duration={{
-              label: 'Median duration',
+              label: t('medianDuration'),
               seconds: data.durationMedianSeconds,
             }}
           />

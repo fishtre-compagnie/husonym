@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Job, UserAccount } from '@husonym/sdk';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { GrClone } from 'react-icons/gr';
 import { NewJobType } from '../../../new/job/job-form-validations';
@@ -16,6 +17,7 @@ interface Props {
 
 export default function JobCloneButton(props: Props): ReactElement {
   const { job } = props;
+  const t = useTranslations('jobs.job');
   const { account } = useAccount();
   const router = useRouter();
 
@@ -30,7 +32,7 @@ export default function JobCloneButton(props: Props): ReactElement {
 
   return (
     <Button variant="outline" onClick={onCloneClick}>
-      <ButtonText text="Clone Job" leftIcon={<GrClone />} />
+      <ButtonText text={t('clone')} leftIcon={<GrClone />} />
     </Button>
   );
 }

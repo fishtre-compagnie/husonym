@@ -1,14 +1,10 @@
 'use client';
 import { Segmented } from '@/components/ds';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { JobFilter, JobRow, matchesFilter } from './job-rows';
 
-const FILTERS: { value: JobFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'failing', label: 'Failing' },
-];
+const FILTERS: JobFilter[] = ['all', 'active', 'paused', 'failing'];
 
 interface Props {
   rows: JobRow[];
@@ -20,19 +16,20 @@ interface Props {
 // keeps.
 export function JobFilterTabs(props: Props): ReactElement {
   const { rows, value, onChange } = props;
+  const t = useTranslations('jobs.list.filters');
   return (
     <Segmented
-      ariaLabel="Filter jobs by state"
+      ariaLabel={t('ariaLabel')}
       value={value}
       onChange={onChange}
       className="flex-wrap"
       options={FILTERS.map((f) => ({
-        value: f.value,
+        value: f,
         label: (
           <span className="flex items-center gap-2">
-            {f.label}
+            {t(f)}
             <span className="text-xs text-muted-foreground tabular-nums">
-              {rows.filter((r) => matchesFilter(r.state, f.value)).length}
+              {rows.filter((r) => matchesFilter(r.state, f)).length}
             </span>
           </span>
         ),

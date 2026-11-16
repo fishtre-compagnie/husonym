@@ -97,6 +97,7 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -134,6 +135,7 @@ export default function DataSyncConnectionCard({
   jobId,
   section,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.source.sync');
   const { account } = useAccount();
   const {
     data,
@@ -318,7 +320,7 @@ export default function DataSyncConnectionCard({
       form.reset(newValues);
     } catch (err) {
       form.reset({ ...form.getValues(), mappings: [], sourceId: value });
-      toast.error('Unable to get connection schema', {
+      toast.error(t('schemaError'), {
         description: getErrorMessage(err),
       });
     }
@@ -369,14 +371,14 @@ export default function DataSyncConnectionCard({
           options: toJobSourceOptions(values, job, connection, values.sourceId),
         }),
       });
-      toast.success('Successfully updated source connection!');
+      toast.success(t('sourceUpdated'));
       // hold off on mutating until after we update the job dest connections for dynamo conns
       if (connection.connectionConfig?.config.case !== 'dynamodbConfig') {
         mutate();
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job source connnection', {
+      toast.error(t('sourceUpdateError'), {
         description: getErrorMessage(err),
       });
       return;
@@ -408,11 +410,11 @@ export default function DataSyncConnectionCard({
           });
         })
       );
-      toast.success('Successfully updated job destination connection(s)');
+      toast.success(t('destinationsUpdated'));
       mutate();
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update one or all job destination connections', {
+      toast.error(t('destinationsUpdateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -445,7 +447,7 @@ export default function DataSyncConnectionCard({
       setValidateMappingsResponse(res);
     } catch (error) {
       console.error('Failed to validate job mappings:', error);
-      toast.error('Unable to validate job mappings', {
+      toast.error(t('validateMappingsError'), {
         description: getErrorMessage(error),
       });
     } finally {
@@ -480,7 +482,7 @@ export default function DataSyncConnectionCard({
       setValidateMappingsResponse(res);
     } catch (error) {
       console.error('Failed to validate virtual foreign keys:', error);
-      toast.error('Unable to validate virtual foreign keys', {
+      toast.error(t('validateVfkError'), {
         description: getErrorMessage(error),
       });
     } finally {
@@ -762,7 +764,7 @@ export default function DataSyncConnectionCard({
                           </Select>
                         </FormControl>
                         <FormDescription>
-                          The location of the source data set.
+                          {t('sourceDescription')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -772,9 +774,10 @@ export default function DataSyncConnectionCard({
                     <p className="m-0 flex items-start gap-2 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn-fg">
                       <ExclamationTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
                       <span>
-                        The mapping follows the new source: {keptMappings} of{' '}
-                        {savedMappings} mapped columns exist there and are kept.
-                        Review the mapping once this is saved.
+                        {t('sourceChanged', {
+                          kept: keptMappings,
+                          saved: savedMappings,
+                        })}
                       </span>
                     </p>
                   )}
@@ -809,7 +812,7 @@ export default function DataSyncConnectionCard({
                     type="submit"
                   >
                     {form.formState.isSubmitting && <Spinner />}
-                    Save
+                    {t('save')}
                   </Button>
                 </div>
               </CardFooter>
@@ -954,7 +957,8 @@ export default function DataSyncConnectionCard({
                   dynamoDBDestinations,
                   connectionsRecord,
                   destinationConnectionSchemaMapsResp ??
-                    create(GetConnectionSchemaMapsResponseSchema)
+                    create(GetConnectionSchemaMapsResponseSchema),
+                  t('unknownDestination')
                 )}
                 onDestinationTableMappingUpdate={
                   onDestinationTableMappingUpdate

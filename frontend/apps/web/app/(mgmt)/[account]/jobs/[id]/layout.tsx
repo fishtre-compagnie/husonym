@@ -22,6 +22,7 @@ import {
   JobTypeConfig,
 } from '@husonym/sdk';
 import { PlayIcon, TrashIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useMemo } from 'react';
@@ -38,6 +39,7 @@ export default function JobIdLayout(props: LayoutProps) {
   const { children } = props;
 
   const id = params?.id ?? '';
+  const t = useTranslations('jobs.job');
   const router = useRouter();
   const { account } = useAccount();
   const { data, isLoading, isPending } = useQuery(
@@ -94,10 +96,10 @@ export default function JobIdLayout(props: LayoutProps) {
       // cannot be read yet: runs are found through an index that sees a new one a moment
       // late. Its page would not open, and the lists are read again once it has caught up.
       const visible = !!jobRun?.startedAt;
-      toast.success('Job run triggered successfully!', {
+      toast.success(t('runTriggered'), {
         action: visible
           ? {
-              label: 'View run',
+              label: t('viewRun'),
               onClick: () => router.push(`/${account?.name}/runs/${jobRun.id}`),
             }
           : undefined,
@@ -108,7 +110,7 @@ export default function JobIdLayout(props: LayoutProps) {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to trigger job run', {
+      toast.error(t('runError'), {
         description: getErrorMessage(err),
       });
     }
@@ -120,11 +122,11 @@ export default function JobIdLayout(props: LayoutProps) {
     }
     try {
       await removeJob({ id });
-      toast.success('Job removed successfully!');
+      toast.success(t('deleted'));
       router.push(`/${account?.name}/jobs`);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to remove job', {
+      toast.error(t('deleteError'), {
         description: getErrorMessage(err),
       });
     }
@@ -173,7 +175,7 @@ export default function JobIdLayout(props: LayoutProps) {
                 href={`/${account?.name}/jobs`}
                 className="text-muted-foreground hover:text-foreground"
               >
-                Jobs
+                {t('breadcrumb')}
               </Link>
               <span aria-hidden="true" className="text-border">
                 /
@@ -181,11 +183,11 @@ export default function JobIdLayout(props: LayoutProps) {
               <h1 className="m-0 min-w-0 break-all font-display text-2xl font-semibold tracking-[-0.01em]">
                 {job.name}
               </h1>
-              <Pill tone="brand">{jobType}</Pill>
+              <Pill tone="brand">{t(`type.${jobType}`)}</Pill>
               {status && (
                 <Pill tone={status.tone}>
                   <StatusDot tone={status.tone} />
-                  {status.label}
+                  {t(`status.${status.label}`)}
                 </Pill>
               )}
             </div>
@@ -196,7 +198,7 @@ export default function JobIdLayout(props: LayoutProps) {
                   {destinationNames.length > 0 && (
                     <>
                       {' '}
-                      <span aria-label="to">→</span>{' '}
+                      <span aria-label={t('to')}>→</span>{' '}
                       {destinationNames.join(', ')}
                     </>
                   )}
@@ -205,7 +207,7 @@ export default function JobIdLayout(props: LayoutProps) {
               <ResourceId
                 labelText={job.id}
                 copyText={job.id}
-                onHoverText="Copy the Job ID"
+                onHoverText={t('copyId')}
               />
             </div>
           </div>
@@ -222,11 +224,11 @@ export default function JobIdLayout(props: LayoutProps) {
                   variant="outline"
                   className="text-danger-fg hover:bg-danger-soft"
                 >
-                  <ButtonText leftIcon={<TrashIcon />} text="Delete" />
+                  <ButtonText leftIcon={<TrashIcon />} text={t('delete')} />
                 </Button>
               }
-              headerText="Are you sure you want to delete this job?"
-              description="Deleting this job will also delete all job runs."
+              headerText={t('deleteTitle')}
+              description={t('deleteDescription')}
               onConfirm={async () => onDelete()}
             />
             <Button
@@ -234,7 +236,7 @@ export default function JobIdLayout(props: LayoutProps) {
                 hasPreflight(job) ? startWithPreflight() : onTriggerJobRun()
               }
             >
-              <ButtonText leftIcon={<PlayIcon />} text="Trigger run" />
+              <ButtonText leftIcon={<PlayIcon />} text={t('triggerRun')} />
             </Button>
           </div>
         </div>
@@ -248,14 +250,14 @@ export default function JobIdLayout(props: LayoutProps) {
 
 function getStatusDisplay(
   status?: JobStatus
-): { label: string; tone: Tone } | undefined {
+): { label: 'enabled' | 'paused' | 'disabled'; tone: Tone } | undefined {
   switch (status) {
     case JobStatus.ENABLED:
-      return { label: 'Enabled', tone: 'ok' };
+      return { label: 'enabled', tone: 'ok' };
     case JobStatus.PAUSED:
-      return { label: 'Paused', tone: 'warn' };
+      return { label: 'paused', tone: 'warn' };
     case JobStatus.DISABLED:
-      return { label: 'Disabled', tone: 'quiet' };
+      return { label: 'disabled', tone: 'quiet' };
     default:
       return undefined;
   }
@@ -264,25 +266,26 @@ function getStatusDisplay(
 function getLabeledJobType(
   jobTypeConfig?: JobTypeConfig,
   options?: JobSourceOptions
-): 'Sync Job' | 'Generate Job' | 'AI Generate Job' | 'PII Detect Job' {
+): 'sync' | 'generate' | 'aiGenerate' | 'piiDetect' {
   switch (options?.config.case) {
     case 'generate':
-      return 'Generate Job';
+      return 'generate';
     case 'aiGenerate':
-      return 'AI Generate Job';
+      return 'aiGenerate';
     default:
       switch (jobTypeConfig?.jobType.case) {
         case 'sync':
-          return 'Sync Job';
+          return 'sync';
         case 'piiDetect':
-          return 'PII Detect Job';
+          return 'piiDetect';
         default:
-          return 'Sync Job';
+          return 'sync';
       }
   }
 }
 
 function useGetSidebarNavItems(job?: Job): JobTab[] {
+  const t = useTranslations('jobs.job.tabs');
   const { account } = useAccount();
   const { data: systemAppConfigData, isLoading: isSystemConfigLoading } =
     useGetSystemAppConfig();
@@ -295,39 +298,39 @@ function useGetSidebarNavItems(job?: Job): JobTab[] {
   const pendingCount = pendingData?.changes.length ?? 0;
 
   if (!account || !job) {
-    return [{ title: 'Overview', href: '' }];
+    return [{ title: t('overview'), href: '' }];
   }
   const badgeText = getLabeledJobType(job.jobType, job.source?.options);
   const basePath = `/${account.name}/jobs/${job.id}`;
   // Every kind of job has its usage: it is read from the counters of the instance.
-  const usage = { title: 'Usage', href: `${basePath}/usage` };
+  const usage = { title: t('usage'), href: `${basePath}/usage` };
   const isJobHooksEnabled =
     !isSystemConfigLoading && systemAppConfigData?.isJobHooksEnabled;
 
   switch (badgeText) {
-    case 'Sync Job': {
+    case 'sync': {
       const nav: JobTab[] = [
-        { title: 'Overview', href: basePath },
-        { title: 'Source', href: `${basePath}/source` },
-        { title: 'Mapping', href: `${basePath}/mapping` },
-        { title: 'Destinations', href: `${basePath}/destinations` },
+        { title: t('overview'), href: basePath },
+        { title: t('source'), href: `${basePath}/source` },
+        { title: t('mapping'), href: `${basePath}/mapping` },
+        { title: t('destinations'), href: `${basePath}/destinations` },
         // Only sync jobs copy columns from a source, so only they can copy one in clear.
         {
-          title: 'Review',
+          title: t('review'),
           href: `${basePath}/review`,
           count: pendingCount,
         },
       ];
       if (isJobSubsettable(job)) {
         nav.push({
-          title: 'Subsets',
+          title: t('subsets'),
           href: `${basePath}/subsets`,
         });
       }
       nav.push(usage);
       if (isJobHooksEnabled) {
         nav.push({
-          title: 'Hooks',
+          title: t('hooks'),
           href: `${basePath}/hooks`,
         });
       }
@@ -335,46 +338,46 @@ function useGetSidebarNavItems(job?: Job): JobTab[] {
       return nav;
     }
 
-    case 'Generate Job': {
+    case 'generate': {
       const nav = [
-        { title: 'Overview', href: basePath },
-        { title: 'Source', href: `${basePath}/source` },
-        { title: 'Destinations', href: `${basePath}/destinations` },
+        { title: t('overview'), href: basePath },
+        { title: t('source'), href: `${basePath}/source` },
+        { title: t('destinations'), href: `${basePath}/destinations` },
         usage,
       ];
       if (isJobHooksEnabled) {
         nav.push({
-          title: 'Hooks',
+          title: t('hooks'),
           href: `${basePath}/hooks`,
         });
       }
 
       return nav;
     }
-    case 'AI Generate Job': {
+    case 'aiGenerate': {
       const nav = [
-        { title: 'Overview', href: basePath },
-        { title: 'Source', href: `${basePath}/source` },
-        { title: 'Destinations', href: `${basePath}/destinations` },
+        { title: t('overview'), href: basePath },
+        { title: t('source'), href: `${basePath}/source` },
+        { title: t('destinations'), href: `${basePath}/destinations` },
         usage,
       ];
       if (isJobHooksEnabled) {
         nav.push({
-          title: 'Hooks',
+          title: t('hooks'),
           href: `${basePath}/hooks`,
         });
       }
       return nav;
     }
-    case 'PII Detect Job': {
+    case 'piiDetect': {
       return [
-        { title: 'Overview', href: basePath },
-        { title: 'Source', href: `${basePath}/source` },
+        { title: t('overview'), href: basePath },
+        { title: t('source'), href: `${basePath}/source` },
         usage,
       ];
     }
     default: {
-      return [{ title: 'Overview', href: basePath }];
+      return [{ title: t('overview'), href: basePath }];
     }
   }
 }
