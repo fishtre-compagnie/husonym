@@ -1,5 +1,6 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
+import { loadMessages } from '../messages';
 import { LOCALE_COOKIE, resolveLocale, toPreference } from './config';
 
 // Without a locale in the URL, the language comes from the cookie that mirrors the
@@ -9,6 +10,6 @@ export default getRequestConfig(async () => {
   const locale = resolveLocale(toPreference(store.get(LOCALE_COOKIE)?.value));
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: await loadMessages(locale),
   };
 });
