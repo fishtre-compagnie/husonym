@@ -9,6 +9,7 @@ import { UserNav } from '@/components/site-header/UserNav';
 import { cn } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobRunStatus, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactElement, ReactNode } from 'react';
@@ -38,6 +39,7 @@ function isLive(status: JobRunStatus): boolean {
 /** The app's left column: the logo, the account, the sections, the user. */
 export default function Sidebar(props: Props): ReactElement {
   const { isAuthEnabled, onNavigate } = props;
+  const t = useTranslations('nav');
   const pathname = usePathname() ?? '';
   const { account, defaultAccountName } = useAccount();
   const accountName = account?.name ?? defaultAccountName;
@@ -104,7 +106,7 @@ export default function Sidebar(props: Props): ReactElement {
           href="/"
           onClick={onNavigate}
           className="rounded-md text-hi"
-          aria-label="Husonym home"
+          aria-label={t('home')}
         >
           <MainLogo bg="currentColor" className="h-[22px] w-auto" />
         </Link>
@@ -117,13 +119,13 @@ export default function Sidebar(props: Props): ReactElement {
         account && <AccountCard account={account} />
       )}
 
-      <nav aria-label="Main navigation" className="flex flex-col gap-0.5">
-        <GroupLabel first>Operate</GroupLabel>
-        {item('dashboard', to(''), 'Dashboard', <DashboardIcon />)}
+      <nav aria-label={t('mainNavigation')} className="flex flex-col gap-0.5">
+        <GroupLabel first>{t('groups.operate')}</GroupLabel>
+        {item('dashboard', to(''), t('dashboard'), <DashboardIcon />)}
         {item(
           'jobs',
           to('/jobs'),
-          'Jobs',
+          t('jobs'),
           <JobsIcon />,
           jobsData && (
             <span className="text-xs tabular-nums">{jobsData.jobs.length}</span>
@@ -132,39 +134,39 @@ export default function Sidebar(props: Props): ReactElement {
         {item(
           'runs',
           to('/runs'),
-          'Runs',
+          t('runs'),
           <RunsIcon />,
           runsLive > 0 && (
             <StatusDot
               tone="brand"
               pulse
-              label={`${runsLive} run${runsLive === 1 ? '' : 's'} in progress`}
+              label={t('runsInProgress', { count: runsLive })}
             />
           )
         )}
-        <GroupLabel>Configure</GroupLabel>
+        <GroupLabel>{t('groups.configure')}</GroupLabel>
         {item(
           'connections',
           to('/connections'),
-          'Connections',
+          t('connections'),
           <ConnectionsIcon />
         )}
         {item(
           'transformers',
           to('/transformers'),
-          'Transformers',
+          t('transformers'),
           <TransformersIcon />
         )}
-        <GroupLabel>Governance</GroupLabel>
+        <GroupLabel>{t('groups.governance')}</GroupLabel>
         {item(
           'review',
           reviewHref,
-          'PII review',
+          t('review'),
           <ReviewIcon />,
           pendingTotal > 0 && (
             <span
               className="rounded-full bg-danger-soft px-[7px] py-px text-[11px] font-semibold text-danger-fg"
-              aria-label={`${pendingTotal} change${pendingTotal === 1 ? '' : 's'} to review`}
+              aria-label={t('changesToReview', { count: pendingTotal })}
             >
               {pendingTotal > 99 ? '99+' : pendingTotal}
             </span>
@@ -173,9 +175,9 @@ export default function Sidebar(props: Props): ReactElement {
       </nav>
 
       <div className="mt-auto flex flex-col gap-0.5">
-        {item('settings', to('/settings'), 'Settings', <SettingsIcon />)}
+        {item('settings', to('/settings'), t('settings'), <SettingsIcon />)}
         <div className="mt-2 border-t border-line-soft pt-2 empty:hidden">
-          <UserNav variant="row" />
+          <UserNav variant="row" isAuthEnabled={isAuthEnabled} />
         </div>
       </div>
     </div>

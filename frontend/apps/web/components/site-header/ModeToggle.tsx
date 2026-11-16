@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
 
@@ -12,6 +13,7 @@ const subscribeNoop = () => () => {};
 // One button that flips between light and dark. Until someone presses it the theme
 // follows the system's; once pressed, the choice is theirs.
 export function ModeToggle() {
+  const t = useTranslations('header');
   const { resolvedTheme, setTheme } = useTheme();
   // The theme is only known in the browser: the server renders a neutral label.
   const mounted = useSyncExternalStore(
@@ -21,10 +23,10 @@ export function ModeToggle() {
   );
   const isDark = mounted && resolvedTheme === 'dark';
   const label = !mounted
-    ? 'Switch theme'
+    ? t('switchTheme')
     : isDark
-      ? 'Switch to light theme'
-      : 'Switch to dark theme';
+      ? t('switchToLight')
+      : t('switchToDark');
 
   return (
     <button

@@ -1,0 +1,95 @@
+{
+  "common": {
+    "close": "Fermer",
+    "search": "Rechercher"
+  },
+  "nav": {
+    "mainNavigation": "Navigation principale",
+    "home": "Accueil Husonym",
+    "groups": {
+      "operate": "Exploiter",
+      "configure": "Configurer",
+      "governance": "Gouvernance"
+    },
+    "dashboard": "Tableau de bord",
+    "jobs": "Jobs",
+    "runs": "Exécutions",
+    "connections": "Connexions",
+    "transformers": "Transformers",
+    "review": "Revue PII",
+    "settings": "Paramètres",
+    "runsInProgress": "{count, plural, one {# exécution en cours} other {# exécutions en cours}}",
+    "changesToReview": "{count, plural, one {# changement à revoir} other {# changements à revoir}}",
+    "openNavigation": "Ouvrir la navigation",
+    "drawerTitle": "Navigation",
+    "drawerDescription": "Les sections de l'application."
+  },
+  "breadcrumb": {
+    "label": "Fil d'Ariane",
+    "newJob": "Nouveau job",
+    "newConnection": "Nouvelle connexion",
+    "newTransformer": "Nouveau transformer",
+    "newApiKey": "Nouvelle clé d'API",
+    "new": "Nouveau",
+    "job": "Job",
+    "connection": "Connexion",
+    "transformer": "Transformer"
+  },
+  "header": {
+    "newJob": "Nouveau job",
+    "support": "Support",
+    "supportDescription": "Besoin d'aide ? On s'occupe de vous.",
+    "switchTheme": "Changer de thème",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "trialExpired": "Essai expiré",
+    "trialDaysLeft": "{count, plural, one {# jour d'essai restant} other {# jours d'essai restants}}"
+  },
+  "palette": {
+    "button": "Rechercher (Ctrl+K)",
+    "placeholderShort": "Rechercher un job, une connexion…",
+    "title": "Palette de commandes",
+    "description": "Rechercher parmi les jobs et connexions du compte, ou créer quelque chose.",
+    "inputPlaceholder": "Tapez une commande ou un nom…",
+    "empty": "Aucun résultat.",
+    "actions": "Actions",
+    "jobs": "Jobs",
+    "connections": "Connexions",
+    "pages": "Pages",
+    "newJob": "Nouveau job",
+    "newConnection": "Nouvelle connexion",
+    "newTransformer": "Nouveau transformer",
+    "localDirectory": "Répertoire local",
+    "navigate": "naviguer",
+    "open": "ouvrir"
+  },
+  "account": {
+    "personal": "Compte personnel",
+    "team": "Compte d'équipe",
+    "enterprise": "Compte entreprise",
+    "select": "Choisir une équipe",
+    "searchPlaceholder": "Rechercher un compte…",
+    "empty": "Aucun compte trouvé.",
+    "personalGroup": "Personnel",
+    "teamGroup": "Équipe",
+    "createTeam": "Créer une équipe"
+  },
+  "reviews": {
+    "nothing": "Rien à revoir",
+    "nothingLong": "Rien à revoir : tous les changements apportés par les exécutions de vos jobs ont été revus.",
+    "waiting": "{count, plural, one {# changement dans les mappings de vos jobs, en attente de revue} other {# changements dans les mappings de vos jobs, en attente de revue}}",
+    "personalInClear": "{count} perso. en clair"
+  },
+  "userMenu": {
+    "trigger": "Menu du compte",
+    "signedIn": "Connecté",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "logOut": "Se déconnecter",
+    "logOutError": "Impossible de se déconnecter de la session du fournisseur",
+    "language": "Langue",
+    "languageDefault": "Par défaut (anglais)",
+    "languageError": "Impossible de changer la langue",
+    "anonymous": "Utilisateur anonyme"
+  }
+}

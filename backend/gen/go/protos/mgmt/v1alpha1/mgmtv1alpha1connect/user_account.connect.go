@@ -39,6 +39,9 @@ const (
 	// UserAccountServiceSetUserProcedure is the fully-qualified name of the UserAccountService's
 	// SetUser RPC.
 	UserAccountServiceSetUserProcedure = "/mgmt.v1alpha1.UserAccountService/SetUser"
+	// UserAccountServiceSetUserPreferencesProcedure is the fully-qualified name of the
+	// UserAccountService's SetUserPreferences RPC.
+	UserAccountServiceSetUserPreferencesProcedure = "/mgmt.v1alpha1.UserAccountService/SetUserPreferences"
 	// UserAccountServiceGetUserAccountsProcedure is the fully-qualified name of the
 	// UserAccountService's GetUserAccounts RPC.
 	UserAccountServiceGetUserAccountsProcedure = "/mgmt.v1alpha1.UserAccountService/GetUserAccounts"
@@ -137,6 +140,9 @@ type UserAccountServiceClient interface {
 	GetUser(context.Context, *connect.Request[v1alpha1.GetUserRequest]) (*connect.Response[v1alpha1.GetUserResponse], error)
 	// Sets the current user.
 	SetUser(context.Context, *connect.Request[v1alpha1.SetUserRequest]) (*connect.Response[v1alpha1.SetUserResponse], error)
+	// Sets the preferences of the calling user, such as the language of the interface.
+	// It acts on the person calling and on no account. An API key has no person behind it and is refused.
+	SetUserPreferences(context.Context, *connect.Request[v1alpha1.SetUserPreferencesRequest]) (*connect.Response[v1alpha1.SetUserPreferencesResponse], error)
 	// Retrieves the list of accounts that the user belongs to.
 	GetUserAccounts(context.Context, *connect.Request[v1alpha1.GetUserAccountsRequest]) (*connect.Response[v1alpha1.GetUserAccountsResponse], error)
 	// Sets the current personal account.
@@ -221,6 +227,12 @@ func NewUserAccountServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			httpClient,
 			baseURL+UserAccountServiceSetUserProcedure,
 			connect.WithSchema(userAccountServiceMethods.ByName("SetUser")),
+			connect.WithClientOptions(opts...),
+		),
+		setUserPreferences: connect.NewClient[v1alpha1.SetUserPreferencesRequest, v1alpha1.SetUserPreferencesResponse](
+			httpClient,
+			baseURL+UserAccountServiceSetUserPreferencesProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("SetUserPreferences")),
 			connect.WithClientOptions(opts...),
 		),
 		getUserAccounts: connect.NewClient[v1alpha1.GetUserAccountsRequest, v1alpha1.GetUserAccountsResponse](
@@ -423,6 +435,7 @@ func NewUserAccountServiceClient(httpClient connect.HTTPClient, baseURL string, 
 type userAccountServiceClient struct {
 	getUser                          *connect.Client[v1alpha1.GetUserRequest, v1alpha1.GetUserResponse]
 	setUser                          *connect.Client[v1alpha1.SetUserRequest, v1alpha1.SetUserResponse]
+	setUserPreferences               *connect.Client[v1alpha1.SetUserPreferencesRequest, v1alpha1.SetUserPreferencesResponse]
 	getUserAccounts                  *connect.Client[v1alpha1.GetUserAccountsRequest, v1alpha1.GetUserAccountsResponse]
 	setPersonalAccount               *connect.Client[v1alpha1.SetPersonalAccountRequest, v1alpha1.SetPersonalAccountResponse]
 	enterInstance                    *connect.Client[v1alpha1.EnterInstanceRequest, v1alpha1.EnterInstanceResponse]
@@ -463,6 +476,11 @@ func (c *userAccountServiceClient) GetUser(ctx context.Context, req *connect.Req
 // SetUser calls mgmt.v1alpha1.UserAccountService.SetUser.
 func (c *userAccountServiceClient) SetUser(ctx context.Context, req *connect.Request[v1alpha1.SetUserRequest]) (*connect.Response[v1alpha1.SetUserResponse], error) {
 	return c.setUser.CallUnary(ctx, req)
+}
+
+// SetUserPreferences calls mgmt.v1alpha1.UserAccountService.SetUserPreferences.
+func (c *userAccountServiceClient) SetUserPreferences(ctx context.Context, req *connect.Request[v1alpha1.SetUserPreferencesRequest]) (*connect.Response[v1alpha1.SetUserPreferencesResponse], error) {
+	return c.setUserPreferences.CallUnary(ctx, req)
 }
 
 // GetUserAccounts calls mgmt.v1alpha1.UserAccountService.GetUserAccounts.
@@ -623,6 +641,9 @@ type UserAccountServiceHandler interface {
 	GetUser(context.Context, *connect.Request[v1alpha1.GetUserRequest]) (*connect.Response[v1alpha1.GetUserResponse], error)
 	// Sets the current user.
 	SetUser(context.Context, *connect.Request[v1alpha1.SetUserRequest]) (*connect.Response[v1alpha1.SetUserResponse], error)
+	// Sets the preferences of the calling user, such as the language of the interface.
+	// It acts on the person calling and on no account. An API key has no person behind it and is refused.
+	SetUserPreferences(context.Context, *connect.Request[v1alpha1.SetUserPreferencesRequest]) (*connect.Response[v1alpha1.SetUserPreferencesResponse], error)
 	// Retrieves the list of accounts that the user belongs to.
 	GetUserAccounts(context.Context, *connect.Request[v1alpha1.GetUserAccountsRequest]) (*connect.Response[v1alpha1.GetUserAccountsResponse], error)
 	// Sets the current personal account.
@@ -703,6 +724,12 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 		UserAccountServiceSetUserProcedure,
 		svc.SetUser,
 		connect.WithSchema(userAccountServiceMethods.ByName("SetUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userAccountServiceSetUserPreferencesHandler := connect.NewUnaryHandler(
+		UserAccountServiceSetUserPreferencesProcedure,
+		svc.SetUserPreferences,
+		connect.WithSchema(userAccountServiceMethods.ByName("SetUserPreferences")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userAccountServiceGetUserAccountsHandler := connect.NewUnaryHandler(
@@ -904,6 +931,8 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 			userAccountServiceGetUserHandler.ServeHTTP(w, r)
 		case UserAccountServiceSetUserProcedure:
 			userAccountServiceSetUserHandler.ServeHTTP(w, r)
+		case UserAccountServiceSetUserPreferencesProcedure:
+			userAccountServiceSetUserPreferencesHandler.ServeHTTP(w, r)
 		case UserAccountServiceGetUserAccountsProcedure:
 			userAccountServiceGetUserAccountsHandler.ServeHTTP(w, r)
 		case UserAccountServiceSetPersonalAccountProcedure:
@@ -979,6 +1008,10 @@ func (UnimplementedUserAccountServiceHandler) GetUser(context.Context, *connect.
 
 func (UnimplementedUserAccountServiceHandler) SetUser(context.Context, *connect.Request[v1alpha1.SetUserRequest]) (*connect.Response[v1alpha1.SetUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.SetUser is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) SetUserPreferences(context.Context, *connect.Request[v1alpha1.SetUserPreferencesRequest]) (*connect.Response[v1alpha1.SetUserPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.SetUserPreferences is not implemented"))
 }
 
 func (UnimplementedUserAccountServiceHandler) GetUserAccounts(context.Context, *connect.Request[v1alpha1.GetUserAccountsRequest]) (*connect.Response[v1alpha1.GetUserAccountsResponse], error) {

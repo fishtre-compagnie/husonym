@@ -13,6 +13,7 @@ import { CheckCircledIcon } from '@radix-ui/react-icons';
 import { cn } from '@/libs/utils';
 import { BellIcon } from '../shell/icons';
 import { topbarIconButtonClass } from '../shell/styles';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ReactElement, useMemo, useState } from 'react';
 
@@ -95,6 +96,8 @@ export function usePendingReviews(): PendingReviews {
 
 export default function PendingReviewsBell(): ReactElement | null {
   const { account } = useAccount();
+  const t = useTranslations('reviews');
+  const tNav = useTranslations('nav');
   const [open, setOpen] = useState(false);
   const { byJob, total } = usePendingReviews();
 
@@ -109,9 +112,7 @@ export default function PendingReviewsBell(): ReactElement | null {
           type="button"
           className={cn(topbarIconButtonClass, 'relative')}
           aria-label={
-            total > 0
-              ? `${total} change${total === 1 ? '' : 's'} to review`
-              : 'Nothing to review'
+            total > 0 ? tNav('changesToReview', { count: total }) : t('nothing')
           }
         >
           <BellIcon size={18} />
@@ -126,14 +127,12 @@ export default function PendingReviewsBell(): ReactElement | null {
         {total === 0 ? (
           <div className="flex flex-row items-center gap-2 text-sm">
             <CheckCircledIcon className="shrink-0 text-ok" />
-            Nothing to review: every change your jobs&apos; runs made has been
-            reviewed.
+            {t('nothingLong')}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <p className="font-display text-sm font-semibold text-hi">
-              {total} change{total === 1 ? '' : 's'} to your jobs&apos;
-              mappings, waiting for review
+              {t('waiting', { count: total })}
             </p>
             <ul className="flex flex-col gap-1">
               {byJob.map((job) => (
@@ -149,7 +148,10 @@ export default function PendingReviewsBell(): ReactElement | null {
                       {job.personalInClear > 0 && (
                         <span className="text-danger-fg">
                           {' '}
-                          · {job.personalInClear} personal in clear
+                          ·{' '}
+                          {t('personalInClear', {
+                            count: job.personalInClear,
+                          })}
                         </span>
                       )}
                     </span>

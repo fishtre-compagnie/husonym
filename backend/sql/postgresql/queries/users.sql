@@ -316,3 +316,12 @@ RETURNING *;
 
 -- name: GetAccountIds :many
 SELECT id FROM husonym_api.accounts;
+
+-- Sets the language a user chose for the interface. A null locale returns the user to the
+-- default of the instance. No row returned means no such user.
+-- name: SetUserLocale :one
+UPDATE husonym_api.users
+SET locale = sqlc.narg('locale'),
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = sqlc.arg('userId')
+RETURNING locale;

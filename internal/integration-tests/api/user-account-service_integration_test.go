@@ -175,6 +175,46 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetUser_Auth() {
 	require.Equal(s.T(), userId, resp.Msg.GetUserId())
 }
 
+func (s *IntegrationTestSuite) Test_UserAccountService_SetUserPreferences_Auth() {
+	client := s.OSSAuthenticatedLicensedClients.Users(
+		integrationtests_test.WithUserId("test-user1"),
+	)
+	s.setUser(s.ctx, client)
+
+	getLocale := func() string {
+		resp, err := client.GetUser(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetUserRequest{}))
+		requireNoErrResp(s.T(), resp, err)
+		return resp.Msg.GetLocale()
+	}
+	require.Empty(s.T(), getLocale(), "a new user follows the default of the instance")
+
+	set, err := client.SetUserPreferences(s.ctx, connect.NewRequest(&mgmtv1alpha1.SetUserPreferencesRequest{Locale: "fr"}))
+	requireNoErrResp(s.T(), set, err)
+	require.Equal(s.T(), "fr", set.Msg.GetLocale())
+	require.Equal(s.T(), "fr", getLocale())
+
+	bad, err := client.SetUserPreferences(s.ctx, connect.NewRequest(&mgmtv1alpha1.SetUserPreferencesRequest{Locale: "de"}))
+	requireErrResp(s.T(), bad, err)
+	requireConnectError(s.T(), err, connect.CodeInvalidArgument)
+	require.Equal(s.T(), "fr", getLocale())
+
+	reset, err := client.SetUserPreferences(s.ctx, connect.NewRequest(&mgmtv1alpha1.SetUserPreferencesRequest{Locale: ""}))
+	requireNoErrResp(s.T(), reset, err)
+	require.Empty(s.T(), reset.Msg.GetLocale())
+	require.Empty(s.T(), getLocale())
+}
+
+func (s *IntegrationTestSuite) Test_UserAccountService_SetUserPreferences_Unauth() {
+	client := s.OSSUnauthenticatedLicensedClients.Users()
+	set, err := client.SetUserPreferences(s.ctx, connect.NewRequest(&mgmtv1alpha1.SetUserPreferencesRequest{Locale: "fr"}))
+	requireNoErrResp(s.T(), set, err)
+
+	resp, err := client.GetUser(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetUserRequest{}))
+	requireNoErrResp(s.T(), resp, err)
+	require.Equal(s.T(), "00000000-0000-0000-0000-000000000000", resp.Msg.GetUserId())
+	require.Equal(s.T(), "fr", resp.Msg.GetLocale())
+}
+
 func (s *IntegrationTestSuite) Test_UserAccountService_GetUser_Auth_NotFound() {
 	client := s.OSSAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId("test-user1"),

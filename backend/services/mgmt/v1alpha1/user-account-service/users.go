@@ -30,14 +30,42 @@ func (s *Service) GetUser(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetUserRequest],
 ) (*connect.Response[mgmtv1alpha1.GetUserResponse], error) {
+	who, err := s.resolveCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp := &mgmtv1alpha1.GetUserResponse{UserId: who.userId}
+	if who.person {
+		locale, err := s.userLocale(ctx, who.userId)
+		if err != nil {
+			return nil, err
+		}
+		resp.Locale = locale
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// caller is who calls the service, as the rows of users know them.
+type caller struct {
+	userId string
+	// person is false for an API key: it acts for a machine user, or for no user at all in the
+	// case of the worker key. Only a person has preferences.
+	person bool
+}
+
+// resolveCaller tells which user calls. With authentication off, the caller is the anonymous
+// user, unless an API key is presented, in which case it is the key's machine user.
+func (s *Service) resolveCaller(ctx context.Context) (*caller, error) {
 	if !s.cfg.IsAuthEnabled {
 		// intentionally ignoring error here because we are in unauth mode anyways
 		// but if it's available, let's return the api key's user id
 		apiTokenCtxData, _ := auth_apikey.GetTokenDataFromCtx(ctx)
 		if apiTokenCtxData != nil {
-			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-				UserId: husonymdb.UUIDString(apiTokenCtxData.ApiKey.UserID),
-			}), nil
+			if apiTokenCtxData.ApiKey == nil {
+				// The worker key stands for no user.
+				return &caller{userId: "00000000-0000-0000-0000-000000000000"}, nil
+			}
+			return &caller{userId: husonymdb.UUIDString(apiTokenCtxData.ApiKey.UserID)}, nil
 		}
 		user, err := s.db.Q.GetAnonymousUser(ctx, s.db.Db)
 		if err != nil && !husonymdb.IsNoRows(err) {
@@ -48,9 +76,7 @@ func (s *Service) GetUser(
 				return nil, err
 			}
 		}
-		return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-			UserId: husonymdb.UUIDString(user.ID),
-		}), nil
+		return &caller{userId: husonymdb.UUIDString(user.ID), person: true}, nil
 	}
 
 	tokenctxResp, err := tokenctx.GetTokenCtx(ctx)
@@ -61,13 +87,9 @@ func (s *Service) GetUser(
 	if tokenctxResp.ApiKeyContextData != nil {
 		if tokenctxResp.ApiKeyContextData.ApiKeyType == apikey.AccountApiKey &&
 			tokenctxResp.ApiKeyContextData.ApiKey != nil {
-			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-				UserId: husonymdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID),
-			}), nil
+			return &caller{userId: husonymdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID)}, nil
 		} else if tokenctxResp.ApiKeyContextData.ApiKeyType == apikey.WorkerApiKey {
-			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-				UserId: "00000000-0000-0000-0000-000000000000",
-			}), nil
+			return &caller{userId: "00000000-0000-0000-0000-000000000000"}, nil
 		}
 		return nil, husonymerrors.NewUnauthenticated(
 			fmt.Sprintf(
@@ -92,9 +114,11 @@ func (s *Service) GetUser(
 			return nil, husonymerrors.NewNotFound("unable to find user")
 		}
 
-		return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-			UserId: husonymdb.UUIDString(user.UserID),
-		}), nil
+		return &caller{
+			userId: husonymdb.UUIDString(user.UserID),
+			// A token issued to an application is not a person, even when a user row holds it.
+			person: !tokenctxResp.JwtContextData.Claims.IsApplicationToken(),
+		}, nil
 	}
 	return nil, husonymerrors.NewUnauthenticated(
 		"unable to find a valid user based on the provided auth credentials",

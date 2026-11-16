@@ -18,6 +18,7 @@ import {
 import { cn } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionService, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, ReactNode, useEffect, useState } from 'react';
 import { SearchIcon } from './icons';
@@ -32,7 +33,6 @@ const CONNECTION_KINDS: Record<string, string> = {
   awsS3Config: 'AWS S3',
   gcpCloudstorageConfig: 'Cloud Storage',
   openaiConfig: 'OpenAI',
-  localDirConfig: 'Local directory',
 };
 
 interface Entry {
@@ -48,6 +48,9 @@ interface Entry {
  * the actions that create something, the account's jobs and connections, the pages.
  */
 export default function CommandPalette(): ReactElement | null {
+  const t = useTranslations('palette');
+  const tNav = useTranslations('nav');
+  const tCommon = useTranslations('common');
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { account } = useAccount();
@@ -82,16 +85,21 @@ export default function CommandPalette(): ReactElement | null {
   const base = `/${account.name}`;
 
   const actions: Entry[] = [
-    { key: 'new-job', label: 'New job', glyph: '+', href: `${base}/new/job` },
+    {
+      key: 'new-job',
+      label: t('newJob'),
+      glyph: '+',
+      href: `${base}/new/job`,
+    },
     {
       key: 'new-connection',
-      label: 'New connection',
+      label: t('newConnection'),
       glyph: '+',
       href: `${base}/new/connection`,
     },
     {
       key: 'new-transformer',
-      label: 'New transformer',
+      label: t('newTransformer'),
       glyph: '+',
       href: `${base}/new/transformer`,
     },
@@ -106,23 +114,34 @@ export default function CommandPalette(): ReactElement | null {
     (c) => ({
       key: `connection-${c.id}`,
       label: c.name,
-      hint: CONNECTION_KINDS[c.connectionConfig?.config.case ?? ''],
+      hint: connectionKind(c.connectionConfig?.config.case),
       glyph: 'C',
       href: `${base}/connections/${c.id}`,
     })
   );
   const pages: Entry[] = [
-    { key: 'p-dashboard', label: 'Dashboard', href: base },
-    { key: 'p-jobs', label: 'Jobs', href: `${base}/jobs` },
-    { key: 'p-runs', label: 'Runs', href: `${base}/runs` },
-    { key: 'p-connections', label: 'Connections', href: `${base}/connections` },
+    { key: 'p-dashboard', label: tNav('dashboard'), href: base },
+    { key: 'p-jobs', label: tNav('jobs'), href: `${base}/jobs` },
+    { key: 'p-runs', label: tNav('runs'), href: `${base}/runs` },
+    {
+      key: 'p-connections',
+      label: tNav('connections'),
+      href: `${base}/connections`,
+    },
     {
       key: 'p-transformers',
-      label: 'Transformers',
+      label: tNav('transformers'),
       href: `${base}/transformers`,
     },
-    { key: 'p-settings', label: 'Settings', href: `${base}/settings` },
+    { key: 'p-settings', label: tNav('settings'), href: `${base}/settings` },
   ].map((p) => ({ ...p, glyph: '→' }));
+
+  function connectionKind(kind: string | undefined): string | undefined {
+    if (kind === 'localDirConfig') {
+      return t('localDirectory');
+    }
+    return CONNECTION_KINDS[kind ?? ''];
+  }
 
   function go(href: string): void {
     setOpen(false);
@@ -162,7 +181,7 @@ export default function CommandPalette(): ReactElement | null {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Search (Ctrl+K)"
+        aria-label={t('button')}
         className={cn(
           'flex h-10 cursor-pointer items-center gap-2.5 rounded-[10px] border border-border bg-card px-3 text-muted-foreground transition-colors hover:bg-hover',
           'w-10 justify-center md:w-auto md:min-w-[300px] md:justify-start'
@@ -170,7 +189,7 @@ export default function CommandPalette(): ReactElement | null {
       >
         <SearchIcon className="shrink-0" />
         <span className="hidden flex-1 text-left text-sm md:block">
-          Search a job, a connection…
+          {t('placeholderShort')}
         </span>
         <Kbd className="hidden md:inline">⌘K</Kbd>
       </button>
@@ -182,42 +201,41 @@ export default function CommandPalette(): ReactElement | null {
             '[&>button:last-child]:hidden'
           )}
         >
-          <DialogTitle className="sr-only">Command palette</DialogTitle>
+          <DialogTitle className="sr-only">{t('title')}</DialogTitle>
           <DialogDescription className="sr-only">
-            Search the account&apos;s jobs and connections, or start something
-            new.
+            {t('description')}
           </DialogDescription>
           <Command className="rounded-none bg-card [&_[cmdk-input-wrapper]]:gap-1 [&_[cmdk-input-wrapper]]:px-[18px] [&_[cmdk-input-wrapper]]:py-2 [&_[cmdk-input]]:h-10 [&_[cmdk-input]]:text-base">
             <div className="relative">
               <CommandInput
-                placeholder="Type a command or a name…"
-                aria-label="Search"
+                placeholder={t('inputPlaceholder')}
+                aria-label={tCommon('search')}
                 className="pr-16"
               />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="absolute right-[18px] top-1/2 -translate-y-1/2 cursor-pointer"
-                aria-label="Close"
+                aria-label={tCommon('close')}
               >
                 <Kbd>Esc</Kbd>
               </button>
             </div>
             <CommandList className="max-h-[380px] p-2">
               <CommandEmpty className="py-8 text-sm text-muted-foreground">
-                Nothing matches.
+                {t('empty')}
               </CommandEmpty>
-              {group('Actions', actions)}
-              {group('Jobs', jobs)}
-              {group('Connections', connections)}
-              {group('Pages', pages)}
+              {group(t('actions'), actions)}
+              {group(t('jobs'), jobs)}
+              {group(t('connections'), connections)}
+              {group(t('pages'), pages)}
             </CommandList>
             <div className="flex gap-4 border-t border-border px-[18px] py-2.5 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <Kbd>↑↓</Kbd> navigate
+                <Kbd>↑↓</Kbd> {t('navigate')}
               </span>
               <span className="flex items-center gap-1.5">
-                <Kbd>↵</Kbd> open
+                <Kbd>↵</Kbd> {t('open')}
               </span>
             </div>
           </Command>

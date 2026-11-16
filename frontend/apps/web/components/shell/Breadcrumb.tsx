@@ -2,25 +2,35 @@
 import { useAccount } from '@/components/providers/account-provider';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionService, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Fragment, ReactElement } from 'react';
 
-const SECTIONS: Record<string, string> = {
-  jobs: 'Jobs',
-  runs: 'Runs',
-  connections: 'Connections',
-  transformers: 'Transformers',
-  settings: 'Settings',
-  review: 'PII review',
-};
+// The sections' names, in the nav's messages.
+const SECTIONS = {
+  jobs: 'jobs',
+  runs: 'runs',
+  connections: 'connections',
+  transformers: 'transformers',
+  settings: 'settings',
+  review: 'review',
+} as const;
 
-const NEW_THINGS: Record<string, string> = {
-  job: 'New job',
-  connection: 'New connection',
-  transformer: 'New transformer',
-  'api-key': 'New API key',
-};
+// What the wizards under /new create, in the breadcrumb's messages.
+const NEW_THINGS = {
+  job: 'newJob',
+  connection: 'newConnection',
+  transformer: 'newTransformer',
+  'api-key': 'newApiKey',
+} as const;
+
+function lookup<T extends object>(
+  table: T,
+  key: string | undefined
+): T[keyof T] | undefined {
+  return key && Object.hasOwn(table, key) ? table[key as keyof T] : undefined;
+}
 
 interface Crumb {
   label: string;
@@ -35,6 +45,8 @@ function titleCase(segment: string): string {
 
 /** Where the page is: the account, its section and, on a detail page, the item. */
 export default function Breadcrumb(): ReactElement | null {
+  const t = useTranslations('breadcrumb');
+  const tNav = useTranslations('nav');
   const pathname = usePathname() ?? '';
   const { account } = useAccount();
   const accountId = account?.id ?? '';
@@ -60,27 +72,29 @@ export default function Breadcrumb(): ReactElement | null {
   const base = `/${account.name}`;
   const crumbs: Crumb[] = [];
   if (!section) {
-    crumbs.push({ label: 'Dashboard' });
+    crumbs.push({ label: tNav('dashboard') });
   } else if (section === 'new') {
+    const thing = lookup(NEW_THINGS, itemId);
     crumbs.push({
-      label: NEW_THINGS[itemId ?? ''] ?? titleCase(itemId ?? 'New'),
+      label: thing ? t(thing) : itemId ? titleCase(itemId) : t('new'),
     });
   } else {
+    const sectionKey = lookup(SECTIONS, section);
     crumbs.push({
-      label: SECTIONS[section] ?? titleCase(section),
+      label: sectionKey ? tNav(sectionKey) : titleCase(section),
       href: itemId ? `${base}/${section}` : undefined,
     });
     if (itemId) {
       if (section === 'jobs') {
         const job = jobsData?.jobs.find((j) => j.id === itemId);
-        crumbs.push({ label: job?.name ?? 'Job' });
+        crumbs.push({ label: job?.name ?? t('job') });
       } else if (section === 'connections') {
         const c = connectionsData?.connections.find((x) => x.id === itemId);
-        crumbs.push({ label: c?.name ?? 'Connection' });
+        crumbs.push({ label: c?.name ?? t('connection') });
       } else if (section === 'runs') {
         crumbs.push({ label: itemId, mono: true });
       } else if (section === 'transformers') {
-        crumbs.push({ label: 'Transformer' });
+        crumbs.push({ label: t('transformer') });
       } else {
         crumbs.push({ label: titleCase(itemId) });
       }
@@ -88,7 +102,7 @@ export default function Breadcrumb(): ReactElement | null {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label={t('label')} className="min-w-0">
       <ol className="flex min-w-0 items-center gap-2 text-sm">
         <li className="hidden shrink-0 sm:block">
           <Link

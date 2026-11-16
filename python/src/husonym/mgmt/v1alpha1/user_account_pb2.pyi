@@ -65,10 +65,24 @@ class GetUserRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class GetUserResponse(_message.Message):
-    __slots__ = ("user_id",)
+    __slots__ = ("user_id", "locale")
     USER_ID_FIELD_NUMBER: _ClassVar[int]
+    LOCALE_FIELD_NUMBER: _ClassVar[int]
     user_id: str
-    def __init__(self, user_id: _Optional[str] = ...) -> None: ...
+    locale: str
+    def __init__(self, user_id: _Optional[str] = ..., locale: _Optional[str] = ...) -> None: ...
+
+class SetUserPreferencesRequest(_message.Message):
+    __slots__ = ("locale",)
+    LOCALE_FIELD_NUMBER: _ClassVar[int]
+    locale: str
+    def __init__(self, locale: _Optional[str] = ...) -> None: ...
+
+class SetUserPreferencesResponse(_message.Message):
+    __slots__ = ("locale",)
+    LOCALE_FIELD_NUMBER: _ClassVar[int]
+    locale: str
+    def __init__(self, locale: _Optional[str] = ...) -> None: ...
 
 class SetUserRequest(_message.Message):
     __slots__ = ()

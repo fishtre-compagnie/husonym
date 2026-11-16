@@ -25,6 +25,11 @@ class UserAccountServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserResponse.FromString,
                 _registered_method=True)
+        self.SetUserPreferences = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/SetUserPreferences',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesResponse.FromString,
+                _registered_method=True)
         self.GetUserAccounts = channel.unary_unary(
                 '/mgmt.v1alpha1.UserAccountService/GetUserAccounts',
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetUserAccountsRequest.SerializeToString,
@@ -190,6 +195,14 @@ class UserAccountServiceServicer:
 
     def SetUser(self, request, context):
         """Sets the current user.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetUserPreferences(self, request, context):
+        """Sets the preferences of the calling user, such as the language of the interface.
+        It acts on the person calling and on no account. An API key has no person behind it and is refused.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -418,6 +431,11 @@ def add_UserAccountServiceServicer_to_server(servicer, server):
                     request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserResponse.SerializeToString,
             ),
+            'SetUserPreferences': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetUserPreferences,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesResponse.SerializeToString,
+            ),
             'GetUserAccounts': grpc.unary_unary_rpc_method_handler(
                     servicer.GetUserAccounts,
                     request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetUserAccountsRequest.FromString,
@@ -624,6 +642,33 @@ class UserAccountService:
             '/mgmt.v1alpha1.UserAccountService/SetUser',
             mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetUserPreferences(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/SetUserPreferences',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetUserPreferencesResponse.FromString,
             options,
             channel_credentials,
             insecure,
