@@ -1857,6 +1857,8 @@ message PiiDetectionReport {
       optional Regex regex_report = 2;
       // The LLM report. Will be empty if the LLM determined the column name (and optionally the data) was not PII.
       optional LLM llm_report = 3;
+      // The analyzer report. Will be empty if the content analyzer found nothing in the values of the column.
+      optional Analyzer analyzer_report = 4;
 
       // The regex report
       message Regex {
@@ -1870,6 +1872,16 @@ message PiiDetectionReport {
         string category = 1;
         // The confidence of the column from 0.0-1.0
         float confidence = 2;
+      }
+
+      // The analyzer report
+      message Analyzer {
+        // The category of the column
+        string category = 1;
+        // The number of sampled values in which the analyzer found an entity
+        uint32 match_count = 2;
+        // The number of values the analyzer was given
+        uint32 sampled_count = 3;
       }
     }
   }

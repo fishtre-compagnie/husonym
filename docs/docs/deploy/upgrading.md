@@ -240,3 +240,10 @@ two scans of the same table can read different rows. See
 
 See [Upgrading](/guides/pii-detection-job#upgrading) in the guide of the PII detection job.
 In the web app, the job is offered when `PII_DETECTION_JOB_ENABLED` is `true`.
+
+The job now asks the Presidio analyzer about the free-text columns of the tables it samples,
+through the API, as soon as `PRESIDIO_ANALYZER_URL` is set on the API. Their values go from
+the source to the API and to the analyzer, whatever the _What the model receives_ setting
+says. The worker key may call `DetectPiiInConnectionData`, which an API of the previous
+version refuses it: upgrade the API before the workers. The first incremental run scans every
+table again.

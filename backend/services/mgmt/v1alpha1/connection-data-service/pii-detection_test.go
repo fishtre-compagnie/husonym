@@ -245,6 +245,7 @@ func scanUnder(
 	columns []string,
 ) (*mgmtv1alpha1.DetectPiiInConnectionDataResponse, error) {
 	t.Helper()
+	language := "fr" // the language the rule of free text is measured in
 	dataconn := connectiondata.NewMockConnectionDataService(t)
 	dataconn.EXPECT().
 		SampleColumn(mock.Anything, mock.Anything, "public", "clients", column, uint(20)).
@@ -267,7 +268,7 @@ func scanUnder(
 		connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{Connection: &mgmtv1alpha1.Connection{Id: "c1"}}), nil,
 	)
 	service := &Service{
-		cfg:                   &Config{IsPresidioEnabled: true},
+		cfg:                   &Config{IsPresidioEnabled: true, PresidioDefaultLanguage: &language},
 		connectionService:     connections,
 		connectiondatabuilder: builder,
 		analyze:               entitiesIn(t, textMarkers),

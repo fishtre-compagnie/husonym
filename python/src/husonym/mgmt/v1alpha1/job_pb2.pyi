@@ -1882,7 +1882,7 @@ class PiiDetectionReport(_message.Message):
     class TableReport(_message.Message):
         __slots__ = ("schema", "table", "columns")
         class ColumnReport(_message.Message):
-            __slots__ = ("column", "regex_report", "llm_report")
+            __slots__ = ("column", "regex_report", "llm_report", "analyzer_report")
             class Regex(_message.Message):
                 __slots__ = ("category",)
                 CATEGORY_FIELD_NUMBER: _ClassVar[int]
@@ -1895,13 +1895,24 @@ class PiiDetectionReport(_message.Message):
                 category: str
                 confidence: float
                 def __init__(self, category: _Optional[str] = ..., confidence: _Optional[float] = ...) -> None: ...
+            class Analyzer(_message.Message):
+                __slots__ = ("category", "match_count", "sampled_count")
+                CATEGORY_FIELD_NUMBER: _ClassVar[int]
+                MATCH_COUNT_FIELD_NUMBER: _ClassVar[int]
+                SAMPLED_COUNT_FIELD_NUMBER: _ClassVar[int]
+                category: str
+                match_count: int
+                sampled_count: int
+                def __init__(self, category: _Optional[str] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ...) -> None: ...
             COLUMN_FIELD_NUMBER: _ClassVar[int]
             REGEX_REPORT_FIELD_NUMBER: _ClassVar[int]
             LLM_REPORT_FIELD_NUMBER: _ClassVar[int]
+            ANALYZER_REPORT_FIELD_NUMBER: _ClassVar[int]
             column: str
             regex_report: PiiDetectionReport.TableReport.ColumnReport.Regex
             llm_report: PiiDetectionReport.TableReport.ColumnReport.LLM
-            def __init__(self, column: _Optional[str] = ..., regex_report: _Optional[_Union[PiiDetectionReport.TableReport.ColumnReport.Regex, _Mapping]] = ..., llm_report: _Optional[_Union[PiiDetectionReport.TableReport.ColumnReport.LLM, _Mapping]] = ...) -> None: ...
+            analyzer_report: PiiDetectionReport.TableReport.ColumnReport.Analyzer
+            def __init__(self, column: _Optional[str] = ..., regex_report: _Optional[_Union[PiiDetectionReport.TableReport.ColumnReport.Regex, _Mapping]] = ..., llm_report: _Optional[_Union[PiiDetectionReport.TableReport.ColumnReport.LLM, _Mapping]] = ..., analyzer_report: _Optional[_Union[PiiDetectionReport.TableReport.ColumnReport.Analyzer, _Mapping]] = ...) -> None: ...
         SCHEMA_FIELD_NUMBER: _ClassVar[int]
         TABLE_FIELD_NUMBER: _ClassVar[int]
         COLUMNS_FIELD_NUMBER: _ClassVar[int]

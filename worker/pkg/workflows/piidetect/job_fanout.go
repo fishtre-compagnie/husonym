@@ -60,6 +60,9 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 	config := scan.details.PiiDetectConfig
 	outcome := &scanOutcome{}
 	started := map[string]bool{} // the ids of the children of this run
+	// analyzerAbsent is set once a table learned that the API has no analyzer: the
+	// tables started afterwards are told, and do not ask.
+	analyzerAbsent := false
 	consumers := workflow.NewWaitGroup(ctx)
 	for range scan.tablesAtOnce {
 		consumers.Add(1)
@@ -92,6 +95,7 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 						PreviousResultsKey: previousKeys[[2]string{table.Schema, table.Table}],
 						ParentExecutionId:  &runId,
 						ModelInput:         scan.details.ModelInput,
+						AnalyzerAbsent:     analyzerAbsent,
 					},
 				).Get(ctx, &scanned)
 				if err != nil {
@@ -103,18 +107,45 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 					})
 					continue
 				}
-				outcome.scanned = append(outcome.scanned, &report.TableEntry{
-					TableSchema:     table.Schema,
-					TableName:       table.Table,
-					ReportKey:       scanned.ResultKey,
-					ScanFingerprint: table.Fingerprint,
-					Incomplete:      scanned.Model == report.ModelFailed,
+				if scanned.Analyzer == report.AnalyzerNone {
+					analyzerAbsent = true
+				}
+				unanswered := unansweredBy(scanned)
+				outcome.scanned = append(outcome.scanned, scannedTable{
+					entry: &report.TableEntry{
+						TableSchema:     table.Schema,
+						TableName:       table.Table,
+						ReportKey:       scanned.ResultKey,
+						ScanFingerprint: table.Fingerprint,
+						Incomplete:      unanswered != "" || scanned.Analyzer == report.AnalyzerPartial,
+					},
+					unanswered: unanswered,
 				})
 			}
 		})
 	}
 	consumers.Wait(ctx)
 	return outcome
+}
+
+// unansweredBy says what is missing from the scan of a table, and fails the run: the model
+// when it could not be asked, the analyzer when it could not be asked. It is empty for a
+// table that was scanned, though perhaps not every column of it: an analyzer that refuses
+// a column may refuse it on every run, and does not fail the run for that. The report of
+// the table says which columns were not analyzed, and the index marks the table
+// incomplete, so that an incremental run scans it again.
+func unansweredBy(scanned *TablePiiDetectResponse) string {
+	model := scanned.Model == report.ModelFailed
+	if scanned.Analyzer == report.AnalyzerFailed {
+		if model {
+			return "the model and the analyzer did not answer"
+		}
+		return "the analyzer did not answer"
+	}
+	if model {
+		return "the model did not answer"
+	}
+	return ""
 }
 
 // uniqueChildId gives an id that no child of the run has yet: the id followed by "-2",

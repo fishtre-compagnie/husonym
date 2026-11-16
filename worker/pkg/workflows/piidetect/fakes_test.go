@@ -96,6 +96,37 @@ func (f fakeConnections) GetConnection(
 	return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{Connection: connection}), nil
 }
 
+// fakeContent is the connection data service of the API: it keeps the requests it was
+// sent and answers each with what answer returns, given the rank of the request, from 1.
+type fakeContent struct {
+	mu       sync.Mutex
+	requests []*mgmtv1alpha1.DetectPiiInConnectionDataRequest
+	answer   func(call int, request *mgmtv1alpha1.DetectPiiInConnectionDataRequest) (*mgmtv1alpha1.DetectPiiInConnectionDataResponse, error)
+}
+
+func (f *fakeContent) DetectPiiInConnectionData(
+	_ context.Context,
+	req *connect.Request[mgmtv1alpha1.DetectPiiInConnectionDataRequest],
+) (*connect.Response[mgmtv1alpha1.DetectPiiInConnectionDataResponse], error) {
+	f.mu.Lock()
+	f.requests = append(f.requests, req.Msg)
+	call := len(f.requests)
+	f.mu.Unlock()
+
+	response, err := f.answer(call, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(response), nil
+}
+
+// sent returns the requests the service was sent, in their order.
+func (f *fakeContent) sent() []*mgmtv1alpha1.DetectPiiInConnectionDataRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]*mgmtv1alpha1.DetectPiiInConnectionDataRequest{}, f.requests...)
+}
+
 var (
 	postgresConnection = &mgmtv1alpha1.Connection{
 		Id: "connection-1",

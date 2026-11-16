@@ -124,7 +124,7 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 	// What the heartbeats carry: the progress as of the last batch that was answered.
 	var mu sync.Mutex
 	learned := progress.clone()
-	stop := a.keepAlive(ctx, func() modelProgress {
+	stop := a.keepAlive(ctx, func() any {
 		mu.Lock()
 		defer mu.Unlock()
 		return learned
@@ -206,7 +206,7 @@ func (p modelProgress) clone() modelProgress {
 // progress of the moment. The heartbeat timeout of the activity then only ends an attempt
 // whose worker is gone: a request may last longer than that timeout, and so may the waits
 // between the tries of a request.
-func (a *Activities) keepAlive(ctx context.Context, progress func() modelProgress) (stop func()) {
+func (a *Activities) keepAlive(ctx context.Context, progress func() any) (stop func()) {
 	done := make(chan struct{})
 	stopped := make(chan struct{})
 	go func() {
