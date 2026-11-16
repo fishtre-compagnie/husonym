@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Pill, StatusDot, Tone } from '@/components/ds';
 import { AppTableFeatures } from '@/components/table/features';
 import { cn } from '@/libs/utils';
+import { useDateFnsLocale } from '@/i18n/date-fns';
 import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRun, JobRunStatus } from '@husonym/sdk';
@@ -220,6 +221,7 @@ function runTitle(r: JobRun, label: string): string {
 }
 
 function RunHistory({ row }: { row: JobRow }) {
+  const dateLocale = useDateFnsLocale();
   const runs = row.recentRuns;
   const empty = RECENT_RUNS - runs.length;
   const failed = runs.filter((r) => isRunFailed(r.status)).length;
@@ -253,7 +255,10 @@ function RunHistory({ row }: { row: JobRow }) {
       </span>
       <span className="text-xs text-muted-foreground">
         {row.lastRunAt
-          ? `${formatDistanceToNowStrict(row.lastRunAt, { addSuffix: true })}`
+          ? `${formatDistanceToNowStrict(row.lastRunAt, {
+              addSuffix: true,
+              locale: dateLocale,
+            })}`
           : 'Never run'}
       </span>
     </span>
