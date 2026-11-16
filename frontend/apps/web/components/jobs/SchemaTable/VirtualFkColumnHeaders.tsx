@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 
 interface DataTableColumnHeaderProps<
   TData extends RowData,
@@ -29,6 +30,7 @@ export function VirtualForeignKeysColumnHeader<TData extends RowData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const t = useTranslations('mapping.schemaTable.virtualForeignKeys');
   return (
     <div className={cn('flex items-center space-x-2', className)}>
       <DropdownMenu>
@@ -53,18 +55,18 @@ export function VirtualForeignKeysColumnHeader<TData extends RowData, TValue>({
             type="text"
             value={(column.getFilterValue() ?? '') as string}
             onChange={(e) => column.setFilterValue(e.target.value)}
-            placeholder={`Search...`}
+            placeholder={t('search')}
             className="w-36 border rounded"
           />
           {column.getCanSort() && (
             <>
               <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
                 <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                Asc
+                {t('asc')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
                 <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                Desc
+                {t('desc')}
               </DropdownMenuItem>
             </>
           )}

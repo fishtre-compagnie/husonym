@@ -5,6 +5,7 @@ import {
   convertJobMappingTransformerFormToJobMappingTransformer,
   JobMappingTransformerForm,
 } from '@/yup-validations/jobs';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { LuPanelRight } from 'react-icons/lu';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
@@ -54,14 +55,15 @@ const PILL_CLASS: Record<PillLook, string> = {
   empty: 'border-dashed border-border bg-transparent text-muted-foreground',
 };
 
-const PILL_NOTE: Partial<Record<PillLook, string>> = {
-  clear: 'in clear',
-  doubt: 'to confirm',
+const PILL_NOTE: Partial<Record<PillLook, 'inClear' | 'toConfirm'>> = {
+  clear: 'inClear',
+  doubt: 'toConfirm',
 };
 
 // Ce qui sortira de la colonne, lisible sans rien ouvrir.
 export default function MappingCell(props: Props): ReactElement {
   const { column, transformer, name, isSensitive, state, onOpen } = props;
+  const t = useTranslations('mapping.jobMappingTable.mappingCell');
 
   const configCase = transformer.config.case;
   const anonymizes = !!configCase && configCase !== 'passthroughConfig';
@@ -72,7 +74,8 @@ export default function MappingCell(props: Props): ReactElement {
       )
     : [];
   const look = pillLook(anonymizes, !!configCase, isSensitive, state);
-  const note = PILL_NOTE[look];
+  const noteKey = PILL_NOTE[look];
+  const note = noteKey ? t(noteKey) : undefined;
 
   return (
     <button
@@ -82,7 +85,7 @@ export default function MappingCell(props: Props): ReactElement {
         e.stopPropagation();
         onOpen();
       }}
-      aria-label={`Decide what leaves ${column}: ${name || 'no transformer'}${note ? `, ${note}` : ''}`}
+      aria-label={`${t('decideAria', { column, name: name || t('noTransformer') })}${note ? `, ${note}` : ''}`}
       className={cn(
         'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1 text-left text-[13px] font-medium transition-colors hover:border-primary',
         PILL_CLASS[look]
@@ -90,7 +93,7 @@ export default function MappingCell(props: Props): ReactElement {
     >
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">
-          {name || 'Choose a transformer'}
+          {name || t('chooseTransformer')}
           {note && <span className="font-normal opacity-80"> · {note}</span>}
         </span>
         {options.length > 0 && (
@@ -114,13 +117,14 @@ interface OpenProps {
 
 export function OpenDecisionButton(props: OpenProps): ReactElement {
   const { column, onOpen } = props;
+  const t = useTranslations('mapping.jobMappingTable.mappingCell');
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
       className="h-8 w-8 text-muted-foreground hover:text-foreground"
-      aria-label={`Open the decision panel for ${column}`}
+      aria-label={t('openDecision', { column })}
       onClick={onOpen}
     >
       <LuPanelRight className="h-4 w-4" />

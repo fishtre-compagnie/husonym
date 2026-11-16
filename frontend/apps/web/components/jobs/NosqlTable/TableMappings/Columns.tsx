@@ -1,11 +1,13 @@
 import { AppTableFeatures } from '@/components/table/features';
 import { ColumnDef } from '@tanstack/react-table';
+import type { useTranslations } from 'next-intl';
 import { StringSelect } from '../../SchemaTable/StringSelect';
 import { ColumnHeader } from './ColumnHeader';
 
 interface Props {
   destinationDetailsRecord: Record<string, DestinationDetails>;
   onUpdate(req: OnTableMappingUpdateRequest): void;
+  t: ReturnType<typeof useTranslations<'mapping.nosql.tableMappings'>>;
 }
 
 export interface OnTableMappingUpdateRequest {
@@ -30,13 +32,13 @@ export interface TableMappingRow {
 export function getTableMappingsColumns(
   props: Props
 ): ColumnDef<AppTableFeatures, TableMappingRow>[] {
-  const { destinationDetailsRecord, onUpdate } = props;
+  const { destinationDetailsRecord, onUpdate, t } = props;
 
   return [
     {
       accessorKey: 'destinationId',
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Destination" />
+        <ColumnHeader column={column} title={t('destination')} />
       ),
       cell: ({ getValue }) => {
         const destId = getValue<string>();
@@ -44,7 +46,7 @@ export function getTableMappingsColumns(
           destId
         ] ?? {
           destinationId: destId,
-          friendlyName: 'Unknown Name',
+          friendlyName: t('unknownName'),
           availableTableNames: [],
         };
         return <span>{details.friendlyName}</span>;
@@ -53,13 +55,13 @@ export function getTableMappingsColumns(
     {
       accessorKey: 'sourceTable',
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Source Table" />
+        <ColumnHeader column={column} title={t('sourceTable')} />
       ),
     },
     {
       accessorKey: 'destinationTable',
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Destination Table" />
+        <ColumnHeader column={column} title={t('destinationTable')} />
       ),
       cell: ({ row, getValue }) => {
         const destTableName = getValue<string>();
@@ -68,7 +70,7 @@ export function getTableMappingsColumns(
           destId
         ] ?? {
           destinationId: destId,
-          friendlyName: 'Unknown Name',
+          friendlyName: t('unknownName'),
           availableTableNames: [destTableName],
         };
 
@@ -84,7 +86,9 @@ export function getTableMappingsColumns(
                   tableName: newDestTableName,
                 })
               }
-              text="destination table"
+              placeholder={t('selectDestinationTable')}
+              searchPlaceholder={t('searchDestinationTable')}
+              emptyText={t('noDestinationTable')}
             />
           </div>
         );

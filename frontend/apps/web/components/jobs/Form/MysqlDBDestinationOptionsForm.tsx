@@ -4,6 +4,7 @@ import NumberedInput from '@/components/NumberedInput';
 import SwitchCard from '@/components/switches/SwitchCard';
 import { Input } from '@/components/ui/input';
 import { MysqlDbDestinationOptionsFormValues } from '@/yup-validations/jobs';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 import { FieldErrors } from 'react-hook-form';
 
@@ -18,6 +19,7 @@ export default function MysqlDBDestinationOptionsForm(
   props: Props
 ): ReactElement {
   const { value, setValue, errors, hideInitTableSchema } = props;
+  const t = useTranslations('mapping.form.destinationOptions');
   return (
     <div className="flex flex-col gap-2">
       <FormItemContainer>
@@ -29,8 +31,8 @@ export default function MysqlDBDestinationOptionsForm(
               truncateBeforeInsert: newVal,
             });
           }}
-          title="Truncate Before Insert"
-          description="Truncates table before inserting data"
+          title={t('truncateBeforeInsert')}
+          description={t('truncateBeforeInsertDescription')}
         />
         <FormErrorMessage message={errors?.truncateBeforeInsert?.message} />
       </FormItemContainer>
@@ -44,8 +46,8 @@ export default function MysqlDBDestinationOptionsForm(
                 initTableSchema: newVal ?? false,
               });
             }}
-            title="Init Table Schema"
-            description="Creates schemas, tables, and their constraints."
+            title={t('initTableSchema')}
+            description={t('initTableSchemaDescription')}
           />
           <FormErrorMessage message={errors?.initTableSchema?.message} />
         </FormItemContainer>
@@ -62,8 +64,8 @@ export default function MysqlDBDestinationOptionsForm(
               },
             });
           }}
-          title="On Conflict Do Nothing"
-          description="If there is a conflict when inserting data do not insert"
+          title={t('onConflictDoNothing')}
+          description={t('onConflictDoNothingDescription')}
         />
         <FormErrorMessage
           message={errors?.conflictStrategy?.onConflictDoNothing?.message}
@@ -81,8 +83,8 @@ export default function MysqlDBDestinationOptionsForm(
               },
             });
           }}
-          title="On Conflict Do Update"
-          description="If there is a conflict when inserting data update the record"
+          title={t('onConflictDoUpdate')}
+          description={t('onConflictDoUpdateDescription')}
         />
         <FormErrorMessage
           message={errors?.conflictStrategy?.onConflictDoUpdate?.message}
@@ -97,8 +99,8 @@ export default function MysqlDBDestinationOptionsForm(
               skipForeignKeyViolations: newVal,
             });
           }}
-          title="Skip Foreign Key Violations"
-          description="Insert all valid records, bypassing any that violate foreign key constraints."
+          title={t('skipForeignKeyViolations')}
+          description={t('skipForeignKeyViolationsDescription')}
         />
         <FormErrorMessage message={errors?.skipForeignKeyViolations?.message} />
       </FormItemContainer>
@@ -106,8 +108,8 @@ export default function MysqlDBDestinationOptionsForm(
       <FormItemBorder>
         <FormItemContainer>
           <FormHeader
-            title="Max in Flight"
-            description="The max number of batched records to have in flight at a given time. Increase to improve throughput."
+            title={t('maxInFlight')}
+            description={t('maxInFlightDescription')}
             isErrored={!!errors?.maxInFlight}
           />
           <div>
@@ -123,8 +125,8 @@ export default function MysqlDBDestinationOptionsForm(
       <FormItemBorder>
         <FormItemContainer>
           <FormHeader
-            title="Batch Count"
-            description="The max allowed per batch before flushing to the database. 0 to disable count-based batching."
+            title={t('batchCount')}
+            description={t('batchCountDatabaseDescription')}
             isErrored={!!errors?.batch?.count}
           />
           <FormInputContainer>
@@ -141,8 +143,8 @@ export default function MysqlDBDestinationOptionsForm(
       <FormItemBorder>
         <FormItemContainer>
           <FormHeader
-            title="Batch Period"
-            description="Time in which an incomplete batch should be flushed regardless of the count. Ex: 1s, 1m, 500ms. Empty to disable time-based batching (not recommended)."
+            title={t('batchPeriod')}
+            description={t('batchPeriodDescription')}
             isErrored={!!errors?.batch?.period}
           />
           <FormInputContainer>

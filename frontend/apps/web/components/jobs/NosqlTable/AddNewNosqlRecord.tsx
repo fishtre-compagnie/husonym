@@ -42,7 +42,8 @@ import {
   ValidateUserJavascriptCodeResponse,
 } from '@husonym/sdk';
 import { UseMutateAsyncFunction } from '@tanstack/react-query';
-import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
+import { ReactElement, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import * as Yup from 'yup';
 import { TransformerHandler } from '../SchemaTable/transformer-handler';
@@ -60,37 +61,41 @@ interface Props {
   ) => boolean;
 }
 
-const AddNewNosqlRecordFormValues = Yup.object({
-  collection: Yup.string().required('The Collection is required.'),
-  key: Yup.string()
-    .required('The Key is required.')
-    .test({
-      name: 'uniqueMapping',
-      message: 'This key already exists in the selected collection.',
-      test: function (value, context) {
-        const { collection } = this.parent;
+function getAddNewNosqlRecordFormValues(
+  t: ReturnType<typeof useTranslations<'mapping.nosql.addRecord'>>
+) {
+  return Yup.object({
+    collection: Yup.string().required(t('collectionRequired')),
+    key: Yup.string()
+      .required(t('keyRequired'))
+      .test({
+        name: 'uniqueMapping',
+        message: t('keyExistsInSelected'),
+        test: function (value, context) {
+          const { collection } = this.parent;
 
-        if (!collection || !value) {
-          return true;
-        }
+          if (!collection || !value) {
+            return true;
+          }
 
-        const lastDotIndex = collection.lastIndexOf('.');
-        const schema = collection.substring(0, lastDotIndex);
-        const table = collection.substring(lastDotIndex + 1);
+          const lastDotIndex = collection.lastIndexOf('.');
+          const schema = collection.substring(0, lastDotIndex);
+          const table = collection.substring(lastDotIndex + 1);
 
-        return (
-          !context?.options?.context?.isDuplicateKey(value, schema, table) ||
-          this.createError({
-            message: 'This key already exists in this collection.',
-          })
-        );
-      },
-    }),
-  transformer: JobMappingTransformerForm,
-});
+          return (
+            !context?.options?.context?.isDuplicateKey(value, schema, table) ||
+            this.createError({
+              message: t('keyExists'),
+            })
+          );
+        },
+      }),
+    transformer: JobMappingTransformerForm,
+  });
+}
 
 export type AddNewNosqlRecordFormValues = Yup.InferType<
-  typeof AddNewNosqlRecordFormValues
+  ReturnType<typeof getAddNewNosqlRecordFormValues>
 >;
 
 interface AddNewNosqlRecordFormContext {
@@ -106,6 +111,8 @@ interface AddNewNosqlRecordFormContext {
 
 export default function AddNewNosqlRecord(props: Props): ReactElement {
   const { collections, onSubmit, transformerHandler, isDuplicateKey } = props;
+  const t = useTranslations('mapping.nosql.addRecord');
+  const formSchema = useMemo(() => getAddNewNosqlRecordFormValues(t), [t]);
 
   const { account } = useAccount();
   const { mutateAsync: validateUserJsCodeAsync } = useMutation(
@@ -115,7 +122,7 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
     AddNewNosqlRecordFormValues,
     AddNewNosqlRecordFormContext
   >({
-    resolver: yupResolver(AddNewNosqlRecordFormValues),
+    resolver: yupResolver(formSchema),
     mode: 'onChange',
     defaultValues: {
       collection: '',
@@ -146,10 +153,8 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
           name="collection"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Collection</FormLabel>
-              <FormDescription>
-                The collection that you want to map.
-              </FormDescription>
+              <FormLabel>{t('collection')}</FormLabel>
+              <FormDescription>{t('collectionDescription')}</FormDescription>
               <FormControl>
                 <Select
                   onValueChange={(value) => {
@@ -163,8 +168,7 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
                       if (isDuplicateKey(currentKey, schema, table)) {
                         form.setError('key', {
                           type: 'manual',
-                          message:
-                            'This key already exists in the selected collection.',
+                          message: t('keyExistsInSelected'),
                         });
                       }
                     }
@@ -176,7 +180,7 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
                       field.value ? undefined : 'text-muted-foreground'
                     )}
                   >
-                    <SelectValue placeholder="Select a collection" />
+                    <SelectValue placeholder={t('collectionPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {collections.map((collection) => (
@@ -196,10 +200,8 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
           name="key"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Document Key</FormLabel>
-              <FormDescription>
-                Use dot notation to select a key for the mapping.
-              </FormDescription>
+              <FormLabel>{t('documentKey')}</FormLabel>
+              <FormDescription>{t('documentKeyDescription')}</FormDescription>
               <FormControl>
                 <Input
                   {...field}
@@ -219,8 +221,8 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
             const transformer = getTransformerFromField(transformerHandler, fv);
             return (
               <FormItem>
-                <FormLabel>Transformer</FormLabel>
-                <FormDescription>Select a transformer to map</FormDescription>
+                <FormLabel>{t('transformer')}</FormLabel>
+                <FormDescription>{t('transformerDescription')}</FormDescription>
                 <FormControl>
                   <div className="flex flex-row gap-2">
                     <div>
@@ -265,7 +267,7 @@ export default function AddNewNosqlRecord(props: Props): ReactElement {
               })(e)
             }
           >
-            Add
+            {t('add')}
           </Button>
         </div>
       </Form>

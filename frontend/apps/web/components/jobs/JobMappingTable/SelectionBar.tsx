@@ -14,6 +14,7 @@ import {
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
 import { JobMappingTransformerSchema } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useState } from 'react';
 
 interface Props {
@@ -37,6 +38,7 @@ export default function SelectionBar(props: Props): ReactElement | null {
     onClear,
   } = props;
 
+  const t = useTranslations('mapping.jobMappingTable.selectionBar');
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<JobMappingTransformerForm>(NONE);
   const [optionsValid, setOptionsValid] = useState(true);
@@ -60,27 +62,27 @@ export default function SelectionBar(props: Props): ReactElement | null {
       <div className="sticky bottom-4 z-20 flex justify-center pointer-events-none">
         <div
           role="region"
-          aria-label="Selected columns"
+          aria-label={t('region')}
           className="pointer-events-auto flex flex-row items-center gap-3 rounded-2xl border border-border bg-card py-2 pl-4 pr-2 shadow-pop"
         >
           <span className="text-sm font-medium">
-            {count} column{count === 1 ? '' : 's'} selected
+            {t('selected', { count })}
           </span>
           <span className="h-5 w-px bg-border" aria-hidden="true" />
           <Button type="button" size="sm" onClick={() => setOpen(true)}>
-            Set transformer…
+            {t('setTransformer')}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-            Clear
+            {t('clear')}
           </Button>
         </div>
       </div>
 
       {open && (
         <ColumnDecisionPanel
-          title={`${count} column${count === 1 ? '' : 's'}`}
-          location="Selected columns"
-          meta="The same transformer and options are written on every column selected."
+          title={t('panelTitle', { count })}
+          location={t('region')}
+          meta={t('meta')}
           onClose={() => setOpen(false)}
           footer={
             <>
@@ -89,23 +91,19 @@ export default function SelectionBar(props: Props): ReactElement | null {
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 type="button"
                 disabled={!draft.config.case || !applicable || !optionsValid}
-                title={
-                  applicable
-                    ? undefined
-                    : 'The selected columns share no such transformer'
-                }
+                title={applicable ? undefined : t('noSharedTransformer')}
                 onClick={() => {
                   onApply(draft);
                   setDraft(NONE());
                   setOpen(false);
                 }}
               >
-                Apply to {count} column{count === 1 ? '' : 's'}
+                {t('apply', { count })}
               </Button>
             </>
           }
@@ -117,13 +115,10 @@ export default function SelectionBar(props: Props): ReactElement | null {
             getTransformers={getAllowedTransformers}
             selected={selected}
             onValidChange={onValidChange}
-            placeholder="Choose a transformer for them all"
+            placeholder={t('placeholder')}
           />
           {!applicable && (
-            <p className="text-sm text-danger-fg">
-              The columns selected have no transformer in common with this one.
-              Narrow the selection, or choose another transformer.
-            </p>
+            <p className="text-sm text-danger-fg">{t('noCommon')}</p>
           )}
         </ColumnDecisionPanel>
       )}

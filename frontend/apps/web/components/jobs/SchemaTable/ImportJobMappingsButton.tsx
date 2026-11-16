@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { fromJson } from '@bufbuild/protobuf';
 import { JobMapping, JobMappingSchema } from '@husonym/sdk';
 import { filesize } from 'filesize';
+import { useFormatter, useTranslations } from 'next-intl';
 import {
   ReactElement,
   SetStateAction,
@@ -37,16 +38,17 @@ export default function ImportJobMappingsButton(props: Props): ReactElement {
   >({});
   const [truncateAll, setTruncateAll] = useState(false);
   const [overrideOverlapping, setOverrideOverlapping] = useState(false);
+  const t = useTranslations('mapping.schemaTable.importMappings');
   return (
     <div>
       <ConfirmationDialog
         trigger={
           <Button type="button" variant="outline">
-            <ButtonText text="Import" />
+            <ButtonText text={t('import')} />
           </Button>
         }
-        headerText="Import Job Mappings"
-        description="Multiple files may be uploaded."
+        headerText={t('header')}
+        description={t('description')}
         body={
           <Body
             setJobMappings={setJmExtracted}
@@ -57,7 +59,7 @@ export default function ImportJobMappingsButton(props: Props): ReactElement {
           />
         }
         containerClassName="max-w-xl"
-        buttonText="Import"
+        buttonText={t('import')}
         onConfirm={() => {
           onImport(
             squashJobMappings(getSortedJobMappingsFromExtracted(jmExtracted)),
@@ -140,6 +142,12 @@ const workerCode = `
 
 const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
 
+// The errors the worker posts, in English, and their message keys.
+const WORKER_ERRORS: Record<string, 'invalidJson' | 'readFailed'> = {
+  'Invalid JSON format': 'invalidJson',
+  'Error reading file': 'readFailed',
+};
+
 interface BodyProps {
   setJobMappings(
     method: SetStateAction<Record<string, ExtractedJobMappings>>
@@ -161,6 +169,8 @@ function Body(props: BodyProps): ReactElement {
   } = props;
 
   const [worker, setWorker] = useState<Worker | null>(null);
+  const t = useTranslations('mapping.schemaTable.importMappings');
+  const format = useFormatter();
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -182,7 +192,7 @@ function Body(props: BodyProps): ReactElement {
         if (!worker) {
           resolve({
             success: false,
-            error: 'Worker not initialized',
+            error: t('errors.workerNotReady'),
           });
           return;
         }
@@ -195,9 +205,10 @@ function Body(props: BodyProps): ReactElement {
             worker.removeEventListener('message', handler);
 
             if (!success) {
+              const known = WORKER_ERRORS[error];
               resolve({
                 success: false,
-                error: error,
+                error: known ? t(`errors.${known}`) : error,
               });
               return;
             }
@@ -212,13 +223,16 @@ function Body(props: BodyProps): ReactElement {
               } else {
                 resolve({
                   success: false,
-                  error: 'Invalid data format',
+                  error: t('errors.invalidData'),
                 });
               }
             } catch (err) {
               resolve({
                 success: false,
-                error: err instanceof Error ? err.message : 'Processing failed',
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : t('errors.processingFailed'),
               });
             }
           }
@@ -228,7 +242,7 @@ function Body(props: BodyProps): ReactElement {
         worker.postMessage({ file, id: processId });
       });
     },
-    [worker]
+    [worker, t]
   );
   const handleSuccess = useCallback(
     (file: File, mappings: JobMapping[]) => {
@@ -255,11 +269,14 @@ function Body(props: BodyProps): ReactElement {
     [setJobMappings]
   );
 
-  const handleError = useCallback((fileName: string, error: string) => {
-    toast.error(`Unable to process input as job mappings: ${error}`, {
-      description: fileName,
-    });
-  }, []);
+  const handleError = useCallback(
+    (fileName: string, error: string) => {
+      toast.error(t('failed', { error }), {
+        description: fileName,
+      });
+    },
+    [t]
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -272,8 +289,8 @@ function Body(props: BodyProps): ReactElement {
               setOverrideOverlapping(false);
             }
           }}
-          title="Truncate existing mappings"
-          description="Start fresh and only use what was imported."
+          title={t('truncateTitle')}
+          description={t('truncateDescription')}
         />
       </div>
       <div>
@@ -285,8 +302,8 @@ function Body(props: BodyProps): ReactElement {
               setTruncateAll(false);
             }
           }}
-          title="Override existing mappings"
-          description="If yes, replaces existing mappings. If no, import new ones only."
+          title={t('overrideTitle')}
+          description={t('overrideDescription')}
         />
       </div>
       <FileUpload<JobMapping[]>
@@ -301,16 +318,11 @@ function Body(props: BodyProps): ReactElement {
         onRemove={handleRemove}
         onError={handleError}
         renderFileExtra={(_, data) => (
-          <span>{getFormattedCount(data?.length ?? 0)}</span>
+          <span>{format.number(data?.length ?? 0)}</span>
         )}
       />
     </div>
   );
-}
-
-const US_NUMBER_FORMAT = new Intl.NumberFormat('en-US');
-function getFormattedCount(count: number): string {
-  return US_NUMBER_FORMAT.format(count);
 }
 
 function validateFileType(file: File): boolean {

@@ -11,8 +11,14 @@ import {
   groupReport,
   hasPreflight,
   parseKeptReport,
+  PreflightTranslator,
   summarize,
 } from './report';
+
+// A translator that writes the key of each message and its values, so that the tests tell
+// which message is chosen whatever the language.
+const t = ((key: string, values?: Record<string, unknown>) =>
+  values ? `${key} ${JSON.stringify(values)}` : key) as PreflightTranslator;
 
 const report = create(PreflightReportSchema, {
   engine: JobEngine.ATHANOR,
@@ -57,31 +63,35 @@ describe('countReport', () => {
 
 describe('summarize', () => {
   it('says the most serious first', () => {
-    expect(summarize({ blocking: 1, warnings: 2, notes: 0 })).toMatch(
-      /^1 blocking finding: the run will stop/
+    expect(summarize({ blocking: 1, warnings: 2, notes: 0 }, t)).toBe(
+      'summary.blocking {"count":1}'
     );
-    expect(summarize({ blocking: 0, warnings: 2, notes: 0 })).toMatch(
-      /^2 warnings/
+    expect(summarize({ blocking: 0, warnings: 2, notes: 0 }, t)).toBe(
+      'summary.warnings {"count":2}'
     );
-    expect(summarize({ blocking: 0, warnings: 0, notes: 3 })).toMatch(
-      /^Nothing stops the run\. 3 notes/
+    expect(summarize({ blocking: 0, warnings: 0, notes: 3 }, t)).toBe(
+      'summary.notes {"count":3}'
     );
-    expect(summarize({ blocking: 0, warnings: 0, notes: 0 })).toMatch(
-      /^Nothing to report/
+    expect(summarize({ blocking: 0, warnings: 0, notes: 0 }, t)).toBe(
+      'summary.nothing'
     );
   });
 });
 
 describe('groupReport', () => {
   it('puts the plan first, then the connections in the order of the job', () => {
-    const groups = groupReport(report, [
-      { id: 'src', name: 'prod', role: 'Source' },
-      { id: 'dest', name: 'stage', role: 'Destination' },
-    ]);
+    const groups = groupReport(
+      report,
+      [
+        { id: 'src', name: 'prod', role: 'Source' },
+        { id: 'dest', name: 'stage', role: 'Destination' },
+      ],
+      t
+    );
     expect(groups.map((g) => g.title)).toEqual([
-      'Plan of the run',
-      'Destination · stage',
-      'Connection',
+      'groups.plan',
+      'groups.connectionOfJob {"role":"destination","name":"stage"}',
+      'groups.connection',
     ]);
     expect(groups[1].findings.map((f) => f.level)).toEqual([
       'blocking',

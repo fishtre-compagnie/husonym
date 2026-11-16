@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CheckIcon, Pencil1Icon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { NosqlJobMappingRow } from '../JobMappingTable/Columns';
 
@@ -19,6 +20,7 @@ interface Props {
 
 export default function EditCollection(props: Props): ReactElement {
   const { text, collections, onEdit } = props;
+  const t = useTranslations('mapping.nosql');
 
   const [isEditingMapping, setIsEditingMapping] = useState(false);
   const [isSelectedCollection, setSelectedCollection] = useState<string>(text);
@@ -37,7 +39,7 @@ export default function EditCollection(props: Props): ReactElement {
         >
           <SelectTrigger>
             <SelectValue
-              placeholder="Select a collection"
+              placeholder={t('addRecord.collectionPlaceholder')}
               className="placeholder:text-muted-foreground/70"
             />
           </SelectTrigger>

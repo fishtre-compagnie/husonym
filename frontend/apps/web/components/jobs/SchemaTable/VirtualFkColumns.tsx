@@ -4,24 +4,31 @@ import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
+import type { useTranslations } from 'next-intl';
 import { VirtualForeignKeysColumnHeader } from './VirtualFkColumnHeaders';
 import { Row as RowData } from './VirtualFkPageTable';
 
 interface Props {
   removeVirtualForeignKey?: (index: number) => void;
+  t: ReturnType<
+    typeof useTranslations<'mapping.schemaTable.virtualForeignKeys'>
+  >;
 }
 
 export function getVirtualForeignKeysColumns(
   props: Props
 ): ColumnDef<AppTableFeatures, RowData>[] {
-  const { removeVirtualForeignKey } = props;
+  const { removeVirtualForeignKey, t } = props;
   return [
     {
       accessorFn: (row) => `${row.foreignKey.schema}.${row.foreignKey.table}`,
       id: 'sourceTable',
       footer: (props) => props.column.id,
       header: ({ column }) => (
-        <VirtualForeignKeysColumnHeader column={column} title="Source Table" />
+        <VirtualForeignKeysColumnHeader
+          column={column}
+          title={t('sourceTable')}
+        />
       ),
       cell: ({ getValue }) => {
         return (
@@ -39,7 +46,7 @@ export function getVirtualForeignKeysColumns(
       header: ({ column }) => (
         <VirtualForeignKeysColumnHeader
           column={column}
-          title="Source Columns"
+          title={t('sourceColumns')}
         />
       ),
       cell: ({ getValue }) => {
@@ -57,7 +64,10 @@ export function getVirtualForeignKeysColumns(
       id: 'targetTable',
       footer: (props) => props.column.id,
       header: ({ column }) => (
-        <VirtualForeignKeysColumnHeader column={column} title="Target Table" />
+        <VirtualForeignKeysColumnHeader
+          column={column}
+          title={t('targetTable')}
+        />
       ),
       cell: ({ getValue }) => {
         return (
@@ -75,7 +85,7 @@ export function getVirtualForeignKeysColumns(
       header: ({ column }) => (
         <VirtualForeignKeysColumnHeader
           column={column}
-          title="Source Columns"
+          title={t('sourceColumns')}
         />
       ),
       cell: ({ getValue }) => {
@@ -91,7 +101,7 @@ export function getVirtualForeignKeysColumns(
     {
       id: 'actions',
       header: ({ column }) => (
-        <VirtualForeignKeysColumnHeader column={column} title="Actions" />
+        <VirtualForeignKeysColumnHeader column={column} title={t('actions')} />
       ),
       cell: ({ row }) => {
         return (

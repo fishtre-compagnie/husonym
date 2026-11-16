@@ -2,6 +2,7 @@
 import FindingList from '@/components/findings/FindingList';
 import { PreflightReport } from '@husonym/sdk';
 import { CheckCircledIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { groupReport, JobConnection } from './report';
 
@@ -16,12 +17,13 @@ interface Props {
 // PreflightReportView shows a pre-flight report: what the plan of the run tells, then what
 // each connection of the job tells.
 export default function PreflightReportView(props: Props): ReactElement {
-  const groups = groupReport(props.report, props.connections);
+  const t = useTranslations('mapping.preflight');
+  const groups = groupReport(props.report, props.connections, t);
   if (groups.length === 0) {
     return (
       <div className="flex flex-row items-center gap-2 text-sm text-ok">
         <CheckCircledIcon className="h-4 w-4 shrink-0" />
-        <span>Nothing to report.</span>
+        <span>{t('nothingToReport')}</span>
       </div>
     );
   }

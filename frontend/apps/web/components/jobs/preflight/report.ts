@@ -7,6 +7,12 @@ import {
   PreflightReport,
   PreflightReportSchema,
 } from '@husonym/sdk';
+import type { useTranslations } from 'next-intl';
+
+// The messages of the pre-flight check, which the labels of a report are written with.
+export type PreflightTranslator = ReturnType<
+  typeof useTranslations<'mapping.preflight'>
+>;
 
 // The key the run context of a run keeps its pre-flight report under.
 export const PREFLIGHT_REPORT_EXTERNAL_ID = 'preflight-report';
@@ -69,7 +75,8 @@ export function countReport(report: PreflightReport): PreflightCounts {
 // tells, in the order of the job: its source, then its destinations.
 export function groupReport(
   report: PreflightReport,
-  connections: JobConnection[]
+  connections: JobConnection[],
+  t: PreflightTranslator
 ): PreflightGroup[] {
   const plan: FindingItem[] = [];
   const byConnection = new Map<string, FindingItem[]>();
@@ -94,14 +101,17 @@ export function groupReport(
 
   const groups: PreflightGroup[] = [];
   if (plan.length > 0) {
-    groups.push({ key: 'plan', title: 'Plan of the run', findings: plan });
+    groups.push({ key: 'plan', title: t('groups.plan'), findings: plan });
   }
   for (const connection of connections) {
     const items = byConnection.get(connection.id);
     if (items) {
       groups.push({
         key: connection.id,
-        title: `${connection.role} · ${connection.name}`,
+        title: t('groups.connectionOfJob', {
+          role: connection.role === 'Source' ? 'source' : 'destination',
+          name: connection.name,
+        }),
         findings: items,
       });
       byConnection.delete(connection.id);
@@ -109,33 +119,36 @@ export function groupReport(
   }
   // A connection the job no longer names, if the report is older than the job.
   for (const [id, items] of byConnection) {
-    groups.push({ key: id, title: 'Connection', findings: items });
+    groups.push({ key: id, title: t('groups.connection'), findings: items });
   }
   return groups;
 }
 
 // summarize says in a sentence what a report means for a run.
-export function summarize(counts: PreflightCounts): string {
+export function summarize(
+  counts: PreflightCounts,
+  t: PreflightTranslator
+): string {
   if (counts.blocking > 0) {
-    return `${plural(counts.blocking, 'blocking finding')}: the run will stop at its start.`;
+    return t('summary.blocking', { count: counts.blocking });
   }
   if (counts.warnings > 0) {
-    return `${plural(counts.warnings, 'warning')}: the run may stop, or copy wrong, depending on the rows.`;
+    return t('summary.warnings', { count: counts.warnings });
   }
   if (counts.notes > 0) {
-    return `Nothing stops the run. ${plural(counts.notes, 'note')} on what it does.`;
+    return t('summary.notes', { count: counts.notes });
   }
-  return 'Nothing to report: the run meets nothing the plan can tell.';
+  return t('summary.nothing');
 }
 
-export function engineLabel(engine: JobEngine): string {
+export function engineLabel(engine: JobEngine, t: PreflightTranslator): string {
   switch (engine) {
     case JobEngine.ATHANOR:
       return 'Athanor';
     case JobEngine.BENTHOS:
       return 'Benthos';
     default:
-      return 'default engine';
+      return t('defaultEngine');
   }
 }
 
@@ -153,8 +166,4 @@ export function parseKeptReport(
   } catch {
     return undefined;
   }
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count > 1 ? 's' : ''}`;
 }

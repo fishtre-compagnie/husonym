@@ -13,6 +13,7 @@ import {
 } from '@/yup-validations/jobs';
 import { TransformerDataType } from '@husonym/sdk';
 import { ExternalLinkIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import NextLink from 'next/link';
 import { ReactElement } from 'react';
 import TransformerSelect from '../SchemaTable/TransformerSelect';
@@ -25,17 +26,15 @@ interface Props {
 }
 export default function DynamoDBSourceOptionsForm(props: Props): ReactElement {
   const { value, setValue, transformerHandler } = props;
+  const t = useTranslations('mapping.form.dynamodbSource');
   return (
     <div className="flex flex-col gap-6 rounded-lg border p-4">
       <div className="flex flex-col gap-2">
         <div>
           <h2 className="text-md font-semibold tracking-tight">
-            Unmapped Key Transformer Defaults
+            {t('unmappedTitle')}
           </h2>
-          <p className="text-sm tracking-tight">
-            Set default transformers for any unmapped keys to automatically
-            anonymize generic fields of data by data type.
-          </p>
+          <p className="text-sm tracking-tight">{t('unmappedDescription')}</p>
         </div>
         <UnmappedTransformConfigForm
           value={value.unmappedTransformConfig}
@@ -48,22 +47,20 @@ export default function DynamoDBSourceOptionsForm(props: Props): ReactElement {
       <div className="flex flex-col gap-2">
         <div>
           <h2 className="text-md font-semibold tracking-tight">
-            Read Consistency
+            {t('readConsistencyTitle')}
           </h2>
           <div className="inline-flex gap-1 flex-row">
             <p className="text-sm tracking-tight">
-              Configures the read consistency, with the default being eventually
-              consistent reads. <br />
-              Strongly consistent ensures the most up to date data, reflecting
-              updates from all prior successful write operations.
+              {t('readConsistencyDefault')} <br />
+              {t('readConsistencyStrong')}
               <br />
-              Read more on the{' '}
+              {t('readMore')}{' '}
               <NextLink
                 className="hover:underline inline-flex gap-1 flex-row items-center"
                 href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html"
                 target="_blank"
               >
-                AWS Docs
+                {t('awsDocs')}
                 <ExternalLinkIcon className="w-4 h-4 text-muted-foreground" />
               </NextLink>
             </p>
@@ -99,13 +96,14 @@ function UnmappedTransformConfigForm(
   );
   const numTransformer = getTransformerFromField(transformerHandler, value.n);
   const strTransformer = getTransformerFromField(transformerHandler, value.s);
+  const t = useTranslations('mapping.form.dynamodbSource');
   return (
     <div className="flex flex-row gap-2 flex-wrap justify-between">
       <div className="flex flex-col gap-2">
         <div>
-          <FormLabel>Byte</FormLabel>
+          <FormLabel>{t('byte')}</FormLabel>
           <FormDescription className="text-ellipsis">
-            Set a default for unmapped Byte fields
+            {t('byteDescription')}
           </FormDescription>
         </div>
         <div className="flex flex-row gap-2">
@@ -131,10 +129,8 @@ function UnmappedTransformConfigForm(
       </div>
       <div className="flex flex-col gap-2">
         <div>
-          <FormLabel>Boolean</FormLabel>
-          <FormDescription>
-            Set a default for unmapped Boolean fields
-          </FormDescription>
+          <FormLabel>{t('boolean')}</FormLabel>
+          <FormDescription>{t('booleanDescription')}</FormDescription>
         </div>
         <div className="flex flex-row gap-2">
           <TransformerSelect
@@ -159,10 +155,8 @@ function UnmappedTransformConfigForm(
       </div>
       <div className="flex flex-col gap-2">
         <div>
-          <FormLabel>Number</FormLabel>
-          <FormDescription>
-            Set a default for unmapped Number fields
-          </FormDescription>
+          <FormLabel>{t('number')}</FormLabel>
+          <FormDescription>{t('numberDescription')}</FormDescription>
         </div>
         <div className="flex flex-row gap-2">
           <TransformerSelect
@@ -187,10 +181,8 @@ function UnmappedTransformConfigForm(
       </div>
       <div className="flex flex-col gap-2">
         <div>
-          <FormLabel>String</FormLabel>
-          <FormDescription>
-            Set a default for unmapped String fields
-          </FormDescription>
+          <FormLabel>{t('string')}</FormLabel>
+          <FormDescription>{t('stringDescription')}</FormDescription>
         </div>
         <div className="flex flex-row gap-2">
           <TransformerSelect
@@ -224,6 +216,7 @@ interface ConsistentReadFormProps {
 
 function ConsistentReadForm(props: ConsistentReadFormProps): ReactElement {
   const { value, setValue } = props;
+  const t = useTranslations('mapping.form.dynamodbSource');
 
   return (
     <ToggleGroup
@@ -238,10 +231,10 @@ function ConsistentReadForm(props: ConsistentReadFormProps): ReactElement {
       value={value ? 'strong' : 'eventual'}
     >
       <ToggleGroupItem className="border" value="eventual">
-        Eventual
+        {t('eventual')}
       </ToggleGroupItem>
       <ToggleGroupItem className="border" value="strong">
-        Strong
+        {t('strong')}
       </ToggleGroupItem>
     </ToggleGroup>
   );

@@ -2,6 +2,7 @@
 import { getSqlSourceConnectionId } from '@/components/connections/checks/targets';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionService, Job } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { JobConnection } from './report';
 
 // useJobConnections names the connections of a job, each with its role: what the findings
@@ -10,6 +11,7 @@ export function useJobConnections(
   job: Job | undefined,
   accountId: string | undefined
 ): JobConnection[] {
+  const t = useTranslations('mapping.preflight');
   const { data } = useQuery(
     ConnectionService.method.getConnections,
     // Names only: what the connections store is not needed here.
@@ -24,14 +26,14 @@ export function useJobConnections(
   if (sourceId) {
     connections.push({
       id: sourceId,
-      name: names.get(sourceId) ?? 'connection',
+      name: names.get(sourceId) ?? t('unnamedConnection'),
       role: 'Source',
     });
   }
   for (const destination of job?.destinations ?? []) {
     connections.push({
       id: destination.connectionId,
-      name: names.get(destination.connectionId) ?? 'connection',
+      name: names.get(destination.connectionId) ?? t('unnamedConnection'),
       role: 'Destination',
     });
   }

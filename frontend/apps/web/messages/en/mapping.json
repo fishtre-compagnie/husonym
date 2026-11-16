@@ -1,3 +1,590 @@
 {
-  "mapping": {}
+  "mapping": {
+    "columnDecision": {
+      "panel": {
+        "previous": "Previous column",
+        "next": "Next column",
+        "position": "{position} of {total}"
+      },
+      "fields": {
+        "transformer": "Transformer",
+        "beforeAfter": "Before & after",
+        "placeholder": "Choose a transformer"
+      }
+    },
+    "dualListBox": {
+      "searchPlaceholder": "Search ...",
+      "source": "Source",
+      "destination": "Destination",
+      "noTables": "Unable to load schema or found no tables",
+      "allTablesAdded": "All tables have been added!",
+      "addTables": "Add tables to get started!",
+      "addTable": "Add a table to get started!"
+    },
+    "form": {
+      "destinationOptions": {
+        "truncateBeforeInsert": "Truncate Before Insert",
+        "truncateBeforeInsertDescription": "Truncates table before inserting data",
+        "truncateCascade": "Truncate Cascade",
+        "truncateCascadeDescription": "TRUNCATE CASCADE to all tables",
+        "initTableSchema": "Init Table Schema",
+        "initTableSchemaDescription": "Creates schemas, tables, and their constraints.",
+        "onConflictDoNothing": "On Conflict Do Nothing",
+        "onConflictDoNothingDescription": "If there is a conflict when inserting data do not insert",
+        "onConflictDoUpdate": "On Conflict Do Update",
+        "onConflictDoUpdateDescription": "If there is a conflict when inserting data update the record",
+        "skipForeignKeyViolations": "Skip Foreign Key Violations",
+        "skipForeignKeyViolationsDescription": "Insert all valid records, bypassing any that violate foreign key constraints.",
+        "maxInFlight": "Max in Flight",
+        "maxInFlightDescription": "The max number of batched records to have in flight at a given time. Increase to improve throughput.",
+        "batchCount": "Batch Count",
+        "batchCountDatabaseDescription": "The max allowed per batch before flushing to the database. 0 to disable count-based batching.",
+        "batchCountS3Description": "The max allowed per batch before flushing to S3. 0 to disable count-based batching.",
+        "batchPeriod": "Batch Period",
+        "batchPeriodDescription": "Time in which an incomplete batch should be flushed regardless of the count. Ex: 1s, 1m, 500ms. Empty to disable time-based batching (not recommended).",
+        "storageClass": "Storage Class",
+        "storageClassDescription": "The storage class that will be used when records are written to in S3",
+        "uploadTimeout": "Upload Timeout",
+        "uploadTimeoutDescription": "The maximum period to wait on an upload before abandoning and re-attempting. Ex: 5s, 1m",
+        "s3Title": "S3 Configuration",
+        "s3Description": "Change how Husonym handles sending records to the bucket.",
+        "noConnectionComponent": "No connection component found for: ({name})",
+        "unknownName": "unknown name"
+      },
+      "dynamodbSource": {
+        "unmappedTitle": "Unmapped Key Transformer Defaults",
+        "unmappedDescription": "Set default transformers for any unmapped keys to automatically anonymize generic fields of data by data type.",
+        "readConsistencyTitle": "Read Consistency",
+        "readConsistencyDefault": "Configures the read consistency, with the default being eventually consistent reads.",
+        "readConsistencyStrong": "Strongly consistent ensures the most up to date data, reflecting updates from all prior successful write operations.",
+        "readMore": "Read more on the",
+        "awsDocs": "AWS Docs",
+        "byte": "Byte",
+        "byteDescription": "Set a default for unmapped Byte fields",
+        "boolean": "Boolean",
+        "booleanDescription": "Set a default for unmapped Boolean fields",
+        "number": "Number",
+        "numberDescription": "Set a default for unmapped Number fields",
+        "string": "String",
+        "stringDescription": "Set a default for unmapped String fields",
+        "eventual": "Eventual",
+        "strong": "Strong"
+      },
+      "consistencyScope": {
+        "run": "Run (default)",
+        "job": "Job — same outputs on every run of this job",
+        "account": "Account — same outputs across all jobs (pseudonymization)"
+      },
+      "schemaChange": {
+        "title": "When the source schema changes",
+        "description": "A run compares the columns of the source with the mapping before it copies anything.",
+        "newColumn": "A new column appears",
+        "removedColumn": "A mapped column disappears",
+        "learnMore": "Learn more",
+        "newColumnChoices": {
+          "halt": {
+            "label": "Halt",
+            "effect": "The run stops and names the column, until someone maps it."
+          },
+          "automap": {
+            "label": "Auto-map & review",
+            "effect": "The column is mapped as the PII detection suggests, or copied as it is when nothing fits. The change waits in Review until someone accepts it."
+          },
+          "passthrough": {
+            "label": "Passthrough",
+            "effect": "The column is copied as it is, in clear, until someone maps it: personal data may reach the destination."
+          },
+          "continue": {
+            "label": "Ignore",
+            "effect": "The column is left out of the copy. Writing fails if the destination column has no default."
+          }
+        },
+        "removedColumnChoices": {
+          "halt": {
+            "label": "Halt",
+            "effect": "The run stops and names the column missing from the source."
+          },
+          "continue": {
+            "label": "Continue",
+            "effect": "The run goes on without the column. Its mapping stays until it is removed in Mapping."
+          }
+        }
+      },
+      "subsetOptions": {
+        "byForeignKeys": "Subset using foreign key constraints",
+        "byForeignKeysDescription": "Subsets tables based on foreign key relationships"
+      }
+    },
+    "jobMappingTable": {
+      "table": {
+        "title": "Transformer mapping",
+        "description": "Map transformers to every column below.",
+        "shown": "{shown} of {total} columns shown"
+      },
+      "columns": {
+        "schema": "Schema",
+        "table": "Table",
+        "column": "Column",
+        "dataType": "Data Type",
+        "nullable": "Nullable",
+        "yes": "Yes",
+        "no": "No",
+        "constraints": "Constraints",
+        "transformer": "Transformer",
+        "decide": "Decide",
+        "personalData": "Personal data",
+        "collection": "Collection",
+        "documentKey": "Document Key",
+        "actions": "Actions"
+      },
+      "constraints": {
+        "primaryKey": "Primary Key",
+        "referencedKey": "Primary Key: {column}",
+        "uniqueKey": "Unique Key"
+      },
+      "rgpdHeader": {
+        "sortedDesc": "Sorted by {title}, the columns to decide first. Clear the sort",
+        "sortedAsc": "Sorted by {title}, ascending. Sort the columns to decide first",
+        "sortBy": "Sort by {title}"
+      },
+      "rgpdCell": {
+        "noPersonalData": "No personal data detected",
+        "notAnalyzedTitle": "The content of this column could not be analyzed: whether it holds personal data is not known. Scan again.",
+        "notAnalyzed": "Not analyzed",
+        "ambiguous": "GDPR data, but ambiguous.",
+        "notAnonymizedTooltip": "GDPR data, but not anonymized.",
+        "noCompatibleTransformer": "GDPR data, but no compatible transformer.",
+        "gdprData": "GDPR data.",
+        "recognizedBy": "Recognized by {engine}.",
+        "review": "Review",
+        "notAnonymized": "Not anonymized",
+        "gdpr": "GDPR",
+        "engines": {
+          "columnName": "the dictionary",
+          "checksum": "a checksum",
+          "content": "AI",
+          "format": "format analysis"
+        },
+        "categories": {
+          "email": "Email",
+          "phone_number": "Phone number",
+          "person_first_name": "First name",
+          "person_last_name": "Last name",
+          "person_full_name": "Full name",
+          "username": "Username",
+          "street_address": "Street address",
+          "city": "City",
+          "state": "State",
+          "postal_code": "Postal code",
+          "country": "Country",
+          "ssn": "Social security number",
+          "national_id": "National identifier",
+          "secret": "Password, token or key",
+          "password_hash": "Password hash",
+          "iban": "IBAN",
+          "bank_account": "Bank account",
+          "salary": "Salary",
+          "age": "Age",
+          "ethnicity": "Ethnicity",
+          "marital_status": "Marital status",
+          "mac_address": "MAC address",
+          "siret": "SIRET",
+          "credit_card": "Credit card",
+          "ip_address": "IP address",
+          "gender": "Gender",
+          "birth_date": "Date of birth",
+          "date": "Date"
+        }
+      },
+      "mappingCell": {
+        "inClear": "in clear",
+        "toConfirm": "to confirm",
+        "decideAria": "Decide what leaves {column}: {name}",
+        "noTransformer": "no transformer",
+        "chooseTransformer": "Choose a transformer",
+        "openDecision": "Open the decision panel for {column}"
+      },
+      "selectionBar": {
+        "region": "Selected columns",
+        "selected": "{count, plural, one {# column selected} other {# columns selected}}",
+        "setTransformer": "Set transformer…",
+        "clear": "Clear",
+        "panelTitle": "{count, plural, one {# column} other {# columns}}",
+        "meta": "The same transformer and options are written on every column selected.",
+        "cancel": "Cancel",
+        "noSharedTransformer": "The selected columns share no such transformer",
+        "apply": "Apply to {count, plural, one {# column} other {# columns}}",
+        "placeholder": "Choose a transformer for them all",
+        "noCommon": "The columns selected have no transformer in common with this one. Narrow the selection, or choose another transformer."
+      },
+      "decisionPanel": {
+        "personalData": "Personal data",
+        "meta": "Applied to the mapping right away; the job is saved when you press Update.",
+        "cancel": "Cancel",
+        "pickFirst": "Pick another transformer or option first",
+        "apply": "Apply"
+      },
+      "preview": {
+        "unknownError": "unknown error",
+        "couldNotRead": "Could not read the column: {error}",
+        "rows": "<strong>{count}</strong> row(s)",
+        "distinct": "<strong>{inputs}</strong> distinct value(s)",
+        "distinctBeforeAfter": "<strong>{inputs}</strong> distinct value(s) before, <strong>{outputs}</strong> after",
+        "nulls": "{count} NULL",
+        "empties": "{count} empty",
+        "failed": "{count} failed",
+        "noUsableValue": "no usable value",
+        "collapses": "The transformer turns {inputs} distinct values into {outputs}: on a column under a unique constraint, the write would fail.",
+        "before": "Before",
+        "value": "Value",
+        "after": "After",
+        "noRows": "The table holds no rows.",
+        "footer": "Read-only sample of the first {limit} rows.",
+        "footerTransformer": "Read-only sample of the first {limit} rows: it shows what the transformer does, it proves nothing about the whole table.",
+        "emptyString": "(empty string)"
+      },
+      "explorer": {
+        "groups": {
+          "decide": "To decide",
+          "protected": "Protected",
+          "none": "Not personal",
+          "all": "All columns"
+        },
+        "missingColumns": "Some mapped columns no longer exist in the source.",
+        "removeMissing": "Remove them from the mapping",
+        "tables": "{count, plural, one {# table} other {# tables}}",
+        "allColumns": "{count} columns",
+        "someColumns": "{shown} of {total} columns",
+        "collapseAll": "Collapse all",
+        "expandAll": "Expand all",
+        "emptyJob": "No table is in this job yet. Choose the tables above.",
+        "noMatch": "No table or column matches this search.",
+        "nothingToDecide": "Nothing left to decide: every personal column is protected.",
+        "emptyGroup": "No column in this group.",
+        "hiddenByFilter": "{count, plural, one {# other column} other {# other columns}} of this table hidden by the filter.",
+        "showMore": "Show {count} more tables ({left} left)",
+        "tabsAria": "Columns by what they ask",
+        "searchLabel": "Search a table or a column",
+        "searchPlaceholder": "Table or column",
+        "scanTitle": "Reads a sample of each column to find personal data, also in columns whose name says nothing. The suggested transformers are applied.",
+        "scanning": "Scanning…",
+        "scan": "Scan the content",
+        "tableColumns": "{count, plural, one {# column} other {# columns}}",
+        "personal": "{count} personal",
+        "toDecide": "{count} to decide",
+        "protected": "Protected",
+        "nothingPersonal": "Nothing personal",
+        "selectTableTitle": "Select the columns of {table}",
+        "selectTableAria": "Select the columns of {table} shown",
+        "headColumn": "Column",
+        "headDetected": "Detected",
+        "headLeaves": "Leaves for the destination as",
+        "selectColumn": "Select {column}",
+        "meta": {
+          "primaryKey": "primary key",
+          "virtual": "virtual → {columns}",
+          "unique": "unique",
+          "nullable": "nullable",
+          "generated": "generated",
+          "identity": "identity"
+        }
+      }
+    },
+    "jobNotFound": {
+      "title": "Error: Unable to retrieve job"
+    },
+    "nosql": {
+      "addMappingTitle": "Add new mapping",
+      "addMappingDescription": "Select a collection and input a document key to transform, along with specifying the relevant transformer.",
+      "alreadyExists": "Already exists",
+      "addRecord": {
+        "collection": "Collection",
+        "collectionDescription": "The collection that you want to map.",
+        "collectionPlaceholder": "Select a collection",
+        "collectionRequired": "The Collection is required.",
+        "keyRequired": "The Key is required.",
+        "keyExistsInSelected": "This key already exists in the selected collection.",
+        "keyExists": "This key already exists in this collection.",
+        "documentKey": "Document Key",
+        "documentKeyDescription": "Use dot notation to select a key for the mapping.",
+        "transformer": "Transformer",
+        "transformerDescription": "Select a transformer to map",
+        "add": "Add"
+      },
+      "rowActions": {
+        "openMenu": "Open menu",
+        "duplicate": "Duplicate",
+        "remove": "Remove"
+      },
+      "tableMappings": {
+        "cardTitle": "DynamoDB Table Mappings",
+        "cardDescription": "Map a table from source to destination. As tables are added in the form above, they will dynamically be added to this section. A mapping is required to denote which table each source table should be synced to for each corresponding DynamoDB destination.",
+        "tableTitle": "Table Mappings",
+        "tableDescription": "Map Tables between data sources",
+        "empty": "No Schema(s) or Table(s) selected.",
+        "rowCounts": "Total rows: ({total}) Rows visible: ({visible})",
+        "destination": "Destination",
+        "sourceTable": "Source Table",
+        "destinationTable": "Destination Table",
+        "unknownName": "Unknown Name",
+        "selectDestinationTable": "Select destination table...",
+        "searchDestinationTable": "Search destination table...",
+        "noDestinationTable": "No destination table found."
+      }
+    },
+    "preflight": {
+      "title": "Pre-flight",
+      "nothingToReport": "Nothing to report.",
+      "checkDidNotEnd": "The check did not end",
+      "defaultEngine": "default engine",
+      "unnamedConnection": "connection",
+      "noReport": "The check returned no report.",
+      "permissionDenied": "The pre-flight check logs in to the connections of the job: it takes the permission to see what they store.",
+      "groups": {
+        "plan": "Plan of the run",
+        "connection": "Connection",
+        "connectionOfJob": "{role, select, source {Source} other {Destination}} · {name}"
+      },
+      "summary": {
+        "blocking": "{count, plural, one {# blocking finding} other {# blocking findings}}: the run will stop at its start.",
+        "warnings": "{count, plural, one {# warning} other {# warnings}}: the run may stop, or copy wrong, depending on the rows.",
+        "notes": "Nothing stops the run. {count, plural, one {# note} other {# notes}} on what it does.",
+        "nothing": "Nothing to report: the run meets nothing the plan can tell."
+      },
+      "card": {
+        "checkedAt": "{engine} · checked {date}",
+        "description": "What a run of this job would meet, found from the plan of the run and the rights of its connections. Nothing is read from the tables nor written.",
+        "checking": "Checking…",
+        "checkNow": "Check now",
+        "inProgress": "A worker computes the plan of the run and asks the connections: it takes a few seconds, up to a minute on a large schema."
+      },
+      "run": {
+        "title": "Pre-flight of this run",
+        "remediesHint": "The statements that grant what is missing are given by the pre-flight check of the job."
+      },
+      "dialog": {
+        "checking": "Checking what the run will meet before starting it…",
+        "didNotEnd": "The check did not end.",
+        "inProgress": "A worker computes the plan of the run and asks the connections of the job. It takes a few seconds, up to a minute on a large schema. Nothing is read from the tables nor written.",
+        "checksAgain": "The run checks again at its start.",
+        "checkAgain": "Check again",
+        "close": "Close",
+        "cancel": "Cancel",
+        "run": "Run",
+        "runAnyway": "Run anyway"
+      }
+    },
+    "schemaTable": {
+      "tabs": {
+        "mapping": "Transformer mapping",
+        "virtualForeignKeys": "Virtual foreign keys"
+      },
+      "constraints": {
+        "primaryKey": "Primary Key",
+        "foreignKey": "Foreign Key: {column}",
+        "virtualForeignKey": "Virtual Foreign Key: {column}",
+        "unique": "Unique",
+        "nullable": "Is Nullable",
+        "notNullable": "Not Nullable"
+      },
+      "scan": {
+        "tablesNotScanned": "{count} table(s) not scanned: {tables}",
+        "columnsNotAnalyzed": "{count} column(s) could not be analyzed: scan again, or review them yourself.",
+        "nothingFound": "No personal data found in the sampled content.",
+        "confirmed": "{count} column(s) confirmed by checksum",
+        "applied": " ({count} transformer(s) applied)",
+        "toReview": "{count} to review",
+        "failed": "Content scan failed: {error}",
+        "unknownError": "unknown error"
+      },
+      "toolbar": {
+        "clearFilters": "Clear filters",
+        "removeMissing": "Remove Missing Source Column Mappings",
+        "scanTitle": "Scans the sampled content of the columns (Presidio) to find personal data, including in columns whose name says nothing. The suggested transformers are applied automatically.",
+        "scanning": "Scanning…",
+        "scan": "Content scan (GDPR)"
+      },
+      "viewOptions": {
+        "view": "View",
+        "toggleColumns": "Toggle columns"
+      },
+      "exportMappings": {
+        "export": "Export",
+        "headerAll": "Export all Job Mappings",
+        "headerSelected": "Export {count} selected Job Mapping(s)",
+        "description": "Export job mappings as a JSON file",
+        "formatTitle": "Format JSON",
+        "formatDescription": "Format JSON before download? (Will increase file size)",
+        "success": "Successfully exported job mappings!",
+        "failed": "Failed to export job mappings: {error}",
+        "confirm": "Confirm"
+      },
+      "importMappings": {
+        "import": "Import",
+        "header": "Import Job Mappings",
+        "description": "Multiple files may be uploaded.",
+        "failed": "Unable to process input as job mappings: {error}",
+        "truncateTitle": "Truncate existing mappings",
+        "truncateDescription": "Start fresh and only use what was imported.",
+        "overrideTitle": "Override existing mappings",
+        "overrideDescription": "If yes, replaces existing mappings. If no, import new ones only.",
+        "errors": {
+          "invalidJson": "Invalid JSON format",
+          "readFailed": "Error reading file",
+          "invalidData": "Invalid data format",
+          "workerNotReady": "Worker not initialized",
+          "processingFailed": "Processing failed"
+        }
+      },
+      "applyDefault": {
+        "button": "Apply Default Transformers",
+        "header": "Apply Default Transformers?",
+        "description": "This setting will apply the 'Passthrough' Transformer to every column that is not Generated, while applying the 'Use Column Default' Transformer to all Generated (non-Identity)columns.",
+        "overrideTitle": "Override Mapped Transformers",
+        "overrideDescription": "Do you want to overwrite the Transformers you have already mapped?",
+        "confirm": "Confirm"
+      },
+      "formErrors": {
+        "title": "Validations",
+        "errors": "{count, plural, one {# Error} other {# Errors}}",
+        "warnings": "{count, plural, one {# Warning} other {# Warnings}}",
+        "validateAgain": "Validate the mapping again",
+        "description": "A list of schema validation errors to resolve before moving forward.",
+        "allGood": "Everything looks good!"
+      },
+      "scopeBar": {
+        "titleSingle": "Table this job fills",
+        "titleMany": "Tables copied by this job",
+        "descriptionSingle": "The job generates rows for this table. Its columns are mapped below.",
+        "descriptionMany": "The job reads these tables from the source and writes them to every destination. Their columns are mapped below.",
+        "chooseTable": "Choose the table",
+        "chooseTables": "Choose tables",
+        "ofTables": "of {total} tables in the source",
+        "columnsMapped": "· {count, plural, one {# column} other {# columns}} mapped",
+        "progressLabel": "Share of the source's tables copied",
+        "bySchema": "Tables copied by schema",
+        "checkAgain": "Check again",
+        "problems": "Problems in the mapping",
+        "showFewer": "Show fewer",
+        "showOthers": "Show the {count} others",
+        "dialogTitle": "Tables copied by this job",
+        "dialogDescription": "Move to the right the tables the job reads from the source and writes to the destinations. Their columns then appear in the mapping.",
+        "done": "Done",
+        "valid": "Mapping valid",
+        "errors": "{count, plural, one {# error} other {# errors}}",
+        "warnings": "{count, plural, one {# warning} other {# warnings}}"
+      },
+      "transformerSelect": {
+        "notFound": "No transformers found.",
+        "search": "Search...",
+        "custom": "Custom",
+        "system": "System"
+      },
+      "columnHeader": {
+        "sortBy": "Sort by {title}",
+        "sortByMulti": "Sort by {title}, hold shift to multi-sort"
+      },
+      "virtualForeignKeyForm": {
+        "title": "Add Virtual Foreign Key",
+        "description": "Select the source table and columns, as well as the target table and columns, to create a virtual foreign key. Add additional columns to create a composite virtual foreign key.",
+        "source": "Source",
+        "sourceHint": "The primary key",
+        "target": "Target",
+        "targetHint": "The foreign key",
+        "selectTable": "Select table...",
+        "searchTable": "Search table...",
+        "noTable": "No table found.",
+        "selectColumn": "Select column...",
+        "searchColumn": "Search column...",
+        "noColumn": "No column found.",
+        "addFailed": "Unable to add virtual foreign key",
+        "missingField": "Missing required field",
+        "save": "Save"
+      },
+      "virtualForeignKeys": {
+        "sourceTable": "Source Table",
+        "sourceColumns": "Source Columns",
+        "targetTable": "Target Table",
+        "actions": "Actions",
+        "search": "Search...",
+        "asc": "Asc",
+        "desc": "Desc",
+        "empty": "No Virtual Foreign Keys",
+        "totals": "Total rows: ({total}) Rows visible: ({visible})"
+      },
+      "aiSchema": {
+        "selectionTitle": "Table Selection",
+        "selectionDescription": "Select the table to be used for data generation.",
+        "schemaTitle": "Table Schema",
+        "empty": "No Schema(s) or Table(s) selected.",
+        "table": "Table",
+        "column": "Column",
+        "constraints": "Constraints",
+        "nullable": "Nullable",
+        "dataType": "Data Type",
+        "primaryKey": "Primary Key",
+        "foreignKey": "Foreign Key",
+        "primaryKeyOf": "Primary Key: {column}",
+        "unique": "Unique",
+        "yes": "Yes",
+        "no": "No",
+        "schemaDescription": "The schema of the currently selected table that will be used to generate synthetic data.",
+        "foreignKeyOf": "Foreign Key: {column}"
+      }
+    },
+    "subsets": {
+      "table": {
+        "tabs": "Tables",
+        "all": "All tables",
+        "filtered": "With a filter",
+        "root": "Root tables",
+        "selected": "{count} selected",
+        "editSelected": "Edit the filter of {count}",
+        "clear": "Clear",
+        "search": "Search a table",
+        "searchPlaceholder": "Schema or table",
+        "selectShown": "Select the tables shown",
+        "table": "Table",
+        "rowsCopied": "Rows copied",
+        "actions": "Actions",
+        "emptyJob": "No table is in this job.",
+        "emptySearch": "No table matches this search.",
+        "emptyFiltered": "No table has a filter: every row of every table is copied.",
+        "emptyRoot": "No root table.",
+        "select": "Select {table}",
+        "changed": "Changed, not saved yet",
+        "editFilterOf": "Edit the filter of {table}",
+        "allRows": "All rows",
+        "addFilter": "Add a filter",
+        "editFilter": "Edit the filter",
+        "undoOf": "Undo the unsaved change of {table}",
+        "undo": "Undo the change not saved yet",
+        "showMore": "Show {count} more tables ({left} left)",
+        "rootBadge": "Root",
+        "rootTooltip": "A root table: no table it references. Filtering it also narrows the tables that reference it, when the subset follows the foreign keys."
+      },
+      "errorAlert": {
+        "invalidSql": "Invalid SQL Query",
+        "rowCountFailed": "Unable to get table row count",
+        "unknownError": "unknown error message"
+      },
+      "validateBadge": {
+        "valid": "VALID",
+        "invalid": "INVALID"
+      },
+      "edit": {
+        "dialogTitle": "Subset Query",
+        "dialogDescription": "Subset your data using SQL expressions.",
+        "schema": "Schema",
+        "table": "Table",
+        "cancel": "Cancel",
+        "rowCount": "Row Count",
+        "rowCountTooltip": "Attempts to run a SQL COUNT(*) statement against the source connection for the table with the included WHERE clause",
+        "validate": "Validate",
+        "validateTooltip": "Attempts to run a SQL PREPARE statement against the source connection for the table with the included WHERE clause",
+        "apply": "Apply",
+        "applyTooltip": "Applies changes to table only, click Save below to fully submit changes"
+      }
+    }
+  }
 }

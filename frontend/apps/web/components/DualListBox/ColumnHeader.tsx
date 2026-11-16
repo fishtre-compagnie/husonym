@@ -6,6 +6,7 @@ import {
   CaretSortIcon,
 } from '@radix-ui/react-icons';
 import { Column, RowData } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { FaSearch } from 'react-icons/fa';
 import { AppTableFeatures } from '../table/features';
 import { Button } from '../ui/button';
@@ -24,6 +25,7 @@ export default function ColumnHeader<TData extends RowData, TValue>({
   className,
   placeholder,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const t = useTranslations('mapping.dualListBox');
   return (
     <div className="flex flex-row gap-2 items-center justify-start">
       {column.getCanFilter() && (
@@ -33,7 +35,7 @@ export default function ColumnHeader<TData extends RowData, TValue>({
               type="text"
               value={(column.getFilterValue() ?? '') as string}
               onChange={(e) => column.setFilterValue(e.target.value)}
-              placeholder={placeholder ? placeholder : 'Search ...'}
+              placeholder={placeholder ? placeholder : t('searchPlaceholder')}
               className="border border-border rounded-lg bg-card text-xs h-8 pl-8"
             />
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />

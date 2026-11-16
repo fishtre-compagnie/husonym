@@ -27,6 +27,7 @@ import {
   ValidateJobMappingsResponse,
 } from '@husonym/sdk';
 import { Row } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FieldErrors } from 'react-hook-form';
@@ -133,6 +134,10 @@ export function SchemaTable(props: Props): ReactElement {
     sourceConnectionId,
     applyPiiOnLoad = false,
   } = props;
+  const t = useTranslations('mapping.schemaTable');
+  const tScan = useTranslations('mapping.schemaTable.scan');
+  const tConstraints = useTranslations('mapping.schemaTable.constraints');
+  const tVfk = useTranslations('mapping.schemaTable.virtualForeignKeys');
 
   // --- Scan de contenu PII (Presidio) ---------------------------------------
   const [contentPii, setContentPii] = useState<
@@ -381,8 +386,11 @@ export function SchemaTable(props: Props): ReactElement {
       // absence de donnée personnelle.
       if (failed.length > 0) {
         toast.warning(
-          `${failed.length} table(s) not scanned: ${failed.slice(0, 3).join(', ')}` +
-            (failed.length > 3 ? '…' : '')
+          tScan('tablesNotScanned', {
+            count: failed.length,
+            tables:
+              failed.slice(0, 3).join(', ') + (failed.length > 3 ? '…' : ''),
+          })
         );
       }
       // De même les colonnes que l'analyse de contenu n'a pas pu traiter : elles
@@ -398,9 +406,7 @@ export function SchemaTable(props: Props): ReactElement {
           }) === 'not_analyzed'
       ).length;
       if (notAnalyzed > 0 && scope === 'all') {
-        toast.warning(
-          `${notAnalyzed} column(s) could not be analyzed: scan again, or review them yourself.`
-        );
+        toast.warning(tScan('columnsNotAnalyzed', { count: notAnalyzed }));
       }
 
       // Les détections prouvées par une clé de contrôle (NIR mod 97, IBAN,
@@ -424,24 +430,26 @@ export function SchemaTable(props: Props): ReactElement {
       if (confirmed === 0 && toReview === 0) {
         // Rien trouvé ne vaut que pour ce qui a été analysé.
         if (notAnalyzed === 0 && failed.length === 0) {
-          toast.success('No personal data found in the sampled content.');
+          toast.success(tScan('nothingFound'));
         }
       } else {
         const parts: string[] = [];
         if (confirmed > 0) {
           parts.push(
-            `${confirmed} column(s) confirmed by checksum` +
-              (applied > 0 ? ` (${applied} transformer(s) applied)` : '')
+            tScan('confirmed', { count: confirmed }) +
+              (applied > 0 ? tScan('applied', { count: applied }) : '')
           );
         }
         if (toReview > 0) {
-          parts.push(`${toReview} to review`);
+          parts.push(tScan('toReview', { count: toReview }));
         }
         toast.success(parts.join(' · '));
       }
     } catch (e) {
       toast.error(
-        `Content scan failed: ${e instanceof Error ? e.message : 'unknown error'}`
+        tScan('failed', {
+          error: e instanceof Error ? e.message : tScan('unknownError'),
+        })
       );
     } finally {
       setIsScanningPii(false);
@@ -524,18 +532,22 @@ export function SchemaTable(props: Props): ReactElement {
 
       const constraintPieces: string[] = [];
       if (isPrimaryKey) {
-        constraintPieces.push('Primary Key');
+        constraintPieces.push(tConstraints('primaryKey'));
       }
       if (isForeignKey) {
-        fkCols.forEach((col) => constraintPieces.push(`Foreign Key: ${col}`));
+        fkCols.forEach((col) =>
+          constraintPieces.push(tConstraints('foreignKey', { column: col }))
+        );
       }
       if (isVirtualForeignKey) {
         vfkCols.forEach((col) =>
-          constraintPieces.push(`Virtual Foreign Key: ${col}`)
+          constraintPieces.push(
+            tConstraints('virtualForeignKey', { column: col })
+          )
         );
       }
       if (isUnique) {
-        constraintPieces.push('Unique');
+        constraintPieces.push(tConstraints('unique'));
       }
       const constraints = constraintPieces.join('\n');
 
@@ -549,7 +561,9 @@ export function SchemaTable(props: Props): ReactElement {
         attributePieces.push(getIdentityStatement(identityType));
       }
       attributePieces.push(
-        constraintHandler.getIsNullable(colKey) ? 'Is Nullable' : 'Not Nullable'
+        constraintHandler.getIsNullable(colKey)
+          ? tConstraints('nullable')
+          : tConstraints('notNullable')
       );
       const attributes = attributePieces.join('\n');
 
@@ -587,7 +601,7 @@ export function SchemaTable(props: Props): ReactElement {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, constraintHandler, contentPii, notScannedTables]);
+  }, [data, constraintHandler, contentPii, notScannedTables, tConstraints]);
 
   function getColumnDecision(index: number): ColumnDecisionTarget | undefined {
     const row = tableData[index];
@@ -611,8 +625,8 @@ export function SchemaTable(props: Props): ReactElement {
   }
 
   const virtualForeignKeyColumns = useMemo(() => {
-    return getVirtualForeignKeysColumns({ removeVirtualForeignKey });
-  }, [removeVirtualForeignKey]);
+    return getVirtualForeignKeysColumns({ removeVirtualForeignKey, t: tVfk });
+  }, [removeVirtualForeignKey, tVfk]);
 
   // it is imperative that this is stable to not cause infinite re-renders of the listbox(s)
   const dualListBoxOpts = useMemo(
@@ -709,9 +723,9 @@ export function SchemaTable(props: Props): ReactElement {
       {virtualForeignKeys && addVirtualForeignKey ? (
         <Tabs defaultValue="mappings">
           <TabsList>
-            <TabsTrigger value="mappings">Transformer mapping</TabsTrigger>
+            <TabsTrigger value="mappings">{t('tabs.mapping')}</TabsTrigger>
             <TabsTrigger value="virtualforeignkeys">
-              Virtual foreign keys
+              {t('tabs.virtualForeignKeys')}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="mappings" className="pt-4">

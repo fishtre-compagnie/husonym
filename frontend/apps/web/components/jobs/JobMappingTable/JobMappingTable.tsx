@@ -13,6 +13,7 @@ import {
   TableFeatures,
   useTable,
 } from '@tanstack/react-table';
+import { useFormatter, useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useState } from 'react';
 import { GoWorkflow } from 'react-icons/go';
 import { ImportMappingsConfig } from '../SchemaTable/ImportJobMappingsButton';
@@ -127,6 +128,9 @@ export default function JobMappingTable<TData extends RowData>(
     isScanningPii,
   } = props;
 
+  const t = useTranslations('mapping.jobMappingTable.table');
+  const format = useFormatter();
+
   // Stables : les lignes sont mémoïsées et ne reliraient pas une nouvelle fonction.
   const [opened, setOpened] = useState<number | null>(null);
   const onOpenDecision = useCallback((index: number) => setOpened(index), []);
@@ -170,11 +174,9 @@ export default function JobMappingTable<TData extends RowData>(
             aria-hidden="true"
             className="h-4 w-4 text-muted-foreground"
           />
-          Transformer mapping
+          {t('title')}
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Map transformers to every column below.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
 
       <div className="z-50">
@@ -255,8 +257,10 @@ export default function JobMappingTable<TData extends RowData>(
       )}
 
       <div className="text-xs text-muted-foreground tabular-nums">
-        {getFormattedCount(table.getRowModel().rows.length)} of{' '}
-        {getFormattedCount(data.length)} columns shown
+        {t('shown', {
+          shown: format.number(table.getRowModel().rows.length),
+          total: format.number(data.length),
+        })}
       </div>
     </div>
   );
@@ -265,8 +269,3 @@ export default function JobMappingTable<TData extends RowData>(
 // Défini hors du composant : une nouvelle référence à chaque rendu invaliderait
 // la mémoïsation des lignes (cf. shouldReRender dans MemoizedRow).
 const NO_GROW_COLUMNS = ['isSelected', 'openDecision'];
-
-const US_NUMBER_FORMAT = new Intl.NumberFormat('en-US');
-function getFormattedCount(count: number): string {
-  return US_NUMBER_FORMAT.format(count);
-}

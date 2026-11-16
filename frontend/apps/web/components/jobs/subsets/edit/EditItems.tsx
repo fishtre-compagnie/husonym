@@ -6,6 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { SubsetTableRow } from '../SubsetTable/Columns';
 import WhereEditor from './WhereEditor';
@@ -20,6 +21,7 @@ interface Props {
 
 export default function EditItems(props: Props): ReactElement {
   const { item, onItem, onSave, onCancel, columns } = props;
+  const t = useTranslations('mapping.subsets.edit');
 
   function onWhereChange(whereClause: string): void {
     onItem({ where: whereClause });
@@ -39,21 +41,18 @@ export default function EditItems(props: Props): ReactElement {
           disabled={!item}
           onClick={onCancel}
         >
-          <ButtonText text="Cancel" />
+          <ButtonText text={t('cancel')} />
         </Button>
         <div className="flex flex-row gap-2">
           <TooltipProvider>
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
                 <Button type="button" disabled={!item} onClick={() => onSave()}>
-                  <ButtonText text="Apply" />
+                  <ButtonText text={t('apply')} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  Applies changes to table only, click Save below to fully
-                  submit changes
-                </p>
+                <p>{t('applyTooltip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

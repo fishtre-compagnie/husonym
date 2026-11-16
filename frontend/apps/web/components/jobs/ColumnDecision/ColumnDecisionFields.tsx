@@ -27,6 +27,7 @@ import {
   TransformerConfigSchema,
   TransformersService,
 } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -77,10 +78,11 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     disabled = false,
     preview,
     onValidChange,
-    placeholder = 'Choose a transformer',
+    placeholder,
     origin,
   } = props;
 
+  const t = useTranslations('mapping.columnDecision.fields');
   const { account } = useAccount();
   const { mutateAsync: isJavascriptCodeValid } = useMutation(
     TransformersService.method.validateUserJavascriptCode
@@ -128,14 +130,19 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     <>
       <section className="flex flex-col gap-3">
         <div className="flex flex-row items-center gap-2">
-          <Label htmlFor="column-decision-transformer">Transformer</Label>
+          <Label htmlFor="column-decision-transformer">
+            {t('transformer')}
+          </Label>
           <div className="grow" />
           {origin}
         </div>
         <TransformerSelect
           getTransformers={getTransformers}
           value={value}
-          buttonText={getTransformerSelectButtonText(selected, placeholder)}
+          buttonText={getTransformerSelectButtonText(
+            selected,
+            placeholder ?? t('placeholder')
+          )}
           buttonClassName="w-full"
           buttonTextClassName="grow"
           onSelect={(next) => {
@@ -159,7 +166,7 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
 
       {preview && (
         <section className="flex flex-col gap-3">
-          <Label>Before &amp; after</Label>
+          <Label>{t('beforeAfter')}</Label>
           <ColumnPreview
             enabled
             connectionId={preview.connectionId}

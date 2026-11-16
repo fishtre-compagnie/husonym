@@ -6,6 +6,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ConsistencyScope } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -20,6 +21,7 @@ export default function ConsistencyScopeSelect({
   value,
   onChange,
 }: Props): ReactElement {
+  const t = useTranslations('mapping.form.consistencyScope');
   return (
     <Select
       onValueChange={(v) => onChange(Number(v))}
@@ -36,13 +38,11 @@ export default function ConsistencyScopeSelect({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={String(ConsistencyScope.UNSPECIFIED)}>
-          Run (default)
+          {t('run')}
         </SelectItem>
-        <SelectItem value={String(ConsistencyScope.JOB)}>
-          Job — same outputs on every run of this job
-        </SelectItem>
+        <SelectItem value={String(ConsistencyScope.JOB)}>{t('job')}</SelectItem>
         <SelectItem value={String(ConsistencyScope.ACCOUNT)}>
-          Account — same outputs across all jobs (pseudonymization)
+          {t('account')}
         </SelectItem>
       </SelectContent>
     </Select>

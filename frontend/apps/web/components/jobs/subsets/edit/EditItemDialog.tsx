@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
 
 export default function EditItemDialog(props: Props): ReactElement {
   const { open, onOpenChange, body } = props;
+  const t = useTranslations('mapping.subsets.edit');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -30,12 +32,14 @@ export default function EditItemDialog(props: Props): ReactElement {
             <div className="flex flex-col space-y-2 w-full">
               <div className="flex flex-row justify-between items-center">
                 <div className="flex flex-row gap-4">
-                  <DialogTitle className="text-xl">Subset Query</DialogTitle>
+                  <DialogTitle className="text-xl">
+                    {t('dialogTitle')}
+                  </DialogTitle>
                 </div>
               </div>
               <div className="flex flex-row items-center gap-2">
                 <DialogDescription>
-                  Subset your data using SQL expressions.{' '}
+                  {t('dialogDescription')}{' '}
                   <LearnMoreLink href="https://docs.husonym.com/table-constraints/subsetting" />
                 </DialogDescription>
               </div>

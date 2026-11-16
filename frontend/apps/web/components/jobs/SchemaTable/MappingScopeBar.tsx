@@ -20,6 +20,7 @@ import {
   ReloadIcon,
   TableIcon,
 } from '@radix-ui/react-icons';
+import { useFormatter, useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { FormError } from './FormErrorsCard';
 
@@ -56,6 +57,8 @@ export default function MappingScopeBar(props: Props): ReactElement {
     isValidating,
     onValidate,
   } = props;
+  const t = useTranslations('mapping.schemaTable.scopeBar');
+  const format = useFormatter();
   const [choosing, setChoosing] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
@@ -80,12 +83,10 @@ export default function MappingScopeBar(props: Props): ReactElement {
             </span>
             <div className="flex min-w-0 flex-col gap-1">
               <h2 className="m-0 font-display text-base font-semibold">
-                {single ? 'Table this job fills' : 'Tables copied by this job'}
+                {single ? t('titleSingle') : t('titleMany')}
               </h2>
               <p className="m-0 max-w-xl text-[13px] text-muted-foreground">
-                {single
-                  ? 'The job generates rows for this table. Its columns are mapped below.'
-                  : 'The job reads these tables from the source and writes them to every destination. Their columns are mapped below.'}
+                {single ? t('descriptionSingle') : t('descriptionMany')}
               </p>
             </div>
           </div>
@@ -96,22 +97,21 @@ export default function MappingScopeBar(props: Props): ReactElement {
             onClick={() => setChoosing(true)}
           >
             <TableIcon className="size-4" />
-            {single ? 'Choose the table' : 'Choose tables'}
+            {single ? t('chooseTable') : t('chooseTables')}
           </Button>
         </div>
 
         <div className="flex flex-col gap-3 px-5 pb-5">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="font-display text-3xl font-semibold tabular-nums">
-              {selected.size.toLocaleString()}
+              {format.number(selected.size)}
             </span>
             <span className="text-sm text-muted-foreground">
-              of {options.length.toLocaleString()} tables in the source
+              {t('ofTables', { total: format.number(options.length) })}
             </span>
             {columnCount !== undefined && (
               <span className="text-sm text-muted-foreground">
-                · {columnCount.toLocaleString()} column
-                {columnCount === 1 ? '' : 's'} mapped
+                {t('columnsMapped', { count: columnCount })}
               </span>
             )}
           </div>
@@ -119,12 +119,12 @@ export default function MappingScopeBar(props: Props): ReactElement {
             value={
               options.length > 0 ? (selected.size / options.length) * 100 : 0
             }
-            label="Share of the source's tables copied"
+            label={t('progressLabel')}
             className="h-1.5"
           />
           {schemas.length > 1 && (
             <ul
-              aria-label="Tables copied by schema"
+              aria-label={t('bySchema')}
               className="m-0 flex list-none flex-wrap gap-2 p-0"
             >
               {schemas.map((sc) => (
@@ -158,7 +158,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
             ) : (
               <ExclamationTriangleIcon className="size-4" />
             )}
-            {problemSummary(errors.length, warnings.length)}
+            {problemSummary(t, errors.length, warnings.length)}
           </span>
           {onValidate && (
             <Button
@@ -174,7 +174,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
               ) : (
                 <ReloadIcon className="size-3.5" />
               )}
-              Check again
+              {t('checkAgain')}
             </Button>
           )}
         </div>
@@ -182,7 +182,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
 
       {problems.length > 0 && (
         <ul
-          aria-label="Problems in the mapping"
+          aria-label={t('problems')}
           className="m-0 flex list-none flex-col gap-1.5 p-0"
         >
           {listed.map((p, i) => (
@@ -207,8 +207,10 @@ export default function MappingScopeBar(props: Props): ReactElement {
                 onClick={() => setShowAll((v) => !v)}
               >
                 {showAll
-                  ? 'Show fewer'
-                  : `Show the ${problems.length - SHOWN_PROBLEMS} others`}
+                  ? t('showFewer')
+                  : t('showOthers', {
+                      count: problems.length - SHOWN_PROBLEMS,
+                    })}
               </button>
             </li>
           )}
@@ -218,12 +220,8 @@ export default function MappingScopeBar(props: Props): ReactElement {
       <Dialog open={choosing} onOpenChange={setChoosing}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Tables copied by this job</DialogTitle>
-            <DialogDescription>
-              Move to the right the tables the job reads from the source and
-              writes to the destinations. Their columns then appear in the
-              mapping.
-            </DialogDescription>
+            <DialogTitle>{t('dialogTitle')}</DialogTitle>
+            <DialogDescription>{t('dialogDescription')}</DialogDescription>
           </DialogHeader>
           <DualListBox
             options={options}
@@ -233,7 +231,7 @@ export default function MappingScopeBar(props: Props): ReactElement {
           />
           <div className="flex justify-end">
             <Button type="button" onClick={() => setChoosing(false)}>
-              Done
+              {t('done')}
             </Button>
           </div>
         </DialogContent>
@@ -242,16 +240,20 @@ export default function MappingScopeBar(props: Props): ReactElement {
   );
 }
 
-function problemSummary(errors: number, warnings: number): string {
+function problemSummary(
+  t: ReturnType<typeof useTranslations<'mapping.schemaTable.scopeBar'>>,
+  errors: number,
+  warnings: number
+): string {
   if (errors === 0 && warnings === 0) {
-    return 'Mapping valid';
+    return t('valid');
   }
   const parts: string[] = [];
   if (errors > 0) {
-    parts.push(`${errors} error${errors === 1 ? '' : 's'}`);
+    parts.push(t('errors', { count: errors }));
   }
   if (warnings > 0) {
-    parts.push(`${warnings} warning${warnings === 1 ? '' : 's'}`);
+    parts.push(t('warnings', { count: warnings }));
   }
   return parts.join(', ');
 }

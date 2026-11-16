@@ -15,6 +15,7 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
 } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { FaSearch } from 'react-icons/fa';
 import { useDebounceCallback } from 'usehooks-ts';
@@ -32,6 +33,7 @@ export function SchemaColumnHeader<TData extends RowData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const t = useTranslations('mapping.schemaTable.columnHeader');
   const [inputValue, setInputValue] = useState(
     (column.getFilterValue() ?? '') as string
   );
@@ -70,18 +72,15 @@ export function SchemaColumnHeader<TData extends RowData, TValue>({
       {column.getCanSort() && (
         <SortButtonWithTooltip
           column={column}
-          tooltip={getColumnTooltip(title, column.getCanMultiSort())}
+          tooltip={
+            column.getCanMultiSort()
+              ? t('sortByMulti', { title })
+              : t('sortBy', { title })
+          }
         />
       )}
     </div>
   );
-}
-
-function getColumnTooltip(title: string, canMultiSort: boolean): string {
-  if (canMultiSort) {
-    return `Sort by ${title}, hold shift to multi-sort`;
-  }
-  return `Sort by ${title}`;
 }
 
 interface SortButtonWithTooltipProps<TData extends RowData, TValue> {

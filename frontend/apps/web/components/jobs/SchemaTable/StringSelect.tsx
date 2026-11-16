@@ -22,11 +22,23 @@ interface Props {
   values: string[];
   badgeValueMap?: Record<string, string>;
   setValue(v: string): void;
-  text: string;
+  // Translated texts: shown when nothing is chosen, in the search field, and when
+  // the search finds nothing.
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
 }
 
 export function StringSelect(props: Props): ReactElement {
-  const { value, values, setValue, text, badgeValueMap } = props;
+  const {
+    value,
+    values,
+    setValue,
+    placeholder,
+    searchPlaceholder,
+    emptyText,
+    badgeValueMap,
+  } = props;
   const [open, setOpen] = useState(false);
 
   return (
@@ -38,17 +50,17 @@ export function StringSelect(props: Props): ReactElement {
           aria-expanded={open}
           className=" justify-between min-w-[163px]"
         >
-          {value ? values.find((v) => v === value) : `Select ${text}...`}
+          {value ? values.find((v) => v === value) : placeholder}
           <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 ml-20">
         <Command>
-          <CommandInput placeholder={`Search ${text}...`} />
+          <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>
               <div className="text-sm text-muted-foreground p-4">
-                No {text} found.
+                {emptyText}
               </div>
             </CommandEmpty>
             <CommandGroup>

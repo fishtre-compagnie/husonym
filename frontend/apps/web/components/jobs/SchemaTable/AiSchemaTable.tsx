@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { GetConnectionSchemaResponse } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo } from 'react';
 import { getSchemaColumns } from './AiSchemaColumns';
 import AiSchemaPageTable from './AiSchemaPageTable';
@@ -42,12 +43,14 @@ export function AiSchemaTable(props: Props): ReactElement {
     selectedTables,
     onSelectedTableToggle,
   } = props;
+  const t = useTranslations('mapping.schemaTable.aiSchema');
 
   const columns = useMemo(() => {
     return getSchemaColumns({
       constraintHandler,
+      t,
     });
-  }, [constraintHandler]);
+  }, [constraintHandler, t]);
 
   if (!data) {
     return <SkeletonTable />;
@@ -62,11 +65,9 @@ export function AiSchemaTable(props: Props): ReactElement {
               <div className="flex">
                 <TableIcon className="h-4 w-4" />
               </div>
-              <CardTitle>Table Selection</CardTitle>
+              <CardTitle>{t('selectionTitle')}</CardTitle>
             </div>
-            <CardDescription>
-              Select the table to be used for data generation.
-            </CardDescription>
+            <CardDescription>{t('selectionDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <DualListBox

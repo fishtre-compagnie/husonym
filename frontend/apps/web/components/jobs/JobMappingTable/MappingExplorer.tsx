@@ -17,6 +17,7 @@ import {
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode, useMemo, useState } from 'react';
 import ApplyDefaultTransformersButton from '../SchemaTable/ApplyDefaultTransformersButton';
 import ExportJobMappingsButton from '../SchemaTable/ExportJobMappingsButton';
@@ -66,12 +67,8 @@ interface Props {
 type Group = 'decide' | 'protected' | 'none';
 type GroupFilter = Group | 'all';
 
-const GROUPS: { value: GroupFilter; label: string }[] = [
-  { value: 'decide', label: 'To decide' },
-  { value: 'protected', label: 'Protected' },
-  { value: 'none', label: 'Not personal' },
-  { value: 'all', label: 'All columns' },
-];
+// The tabs, in order; each one's label is the message of its value.
+const GROUPS: GroupFilter[] = ['decide', 'protected', 'none', 'all'];
 
 interface ColumnItem {
   row: JobMappingRow;
@@ -123,6 +120,7 @@ export default function MappingExplorer(props: Props): ReactElement {
     sourceConnectionId,
   } = props;
 
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   const tables = useMemo(() => summarize(rows), [rows]);
   const counts = useMemo(() => {
     const c: Record<GroupFilter, number> = {
@@ -261,16 +259,14 @@ export default function MappingExplorer(props: Props): ReactElement {
       )}
       {hasMissingSourceColumnMappings && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn-fg">
-          <span className="flex-1">
-            Some mapped columns no longer exist in the source.
-          </span>
+          <span className="flex-1">{t('missingColumns')}</span>
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={onRemoveMissingSourceColumnMappings}
           >
-            Remove them from the mapping
+            {t('removeMissing')}
           </Button>
         </div>
       )}
@@ -278,10 +274,13 @@ export default function MappingExplorer(props: Props): ReactElement {
       <Panel>
         <div className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 text-xs text-muted-foreground">
           <span className="flex-1">
-            {shown.length} table{shown.length === 1 ? '' : 's'} ·{' '}
+            {t('tables', { count: shown.length })} ·{' '}
             {group === 'all' && !needle
-              ? `${rows.length} columns`
-              : `${shown.reduce((n, s) => n + s.columns.length, 0)} of ${rows.length} columns`}
+              ? t('allColumns', { count: rows.length })
+              : t('someColumns', {
+                  shown: shown.reduce((n, s) => n + s.columns.length, 0),
+                  total: rows.length,
+                })}
           </span>
           {shown.length > 1 && (
             <button
@@ -295,7 +294,7 @@ export default function MappingExplorer(props: Props): ReactElement {
                 )
               }
             >
-              {allOpen ? 'Collapse all' : 'Expand all'}
+              {allOpen ? t('collapseAll') : t('expandAll')}
             </button>
           )}
         </div>
@@ -303,12 +302,12 @@ export default function MappingExplorer(props: Props): ReactElement {
         {shown.length === 0 && (
           <p className="m-0 px-4 py-10 text-center text-sm text-muted-foreground">
             {rows.length === 0
-              ? 'No table is in this job yet. Choose the tables above.'
+              ? t('emptyJob')
               : needle
-                ? 'No table or column matches this search.'
+                ? t('noMatch')
                 : group === 'decide'
-                  ? 'Nothing left to decide: every personal column is protected.'
-                  : 'No column in this group.'}
+                  ? t('nothingToDecide')
+                  : t('emptyGroup')}
           </p>
         )}
 
@@ -357,11 +356,9 @@ export default function MappingExplorer(props: Props): ReactElement {
                     ))}
                     {columns.length < table.columns.length && (
                       <p className="m-0 px-4 pt-2 text-xs text-muted-foreground sm:pl-[52px]">
-                        {table.columns.length - columns.length} other column
-                        {table.columns.length - columns.length === 1
-                          ? ''
-                          : 's'}{' '}
-                        of this table hidden by the filter.
+                        {t('hiddenByFilter', {
+                          count: table.columns.length - columns.length,
+                        })}
                       </p>
                     )}
                   </div>
@@ -379,8 +376,10 @@ export default function MappingExplorer(props: Props): ReactElement {
               size="sm"
               onClick={() => setLimit((l) => l + TABLE_PAGE)}
             >
-              Show {Math.min(TABLE_PAGE, shown.length - limit)} more tables (
-              {shown.length - limit} left)
+              {t('showMore', {
+                count: Math.min(TABLE_PAGE, shown.length - limit),
+                left: shown.length - limit,
+              })}
             </Button>
           </div>
         )}
@@ -437,6 +436,7 @@ function Toolbar(props: {
   actions: ReactNode;
 }): ReactElement {
   const { group, counts, onGroup, search, onSearch, actions } = props;
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -445,19 +445,19 @@ function Toolbar(props: {
       <div className="flex flex-wrap items-end gap-3 border-b border-line-soft">
         <div
           role="tablist"
-          aria-label="Columns by what they ask"
+          aria-label={t('tabsAria')}
           className="-mb-px flex flex-wrap gap-0.5"
         >
           {GROUPS.map((g) => {
-            const isSelected = g.value === group;
-            const alarm = g.value === 'decide' && counts.decide > 0;
+            const isSelected = g === group;
+            const alarm = g === 'decide' && counts.decide > 0;
             return (
               <button
-                key={g.value}
+                key={g}
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
-                onClick={() => onGroup(g.value)}
+                onClick={() => onGroup(g)}
                 className={cn(
                   'flex cursor-pointer items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors',
                   isSelected
@@ -465,7 +465,7 @@ function Toolbar(props: {
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
               >
-                {g.label}
+                {t(`groups.${g}`)}
                 <span
                   className={cn(
                     'rounded-full px-1.5 py-px text-xs tabular-nums',
@@ -474,7 +474,7 @@ function Toolbar(props: {
                       : 'bg-surface-2 text-muted-foreground'
                   )}
                 >
-                  {counts[g.value]}
+                  {counts[g]}
                 </span>
               </button>
             );
@@ -482,7 +482,7 @@ function Toolbar(props: {
         </div>
         <span className="flex-1" />
         <label className="relative mb-2 w-full sm:w-64">
-          <span className="sr-only">Search a table or a column</span>
+          <span className="sr-only">{t('searchLabel')}</span>
           <MagnifyingGlassIcon
             aria-hidden="true"
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -491,7 +491,7 @@ function Toolbar(props: {
             type="search"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Table or column"
+            placeholder={t('searchPlaceholder')}
             className="h-9 pl-9"
           />
         </label>
@@ -508,20 +508,21 @@ function ScanButton(props: {
   // Without the pii_detection feature the API refuses every table: the button is
   // greyed and the notice beneath the toolbar says why.
   const { allowed } = useLicenseFeature('pii_detection');
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   return (
     <Button
       variant="outline"
       type="button"
       disabled={isScanning || !allowed}
       onClick={onScan}
-      title="Reads a sample of each column to find personal data, also in columns whose name says nothing. The suggested transformers are applied."
+      title={t('scanTitle')}
     >
       {isScanning ? (
         <ReloadIcon className="size-3.5 animate-spin" />
       ) : (
         <MagnifyingGlassIcon className="size-3.5" />
       )}
-      {isScanning ? 'Scanning…' : 'Scan the content'}
+      {isScanning ? t('scanning') : t('scan')}
     </Button>
   );
 }
@@ -539,6 +540,7 @@ function TableLine(props: {
   onToggle(): void;
 }): ReactElement {
   const { table, open, onToggle } = props;
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   const state = tableState(table);
   return (
     <button
@@ -562,10 +564,10 @@ function TableLine(props: {
         <span className="font-medium text-hi">{table.table}</span>
       </span>
       <span className="text-xs tabular-nums text-muted-foreground sm:text-right">
-        {table.columns.length} column{table.columns.length === 1 ? '' : 's'}
+        {t('tableColumns', { count: table.columns.length })}
       </span>
       <span className="text-xs tabular-nums text-muted-foreground sm:text-right">
-        {table.personal > 0 ? `${table.personal} personal` : '—'}
+        {table.personal > 0 ? t('personal', { count: table.personal }) : '—'}
       </span>
       <span
         className={cn(
@@ -578,7 +580,9 @@ function TableLine(props: {
         )}
       >
         <StatusDot tone={state.tone} />
-        {state.label}
+        {state.label === 'toDecide'
+          ? t('toDecide', { count: table.toDecide })
+          : t(state.label)}
       </span>
     </button>
   );
@@ -591,6 +595,7 @@ function ColumnsHead(props: {
   tableKey: string;
 }): ReactElement {
   const { checked, indeterminate, onCheck, tableKey } = props;
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   return (
     <div
       className={cn(
@@ -598,18 +603,18 @@ function ColumnsHead(props: {
         COLUMN_GRID
       )}
     >
-      <span title={`Select the columns of ${tableKey}`}>
+      <span title={t('selectTableTitle', { table: tableKey })}>
         <IndeterminateCheckbox
           checked={checked}
           indeterminate={indeterminate}
           onChange={(e) => onCheck((e.target as HTMLInputElement).checked)}
-          aria-label={`Select the columns of ${tableKey} shown`}
+          aria-label={t('selectTableAria', { table: tableKey })}
         />
       </span>
-      <span>Column</span>
-      <span className="hidden md:block">Detected</span>
+      <span>{t('headColumn')}</span>
+      <span className="hidden md:block">{t('headDetected')}</span>
       <span className="hidden md:block" />
-      <span className="hidden md:block">Leaves for the destination as</span>
+      <span className="hidden md:block">{t('headLeaves')}</span>
     </div>
   );
 }
@@ -625,6 +630,7 @@ function ColumnLine(props: {
   const { item, selected, onSelect, onOpen, transformerName, hasSuggestion } =
     props;
   const { row } = item;
+  const t = useTranslations('mapping.jobMappingTable.explorer');
   const anonymizes = isAnonymizingTransformer(row.transformer);
   const state = rgpdState({
     isSensitive: row.isSensitive,
@@ -644,7 +650,7 @@ function ColumnLine(props: {
         <IndeterminateCheckbox
           checked={selected}
           onChange={(e) => onSelect((e.target as HTMLInputElement).checked)}
-          aria-label={`Select ${row.column}`}
+          aria-label={t('selectColumn', { column: row.column })}
         />
       </span>
       <span className="flex min-w-0 flex-col">
@@ -652,7 +658,7 @@ function ColumnLine(props: {
           {row.column}
         </span>
         <span className="truncate font-mono text-[11px] text-muted-foreground">
-          {columnMeta(row)}
+          {columnMeta(row, t)}
         </span>
       </span>
       <span className="col-start-2 md:col-start-auto">
@@ -684,29 +690,35 @@ function ColumnLine(props: {
   );
 }
 
-function columnMeta(row: JobMappingRow): string {
+type ExplorerT = ReturnType<
+  typeof useTranslations<'mapping.jobMappingTable.explorer'>
+>;
+
+function columnMeta(row: JobMappingRow, t: ExplorerT): string {
   const parts = [row.dataType];
   const c = row.constraints;
   if (c.isPrimaryKey) {
-    parts.push('primary key');
+    parts.push(t('meta.primaryKey'));
   }
   if (c.foreignKey[0]) {
     parts.push(`→ ${c.foreignKey[1].join(', ')}`);
   }
   if (c.virtualForeignKey[0]) {
-    parts.push(`virtual → ${c.virtualForeignKey[1].join(', ')}`);
+    parts.push(
+      t('meta.virtual', { columns: c.virtualForeignKey[1].join(', ') })
+    );
   }
   if (c.isUnique && !c.isPrimaryKey) {
-    parts.push('unique');
+    parts.push(t('meta.unique'));
   }
   if (row.isNullable) {
-    parts.push('nullable');
+    parts.push(t('meta.nullable'));
   }
   if (row.attributes.generatedType) {
-    parts.push('generated');
+    parts.push(t('meta.generated'));
   }
   if (row.attributes.identityType) {
-    parts.push('identity');
+    parts.push(t('meta.identity'));
   }
   return parts.filter(Boolean).join(' · ');
 }
@@ -739,14 +751,18 @@ function asRow(
   } as unknown as Row<AppTableFeatures, JobMappingRow>;
 }
 
-function tableState(t: TableItem): { label: string; tone: Tone } {
+// The label is the key of its message; 'toDecide' takes the count of the table.
+function tableState(t: TableItem): {
+  label: 'toDecide' | 'protected' | 'nothingPersonal';
+  tone: Tone;
+} {
   if (t.toDecide > 0) {
-    return { label: `${t.toDecide} to decide`, tone: 'danger' };
+    return { label: 'toDecide', tone: 'danger' };
   }
   if (t.personal > 0) {
-    return { label: 'Protected', tone: 'ok' };
+    return { label: 'protected', tone: 'ok' };
   }
-  return { label: 'Nothing personal', tone: 'quiet' };
+  return { label: 'nothingPersonal', tone: 'quiet' };
 }
 
 function groupOf(rank: number): Group {

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/libs/utils';
 import { CheckIcon, Pencil1Icon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 import { NosqlJobMappingRow } from '../JobMappingTable/Columns';
 
@@ -14,6 +15,7 @@ interface Props {
 
 export default function EditDocumentKey(props: Props): ReactElement {
   const { text, onEdit, isDuplicate } = props;
+  const t = useTranslations('mapping.nosql');
   const [isEditingMapping, setIsEditingMapping] = useState(false);
   const [inputValue, setInputValue] = useState<string>(text);
   const [duplicateError, setDuplicateError] = useState(false);
@@ -38,7 +40,7 @@ export default function EditDocumentKey(props: Props): ReactElement {
             className={cn(duplicateError ? 'border border-danger' : '')}
           />
           <div className="text-danger-fg text-xs pl-2">
-            {duplicateError && 'Already exists'}
+            {duplicateError && t('alreadyExists')}
           </div>
         </>
       ) : (

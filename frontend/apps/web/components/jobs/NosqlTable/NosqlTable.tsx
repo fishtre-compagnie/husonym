@@ -18,6 +18,7 @@ import { GetConnectionSchemaResponse, JobMapping } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { nanoid } from 'nanoid';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useMemo } from 'react';
 import { AppTableFeatures } from '../../table/features';
 import { NOSQL_COLUMNS, NosqlJobMappingRow } from '../JobMappingTable/Columns';
@@ -96,6 +97,7 @@ export default function NosqlTable(props: Props): ReactElement {
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
   } = props;
+  const t = useTranslations('mapping.nosql');
   const { account } = useAccount();
   const { handler, isValidating } = useGetTransformersHandler(
     account?.id ?? ''
@@ -167,13 +169,10 @@ export default function NosqlTable(props: Props): ReactElement {
               <div className="flex">
                 <TableIcon className="h-4 w-4" />
               </div>
-              <CardTitle>Add new mapping</CardTitle>
+              <CardTitle>{t('addMappingTitle')}</CardTitle>
               <div>{isValidating ? <Spinner /> : null}</div>
             </div>
-            <CardDescription>
-              Select a collection and input a document key to transform, along
-              with specifying the relevant transformer.
-            </CardDescription>
+            <CardDescription>{t('addMappingDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <AddNewNosqlRecord

@@ -5,6 +5,7 @@ import {
 import { create, toJson } from '@bufbuild/protobuf';
 import { JobMappingSchema } from '@husonym/sdk';
 import { Row, RowData } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { AppTableFeatures } from '../../table/features';
 import { useJsonFileDownload } from '../../useJsonFileDownload';
@@ -26,6 +27,7 @@ export function useOnExportMappings<T extends RowData>(
 ): UseOnExportMappingsResponse<T> {
   const { jobMappings } = props;
   const { downloadFile } = useJsonFileDownload();
+  const t = useTranslations('mapping.schemaTable.exportMappings');
 
   return {
     onClick: async function (
@@ -65,10 +67,10 @@ export function useOnExportMappings<T extends RowData>(
         shouldFormat,
         // todo: may want to export these in the Props in the future for more control
         onSuccess() {
-          toast.success('Successfully exported job mappings!');
+          toast.success(t('success'));
         },
         onError(error) {
-          toast.error(`Failed to export job mappings: ${error}`);
+          toast.error(t('failed', { error: String(error) }));
         },
       });
     },

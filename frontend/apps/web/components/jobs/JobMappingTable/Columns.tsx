@@ -15,7 +15,14 @@ import {
   SystemTransformerSchema,
   TransformerSource,
 } from '@husonym/sdk';
-import { createColumnHelper, Row } from '@tanstack/react-table';
+import {
+  Column,
+  createColumnHelper,
+  Row,
+  RowData,
+} from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
+import { ReactElement } from 'react';
 import RgpdCell from './RgpdCell';
 import RgpdColumnHeader from './RgpdColumnHeader';
 import { rgpdRank, rgpdState } from './rgpd-state';
@@ -117,7 +124,7 @@ function getJobMappingColumns() {
   const schemaColumn = columnHelper.accessor('schema', {
     size: 105,
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Schema" />;
+      return <TranslatedHeader column={column} titleKey="schema" />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} />;
@@ -128,7 +135,7 @@ function getJobMappingColumns() {
     id: 'table',
     size: 120,
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Table" />;
+      return <TranslatedHeader column={column} titleKey="table" />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} maxWidth={150} />;
@@ -138,7 +145,7 @@ function getJobMappingColumns() {
   const columnColumn = columnHelper.accessor('column', {
     size: 180,
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Column" />;
+      return <TranslatedHeader column={column} titleKey="column" />;
     },
     cell({ getValue }) {
       return <TruncatedText text={getValue()} maxWidth={150} />;
@@ -148,7 +155,7 @@ function getJobMappingColumns() {
   const dataTypeColumn = columnHelper.accessor('dataType', {
     size: 122,
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Data Type" />;
+      return <TranslatedHeader column={column} titleKey="dataType" />;
     },
     cell({ getValue }) {
       return <DataTypeCell value={getValue()} />;
@@ -161,12 +168,14 @@ function getJobMappingColumns() {
       id: 'isNullable',
       size: 115,
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Nullable" />;
+        return <TranslatedHeader column={column} titleKey="nullable" />;
       },
       cell({ getValue }) {
         return (
           <span className="max-w-[500px] truncate font-medium">
-            <Badge variant="outline">{getValue()}</Badge>
+            <Badge variant="outline">
+              <YesNo value={getValue()} />
+            </Badge>
           </span>
         );
       },
@@ -179,7 +188,7 @@ function getJobMappingColumns() {
       id: 'constraints',
       size: 128,
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Constraints" />;
+        return <TranslatedHeader column={column} titleKey="constraints" />;
       },
       cell({ row }) {
         const constraints = row.original.constraints;
@@ -210,7 +219,7 @@ function getJobMappingColumns() {
       id: 'transformer',
       size: 244,
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Transformer" />;
+        return <TranslatedHeader column={column} titleKey="transformer" />;
       },
       cell({ table, row }) {
         const transformer =
@@ -245,7 +254,7 @@ function getJobMappingColumns() {
     id: 'openDecision',
     size: 44,
     header() {
-      return <span className="sr-only">Decide</span>;
+      return <DecideHeader />;
     },
     cell({ row, table }) {
       return (
@@ -290,7 +299,7 @@ function getJobMappingColumns() {
       id: 'rgpd',
       size: 150,
       header({ column }) {
-        return <RgpdColumnHeader column={column} title="Personal data" />;
+        return <RgpdHeader column={column} />;
       },
       // Filtered by what the column asks of the person, not by text: see rgpdFilterFn.
       filterFn: rgpdFilterFn,
@@ -477,7 +486,7 @@ function getNosqlJobMappingColumns() {
 
   const collectionColumn = columnHelper.accessor('collection', {
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Collection" />;
+      return <TranslatedHeader column={column} titleKey="collection" />;
     },
     cell({ getValue, table, row }) {
       return (
@@ -503,7 +512,7 @@ function getNosqlJobMappingColumns() {
 
   const columnColumn = columnHelper.accessor('column', {
     header({ column }) {
-      return <SchemaColumnHeader column={column} title="Document Key" />;
+      return <TranslatedHeader column={column} titleKey="documentKey" />;
     },
     cell({ getValue, table, row }) {
       return (
@@ -543,7 +552,7 @@ function getNosqlJobMappingColumns() {
     {
       id: 'transformer',
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="Transformer" />;
+        return <TranslatedHeader column={column} titleKey="transformer" />;
       },
       cell({ table, row }) {
         const transformer =
@@ -597,7 +606,7 @@ function getNosqlJobMappingColumns() {
   const actionsColumn = columnHelper.display({
     id: 'actions',
     header({}) {
-      return <p>Actions</p>;
+      return <ActionsHeader />;
     },
     cell({ row, table }) {
       return (
@@ -619,6 +628,54 @@ function getNosqlJobMappingColumns() {
     transformerColumn,
     actionsColumn,
   ]);
+}
+
+type ColumnTitleKey =
+  | 'schema'
+  | 'table'
+  | 'column'
+  | 'dataType'
+  | 'nullable'
+  | 'constraints'
+  | 'transformer'
+  | 'collection'
+  | 'documentKey';
+
+// The column definitions live outside any component: their titles are read here.
+function TranslatedHeader<TData extends RowData, TValue>({
+  column,
+  titleKey,
+}: {
+  column: Column<AppTableFeatures, TData, TValue>;
+  titleKey: ColumnTitleKey;
+}): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.columns');
+  return <SchemaColumnHeader column={column} title={t(titleKey)} />;
+}
+
+function RgpdHeader<TData extends RowData, TValue>({
+  column,
+}: {
+  column: Column<AppTableFeatures, TData, TValue>;
+}): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.columns');
+  return <RgpdColumnHeader column={column} title={t('personalData')} />;
+}
+
+function DecideHeader(): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.columns');
+  return <span className="sr-only">{t('decide')}</span>;
+}
+
+function ActionsHeader(): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.columns');
+  return <p>{t('actions')}</p>;
+}
+
+// The value stays 'Yes' / 'No' for the column filter; only what is shown is translated.
+function YesNo({ value }: { value: string }): ReactElement {
+  const t = useTranslations('mapping.jobMappingTable.columns');
+  return <>{value === 'Yes' ? t('yes') : t('no')}</>;
 }
 
 export const SQL_COLUMNS = getJobMappingColumns();

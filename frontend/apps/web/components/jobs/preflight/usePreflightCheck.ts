@@ -3,6 +3,7 @@ import { getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation } from '@connectrpc/connect-query';
 import { Code, ConnectError, JobService, PreflightReport } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 
 interface PreflightOutcome {
@@ -24,6 +25,7 @@ interface PreflightCheck {
 // computed by a worker and the connections are asked, nothing is read nor written. It takes
 // seconds, up to a minute on a large schema.
 export function usePreflightCheck(jobId: string): PreflightCheck {
+  const t = useTranslations('mapping.preflight');
   const { mutateAsync } = useMutation(JobService.method.preflightJob);
   const [isChecking, setIsChecking] = useState(false);
   const [outcome, setOutcome] = useState<PreflightOutcome>();
@@ -42,9 +44,9 @@ export function usePreflightCheck(jobId: string): PreflightCheck {
               ? timestampDate(resp.checkedAt)
               : new Date(),
           }
-        : { error: 'The check returned no report.' };
+        : { error: t('noReport') };
     } catch (err) {
-      found = { error: preflightErrorMessage(err) };
+      found = { error: preflightErrorMessage(err, t('permissionDenied')) };
     }
     if (id !== lastCheck.current) {
       return undefined;
@@ -58,9 +60,9 @@ export function usePreflightCheck(jobId: string): PreflightCheck {
 }
 
 // preflightErrorMessage says why a check did not end, in the words of the page.
-function preflightErrorMessage(err: unknown): string {
+function preflightErrorMessage(err: unknown, permissionDenied: string): string {
   if (err instanceof ConnectError && err.code === Code.PermissionDenied) {
-    return 'The pre-flight check logs in to the connections of the job: it takes the permission to see what they store.';
+    return permissionDenied;
   }
   return getErrorMessage(err);
 }

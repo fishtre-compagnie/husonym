@@ -3,6 +3,7 @@
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { RowData, Table } from '@tanstack/react-table';
+import { useTranslations } from 'next-intl';
 
 import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
@@ -21,16 +22,17 @@ interface DataTableViewOptionsProps<TData extends RowData> {
 export function SchemaTableViewOptions<TData extends RowData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
+  const t = useTranslations('mapping.schemaTable.viewOptions');
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
           <MixerHorizontalIcon className="mr-2 h-4 w-4" />
-          View
+          {t('view')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('toggleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

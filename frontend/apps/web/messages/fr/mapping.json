@@ -1,3 +1,590 @@
 {
-  "mapping": {}
+  "mapping": {
+    "columnDecision": {
+      "panel": {
+        "previous": "Colonne précédente",
+        "next": "Colonne suivante",
+        "position": "{position} sur {total}"
+      },
+      "fields": {
+        "transformer": "Transformer",
+        "beforeAfter": "Avant / après",
+        "placeholder": "Choisir un transformer"
+      }
+    },
+    "dualListBox": {
+      "searchPlaceholder": "Rechercher…",
+      "source": "Source",
+      "destination": "Destination",
+      "noTables": "Impossible de charger le schéma, ou aucune table trouvée",
+      "allTablesAdded": "Toutes les tables ont été ajoutées !",
+      "addTables": "Ajoutez des tables pour commencer !",
+      "addTable": "Ajoutez une table pour commencer !"
+    },
+    "form": {
+      "destinationOptions": {
+        "truncateBeforeInsert": "Vider avant insertion",
+        "truncateBeforeInsertDescription": "Vide la table avant d'y insérer les données",
+        "truncateCascade": "Truncate Cascade",
+        "truncateCascadeDescription": "TRUNCATE CASCADE sur toutes les tables",
+        "initTableSchema": "Initialiser le schéma des tables",
+        "initTableSchemaDescription": "Crée les schémas, les tables et leurs contraintes.",
+        "onConflictDoNothing": "En cas de conflit : ne rien faire",
+        "onConflictDoNothingDescription": "En cas de conflit à l'insertion, la ligne n'est pas insérée",
+        "onConflictDoUpdate": "En cas de conflit : mettre à jour",
+        "onConflictDoUpdateDescription": "En cas de conflit à l'insertion, la ligne existante est mise à jour",
+        "skipForeignKeyViolations": "Ignorer les violations de clé étrangère",
+        "skipForeignKeyViolationsDescription": "Insère toutes les lignes valides et écarte celles qui violent une contrainte de clé étrangère.",
+        "maxInFlight": "Lots en vol max",
+        "maxInFlightDescription": "Nombre maximal de lots en cours d'envoi au même moment. L'augmenter améliore le débit.",
+        "batchCount": "Taille de lot",
+        "batchCountDatabaseDescription": "Nombre maximal de lignes par lot avant l'écriture en base. 0 pour désactiver les lots par nombre.",
+        "batchCountS3Description": "Nombre maximal de lignes par lot avant l'écriture dans S3. 0 pour désactiver les lots par nombre.",
+        "batchPeriod": "Période de lot",
+        "batchPeriodDescription": "Délai au bout duquel un lot incomplet est écrit, quel que soit son nombre de lignes. Ex. : 1s, 1m, 500ms. Vide pour désactiver les lots par durée (déconseillé).",
+        "storageClass": "Classe de stockage",
+        "storageClassDescription": "La classe de stockage utilisée pour écrire les enregistrements dans S3",
+        "uploadTimeout": "Délai d'envoi",
+        "uploadTimeoutDescription": "Durée maximale d'attente d'un envoi avant de l'abandonner et de le retenter. Ex. : 5s, 1m",
+        "s3Title": "Configuration S3",
+        "s3Description": "Réglez la façon dont Husonym envoie les enregistrements vers le bucket.",
+        "noConnectionComponent": "Aucun composant de connexion pour : ({name})",
+        "unknownName": "nom inconnu"
+      },
+      "dynamodbSource": {
+        "unmappedTitle": "Transformers par défaut des clés non mappées",
+        "unmappedDescription": "Définissez des transformers par défaut pour les clés non mappées, afin d'anonymiser automatiquement les champs génériques selon leur type de données.",
+        "readConsistencyTitle": "Cohérence de lecture",
+        "readConsistencyDefault": "Règle la cohérence de lecture ; par défaut, les lectures sont à cohérence éventuelle.",
+        "readConsistencyStrong": "La cohérence forte garantit les données les plus à jour, qui reflètent toutes les écritures réussies précédentes.",
+        "readMore": "En savoir plus dans la",
+        "awsDocs": "documentation AWS",
+        "byte": "Byte",
+        "byteDescription": "Valeur par défaut des champs Byte non mappés",
+        "boolean": "Boolean",
+        "booleanDescription": "Valeur par défaut des champs Boolean non mappés",
+        "number": "Number",
+        "numberDescription": "Valeur par défaut des champs Number non mappés",
+        "string": "String",
+        "stringDescription": "Valeur par défaut des champs String non mappés",
+        "eventual": "Éventuelle",
+        "strong": "Forte"
+      },
+      "consistencyScope": {
+        "run": "Exécution (par défaut)",
+        "job": "Job — mêmes sorties à chaque exécution de ce job",
+        "account": "Compte — mêmes sorties dans tous les jobs (pseudonymisation)"
+      },
+      "schemaChange": {
+        "title": "Quand le schéma de la source change",
+        "description": "Avant de copier quoi que ce soit, une exécution compare les colonnes de la source avec le mapping.",
+        "newColumn": "Une nouvelle colonne apparaît",
+        "removedColumn": "Une colonne mappée disparaît",
+        "learnMore": "En savoir plus",
+        "newColumnChoices": {
+          "halt": {
+            "label": "Arrêter",
+            "effect": "L'exécution s'arrête et nomme la colonne, tant que personne ne l'a mappée."
+          },
+          "automap": {
+            "label": "Mapper et faire revoir",
+            "effect": "La colonne est mappée comme le suggère la détection PII, ou copiée telle quelle si rien ne convient. Le changement attend dans la Revue PII jusqu'à ce que quelqu'un l'accepte."
+          },
+          "passthrough": {
+            "label": "Passthrough",
+            "effect": "La colonne est copiée telle quelle, en clair, tant que personne ne l'a mappée : des données personnelles peuvent atteindre la destination."
+          },
+          "continue": {
+            "label": "Ignorer",
+            "effect": "La colonne est laissée hors de la copie. L'écriture échoue si la colonne de destination n'a pas de valeur par défaut."
+          }
+        },
+        "removedColumnChoices": {
+          "halt": {
+            "label": "Arrêter",
+            "effect": "L'exécution s'arrête et nomme la colonne absente de la source."
+          },
+          "continue": {
+            "label": "Continuer",
+            "effect": "L'exécution continue sans la colonne. Son mapping reste jusqu'à ce qu'on le retire dans Mapping."
+          }
+        }
+      },
+      "subsetOptions": {
+        "byForeignKeys": "Subset selon les contraintes de clé étrangère",
+        "byForeignKeysDescription": "Restreint les tables en suivant les relations de clé étrangère"
+      }
+    },
+    "jobMappingTable": {
+      "table": {
+        "title": "Mapping des transformers",
+        "description": "Associez un transformer à chaque colonne ci-dessous.",
+        "shown": "{shown} colonnes affichées sur {total}"
+      },
+      "columns": {
+        "schema": "Schéma",
+        "table": "Table",
+        "column": "Colonne",
+        "dataType": "Type de données",
+        "nullable": "Nullable",
+        "yes": "Oui",
+        "no": "Non",
+        "constraints": "Contraintes",
+        "transformer": "Transformer",
+        "decide": "Décider",
+        "personalData": "Données personnelles",
+        "collection": "Collection",
+        "documentKey": "Clé de document",
+        "actions": "Actions"
+      },
+      "constraints": {
+        "primaryKey": "Clé primaire",
+        "referencedKey": "Clé primaire : {column}",
+        "uniqueKey": "Clé unique"
+      },
+      "rgpdHeader": {
+        "sortedDesc": "Trié par {title}, les colonnes à décider d'abord. Retirer le tri",
+        "sortedAsc": "Trié par {title}, croissant. Trier les colonnes à décider d'abord",
+        "sortBy": "Trier par {title}"
+      },
+      "rgpdCell": {
+        "noPersonalData": "Aucune donnée personnelle détectée",
+        "notAnalyzedTitle": "Le contenu de cette colonne n'a pas pu être analysé : on ne sait pas si elle contient des données personnelles. Relancez l'analyse.",
+        "notAnalyzed": "Non analysée",
+        "ambiguous": "Donnée RGPD, mais ambiguë.",
+        "notAnonymizedTooltip": "Donnée RGPD, mais non anonymisée.",
+        "noCompatibleTransformer": "Donnée RGPD, mais aucun transformer compatible.",
+        "gdprData": "Donnée RGPD.",
+        "recognizedBy": "Reconnue par {engine}.",
+        "review": "À vérifier",
+        "notAnonymized": "Non anonymisée",
+        "gdpr": "RGPD",
+        "engines": {
+          "columnName": "le dictionnaire",
+          "checksum": "une somme de contrôle",
+          "content": "l'IA",
+          "format": "l'analyse du format"
+        },
+        "categories": {
+          "email": "E-mail",
+          "phone_number": "Numéro de téléphone",
+          "person_first_name": "Prénom",
+          "person_last_name": "Nom",
+          "person_full_name": "Nom complet",
+          "username": "Nom d'utilisateur",
+          "street_address": "Adresse postale",
+          "city": "Ville",
+          "state": "Région / État",
+          "postal_code": "Code postal",
+          "country": "Pays",
+          "ssn": "Numéro de sécurité sociale",
+          "national_id": "Identifiant national",
+          "secret": "Mot de passe, jeton ou clé",
+          "password_hash": "Empreinte de mot de passe",
+          "iban": "IBAN",
+          "bank_account": "Compte bancaire",
+          "salary": "Salaire",
+          "age": "Âge",
+          "ethnicity": "Origine ethnique",
+          "marital_status": "Situation familiale",
+          "mac_address": "Adresse MAC",
+          "siret": "SIRET",
+          "credit_card": "Carte bancaire",
+          "ip_address": "Adresse IP",
+          "gender": "Genre",
+          "birth_date": "Date de naissance",
+          "date": "Date"
+        }
+      },
+      "mappingCell": {
+        "inClear": "en clair",
+        "toConfirm": "à confirmer",
+        "decideAria": "Décider ce qui sort de {column} : {name}",
+        "noTransformer": "aucun transformer",
+        "chooseTransformer": "Choisir un transformer",
+        "openDecision": "Ouvrir le panneau de décision de {column}"
+      },
+      "selectionBar": {
+        "region": "Colonnes sélectionnées",
+        "selected": "{count, plural, one {# colonne sélectionnée} other {# colonnes sélectionnées}}",
+        "setTransformer": "Définir le transformer…",
+        "clear": "Effacer",
+        "panelTitle": "{count, plural, one {# colonne} other {# colonnes}}",
+        "meta": "Le même transformer et les mêmes options sont appliqués à chaque colonne sélectionnée.",
+        "cancel": "Annuler",
+        "noSharedTransformer": "Les colonnes sélectionnées n'ont pas ce transformer en commun",
+        "apply": "Appliquer à {count, plural, one {# colonne} other {# colonnes}}",
+        "placeholder": "Choisir un transformer pour toutes",
+        "noCommon": "Les colonnes sélectionnées n'ont pas ce transformer en commun. Réduisez la sélection ou choisissez un autre transformer."
+      },
+      "decisionPanel": {
+        "personalData": "Données personnelles",
+        "meta": "Appliqué au mapping tout de suite ; le job est enregistré quand vous cliquez sur Mettre à jour.",
+        "cancel": "Annuler",
+        "pickFirst": "Choisissez d'abord un autre transformer ou une autre option",
+        "apply": "Appliquer"
+      },
+      "preview": {
+        "unknownError": "erreur inconnue",
+        "couldNotRead": "Impossible de lire la colonne : {error}",
+        "rows": "<strong>{count}</strong> ligne(s)",
+        "distinct": "<strong>{inputs}</strong> valeur(s) distincte(s)",
+        "distinctBeforeAfter": "<strong>{inputs}</strong> valeur(s) distincte(s) avant, <strong>{outputs}</strong> après",
+        "nulls": "{count} NULL",
+        "empties": "{count} vide(s)",
+        "failed": "{count} en échec",
+        "noUsableValue": "aucune valeur exploitable",
+        "collapses": "Le transformer change {inputs} valeurs distinctes en {outputs} : sur une colonne soumise à une contrainte d'unicité, l'écriture échouerait.",
+        "before": "Avant",
+        "value": "Valeur",
+        "after": "Après",
+        "noRows": "La table ne contient aucune ligne.",
+        "footer": "Échantillon en lecture seule des {limit} premières lignes.",
+        "footerTransformer": "Échantillon en lecture seule des {limit} premières lignes : il montre ce que fait le transformer, il ne prouve rien sur l'ensemble de la table.",
+        "emptyString": "(chaîne vide)"
+      },
+      "explorer": {
+        "groups": {
+          "decide": "À décider",
+          "protected": "Protégées",
+          "none": "Non personnelles",
+          "all": "Toutes les colonnes"
+        },
+        "missingColumns": "Certaines colonnes mappées n'existent plus dans la source.",
+        "removeMissing": "Les retirer du mapping",
+        "tables": "{count, plural, one {# table} other {# tables}}",
+        "allColumns": "{count} colonnes",
+        "someColumns": "{shown} colonnes sur {total}",
+        "collapseAll": "Tout replier",
+        "expandAll": "Tout déplier",
+        "emptyJob": "Ce job ne contient encore aucune table. Choisissez les tables ci-dessus.",
+        "noMatch": "Aucune table ni colonne ne correspond à cette recherche.",
+        "nothingToDecide": "Plus rien à décider : toutes les colonnes personnelles sont protégées.",
+        "emptyGroup": "Aucune colonne dans ce groupe.",
+        "hiddenByFilter": "{count, plural, one {# autre colonne de cette table masquée} other {# autres colonnes de cette table masquées}} par le filtre.",
+        "showMore": "Afficher {count} tables de plus ({left} restantes)",
+        "tabsAria": "Colonnes selon ce qu'elles demandent",
+        "searchLabel": "Rechercher une table ou une colonne",
+        "searchPlaceholder": "Table ou colonne",
+        "scanTitle": "Lit un échantillon de chaque colonne pour trouver des données personnelles, y compris dans les colonnes dont le nom ne dit rien. Les transformers suggérés sont appliqués.",
+        "scanning": "Analyse…",
+        "scan": "Analyser le contenu",
+        "tableColumns": "{count, plural, one {# colonne} other {# colonnes}}",
+        "personal": "{count, plural, one {# personnelle} other {# personnelles}}",
+        "toDecide": "{count} à décider",
+        "protected": "Protégée",
+        "nothingPersonal": "Rien de personnel",
+        "selectTableTitle": "Sélectionner les colonnes de {table}",
+        "selectTableAria": "Sélectionner les colonnes affichées de {table}",
+        "headColumn": "Colonne",
+        "headDetected": "Détecté",
+        "headLeaves": "Part vers la destination comme",
+        "selectColumn": "Sélectionner {column}",
+        "meta": {
+          "primaryKey": "clé primaire",
+          "virtual": "virtuelle → {columns}",
+          "unique": "unique",
+          "nullable": "nullable",
+          "generated": "générée",
+          "identity": "identité"
+        }
+      }
+    },
+    "jobNotFound": {
+      "title": "Erreur : impossible de récupérer le job"
+    },
+    "nosql": {
+      "addMappingTitle": "Ajouter un mapping",
+      "addMappingDescription": "Sélectionnez une collection, saisissez la clé de document à transformer et choisissez le transformer à appliquer.",
+      "alreadyExists": "Existe déjà",
+      "addRecord": {
+        "collection": "Collection",
+        "collectionDescription": "La collection à mapper.",
+        "collectionPlaceholder": "Sélectionner une collection",
+        "collectionRequired": "La collection est requise.",
+        "keyRequired": "La clé est requise.",
+        "keyExistsInSelected": "Cette clé existe déjà dans la collection sélectionnée.",
+        "keyExists": "Cette clé existe déjà dans cette collection.",
+        "documentKey": "Clé de document",
+        "documentKeyDescription": "Utilisez la notation pointée pour choisir la clé du mapping.",
+        "transformer": "Transformer",
+        "transformerDescription": "Choisissez le transformer à appliquer",
+        "add": "Ajouter"
+      },
+      "rowActions": {
+        "openMenu": "Ouvrir le menu",
+        "duplicate": "Dupliquer",
+        "remove": "Retirer"
+      },
+      "tableMappings": {
+        "cardTitle": "Mappings de tables DynamoDB",
+        "cardDescription": "Associez chaque table source à une table de destination. Les tables ajoutées dans le formulaire ci-dessus apparaissent ici automatiquement. Un mapping est requis pour indiquer vers quelle table chaque table source est synchronisée, pour chaque destination DynamoDB.",
+        "tableTitle": "Mappings de tables",
+        "tableDescription": "Associer les tables entre les sources de données",
+        "empty": "Aucun schéma ni aucune table sélectionnés.",
+        "rowCounts": "Lignes au total : ({total}) Lignes visibles : ({visible})",
+        "destination": "Destination",
+        "sourceTable": "Table source",
+        "destinationTable": "Table de destination",
+        "unknownName": "Nom inconnu",
+        "selectDestinationTable": "Sélectionner la table de destination…",
+        "searchDestinationTable": "Rechercher une table de destination…",
+        "noDestinationTable": "Aucune table de destination trouvée."
+      }
+    },
+    "preflight": {
+      "title": "Contrôle avant exécution",
+      "nothingToReport": "Rien à signaler.",
+      "checkDidNotEnd": "Le contrôle n'a pas abouti",
+      "defaultEngine": "moteur par défaut",
+      "unnamedConnection": "connexion",
+      "noReport": "Le contrôle n'a renvoyé aucun rapport.",
+      "permissionDenied": "Le contrôle avant exécution se connecte aux connexions du job : il faut la permission de voir ce qu'elles contiennent.",
+      "groups": {
+        "plan": "Plan de l'exécution",
+        "connection": "Connexion",
+        "connectionOfJob": "{role, select, source {Source} other {Destination}} · {name}"
+      },
+      "summary": {
+        "blocking": "{count, plural, one {# constat bloquant} other {# constats bloquants}} : l'exécution s'arrêtera dès son démarrage.",
+        "warnings": "{count, plural, one {# avertissement} other {# avertissements}} : l'exécution peut s'arrêter, ou mal copier, selon les lignes.",
+        "notes": "Rien n'arrête l'exécution. {count, plural, one {# remarque} other {# remarques}} sur ce qu'elle fait.",
+        "nothing": "Rien à signaler : l'exécution ne rencontre rien que le plan puisse prévoir."
+      },
+      "card": {
+        "checkedAt": "{engine} · contrôlé le {date}",
+        "description": "Ce qu'une exécution de ce job rencontrerait, d'après le plan de l'exécution et les droits de ses connexions. Rien n'est lu dans les tables ni écrit.",
+        "checking": "Contrôle…",
+        "checkNow": "Contrôler maintenant",
+        "inProgress": "Un worker calcule le plan de l'exécution et interroge les connexions : cela prend quelques secondes, jusqu'à une minute sur un grand schéma."
+      },
+      "run": {
+        "title": "Contrôle avant cette exécution",
+        "remediesHint": "Les instructions qui accordent ce qui manque sont données par le contrôle avant exécution du job."
+      },
+      "dialog": {
+        "checking": "Contrôle de ce que l'exécution rencontrera avant de la lancer…",
+        "didNotEnd": "Le contrôle n'a pas abouti.",
+        "inProgress": "Un worker calcule le plan de l'exécution et interroge les connexions du job. Cela prend quelques secondes, jusqu'à une minute sur un grand schéma. Rien n'est lu dans les tables ni écrit.",
+        "checksAgain": "L'exécution refait le contrôle à son démarrage.",
+        "checkAgain": "Contrôler à nouveau",
+        "close": "Fermer",
+        "cancel": "Annuler",
+        "run": "Exécuter",
+        "runAnyway": "Exécuter quand même"
+      }
+    },
+    "schemaTable": {
+      "tabs": {
+        "mapping": "Mapping des transformers",
+        "virtualForeignKeys": "Clés étrangères virtuelles"
+      },
+      "constraints": {
+        "primaryKey": "Clé primaire",
+        "foreignKey": "Clé étrangère : {column}",
+        "virtualForeignKey": "Clé étrangère virtuelle : {column}",
+        "unique": "Unique",
+        "nullable": "Nullable",
+        "notNullable": "Non nullable"
+      },
+      "scan": {
+        "tablesNotScanned": "{count, plural, one {# table non analysée} other {# tables non analysées}} : {tables}",
+        "columnsNotAnalyzed": "{count, plural, one {# colonne n'a pas pu être analysée} other {# colonnes n'ont pas pu être analysées}} : relancez l'analyse, ou vérifiez-les vous-même.",
+        "nothingFound": "Aucune donnée personnelle trouvée dans le contenu échantillonné.",
+        "confirmed": "{count, plural, one {# colonne confirmée} other {# colonnes confirmées}} par clé de contrôle",
+        "applied": " ({count, plural, one {# transformer appliqué} other {# transformers appliqués}})",
+        "toReview": "{count} à vérifier",
+        "failed": "Échec de l'analyse du contenu : {error}",
+        "unknownError": "erreur inconnue"
+      },
+      "toolbar": {
+        "clearFilters": "Effacer les filtres",
+        "removeMissing": "Retirer les mappings des colonnes absentes de la source",
+        "scanTitle": "Analyse un échantillon du contenu des colonnes (Presidio) pour trouver des données personnelles, y compris dans les colonnes dont le nom ne dit rien. Les transformers suggérés sont appliqués automatiquement.",
+        "scanning": "Analyse…",
+        "scan": "Analyse du contenu (RGPD)"
+      },
+      "viewOptions": {
+        "view": "Affichage",
+        "toggleColumns": "Afficher/masquer les colonnes"
+      },
+      "exportMappings": {
+        "export": "Exporter",
+        "headerAll": "Exporter tous les mappings du job",
+        "headerSelected": "Exporter {count, plural, one {# mapping sélectionné} other {# mappings sélectionnés}}",
+        "description": "Exporter les mappings du job dans un fichier JSON",
+        "formatTitle": "Formater le JSON",
+        "formatDescription": "Formater le JSON avant le téléchargement ? (Augmente la taille du fichier)",
+        "success": "Mappings du job exportés.",
+        "failed": "Échec de l'export des mappings : {error}",
+        "confirm": "Confirmer"
+      },
+      "importMappings": {
+        "import": "Importer",
+        "header": "Importer des mappings",
+        "description": "Plusieurs fichiers peuvent être importés.",
+        "failed": "Impossible de lire ce fichier comme des mappings : {error}",
+        "truncateTitle": "Vider les mappings existants",
+        "truncateDescription": "Repartir de zéro et ne garder que ce qui est importé.",
+        "overrideTitle": "Remplacer les mappings existants",
+        "overrideDescription": "Si oui, remplace les mappings existants. Sinon, importe seulement les nouveaux.",
+        "errors": {
+          "invalidJson": "Format JSON invalide",
+          "readFailed": "Erreur de lecture du fichier",
+          "invalidData": "Format de données invalide",
+          "workerNotReady": "Worker non initialisé",
+          "processingFailed": "Échec du traitement"
+        }
+      },
+      "applyDefault": {
+        "button": "Appliquer les transformers par défaut",
+        "header": "Appliquer les transformers par défaut ?",
+        "description": "Applique le transformer « Passthrough » à chaque colonne non générée, et le transformer « Use Column Default » à toutes les colonnes générées (hors identité).",
+        "overrideTitle": "Remplacer les transformers déjà mappés",
+        "overrideDescription": "Voulez-vous écraser les transformers que vous avez déjà mappés ?",
+        "confirm": "Confirmer"
+      },
+      "formErrors": {
+        "title": "Validations",
+        "errors": "{count, plural, one {# erreur} other {# erreurs}}",
+        "warnings": "{count, plural, one {# avertissement} other {# avertissements}}",
+        "validateAgain": "Valider à nouveau le mapping",
+        "description": "Les erreurs de validation du schéma à corriger avant de continuer.",
+        "allGood": "Tout est en ordre !"
+      },
+      "scopeBar": {
+        "titleSingle": "Table remplie par ce job",
+        "titleMany": "Tables copiées par ce job",
+        "descriptionSingle": "Le job génère les lignes de cette table. Ses colonnes sont mappées ci-dessous.",
+        "descriptionMany": "Le job lit ces tables dans la source et les écrit dans chaque destination. Leurs colonnes sont mappées ci-dessous.",
+        "chooseTable": "Choisir la table",
+        "chooseTables": "Choisir les tables",
+        "ofTables": "sur {total} tables de la source",
+        "columnsMapped": "· {count, plural, one {# colonne mappée} other {# colonnes mappées}}",
+        "progressLabel": "Part des tables de la source copiées",
+        "bySchema": "Tables copiées par schéma",
+        "checkAgain": "Vérifier à nouveau",
+        "problems": "Problèmes du mapping",
+        "showFewer": "Afficher moins",
+        "showOthers": "Afficher les {count} autres",
+        "dialogTitle": "Tables copiées par ce job",
+        "dialogDescription": "Placez à droite les tables que le job lit dans la source et écrit dans les destinations. Leurs colonnes apparaissent alors dans le mapping.",
+        "done": "Terminé",
+        "valid": "Mapping valide",
+        "errors": "{count, plural, one {# erreur} other {# erreurs}}",
+        "warnings": "{count, plural, one {# avertissement} other {# avertissements}}"
+      },
+      "transformerSelect": {
+        "notFound": "Aucun transformer trouvé.",
+        "search": "Rechercher…",
+        "custom": "Personnalisés",
+        "system": "Système"
+      },
+      "columnHeader": {
+        "sortBy": "Trier par {title}",
+        "sortByMulti": "Trier par {title}, maintenir Maj pour un tri multiple"
+      },
+      "virtualForeignKeyForm": {
+        "title": "Ajouter une clé étrangère virtuelle",
+        "description": "Sélectionnez la table et les colonnes source, puis la table et les colonnes cibles, pour créer une clé étrangère virtuelle. Ajoutez des colonnes pour créer une clé étrangère virtuelle composite.",
+        "source": "Source",
+        "sourceHint": "La clé primaire",
+        "target": "Cible",
+        "targetHint": "La clé étrangère",
+        "selectTable": "Sélectionner une table…",
+        "searchTable": "Rechercher une table…",
+        "noTable": "Aucune table trouvée.",
+        "selectColumn": "Sélectionner une colonne…",
+        "searchColumn": "Rechercher une colonne…",
+        "noColumn": "Aucune colonne trouvée.",
+        "addFailed": "Impossible d'ajouter la clé étrangère virtuelle",
+        "missingField": "Champ obligatoire manquant",
+        "save": "Enregistrer"
+      },
+      "virtualForeignKeys": {
+        "sourceTable": "Table source",
+        "sourceColumns": "Colonnes source",
+        "targetTable": "Table cible",
+        "actions": "Actions",
+        "search": "Rechercher…",
+        "asc": "Croissant",
+        "desc": "Décroissant",
+        "empty": "Aucune clé étrangère virtuelle",
+        "totals": "Lignes au total : ({total}) Lignes visibles : ({visible})"
+      },
+      "aiSchema": {
+        "selectionTitle": "Sélection de la table",
+        "selectionDescription": "Sélectionnez la table à utiliser pour la génération des données.",
+        "schemaTitle": "Schéma de la table",
+        "empty": "Aucun schéma ni aucune table sélectionnés.",
+        "table": "Table",
+        "column": "Colonne",
+        "constraints": "Contraintes",
+        "nullable": "Nullable",
+        "dataType": "Type de données",
+        "primaryKey": "Clé primaire",
+        "foreignKey": "Clé étrangère",
+        "primaryKeyOf": "Clé primaire : {column}",
+        "unique": "Unique",
+        "yes": "Oui",
+        "no": "Non",
+        "schemaDescription": "Le schéma de la table sélectionnée, utilisé pour générer les données synthétiques.",
+        "foreignKeyOf": "Clé étrangère : {column}"
+      }
+    },
+    "subsets": {
+      "table": {
+        "tabs": "Tables",
+        "all": "Toutes les tables",
+        "filtered": "Avec un filtre",
+        "root": "Tables racines",
+        "selected": "{count, plural, one {# sélectionnée} other {# sélectionnées}}",
+        "editSelected": "Modifier le filtre de {count, plural, one {# table} other {# tables}}",
+        "clear": "Effacer",
+        "search": "Rechercher une table",
+        "searchPlaceholder": "Schéma ou table",
+        "selectShown": "Sélectionner les tables affichées",
+        "table": "Table",
+        "rowsCopied": "Lignes copiées",
+        "actions": "Actions",
+        "emptyJob": "Ce job ne contient aucune table.",
+        "emptySearch": "Aucune table ne correspond à cette recherche.",
+        "emptyFiltered": "Aucune table n'a de filtre : toutes les lignes de toutes les tables sont copiées.",
+        "emptyRoot": "Aucune table racine.",
+        "select": "Sélectionner {table}",
+        "changed": "Modifié, pas encore enregistré",
+        "editFilterOf": "Modifier le filtre de {table}",
+        "allRows": "Toutes les lignes",
+        "addFilter": "Ajouter un filtre",
+        "editFilter": "Modifier le filtre",
+        "undoOf": "Annuler la modification non enregistrée de {table}",
+        "undo": "Annuler la modification pas encore enregistrée",
+        "showMore": "Afficher {count} tables de plus ({left} restantes)",
+        "rootBadge": "Racine",
+        "rootTooltip": "Une table racine : elle ne référence aucune table. La filtrer restreint aussi les tables qui la référencent, quand le subset suit les clés étrangères."
+      },
+      "errorAlert": {
+        "invalidSql": "Requête SQL invalide",
+        "rowCountFailed": "Impossible d'obtenir le nombre de lignes de la table",
+        "unknownError": "message d'erreur inconnu"
+      },
+      "validateBadge": {
+        "valid": "VALIDE",
+        "invalid": "INVALIDE"
+      },
+      "edit": {
+        "dialogTitle": "Requête de subset",
+        "dialogDescription": "Restreignez vos données avec des expressions SQL.",
+        "schema": "Schéma",
+        "table": "Table",
+        "cancel": "Annuler",
+        "rowCount": "Nombre de lignes",
+        "rowCountTooltip": "Tente d'exécuter un COUNT(*) SQL sur la connexion source, pour la table avec la clause WHERE saisie",
+        "validate": "Valider",
+        "validateTooltip": "Tente d'exécuter un PREPARE SQL sur la connexion source, pour la table avec la clause WHERE saisie",
+        "apply": "Appliquer",
+        "applyTooltip": "Applique les changements à la table seulement ; cliquez sur Enregistrer plus bas pour les soumettre"
+      }
+    }
+  }
 }
