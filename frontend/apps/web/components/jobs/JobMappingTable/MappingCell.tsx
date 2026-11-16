@@ -1,4 +1,5 @@
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
+import { useOptionText } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/optionText';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/libs/utils';
 import {
@@ -64,13 +65,15 @@ const PILL_NOTE: Partial<Record<PillLook, 'inClear' | 'toConfirm'>> = {
 export default function MappingCell(props: Props): ReactElement {
   const { column, transformer, name, isSensitive, state, onOpen } = props;
   const t = useTranslations('mapping.jobMappingTable.mappingCell');
+  const optionText = useOptionText();
 
   const configCase = transformer.config.case;
   const anonymizes = !!configCase && configCase !== 'passthroughConfig';
   const options = configCase
     ? summarizeOptions(
         convertJobMappingTransformerFormToJobMappingTransformer(transformer)
-          .config
+          .config,
+        optionText
       )
     : [];
   const look = pillLook(anonymizes, !!configCase, isSensitive, state);

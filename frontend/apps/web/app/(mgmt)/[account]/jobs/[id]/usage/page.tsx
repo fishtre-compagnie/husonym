@@ -22,6 +22,7 @@ import { getErrorMessage } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
 import { UsageService } from '@husonym/sdk';
 import { ReactElement, use, useState } from 'react';
+import { useUsageI18n } from '@/libs/usage/useUsageI18n';
 import LatestRunsTable from './components/LatestRunsTable';
 import { useTranslations } from 'next-intl';
 
@@ -32,6 +33,7 @@ export default function UsagePage(props: PageProps): ReactElement {
   const params = use(props.params);
   const id = params?.id ?? '';
   const t = useTranslations('jobs.usage');
+  const usageI18n = useUsageI18n();
   const { account } = useAccount();
   const accountId = account?.id ?? '';
   const [period, setPeriod] = useState<UsagePeriod>(DEFAULT_USAGE_PERIOD);
@@ -62,9 +64,9 @@ export default function UsagePage(props: PageProps): ReactElement {
         description={t('description')}
         subHeadings={
           error ? (
-            rangeLabel(range, undefined)
+            rangeLabel(range, undefined, usageI18n)
           ) : data ? (
-            rangeLabel(range, data.timeZone)
+            rangeLabel(range, data.timeZone, usageI18n)
           ) : (
             <Skeleton className="h-5 w-72" />
           )
@@ -90,12 +92,12 @@ export default function UsagePage(props: PageProps): ReactElement {
           />
           <RowsPerDayChart
             days={data.days}
-            emptyLine={noRowsPerDayLine(data.kind, data.totals)}
+            emptyLine={noRowsPerDayLine(data.kind, data.totals, usageI18n)}
           />
           <LatestRunsTable
             accountName={account?.name ?? ''}
             usage={data}
-            emptyLine={noRunLine(data.totals)}
+            emptyLine={noRunLine(data.totals, usageI18n)}
           />
         </>
       ) : (

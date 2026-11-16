@@ -344,7 +344,8 @@ export default function Page(props: PageProps): ReactElement {
                                 create(
                                   GetConnectionSchemaMapsResponseSchema,
                                   {}
-                                )
+                                ),
+                              t('unknownDestination')
                             )}
                             errors={
                               destinationsErrors[index]?.destinationOptions
