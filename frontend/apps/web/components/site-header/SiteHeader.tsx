@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { getTranslations } from 'next-intl/server';
 import { ReactElement } from 'react';
 import SupportDrawer from '../SupportDrawer';
 import { AccountStatusHandler } from './AccountStatusHandler';
@@ -46,13 +47,14 @@ export default function SiteHeader(): ReactElement {
   );
 }
 
-function SupportSheet(): ReactElement {
+async function SupportSheet(): Promise<ReactElement> {
+  const t = await getTranslations();
   return (
     <Sheet>
       <SheetTrigger asChild>
         <button
           type="button"
-          aria-label="Support"
+          aria-label={t('header.support')}
           className={topbarIconButtonClass}
         >
           <HelpIcon size={18} />
@@ -61,17 +63,17 @@ function SupportSheet(): ReactElement {
       <SheetContent className="w-[400px] sm:w-[540px]">
         <SheetHeader>
           <div className="flex flex-col md:flex-row gap-2 items-center justify-between">
-            <SheetTitle>Support</SheetTitle>
+            <SheetTitle>{t('header.support')}</SheetTitle>
             <div>
               <HusonymVersion className="font-mono text-xs text-muted-foreground" />
             </div>
           </div>
-          <SheetDescription>Need help? We got you covered.</SheetDescription>
+          <SheetDescription>{t('header.supportDescription')}</SheetDescription>
         </SheetHeader>
         <SupportDrawer />
         <SheetFooter className="pt-20">
           <SheetClose asChild>
-            <Button>Close</Button>
+            <Button>{t('common.close')}</Button>
           </SheetClose>
         </SheetFooter>
       </SheetContent>

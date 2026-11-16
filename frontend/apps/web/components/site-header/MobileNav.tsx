@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   isAuthEnabled: boolean;
@@ -20,6 +21,7 @@ interface Props {
 
 // Under the lg breakpoint the sidebar folds away: this button opens it as a drawer.
 export function MobileNav(props: Props) {
+  const t = useTranslations('nav');
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -27,7 +29,7 @@ export function MobileNav(props: Props) {
       <SheetTrigger asChild>
         <button
           type="button"
-          aria-label="Open navigation"
+          aria-label={t('openNavigation')}
           className={cn(topbarIconButtonClass, 'lg:hidden')}
         >
           <MenuIcon size={18} />
@@ -37,9 +39,9 @@ export function MobileNav(props: Props) {
         side="left"
         className="w-[272px] max-w-[85vw] overflow-y-auto border-r border-line-soft bg-sidebar p-0 sm:max-w-[272px]"
       >
-        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <SheetTitle className="sr-only">{t('drawerTitle')}</SheetTitle>
         <SheetDescription className="sr-only">
-          The sections of the app.
+          {t('drawerDescription')}
         </SheetDescription>
         <Sidebar
           isAuthEnabled={props.isAuthEnabled}

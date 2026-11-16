@@ -6,6 +6,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { AccountStatus, UserAccountService } from '@husonym/sdk';
 import { differenceInDays } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { useAccount } from '../providers/account-provider';
 import { Skeleton } from '../ui/skeleton';
 import Upgrade from './Upgrade';
@@ -65,6 +66,7 @@ interface TrialCountdownProps {
 
 function TrialCountdown(props: TrialCountdownProps) {
   const { isExpired, isAlmostExpired, daysRemaining } = props;
+  const t = useTranslations('header');
   const tone = isExpired ? 'danger' : isAlmostExpired ? 'warn' : 'brand';
 
   return (
@@ -83,8 +85,8 @@ function TrialCountdown(props: TrialCountdownProps) {
       />
       <div className="text-xs font-medium whitespace-nowrap">
         {isExpired
-          ? 'Trial Expired'
-          : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left in your trial`}
+          ? t('trialExpired')
+          : t('trialDaysLeft', { count: daysRemaining })}
       </div>
     </div>
   );

@@ -1,16 +1,19 @@
 import { cn } from '@/libs/utils';
 import { UserAccount, UserAccountType } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ComponentPropsWithRef, ReactElement } from 'react';
 import { ChevronDownIcon } from './icons';
 
-function accountKind(type: UserAccountType | undefined): string | undefined {
+function accountKind(
+  type: UserAccountType | undefined
+): 'personal' | 'team' | 'enterprise' | undefined {
   switch (type) {
     case UserAccountType.PERSONAL:
-      return 'Personal account';
+      return 'personal';
     case UserAccountType.TEAM:
-      return 'Team account';
+      return 'team';
     case UserAccountType.ENTERPRISE:
-      return 'Enterprise account';
+      return 'enterprise';
     default:
       return undefined;
   }
@@ -25,7 +28,9 @@ type Props = ComponentPropsWithRef<'button'> & {
 /** The active account, as the sidebar shows it: its initial, its name, its kind. */
 export function AccountCard(props: Props): ReactElement {
   const { account, interactive, className, ...rest } = props;
-  const kind = accountKind(account?.type);
+  const t = useTranslations('account');
+  const kindKey = accountKind(account?.type);
+  const kind = kindKey && t(kindKey);
   const inner = (
     <>
       <span

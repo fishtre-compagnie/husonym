@@ -7,31 +7,49 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useLocalePreference } from '@/components/providers/locale-provider';
+import { LOCALES, Locale, LocalePreference, toPreference } from '@/i18n/config';
 import { getAvatarFallback } from '@/libs/utils';
 import { GearIcon } from '@radix-ui/react-icons';
 import { signOutEverywhere } from '@/libs/sign-out';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/util/util';
+
+// Each language in its own name, whatever the UI is in.
+const LANGUAGE_NAMES: Record<Locale, string> = {
+  en: 'English',
+  fr: 'Français',
+};
 
 interface Props {
   // 'row': the sidebar's foot, the avatar beside the name and address.
   variant?: 'avatar' | 'row';
+  // Without auth there is no session, but the menu still holds the language.
+  isAuthEnabled?: boolean;
 }
 
 export function UserNav(props: Props = {}): ReactElement | null {
-  const { variant = 'avatar' } = props;
+  const { variant = 'avatar', isAuthEnabled = true } = props;
   const session = useSession();
+  const t = useTranslations('userMenu');
 
   const avatarImageSrc = session.data?.user?.image ?? '';
   const avatarImageAlt = session.data?.user?.name ?? 'unknown';
   const userName = session.data?.user?.name;
   const avatarFallback = userName ? getAvatarFallback(userName) : <GearIcon />;
 
-  if (session.status === 'unauthenticated') {
+  if (session.status === 'unauthenticated' && isAuthEnabled) {
     return null;
   }
 
@@ -41,7 +59,7 @@ export function UserNav(props: Props = {}): ReactElement | null {
         {variant === 'row' ? (
           <button
             type="button"
-            aria-label="Account menu"
+            aria-label={t('trigger')}
             className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg p-2.5 text-left transition-colors hover:bg-hover"
           >
             <Avatar className="size-7">
@@ -50,7 +68,7 @@ export function UserNav(props: Props = {}): ReactElement | null {
             </Avatar>
             <span className="flex min-w-0 flex-col text-[13px]">
               <span className="truncate text-foreground">
-                {userName ?? 'Signed in'}
+                {userName ?? (isAuthEnabled ? t('signedIn') : t('anonymous'))}
               </span>
               {session.data?.user?.email && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -94,10 +112,11 @@ export function UserNav(props: Props = {}): ReactElement | null {
           </div>
         )}
         <DropdownMenuGroup>
-          <DropdownMenuItem disabled>Profile</DropdownMenuItem>
-          <DropdownMenuItem disabled>Settings</DropdownMenuItem>
+          <DropdownMenuItem disabled>{t('profile')}</DropdownMenuItem>
+          <DropdownMenuItem disabled>{t('settings')}</DropdownMenuItem>
+          <LanguageSubmenu />
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        {session.status === 'authenticated' && <DropdownMenuSeparator />}
         {session.status === 'authenticated' && (
           <DropdownMenuItem
             className="cursor-pointer"
@@ -106,14 +125,67 @@ export function UserNav(props: Props = {}): ReactElement | null {
                 await signOutEverywhere();
               } catch (err) {
                 console.error(err);
-                toast.error('Unable to sign out of provider session');
+                toast.error(t('logOutError'));
               }
             }}
           >
-            Log out
+            {t('logOut')}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// The UI's language, applied as soon as it is picked. "Default" follows the instance's
+// language, and keeps following it should that change; "English" stays English.
+function LanguageSubmenu(): ReactElement {
+  const t = useTranslations('userMenu');
+  const { preference, setPreference, isSaving } = useLocalePreference();
+
+  async function onChange(value: string): Promise<void> {
+    const next: LocalePreference = toPreference(value);
+    if (next === preference) {
+      return;
+    }
+    try {
+      await setPreference(next);
+    } catch (err) {
+      console.error(err);
+      toast.error(t('languageError'), { description: getErrorMessage(err) });
+    }
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="cursor-pointer">
+        {t('language')}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuRadioGroup value={preference} onValueChange={onChange}>
+          <DropdownMenuRadioItem
+            value=""
+            disabled={isSaving}
+            className="cursor-pointer"
+            // Picking keeps the menu open, the language changes under the pointer.
+            onSelect={(e) => e.preventDefault()}
+          >
+            {t('languageDefault')}
+          </DropdownMenuRadioItem>
+          {LOCALES.map((locale) => (
+            <DropdownMenuRadioItem
+              key={locale}
+              value={locale}
+              lang={locale}
+              disabled={isSaving}
+              className="cursor-pointer"
+              onSelect={(e) => e.preventDefault()}
+            >
+              {LANGUAGE_NAMES[locale]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

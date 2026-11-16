@@ -1,0 +1,95 @@
+{
+  "common": {
+    "close": "Close",
+    "search": "Search"
+  },
+  "nav": {
+    "mainNavigation": "Main navigation",
+    "home": "Husonym home",
+    "groups": {
+      "operate": "Operate",
+      "configure": "Configure",
+      "governance": "Governance"
+    },
+    "dashboard": "Dashboard",
+    "jobs": "Jobs",
+    "runs": "Runs",
+    "connections": "Connections",
+    "transformers": "Transformers",
+    "review": "PII review",
+    "settings": "Settings",
+    "runsInProgress": "{count, plural, one {# run in progress} other {# runs in progress}}",
+    "changesToReview": "{count, plural, one {# change to review} other {# changes to review}}",
+    "openNavigation": "Open navigation",
+    "drawerTitle": "Navigation",
+    "drawerDescription": "The sections of the app."
+  },
+  "breadcrumb": {
+    "label": "Breadcrumb",
+    "newJob": "New job",
+    "newConnection": "New connection",
+    "newTransformer": "New transformer",
+    "newApiKey": "New API key",
+    "new": "New",
+    "job": "Job",
+    "connection": "Connection",
+    "transformer": "Transformer"
+  },
+  "header": {
+    "newJob": "New job",
+    "support": "Support",
+    "supportDescription": "Need help? We got you covered.",
+    "switchTheme": "Switch theme",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "trialExpired": "Trial expired",
+    "trialDaysLeft": "{count, plural, one {# day left in your trial} other {# days left in your trial}}"
+  },
+  "palette": {
+    "button": "Search (Ctrl+K)",
+    "placeholderShort": "Search a job, a connection…",
+    "title": "Command palette",
+    "description": "Search the account's jobs and connections, or start something new.",
+    "inputPlaceholder": "Type a command or a name…",
+    "empty": "Nothing matches.",
+    "actions": "Actions",
+    "jobs": "Jobs",
+    "connections": "Connections",
+    "pages": "Pages",
+    "newJob": "New job",
+    "newConnection": "New connection",
+    "newTransformer": "New transformer",
+    "localDirectory": "Local directory",
+    "navigate": "navigate",
+    "open": "open"
+  },
+  "account": {
+    "personal": "Personal account",
+    "team": "Team account",
+    "enterprise": "Enterprise account",
+    "select": "Select a team",
+    "searchPlaceholder": "Search account…",
+    "empty": "No account found.",
+    "personalGroup": "Personal",
+    "teamGroup": "Team",
+    "createTeam": "Create team"
+  },
+  "reviews": {
+    "nothing": "Nothing to review",
+    "nothingLong": "Nothing to review: every change your jobs' runs made has been reviewed.",
+    "waiting": "{count, plural, one {# change to your jobs' mappings, waiting for review} other {# changes to your jobs' mappings, waiting for review}}",
+    "personalInClear": "{count} personal in clear"
+  },
+  "userMenu": {
+    "trigger": "Account menu",
+    "signedIn": "Signed in",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logOut": "Log out",
+    "logOutError": "Unable to sign out of provider session",
+    "language": "Language",
+    "languageDefault": "Default (English)",
+    "languageError": "Unable to change the language",
+    "anonymous": "Anonymous user"
+  }
+}

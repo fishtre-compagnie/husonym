@@ -9,6 +9,7 @@ import { CreateTeamFormValues } from '@/yup-validations/account-switcher';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { UserAccount, UserAccountService, UserAccountType } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -125,6 +126,7 @@ function AccountSwitcherPopover(
     onNewAccount,
     showCreateTeamDialog,
   } = props;
+  const t = useTranslations('account');
   const [open, setOpen] = useState(false);
 
   const personalAccounts =
@@ -142,7 +144,7 @@ function AccountSwitcherPopover(
           account={activeAccount}
           role="combobox"
           aria-expanded={open}
-          aria-label="Select a team"
+          aria-label={t('select')}
           interactive
         />
       </PopoverTrigger>
@@ -151,11 +153,11 @@ function AccountSwitcherPopover(
         className="w-[var(--radix-popover-trigger-width)] min-w-[220px] p-0"
       >
         <Command>
-          <CommandInput placeholder="Search account..." />
+          <CommandInput placeholder={t('searchPlaceholder')} />
           <CommandList>
-            <CommandEmpty>No Account found.</CommandEmpty>
+            <CommandEmpty>{t('empty')}</CommandEmpty>
             {personalAccounts.length > 0 && (
-              <CommandGroup key="personal" heading="Personal">
+              <CommandGroup key="personal" heading={t('personalGroup')}>
                 {personalAccounts.map((a) => (
                   <CommandItem
                     key={a.id}
@@ -182,7 +184,7 @@ function AccountSwitcherPopover(
               </CommandGroup>
             )}
             {teamAccounts.length > 0 && (
-              <CommandGroup key="team" heading="Team">
+              <CommandGroup key="team" heading={t('teamGroup')}>
                 {teamAccounts.map((a) => (
                   <CommandItem
                     key={a.id}
@@ -222,7 +224,7 @@ function AccountSwitcherPopover(
                     className="cursor-pointer"
                   >
                     <PlusCircledIcon className="mr-2 h-5 w-5" />
-                    Create Team
+                    {t('createTeam')}
                   </CommandItem>
                 </DialogTrigger>
               </CommandGroup>

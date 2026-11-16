@@ -1,6 +1,8 @@
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale } from 'next-intl/server';
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { ReactElement } from 'react';
 import BaseLayout from './BaseLayout';
@@ -34,9 +36,10 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }): Promise<ReactElement> {
+  const locale = await getLocale();
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
@@ -48,7 +51,9 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <BaseLayout>{children}</BaseLayout>
+          <NextIntlClientProvider>
+            <BaseLayout>{children}</BaseLayout>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>
