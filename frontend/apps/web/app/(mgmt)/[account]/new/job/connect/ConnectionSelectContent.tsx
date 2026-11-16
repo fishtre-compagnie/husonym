@@ -1,6 +1,7 @@
 import { SelectGroup, SelectItem, SelectLabel } from '@/components/ui/select';
 import { Connection } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -28,6 +29,7 @@ export default function ConnectionSelectContent(props: Props): ReactElement {
     mssql = [],
     newConnectionValue,
   } = props;
+  const t = useTranslations('newJob.connectionPicker');
   const selectgroups = [
     [postgres, 'Postgres'],
     [mysql, 'Mysql'],
@@ -65,7 +67,7 @@ export default function ConnectionSelectContent(props: Props): ReactElement {
         >
           <div className="flex flex-row gap-1 items-center">
             <PlusIcon />
-            <p>New Connection</p>
+            <p>{t('newConnectionTitle')}</p>
           </div>
         </SelectItem>
       )}

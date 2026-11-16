@@ -1,3 +1,311 @@
 {
-  "newJob": {}
+  "newJob": {
+    "steps": {
+      "label": "Steps",
+      "type": "Type",
+      "define": "Name & schedule",
+      "connect": "Connections",
+      "schema": "Mapping",
+      "subset": "Subset",
+      "schemaOnly": "Schema",
+      "source": "Source",
+      "scan": "Scan"
+    },
+    "wizard": {
+      "title": "New job",
+      "exit": "Leave job creation",
+      "back": "Back",
+      "continue": "Continue",
+      "createJob": "Create job",
+      "tablesColumns": "{tables, plural, one {# table} other {# tables}} · {columns, plural, one {# column} other {# columns}}",
+      "rows": "{count, plural, one {# row} other {# rows}}"
+    },
+    "type": {
+      "title": "What do you want to do?",
+      "description": "Pick the kind of job. The next steps follow from it: a name, the connections, then what happens to each column.",
+      "ariaLabel": "Job type",
+      "experimental": "Experimental",
+      "dataSync": {
+        "name": "Copy and anonymize",
+        "description": "Real data, transformed column by column, written to a test database."
+      },
+      "generate": {
+        "name": "Generate data",
+        "description": "Fully synthetic rows for a chosen destination, from the schema only."
+      },
+      "aiGenerate": {
+        "name": "Generate with AI",
+        "description": "Synthetic rows written by a model, shaped by a table schema and your prompt."
+      },
+      "piiDetection": {
+        "name": "Find personal data",
+        "description": "A report of the sensitive columns in a database, without copying anything."
+      }
+    },
+    "define": {
+      "title": "Name the job",
+      "description": "A unique name, then when it should run.",
+      "jobName": "Job name",
+      "jobNameHint": "Lowercase letters, numbers and hyphens.",
+      "available": "Available.",
+      "schedule": {
+        "title": "When should it run?",
+        "description": "Without a schedule, the job is paused and runs only when you trigger it; a default cron is stored.",
+        "onDemand": "When I decide",
+        "onDemandHint": "From the interface, the CLI or the API.",
+        "scheduled": "On a schedule",
+        "scheduledHint": "A cron expression, such as {cron}.",
+        "cron": "Cron schedule"
+      },
+      "initiate": {
+        "title": "Once it is created",
+        "description": "Start a single run right after the job is created, or keep it for later.",
+        "ariaLabel": "Initiate a job run after creation",
+        "createOnly": "Create only",
+        "createAndRun": "Create and run"
+      },
+      "advanced": {
+        "title": "Advanced settings",
+        "runTimeout": "Job Run Timeout",
+        "runTimeoutDescription": "The maximum length of time (in minutes) that a single job run is allowed to span before it times out. <code>0</code> means no overall timeout.",
+        "runTimeoutTables": "A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.",
+        "engine": "Engine",
+        "engineDescription": "Transformation engine used to run this job. <code>Default</code> follows the deployment setting.",
+        "engineDefault": "Default (deployment)",
+        "engineBenthos": "Benthos (legacy)",
+        "consistencyScope": "Consistency scope",
+        "consistencyScopeDescription": "Deterministic consistency (Athanor engine only): the same source value gets the same anonymized value everywhere in this scope. Beyond a single run, outputs stay linkable over time."
+      },
+      "summary": {
+        "scheduled": "Scheduled: {cron}",
+        "onDemand": "Run on demand"
+      }
+    },
+    "activityOptions": {
+      "retryTitle": "Maximum Retry Attempts",
+      "pii": {
+        "startToCloseTitle": "PII Detection Timeout",
+        "startToCloseDescription": "The maximum amount of time (in minutes) a single table detection may run before it times out. This timeout is applied per retry.",
+        "scheduleToCloseTitle": "Max PII Detection Timeout including retries",
+        "scheduleToCloseDescription": "The total time (in minutes) that a single table detection is allowed to run, including retries. 0 means no timeout.",
+        "retryDescription": "The maximum number of times a table detection may retry before giving up.  If not set or set to 0, it means unlimited retry attempts and the max table timeout including retries will be used to know when to stop."
+      },
+      "sync": {
+        "startToCloseTitle": "Table Page Sync Timeout",
+        "startToCloseDescription": "The maximum amount of time (in minutes) a single table page synchronization may run before it times out. This may need tuning depending on your datasize and how well optimized the indices on the table. This is applied to every table page sync and generate. This timeout is applied per retry.",
+        "scheduleToCloseTitle": "Max Table Timeout including retries",
+        "scheduleToCloseDescription": "The total time (in minutes) that a single table sync is allowed to run, including retries. 0 means no timeout.",
+        "retryDescription": "The maximum number of times a table sync may retry before giving up.  If not set or set to 0, it means unlimited retry attempts and the max table timeout including retries will be used to know when to stop."
+      }
+    },
+    "connectionPicker": {
+      "empty": "No connection of a suitable type yet.",
+      "openaiCompatible": "OpenAI-compatible",
+      "checking": "Checking",
+      "newConnection": "New connection",
+      "newConnectionTitle": "New Connection"
+    },
+    "connect": {
+      "title": "Where does the data come from, and where does it go?",
+      "description": "Pick the source to read, then one or more destinations to write the anonymized data to.",
+      "source": {
+        "title": "Source connection",
+        "description": "The database the job reads from.",
+        "schemaChanges": "When the source schema changes"
+      },
+      "destinations": {
+        "title": "Where to write the anonymized data?",
+        "description": "The source itself cannot be a destination.",
+        "numbered": "Destination {number}",
+        "remove": "Remove destination {number}",
+        "removeShort": "Remove",
+        "beforeWriting": "Before writing to {name}",
+        "add": "Add another destination",
+        "invalidPair": "Not a valid destination for this source",
+        "alreadyUsed": "Already a destination of this job",
+        "isSource": "This is the source of this job"
+      }
+    },
+    "toasts": {
+      "created": "Successfully created job!",
+      "createFailed": "Unable to create job",
+      "validateMappingsFailed": "Unable to validate job mappings",
+      "validateVfksFailed": "Unable to validate virtual foreign keys",
+      "createdThe": "Successfully created the job!",
+      "createFailedBang": "Unable to create job!"
+    },
+    "schema": {
+      "title": "Which tables, and what becomes of each column?",
+      "description": "Check the tables to copy. Columns detected as personal start with an anonymizing transformer; review them, then adjust any column one by one."
+    },
+    "subset": {
+      "title": "Reduce the volume?",
+      "description": "Filter a starting table with a WHERE clause; related tables follow through their keys. Leave every filter empty to copy everything.",
+      "unsupported": {
+        "title": "Heads up!",
+        "description": "Subsetting is not currently enabled for this connection type. You may proceed with the creation of this job while we continue to work on subsetting for this connection."
+      },
+      "summary": {
+        "filtered": "{count, plural, one {# filtered table} other {# filtered tables}}",
+        "everything": "Everything copied"
+      }
+    },
+    "addDestinations": {
+      "title": "Add destinations",
+      "backTo": "Back to {name}",
+      "backToJob": "Back to the job",
+      "descriptionFrom": "Where else should the anonymized data from {name} be written? Only connections compatible with the source are listed.",
+      "description": "Where else should the anonymized data be written? Only connections compatible with the source are listed.",
+      "alreadyAdded": "Already added above",
+      "empty": "No other connection can receive data from this source.",
+      "save": "Save",
+      "toasts": {
+        "created": "Successfully created job destination(s)",
+        "createFailed": "Unable to create job destination(s)"
+      }
+    },
+    "generate": {
+      "connect": {
+        "title": "Where should the generated data go?",
+        "description": "A connection gives the shape of the tables; the destination receives the synthetic rows. Both can be the same database.",
+        "schemaConnection": {
+          "title": "Table schema connection",
+          "description": "The connection whose tables give the shape of the data to generate. It can be the destination itself."
+        },
+        "destination": {
+          "title": "Destination",
+          "description": "Where the generated rows are written.",
+          "ariaLabel": "Destination connection"
+        }
+      },
+      "schema": {
+        "title": "What should be generated?",
+        "description": "Pick the table to fill, how many rows, and the generator of each column.",
+        "numRows": "Number of Rows",
+        "numRowsDescription": "The number of rows to generate."
+      }
+    },
+    "formErrors": "Please fix form errors and try again.",
+    "aiGenerate": {
+      "connect": {
+        "title": "Which model, and where should its data go?",
+        "description": "An OpenAI-compatible connection writes the rows; a database connection gives the shape of the table and receives the result.",
+        "model": {
+          "title": "Model connection",
+          "description": "An OpenAI-compatible API to generate data from."
+        },
+        "schemaConnectionDescription": "The connection whose table gives the shape of the data to generate. It can be the destination itself."
+      },
+      "schema": {
+        "title": "What should the model generate?",
+        "description": "Pick the table to fill, the model and its prompt. Sample a few rows before creating the job.",
+        "sampleFailed": "Unable to generate sample data",
+        "model": "Model Name",
+        "modelDescription": "The name of the model to use.",
+        "commonModels": "Common model names...",
+        "prompt": "Prompt",
+        "promptDescription": "Optionally provide a prompt to give further context to the model. This is highly recommended! The table schema will be appended to the end of this prompt automatically.",
+        "batchSize": "Batch Size",
+        "batchSizeDescription": "The batch size used when asking the model to generate records. Useful for large datasets or prompts that may exceed AI token limits. Smaller is generally better.",
+        "sample": "Sample"
+      },
+      "sampleTable": {
+        "title": "Synthetic data sample",
+        "description": "A sample of synthetic data given the inputs above: the configured row count, up to 10 records.",
+        "empty": "Click Sample to generate a preview of synthetic data."
+      }
+    },
+    "piiDetect": {
+      "connect": {
+        "title": "Which database should be scanned?",
+        "description": "The job reads column names and a sample of rows to find personal data. Nothing is copied.",
+        "sourceDescription": "PostgreSQL, MySQL and SQL Server connections can be scanned.",
+        "ariaLabel": "Connection to scan"
+      },
+      "schema": {
+        "title": "How should the scan run?",
+        "description": "What to look for, how many rows to sample, and which tables to read. The analysis runs where your data is."
+      },
+      "form": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "connection": {
+          "title": "Connection",
+          "description": "The connection to use for the PII detection job.",
+          "placeholder": "Select a source connection"
+        },
+        "userPrompt": {
+          "title": "User Prompt",
+          "description": "Optionally input a prompt to guide the LLM part of the PII detection job.",
+          "placeholder": "Do NOT classify the following columns as PII or personally identifiable information: id, created_at, updated_at"
+        },
+        "dataSampling": {
+          "title": "Data Sampling",
+          "description": "Let the job read rows of each table. Up to 200 rows per table are read by the worker, inside your deployment, to recognise formats such as email addresses, IBANs or card numbers. When disabled, no row is read: only table names, column names and column types are used.",
+          "modelInput": {
+            "title": "What the model receives",
+            "description": "Choose what the language model is given about the sampled rows.",
+            "profiles": "Statistics only",
+            "profilesDescription": "The language model receives the table name, the column names and types, and statistics computed from the sampled rows: counts, lengths, kinds of characters, formats. No value of your data is sent to the model.",
+            "values": "Statistics and sample values",
+            "valuesDescription": "In addition, the language model receives up to 5 distinct values of each column, each cut to 64 characters. These values leave the worker for the model endpoint configured on this deployment. Choose this only if that endpoint may receive this data, for example a model hosted inside your network."
+          },
+          "noModel": "With no model configured, nothing is sent anywhere: detection uses the rules only. Rules alone do not find personal data in a column with a neutral name, unless its values have a format the rules check, such as email addresses, IBANs, card numbers or password hashes."
+        },
+        "incremental": {
+          "title": "Incremental Scans",
+          "description": "Allow the job to incrementally detect PII for new or changed tables. This will only scan tables that have been added or updated since the last successful run. New table detection is dependent on the scan mode and patterns selected below."
+        },
+        "scanMode": {
+          "title": "Table Scan Mode",
+          "description": "The mode to use for the table scan filter. This will determine what schemas and tables will be scanned for PII.",
+          "include_all": "Include All",
+          "include": "Include",
+          "exclude": "Exclude"
+        },
+        "patterns": {
+          "title": "Patterns",
+          "description": "The patterns to use for the table scan filter based on the mode selected. A combination of schemas and tables will be scanned based on the mode and selection."
+        },
+        "schemas": {
+          "title": "Schema Selection",
+          "noOptions": "Unable to load schemas or found none",
+          "description": {
+            "include_all": "Select all schemas to scan for PII.",
+            "include": "Select schemas to scan for PII.",
+            "exclude": "Select schemas to exclude from PII scanning."
+          },
+          "left": {
+            "include_all": "All schemas have been added!",
+            "include": "All schemas available have been included!",
+            "exclude": "All schemas available have been excluded!"
+          },
+          "right": {
+            "include_all": "All schemas have been added!",
+            "include": "Add schemas to scan for PII!",
+            "exclude": "Add schemas to exclude from PII scanning!"
+          }
+        },
+        "tables": {
+          "title": "Table Selection",
+          "noOptions": "Unable to load tables or found none",
+          "description": {
+            "include_all": "Select all tables to scan for PII.",
+            "include": "Select tables to scan for PII.",
+            "exclude": "Select tables to exclude from PII scanning."
+          },
+          "left": {
+            "include_all": "All tables have been added!",
+            "include": "All tables available have been included!",
+            "exclude": "All tables available have been excluded!"
+          },
+          "right": {
+            "include_all": "All tables have been added!",
+            "include": "Add tables to scan for PII!",
+            "exclude": "Add tables to exclude from PII scanning!"
+          }
+        }
+      }
+    }
+  }
 }

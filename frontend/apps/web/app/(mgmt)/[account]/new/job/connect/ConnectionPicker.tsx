@@ -4,6 +4,7 @@ import { SelectCard } from '@/components/progress-steps/Wizard';
 import { cn } from '@/libs/utils';
 import { Connection } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, ReactNode } from 'react';
 
 interface Props {
@@ -39,7 +40,7 @@ const ENGINES = [
   ['dynamodb', 'DDB', 'DynamoDB'],
   ['s3', 'S3', 'AWS S3'],
   ['gcpcs', 'GCS', 'GCP Cloud Storage'],
-  ['openai', 'AI', 'OpenAI-compatible'],
+  ['openai', 'AI', null],
 ] as const;
 
 /**
@@ -56,8 +57,10 @@ export default function ConnectionPicker(props: Props): ReactElement {
     isChecking,
     selectedDetail,
     ariaLabel,
-    emptyLabel = 'No connection of a suitable type yet.',
+    emptyLabel: emptyLabelProp,
   } = props;
+  const t = useTranslations('newJob.connectionPicker');
+  const emptyLabel = emptyLabelProp ?? t('empty');
 
   const items = ENGINES.flatMap(([key, short, long]) =>
     (props[key] ?? []).map((connection) => ({ connection, short, long }))
@@ -92,13 +95,13 @@ export default function ConnectionPicker(props: Props): ReactElement {
                   {connection.name}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {disabledReason ?? long}
+                  {disabledReason ?? long ?? t('openaiCompatible')}
                 </span>
               </span>
               {selected && isChecking && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2 py-1 text-xs text-muted-foreground">
                   <Spinner className="size-3" />
-                  Checking
+                  {t('checking')}
                 </span>
               )}
             </SelectCard>
@@ -119,7 +122,7 @@ export default function ConnectionPicker(props: Props): ReactElement {
             >
               <PlusIcon className="size-4" />
             </span>
-            <span className="font-medium">New connection</span>
+            <span className="font-medium">{t('newConnection')}</span>
           </button>
         )}
       </div>

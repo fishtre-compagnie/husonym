@@ -1,7 +1,7 @@
 import FormErrorMessage from '@/components/FormErrorMessage';
 import FormHeader from '@/components/forms/FormHeader';
 import { Input } from '@/components/ui/input';
-import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { FieldErrors } from 'react-hook-form';
 import {
   ActivityOptionsFormValues,
@@ -104,58 +104,40 @@ interface Labels {
 }
 
 function useStartToCloseTimeoutLabels(jobtype: NewJobType): Labels {
-  return useMemo(() => {
-    switch (jobtype) {
-      case 'pii-detection':
-        return {
-          title: 'PII Detection Timeout',
-          description:
-            'The maximum amount of time (in minutes) a single table detection may run before it times out. This timeout is applied per retry.',
-        };
-      default:
-        return {
-          title: 'Table Page Sync Timeout',
-          description:
-            'The maximum amount of time (in minutes) a single table page synchronization may run before it times out. This may need tuning depending on your datasize and how well optimized the indices on the table. This is applied to every table page sync and generate. This timeout is applied per retry.',
-        };
-    }
-  }, [jobtype]);
+  const t = useTranslations('newJob.activityOptions');
+  return jobtype === 'pii-detection'
+    ? {
+        title: t('pii.startToCloseTitle'),
+        description: t('pii.startToCloseDescription'),
+      }
+    : {
+        title: t('sync.startToCloseTitle'),
+        description: t('sync.startToCloseDescription'),
+      };
 }
 
 function useScheduleToCloseTimeoutLabels(jobtype: NewJobType): Labels {
-  return useMemo(() => {
-    switch (jobtype) {
-      case 'pii-detection':
-        return {
-          title: 'Max PII Detection Timeout including retries',
-          description:
-            'The total time (in minutes) that a single table detection is allowed to run, including retries. 0 means no timeout.',
-        };
-      default:
-        return {
-          title: 'Max Table Timeout including retries',
-          description:
-            'The total time (in minutes) that a single table sync is allowed to run, including retries. 0 means no timeout.',
-        };
-    }
-  }, [jobtype]);
+  const t = useTranslations('newJob.activityOptions');
+  return jobtype === 'pii-detection'
+    ? {
+        title: t('pii.scheduleToCloseTitle'),
+        description: t('pii.scheduleToCloseDescription'),
+      }
+    : {
+        title: t('sync.scheduleToCloseTitle'),
+        description: t('sync.scheduleToCloseDescription'),
+      };
 }
 
 function useRetryPolicyLabels(jobtype: NewJobType): Labels {
-  return useMemo(() => {
-    switch (jobtype) {
-      case 'pii-detection':
-        return {
-          title: 'Maximum Retry Attempts',
-          description:
-            'The maximum number of times a table detection may retry before giving up.  If not set or set to 0, it means unlimited retry attempts and the max table timeout including retries will be used to know when to stop.',
-        };
-      default:
-        return {
-          title: 'Maximum Retry Attempts',
-          description:
-            'The maximum number of times a table sync may retry before giving up.  If not set or set to 0, it means unlimited retry attempts and the max table timeout including retries will be used to know when to stop.',
-        };
-    }
-  }, [jobtype]);
+  const t = useTranslations('newJob.activityOptions');
+  return jobtype === 'pii-detection'
+    ? {
+        title: t('retryTitle'),
+        description: t('pii.retryDescription'),
+      }
+    : {
+        title: t('retryTitle'),
+        description: t('sync.retryDescription'),
+      };
 }

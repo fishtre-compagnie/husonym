@@ -27,6 +27,7 @@ import { cn, splitConnections } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionDataService, ConnectionService } from '@husonym/sdk';
 import { ReloadIcon, TableIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useCallback, useMemo } from 'react';
 import ConnectionSelectContent from '../../connect/ConnectionSelectContent';
 import {
@@ -47,6 +48,7 @@ export function SourceConnectionId(
   props: SourceConnectionIdProps
 ): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('newJob.piiDetect.form');
 
   const { account } = useAccount();
   const {
@@ -71,8 +73,8 @@ export function SourceConnectionId(
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Connection"
-        description="The connection to use for the PII detection job."
+        title={t('connection.title')}
+        description={t('connection.description')}
         isErrored={!!error}
         labelClassName="text-lg"
       />
@@ -86,7 +88,7 @@ export function SourceConnectionId(
         }}
       >
         <SelectTrigger>
-          <SelectValue placeholder="Select a source connection" />
+          <SelectValue placeholder={t('connection.placeholder')} />
         </SelectTrigger>
         <SelectContent>
           <ConnectionSelectContent
@@ -109,19 +111,20 @@ interface UserPromptProps {
 
 export function UserPrompt(props: UserPromptProps): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('newJob.piiDetect.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="User Prompt"
-        description="Optionally input a prompt to guide the LLM part of the PII detection job."
+        title={t('userPrompt.title')}
+        description={t('userPrompt.description')}
         isErrored={!!error}
         labelClassName="text-lg"
       />
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Do NOT classify the following columns as PII or personally identifiable information: id, created_at, updated_at"
+        placeholder={t('userPrompt.placeholder')}
       />
       <FormErrorMessage message={error} />
     </div>
@@ -136,12 +139,13 @@ interface DataSamplingProps {
 
 export function DataSampling(props: DataSamplingProps): ReactElement {
   const { errors, value, onChange } = props;
+  const t = useTranslations('newJob.piiDetect.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Data Sampling"
-        description="Let the job read rows of each table. Up to 200 rows per table are read by the worker, inside your deployment, to recognise formats such as email addresses, IBANs or card numbers. When disabled, no row is read: only table names, column names and column types are used."
+        title={t('dataSampling.title')}
+        description={t('dataSampling.description')}
         isErrored={!!errors?.['isEnabled']}
         labelClassName="text-lg"
       />
@@ -153,15 +157,15 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
         }}
         value={value.isEnabled ? 'enabled' : 'disabled'}
       >
-        <ToggleGroupItem value="enabled">Enabled</ToggleGroupItem>
-        <ToggleGroupItem value="disabled">Disabled</ToggleGroupItem>
+        <ToggleGroupItem value="enabled">{t('enabled')}</ToggleGroupItem>
+        <ToggleGroupItem value="disabled">{t('disabled')}</ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={errors?.['isEnabled']} />
       {value.isEnabled && (
         <div className="flex flex-col gap-4">
           <FormHeader
-            title="What the model receives"
-            description="Choose what the language model is given about the sampled rows."
+            title={t('dataSampling.modelInput.title')}
+            description={t('dataSampling.modelInput.description')}
             isErrored={!!errors?.['modelInput']}
             labelClassName="text-base"
           />
@@ -176,22 +180,18 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
           >
             <ModelInputRadioItem
               value="profiles"
-              label="Statistics only"
-              description="The language model receives the table name, the column names and types, and statistics computed from the sampled rows: counts, lengths, kinds of characters, formats. No value of your data is sent to the model."
+              label={t('dataSampling.modelInput.profiles')}
+              description={t('dataSampling.modelInput.profilesDescription')}
             />
             <ModelInputRadioItem
               value="values"
-              label="Statistics and sample values"
-              description="In addition, the language model receives up to 5 distinct values of each column, each cut to 64 characters. These values leave the worker for the model endpoint configured on this deployment. Choose this only if that endpoint may receive this data, for example a model hosted inside your network."
+              label={t('dataSampling.modelInput.values')}
+              description={t('dataSampling.modelInput.valuesDescription')}
             />
           </RadioGroup>
           <FormErrorMessage message={errors?.['modelInput']} />
           <p className="text-[0.8rem] text-muted-foreground">
-            With no model configured, nothing is sent anywhere: detection uses
-            the rules only. Rules alone do not find personal data in a column
-            with a neutral name, unless its values have a format the rules
-            check, such as email addresses, IBANs, card numbers or password
-            hashes.
+            {t('dataSampling.noModel')}
           </p>
         </div>
       )}
@@ -229,12 +229,13 @@ interface IncrementalProps {
 
 export function Incremental(props: IncrementalProps): ReactElement {
   const { errors, value, onChange } = props;
+  const t = useTranslations('newJob.piiDetect.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Incremental Scans"
-        description="Allow the job to incrementally detect PII for new or changed tables. This will only scan tables that have been added or updated since the last successful run. New table detection is dependent on the scan mode and patterns selected below."
+        title={t('incremental.title')}
+        description={t('incremental.description')}
         isErrored={!!errors?.['isEnabled']}
         labelClassName="text-lg"
       />
@@ -246,8 +247,8 @@ export function Incremental(props: IncrementalProps): ReactElement {
         }}
         value={value.isEnabled ? 'enabled' : 'disabled'}
       >
-        <ToggleGroupItem value="enabled">Enabled</ToggleGroupItem>
-        <ToggleGroupItem value="disabled">Disabled</ToggleGroupItem>
+        <ToggleGroupItem value="enabled">{t('enabled')}</ToggleGroupItem>
+        <ToggleGroupItem value="disabled">{t('disabled')}</ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={errors?.['isEnabled']} />
     </div>
@@ -264,12 +265,13 @@ export function TableScanFilterMode(
   props: TableScanFilterModeProps
 ): ReactElement {
   const { error, value, onChange } = props;
+  const t = useTranslations('newJob.piiDetect.form');
 
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Table Scan Mode"
-        description="The mode to use for the table scan filter. This will determine what schemas and tables will be scanned for PII."
+        title={t('scanMode.title')}
+        description={t('scanMode.description')}
         isErrored={!!error}
         labelClassName="text-lg"
       />
@@ -283,9 +285,15 @@ export function TableScanFilterMode(
         }}
         value={value}
       >
-        <ToggleGroupItem value="include_all">Include All</ToggleGroupItem>
-        <ToggleGroupItem value="include">Include</ToggleGroupItem>
-        <ToggleGroupItem value="exclude">Exclude</ToggleGroupItem>
+        <ToggleGroupItem value="include_all">
+          {t('scanMode.include_all')}
+        </ToggleGroupItem>
+        <ToggleGroupItem value="include">
+          {t('scanMode.include')}
+        </ToggleGroupItem>
+        <ToggleGroupItem value="exclude">
+          {t('scanMode.exclude')}
+        </ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={error} />
     </div>
@@ -304,6 +312,7 @@ export function TableScanFilterPatterns(
   props: TableScanFilterPatternsProps
 ): ReactElement | null {
   const { errors, value, onChange, connectionId, mode } = props;
+  const t = useTranslations('newJob.piiDetect.form');
   const schemasAndTablesResp = useGetAvailableSchemasAndTables(
     connectionId,
     mode !== 'include_all'
@@ -316,8 +325,8 @@ export function TableScanFilterPatterns(
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
-        title="Patterns"
-        description="The patterns to use for the table scan filter based on the mode selected. A combination of schemas and tables will be scanned based on the mode and selection."
+        title={t('patterns.title')}
+        description={t('patterns.description')}
         isErrored={
           !!errors?.['patterns.schemas'] || !!errors?.['patterns.tables']
         }
@@ -395,9 +404,10 @@ function TableScanFilterPatternSchemas(
     }
   }
 
-  const leftEmptyStates = useGetSchemaLeftEmptyStates(mode);
-  const rightEmptyStates = useGetSchemaRightEmptyStates(mode);
-  const cardDescription = useSchemaCardDescription(mode);
+  const t = useTranslations('newJob.piiDetect.form.schemas');
+  const leftEmptyStates = useEmptyStates('schemas', 'left', mode);
+  const rightEmptyStates = useEmptyStates('schemas', 'right', mode);
+  const cardDescription = t(`description.${mode}`);
 
   return (
     <div className="flex flex-col md:flex-row gap-3">
@@ -407,7 +417,7 @@ function TableScanFilterPatternSchemas(
             <div className="flex">
               <TableIcon className="h-4 w-4" />
             </div>
-            <CardTitle>Schema Selection</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
             <RefreshButton
               isFetching={isFetchingAvailableSchemas}
               onClick={() => onRefreshClick()}
@@ -429,66 +439,6 @@ function TableScanFilterPatternSchemas(
       <FormErrorMessage message={error} />
     </div>
   );
-}
-
-function useGetSchemaLeftEmptyStates(
-  mode: TableScanFilterModeFormValue
-): EmptyStateMessage {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'All schemas have been added!',
-        };
-      case 'include':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'All schemas available have been included!',
-        };
-      case 'exclude':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'All schemas available have been excluded!',
-        };
-    }
-  }, [mode]);
-}
-
-function useGetSchemaRightEmptyStates(
-  mode: TableScanFilterModeFormValue
-): EmptyStateMessage {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'All schemas have been added!',
-        };
-      case 'include':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'Add schemas to scan for PII!',
-        };
-      case 'exclude':
-        return {
-          noOptions: 'Unable to load schemas or found none',
-          noSelected: 'Add schemas to exclude from PII scanning!',
-        };
-    }
-  }, [mode]);
-}
-function useSchemaCardDescription(mode: TableScanFilterModeFormValue): string {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return 'Select all schemas to scan for PII.';
-      case 'include':
-        return 'Select schemas to scan for PII.';
-      case 'exclude':
-        return 'Select schemas to exclude from PII scanning.';
-    }
-  }, [mode]);
 }
 
 interface TableScanFilterPatternTablesProps {
@@ -546,9 +496,10 @@ function TableScanFilterPatternTables(
     }
   }
 
-  const leftEmptyStates = useGetTableLeftEmptyStates(mode);
-  const rightEmptyStates = useGetTableRightEmptyStates(mode);
-  const cardDescription = useTableCardDescription(mode);
+  const t = useTranslations('newJob.piiDetect.form.tables');
+  const leftEmptyStates = useEmptyStates('tables', 'left', mode);
+  const rightEmptyStates = useEmptyStates('tables', 'right', mode);
+  const cardDescription = t(`description.${mode}`);
   return (
     <div className="flex flex-col md:flex-row gap-3">
       <Card className="w-full">
@@ -557,7 +508,7 @@ function TableScanFilterPatternTables(
             <div className="flex">
               <TableIcon className="h-4 w-4" />
             </div>
-            <CardTitle>Table Selection</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
             <RefreshButton
               isFetching={isFetchingAvailableTableIdentifiers}
               onClick={() => onRefreshClick()}
@@ -581,65 +532,17 @@ function TableScanFilterPatternTables(
   );
 }
 
-function useTableCardDescription(mode: TableScanFilterModeFormValue): string {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return 'Select all tables to scan for PII.';
-      case 'include':
-        return 'Select tables to scan for PII.';
-      case 'exclude':
-        return 'Select tables to exclude from PII scanning.';
-    }
-  }, [mode]);
-}
-
-function useGetTableLeftEmptyStates(
+/** What the two lists of a schema or table picker say when they are empty. */
+function useEmptyStates(
+  kind: 'schemas' | 'tables',
+  side: 'left' | 'right',
   mode: TableScanFilterModeFormValue
 ): EmptyStateMessage {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'All tables have been added!',
-        };
-      case 'include':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'All tables available have been included!',
-        };
-      case 'exclude':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'All tables available have been excluded!',
-        };
-    }
-  }, [mode]);
-}
-
-function useGetTableRightEmptyStates(
-  mode: TableScanFilterModeFormValue
-): EmptyStateMessage {
-  return useMemo(() => {
-    switch (mode) {
-      case 'include_all':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'All tables have been added!',
-        };
-      case 'include':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'Add tables to scan for PII!',
-        };
-      case 'exclude':
-        return {
-          noOptions: 'Unable to load tables or found none',
-          noSelected: 'Add tables to exclude from PII scanning!',
-        };
-    }
-  }, [mode]);
+  const t = useTranslations('newJob.piiDetect.form');
+  return {
+    noOptions: t(`${kind}.noOptions`),
+    noSelected: t(`${kind}.${side}.${mode}`),
+  };
 }
 
 interface UseGetAvailableSchemasAndTablesResponse {

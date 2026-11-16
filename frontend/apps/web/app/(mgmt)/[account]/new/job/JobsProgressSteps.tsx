@@ -1,4 +1,5 @@
 import Step from '@/components/progress-steps/Step';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { NewJobType } from './job-form-validations';
 
@@ -22,19 +23,22 @@ const PII_DETECTION_STEPS: JobProgressStep[] = ['define', 'connect', 'schema'];
 export type JobProgressStep =
   'type' | 'define' | 'connect' | 'schema' | 'subset';
 
-const STEP_LABELS: Record<JobProgressStep, string> = {
-  type: 'Type',
-  define: 'Name & schedule',
-  connect: 'Connections',
-  schema: 'Mapping',
-  subset: 'Subset',
+/** A step's label, as a key of the `newJob.steps` messages. */
+type StepLabelKey = JobProgressStep | 'source' | 'scan' | 'schemaOnly';
+
+const STEP_LABELS: Record<JobProgressStep, StepLabelKey> = {
+  type: 'type',
+  define: 'define',
+  connect: 'connect',
+  schema: 'schema',
+  subset: 'subset',
 };
 
 interface Props {
   steps: JobProgressStep[];
   stepName: JobProgressStep;
   /** Overrides of a step's label, for a flow that names a step its own way. */
-  labels?: Partial<Record<JobProgressStep, string>>;
+  labels?: Partial<Record<JobProgressStep, StepLabelKey>>;
 }
 
 /** The steps a flow shows, with the job type choice always first. */
@@ -53,17 +57,21 @@ export function getStepPosition(
 
 export default function JobsProgressSteps(props: Props): ReactElement {
   const { stepName, labels } = props;
+  const t = useTranslations('newJob.steps');
   const steps = withTypeStep(props.steps);
 
   const currentStepIndex = steps.indexOf(stepName);
 
   return (
-    <ol aria-label="Steps" className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+    <ol
+      aria-label={t('label')}
+      className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+    >
       {steps.map((step, index) => (
         <Step
           key={step}
           name={step}
-          label={labels?.[step] ?? STEP_LABELS[step]}
+          label={t(labels?.[step] ?? STEP_LABELS[step])}
           position={index + 1}
           isCompleted={index < currentStepIndex}
           isActive={step === stepName}
@@ -77,13 +85,13 @@ export default function JobsProgressSteps(props: Props): ReactElement {
 /** How a flow names its steps, where it differs from the defaults. */
 export function getJobProgressStepLabels(
   jobtype: NewJobType
-): Partial<Record<JobProgressStep, string>> {
+): Partial<Record<JobProgressStep, StepLabelKey>> {
   switch (jobtype) {
     case 'generate-table':
     case 'ai-generate-table':
-      return { schema: 'Schema' };
+      return { schema: 'schemaOnly' };
     case 'pii-detection':
-      return { connect: 'Source', schema: 'Scan' };
+      return { connect: 'source', schema: 'scan' };
     default:
       return {};
   }

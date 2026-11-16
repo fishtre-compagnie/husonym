@@ -41,6 +41,7 @@ import {
 } from '@husonym/sdk';
 import { ArrowLeftIcon, Cross1Icon, PlusIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -60,6 +61,7 @@ export default function Page(props: PageProps): ReactElement {
   const id = params?.id ?? '';
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   const { data, isLoading } = useQuery(
     JobService.method.getJob,
     { id },
@@ -155,7 +157,7 @@ export default function Page(props: PageProps): ReactElement {
         jobId: id,
         destinations,
       });
-      toast.success('Successfully created job destination(s)');
+      toast.success(t('addDestinations.toasts.created'));
       if (job.job?.id) {
         router.push(`/${account?.name}/jobs/${job.job.id}/destinations`);
       } else {
@@ -163,7 +165,7 @@ export default function Page(props: PageProps): ReactElement {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to create job destination(s)', {
+      toast.error(t('addDestinations.toasts.createFailed'), {
         description: getErrorMessage(err),
       });
     }
@@ -182,14 +184,18 @@ export default function Page(props: PageProps): ReactElement {
           className="inline-flex items-center gap-1.5 self-start text-[13px] text-link hover:text-foreground"
         >
           <ArrowLeftIcon aria-hidden="true" />
-          {jobName ? `Back to ${jobName}` : 'Back to the job'}
+          {jobName
+            ? t('addDestinations.backTo', { name: jobName })
+            : t('addDestinations.backToJob')}
         </Link>
         <PageHeader
-          title="Add destinations"
+          title={t('addDestinations.title')}
           description={
             sourceConnectionId && connRecord[sourceConnectionId]
-              ? `Where else should the anonymized data from ${connRecord[sourceConnectionId].name} be written? Only connections compatible with the source are listed.`
-              : 'Where else should the anonymized data be written? Only connections compatible with the source are listed.'
+              ? t('addDestinations.descriptionFrom', {
+                  name: connRecord[sourceConnectionId].name,
+                })
+              : t('addDestinations.description')
           }
         />
       </div>
@@ -216,20 +222,24 @@ export default function Page(props: PageProps): ReactElement {
                   <div key={index} className="flex flex-col gap-4">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-medium text-muted-foreground">
-                        Destination {index + 1}
+                        {t('connect.destinations.numbered', {
+                          number: index + 1,
+                        })}
                       </span>
                       <Button
                         variant="ghost"
                         size="sm"
                         type="button"
                         className="ml-auto"
-                        aria-label={`Remove destination ${index + 1}`}
+                        aria-label={t('connect.destinations.remove', {
+                          number: index + 1,
+                        })}
                         onClick={() => {
                           remove(index);
                         }}
                       >
                         <Cross1Icon aria-hidden="true" />
-                        Remove
+                        {t('connect.destinations.removeShort')}
                       </Button>
                     </div>
                     <div>
@@ -241,7 +251,12 @@ export default function Page(props: PageProps): ReactElement {
                             <FormItem>
                               <FormControl>
                                 <ConnectionPicker
-                                  ariaLabel={`Destination ${index + 1}`}
+                                  ariaLabel={t(
+                                    'connect.destinations.numbered',
+                                    {
+                                      number: index + 1,
+                                    }
+                                  )}
                                   postgres={postgres}
                                   mysql={mysql}
                                   mssql={mssql}
@@ -257,10 +272,10 @@ export default function Page(props: PageProps): ReactElement {
                                       )
                                       .map((other) => [
                                         other.connectionId,
-                                        'Already added above',
+                                        t('addDestinations.alreadyAdded'),
                                       ])
                                   )}
-                                  emptyLabel="No other connection can receive data from this source."
+                                  emptyLabel={t('addDestinations.empty')}
                                   value={field.value}
                                   onChange={(value: string) => {
                                     field.onChange(value);
@@ -350,7 +365,7 @@ export default function Page(props: PageProps): ReactElement {
                   }}
                 >
                   <PlusIcon aria-hidden="true" />
-                  Add another destination
+                  {t('connect.destinations.add')}
                 </Button>
                 <Button
                   disabled={
@@ -359,7 +374,7 @@ export default function Page(props: PageProps): ReactElement {
                   }
                   type="submit"
                 >
-                  Save
+                  {t('addDestinations.save')}
                 </Button>
               </div>
             </div>

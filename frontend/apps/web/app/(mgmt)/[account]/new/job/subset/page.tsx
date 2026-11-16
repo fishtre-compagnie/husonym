@@ -41,6 +41,7 @@ import {
   JobService,
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -65,6 +66,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   const { allowed } = useLicenseFeature('subsetting');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -183,7 +185,7 @@ export default function Page(props: PageProps): ReactElement {
     await checkThenSave(request, async () => {
       try {
         const job = await createNewSyncJob(request);
-        toast.success('Successfully created the job!');
+        toast.success(t('toasts.createdThe'));
         clearNewJobSession(window.sessionStorage, sessionPrefix);
 
         if (job.job?.id) {
@@ -193,7 +195,7 @@ export default function Page(props: PageProps): ReactElement {
         }
       } catch (err) {
         console.error(err);
-        toast.error('Unable to create job', {
+        toast.error(t('toasts.createFailed'), {
           description: getErrorMessage(err),
         });
       }
@@ -354,8 +356,8 @@ export default function Page(props: PageProps): ReactElement {
     <NewJobWizard
       steps={getJobProgressSteps('data-sync', true)}
       stepName="subset"
-      title="Reduce the volume?"
-      description="Filter a starting table with a WHERE clause; related tables follow through their keys. Leave every filter empty to copy everything."
+      title={t('subset.title')}
+      description={t('subset.description')}
       wide
     >
       <FormPersist formKey={formKey} form={form} />
@@ -364,11 +366,9 @@ export default function Page(props: PageProps): ReactElement {
         <>
           <Alert variant="warning">
             <ExclamationTriangleIcon className="h-4 w-4" />
-            <AlertTitle>Heads up!</AlertTitle>
+            <AlertTitle>{t('subset.unsupported.title')}</AlertTitle>
             <AlertDescription>
-              Subsetting is not currently enabled for this connection type. You
-              may proceed with the creation of this job while we continue to
-              work on subsetting for this connection.
+              {t('subset.unsupported.description')}
             </AlertDescription>
           </Alert>
           <WizardFooter summary={[defineFormValues.jobName]}>
@@ -378,7 +378,7 @@ export default function Page(props: PageProps): ReactElement {
               variant="outline"
               onClick={() => router.back()}
             >
-              Back
+              {t('wizard.back')}
             </Button>
           </WizardFooter>
         </>
@@ -455,8 +455,8 @@ export default function Page(props: PageProps): ReactElement {
               summary={[
                 defineFormValues.jobName,
                 filteredTables > 0
-                  ? `${filteredTables} filtered ${filteredTables > 1 ? 'tables' : 'table'}`
-                  : 'Everything copied',
+                  ? t('subset.summary.filtered', { count: filteredTables })
+                  : t('subset.summary.everything'),
               ]}
             >
               <Button
@@ -465,7 +465,7 @@ export default function Page(props: PageProps): ReactElement {
                 variant="outline"
                 onClick={() => router.back()}
               >
-                Back
+                {t('wizard.back')}
               </Button>
               {/* Creating the job with no WHERE clause stays possible. */}
               <Button
@@ -473,7 +473,7 @@ export default function Page(props: PageProps): ReactElement {
                 type="submit"
                 disabled={!allowed && addsWhereClause(formSubsets)}
               >
-                Create job
+                {t('wizard.createJob')}
               </Button>
             </WizardFooter>
           </form>

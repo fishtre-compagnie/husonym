@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { yupResolver } from '@/util/yup-form-resolver';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -58,6 +59,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const router = useRouter();
   const { account } = useAccount();
+  const t = useTranslations('newJob');
   const { allowed: isSchedulingAllowed } = useLicenseFeature('scheduling');
   useEffect(() => {
     if (!searchParams?.sessionId) {
@@ -142,8 +144,8 @@ export default function Page(props: PageProps): ReactElement {
       steps={getJobProgressSteps(newJobType)}
       stepLabels={getJobProgressStepLabels(newJobType)}
       stepName="define"
-      title="Name the job"
-      description="A unique name, then when it should run."
+      title={t('define.title')}
+      description={t('define.description')}
     >
       <FormPersist formKey={formKey} form={form} />
       <Form {...form}>
@@ -156,7 +158,7 @@ export default function Page(props: PageProps): ReactElement {
             name="jobName"
             render={({ field }) => (
               <FormItem className="max-w-[420px]">
-                <FormLabel>Job name</FormLabel>
+                <FormLabel>{t('define.jobName')}</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="prod-to-stage"
@@ -167,9 +169,9 @@ export default function Page(props: PageProps): ReactElement {
                   />
                 </FormControl>
                 <FormDescription>
-                  Lowercase letters, numbers and hyphens.
+                  {t('define.jobNameHint')}
                   {isJobNameAvailable && (
-                    <span className="text-ok"> Available.</span>
+                    <span className="text-ok"> {t('define.available')}</span>
                   )}
                 </FormDescription>
                 <FormMessage />
@@ -183,8 +185,8 @@ export default function Page(props: PageProps): ReactElement {
               <FormItem>
                 <WizardSection
                   id="define-schedule"
-                  title="When should it run?"
-                  description="Without a schedule, the job is paused and runs only when you trigger it; a default cron is stored."
+                  title={t('define.schedule.title')}
+                  description={t('define.schedule.description')}
                 >
                   <div
                     role="radiogroup"
@@ -201,9 +203,11 @@ export default function Page(props: PageProps): ReactElement {
                       }}
                       className="flex-col gap-1.5 px-4 py-3.5"
                     >
-                      <span className="font-semibold">When I decide</span>
+                      <span className="font-semibold">
+                        {t('define.schedule.onDemand')}
+                      </span>
                       <span className="text-[13px] text-muted-foreground">
-                        From the interface, the CLI or the API.
+                        {t('define.schedule.onDemandHint')}
                       </span>
                     </SelectCard>
                     <SelectCard
@@ -213,16 +217,20 @@ export default function Page(props: PageProps): ReactElement {
                       onClick={() => setIsScheduleEnabled(true)}
                       className="flex-col gap-1.5 px-4 py-3.5"
                     >
-                      <span className="font-semibold">On a schedule</span>
+                      <span className="font-semibold">
+                        {t('define.schedule.scheduled')}
+                      </span>
                       <span className="text-[13px] text-muted-foreground">
-                        A cron expression, such as {DEFAULT_CRON_STRING}.
+                        {t('define.schedule.scheduledHint', {
+                          cron: DEFAULT_CRON_STRING,
+                        })}
                       </span>
                     </SelectCard>
                   </div>
                   <LicenseFeatureNotice feature="scheduling" />
                   {isScheduleEnabled && (
                     <div className="flex max-w-[420px] flex-col gap-2">
-                      <FormLabel>Cron schedule</FormLabel>
+                      <FormLabel>{t('define.schedule.cron')}</FormLabel>
                       <FormControl>
                         <Input
                           placeholder={DEFAULT_CRON_STRING}
@@ -244,18 +252,24 @@ export default function Page(props: PageProps): ReactElement {
               <FormItem>
                 <WizardSection
                   id="define-initiate"
-                  title="Once it is created"
-                  description="Start a single run right after the job is created, or keep it for later."
+                  title={t('define.initiate.title')}
+                  description={t('define.initiate.description')}
                 >
                   <FormControl>
                     <Segmented
-                      ariaLabel="Initiate a job run after creation"
+                      ariaLabel={t('define.initiate.ariaLabel')}
                       className="self-start"
                       value={field.value ? 'true' : 'false'}
                       onChange={(value) => field.onChange(value === 'true')}
                       options={[
-                        { value: 'false', label: 'Create only' },
-                        { value: 'true', label: 'Create and run' },
+                        {
+                          value: 'false',
+                          label: t('define.initiate.createOnly'),
+                        },
+                        {
+                          value: 'true',
+                          label: t('define.initiate.createAndRun'),
+                        },
                       ]}
                     />
                   </FormControl>
@@ -271,7 +285,7 @@ export default function Page(props: PageProps): ReactElement {
           >
             <AccordionItem value="settings" className="border-b-0">
               <AccordionTrigger className="py-4 font-semibold hover:no-underline">
-                Advanced settings
+                {t('define.advanced.title')}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-4 border-t border-line-soft pt-5">
@@ -280,13 +294,13 @@ export default function Page(props: PageProps): ReactElement {
                     name="workflowSettings.runTimeout"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Job Run Timeout</FormLabel>
+                        <FormLabel>{t('define.advanced.runTimeout')}</FormLabel>
                         <FormDescription>
-                          The maximum length of time (in minutes) that a single
-                          job run is allowed to span before it times out.{' '}
-                          <code>0</code> means no overall timeout.
+                          {t.rich('define.advanced.runTimeoutDescription', {
+                            code: (chunks) => <code>{chunks}</code>,
+                          })}
                           {newJobType !== 'pii-detection' &&
-                            ' A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.'}
+                            ` ${t('define.advanced.runTimeoutTables')}`}
                         </FormDescription>
                         <FormControl>
                           <Input
@@ -307,10 +321,11 @@ export default function Page(props: PageProps): ReactElement {
                     name="workflowSettings.engine"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Engine</FormLabel>
+                        <FormLabel>{t('define.advanced.engine')}</FormLabel>
                         <FormDescription>
-                          Transformation engine used to run this job.{' '}
-                          <code>Default</code> follows the deployment setting.
+                          {t.rich('define.advanced.engineDescription', {
+                            code: (chunks) => <code>{chunks}</code>,
+                          })}
                         </FormDescription>
                         <Select
                           onValueChange={(v) => field.onChange(Number(v))}
@@ -323,13 +338,13 @@ export default function Page(props: PageProps): ReactElement {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value={String(JobEngine.UNSPECIFIED)}>
-                              Default (deployment)
+                              {t('define.advanced.engineDefault')}
                             </SelectItem>
                             <SelectItem value={String(JobEngine.ATHANOR)}>
                               Athanor
                             </SelectItem>
                             <SelectItem value={String(JobEngine.BENTHOS)}>
-                              Benthos (legacy)
+                              {t('define.advanced.engineBenthos')}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -342,12 +357,11 @@ export default function Page(props: PageProps): ReactElement {
                     name="workflowSettings.consistencyScope"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Consistency scope</FormLabel>
+                        <FormLabel>
+                          {t('define.advanced.consistencyScope')}
+                        </FormLabel>
                         <FormDescription>
-                          Deterministic consistency (Athanor engine only): the
-                          same source value gets the same anonymized value
-                          everywhere in this scope. Beyond a single run, outputs
-                          stay linkable over time.
+                          {t('define.advanced.consistencyScopeDescription')}
                         </FormDescription>
                         <FormControl>
                           <ConsistencyScopeSelect
@@ -379,8 +393,10 @@ export default function Page(props: PageProps): ReactElement {
             summary={[
               jobName,
               isScheduleEnabled
-                ? `Scheduled: ${form.watch('cronSchedule') || DEFAULT_CRON_STRING}`
-                : 'Run on demand',
+                ? t('define.summary.scheduled', {
+                    cron: form.watch('cronSchedule') || DEFAULT_CRON_STRING,
+                  })
+                : t('define.summary.onDemand'),
             ]}
           >
             <Button
@@ -388,10 +404,10 @@ export default function Page(props: PageProps): ReactElement {
               type="reset"
               onClick={() => router.push(`/${account?.name}/new/job`)}
             >
-              Back
+              {t('wizard.back')}
             </Button>
             <Button type="submit" disabled={!form.formState.isValid}>
-              Continue
+              {t('wizard.continue')}
             </Button>
           </WizardFooter>
         </form>

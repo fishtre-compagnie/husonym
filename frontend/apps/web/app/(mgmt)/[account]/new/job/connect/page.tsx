@@ -35,6 +35,7 @@ import {
   ConnectionService,
 } from '@husonym/sdk';
 import { Cross2Icon, PlusIcon } from '@radix-ui/react-icons';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -68,6 +69,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const t = useTranslations('newJob');
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -142,8 +144,8 @@ export default function Page(props: PageProps): ReactElement {
         !!sourceConnection && isConnectionSubsettable(sourceConnection)
       )}
       stepName="connect"
-      title="Where does the data come from, and where does it go?"
-      description="Pick the source to read, then one or more destinations to write the anonymized data to."
+      title={t('connect.title')}
+      description={t('connect.description')}
     >
       <FormPersist formKey={sessionKey} form={form} />
       <Form {...form}>
@@ -153,8 +155,8 @@ export default function Page(props: PageProps): ReactElement {
         >
           <WizardSection
             id="connect-source"
-            title="Source connection"
-            description="The database the job reads from."
+            title={t('connect.source.title')}
+            description={t('connect.source.description')}
           >
             <div className="flex flex-col gap-4">
               <FormField
@@ -167,7 +169,7 @@ export default function Page(props: PageProps): ReactElement {
                         <Skeleton className="w-full h-12 rounded-lg" />
                       ) : (
                         <ConnectionPicker
-                          ariaLabel="Source connection"
+                          ariaLabel={t('connect.source.title')}
                           postgres={postgres}
                           mysql={mysql}
                           mongodb={mongodb}
@@ -348,7 +350,7 @@ export default function Page(props: PageProps): ReactElement {
                 )}
               />
               {hasSourceOptions(sourceConnection) && (
-                <WizardPanel title="When the source schema changes">
+                <WizardPanel title={t('connect.source.schemaChanges')}>
                   <FormField
                     control={form.control}
                     name="sourceOptions"
@@ -370,8 +372,8 @@ export default function Page(props: PageProps): ReactElement {
           </WizardSection>
           <WizardSection
             id="connect-destinations"
-            title="Where to write the anonymized data?"
-            description="The source itself cannot be a destination."
+            title={t('connect.destinations.title')}
+            description={t('connect.destinations.description')}
           >
             <div className="flex flex-col gap-8">
               {fields.map((val, index) => {
@@ -385,14 +387,18 @@ export default function Page(props: PageProps): ReactElement {
                     {fields.length > 1 && (
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-medium text-muted-foreground">
-                          Destination {index + 1}
+                          {t('connect.destinations.numbered', {
+                            number: index + 1,
+                          })}
                         </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="ml-auto"
-                          aria-label={`Remove destination ${index + 1}`}
+                          aria-label={t('connect.destinations.remove', {
+                            number: index + 1,
+                          })}
                           onClick={() => {
                             if (fields.length != 1) {
                               remove(index);
@@ -400,7 +406,7 @@ export default function Page(props: PageProps): ReactElement {
                           }}
                         >
                           <Cross2Icon className="size-4" aria-hidden="true" />
-                          Remove
+                          {t('connect.destinations.removeShort')}
                         </Button>
                       </div>
                     )}
@@ -416,7 +422,12 @@ export default function Page(props: PageProps): ReactElement {
                                   <Skeleton className="w-full h-12 rounded-lg" />
                                 ) : (
                                   <ConnectionPicker
-                                    ariaLabel={`Destination ${index + 1}`}
+                                    ariaLabel={t(
+                                      'connect.destinations.numbered',
+                                      {
+                                        number: index + 1,
+                                      }
+                                    )}
                                     postgres={postgres}
                                     mysql={mysql}
                                     s3={s3}
@@ -432,7 +443,8 @@ export default function Page(props: PageProps): ReactElement {
                                         .map((d, i) =>
                                           i === index ? '' : d.connectionId
                                         ),
-                                      connections
+                                      connections,
+                                      t
                                     )}
                                     isChecking={
                                       !!field.value &&
@@ -590,7 +602,9 @@ export default function Page(props: PageProps): ReactElement {
                     </div>
                     {hasDestinationOptions(destConnection) && (
                       <WizardPanel
-                        title={`Before writing to ${destConnection?.name}`}
+                        title={t('connect.destinations.beforeWriting', {
+                          name: destConnection?.name ?? '',
+                        })}
                       >
                         <FormField
                           control={form.control}
@@ -630,7 +644,7 @@ export default function Page(props: PageProps): ReactElement {
                 }}
               >
                 <PlusIcon className="size-4" aria-hidden="true" />
-                Add another destination
+                {t('connect.destinations.add')}
               </Button>
             </div>
           </WizardSection>
@@ -659,10 +673,10 @@ export default function Page(props: PageProps): ReactElement {
                 router.back();
               }}
             >
-              Back
+              {t('wizard.back')}
             </Button>
             <Button type="submit" disabled={!form.formState.isValid}>
-              Continue
+              {t('wizard.continue')}
             </Button>
           </WizardFooter>
         </form>
@@ -675,22 +689,23 @@ export default function Page(props: PageProps): ReactElement {
 function getDestinationDisabledReasons(
   sourceId: string,
   otherDestinationIds: string[],
-  connections: Connection[]
+  connections: Connection[],
+  t: ReturnType<typeof useTranslations<'newJob'>>
 ): Record<string, string> {
   const reasons: Record<string, string> = {};
   const source = connections.find((c) => c.id === sourceId);
   connections.forEach((c) => {
     if (source && !isValidConnectionPair(source, c)) {
-      reasons[c.id] = 'Not a valid destination for this source';
+      reasons[c.id] = t('connect.destinations.invalidPair');
     }
   });
   otherDestinationIds.forEach((id) => {
     if (id) {
-      reasons[id] = 'Already a destination of this job';
+      reasons[id] = t('connect.destinations.alreadyUsed');
     }
   });
   if (sourceId) {
-    reasons[sourceId] = 'This is the source of this job';
+    reasons[sourceId] = t('connect.destinations.isSource');
   }
   return reasons;
 }
