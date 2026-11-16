@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { changeLabel, columnName } from '@/util/mapping-changes';
 import { JobMappingChange } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useState } from 'react';
 
 interface Props {
@@ -29,6 +30,7 @@ interface Props {
 // what asking was meant to prevent.
 export default function ReviewChangesDialog(props: Props): ReactElement {
   const { open, onOpenChange, changes, onConfirm } = props;
+  const t = useTranslations('jobs.review.dialog');
   const [note, setNote] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -55,20 +57,13 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
     }
   }
 
-  const many = changes.length !== 1;
-
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {many
-              ? `Mark ${changes.length} changes reviewed`
-              : 'Mark this change reviewed'}
-          </DialogTitle>
+          <DialogTitle>{t('title', { count: changes.length })}</DialogTitle>
           <DialogDescription>
-            The job keeps its mappings as the runs left them, and{' '}
-            {many ? 'these changes stop' : 'this change stops'} being reported.
+            {t('description', { count: changes.length })}
           </DialogDescription>
         </DialogHeader>
         <ul className="max-h-40 overflow-auto text-xs font-mono flex flex-col gap-1">
@@ -79,19 +74,17 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
           ))}
         </ul>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="review-changes-note">
-            Why is this fine? (optional)
-          </Label>
+          <Label htmlFor="review-changes-note">{t('note')}</Label>
           <Textarea
             id="review-changes-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. internal references, hold no personal data"
+            placeholder={t('notePlaceholder')}
           />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => close(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             type="button"
@@ -100,7 +93,7 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
           >
             <ButtonText
               leftIcon={isConfirming ? <Spinner className="h-4 w-4" /> : null}
-              text="Mark reviewed"
+              text={t('confirm')}
             />
           </Button>
         </DialogFooter>

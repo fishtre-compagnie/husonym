@@ -17,6 +17,7 @@ import { Connection } from '@husonym/sdk';
 import { editor } from 'monaco-editor';
 import FormHeader from './FormHeader';
 import { JobHookSqlFormValues, SqlTimingFormValue } from './validation';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   values: JobHookSqlFormValues;
@@ -27,6 +28,7 @@ interface Props {
 
 export default function JobConfigSqlForm(props: Props): ReactElement {
   const { values, setValues, jobConnections, errors } = props;
+  const t = useTranslations('jobs.hooks.form');
   return (
     <>
       <SelectConnections
@@ -39,8 +41,8 @@ export default function JobConfigSqlForm(props: Props): ReactElement {
       />
       <div className="flex flex-col gap-3">
         <FormHeader
-          title="Query"
-          description="The SQL query that will be invoked"
+          title={t('query')}
+          description={t('queryDescription')}
           isErrored={!!errors['config.sql.query']}
         />
         <EditSqlQuery
@@ -51,8 +53,8 @@ export default function JobConfigSqlForm(props: Props): ReactElement {
       </div>
       <div className="flex flex-col gap-3">
         <FormHeader
-          title="Timing"
-          description="The lifecycle of when the hook will run"
+          title={t('timing')}
+          description={t('timingDescription')}
           htmlFor="timing"
           isErrored={!!errors['config.sql.timing']}
         />
@@ -66,15 +68,11 @@ export default function JobConfigSqlForm(props: Props): ReactElement {
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select a timing value" />
+            <SelectValue placeholder={t('timingPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="preSync">
-              Pre Sync - Before first table sync, truncation, schema init
-            </SelectItem>
-            <SelectItem value="postSync">
-              Post Sync - After the last table sync
-            </SelectItem>
+            <SelectItem value="preSync">{t('preSync')}</SelectItem>
+            <SelectItem value="postSync">{t('postSync')}</SelectItem>
           </SelectContent>
         </Select>
         <FormErrorMessage message={errors['config.sql.timing']} />
@@ -135,13 +133,14 @@ function SelectConnections(props: SelectConnectionsProps): ReactElement {
     setSelectedConnectionId,
     error,
   } = props;
+  const t = useTranslations('jobs.hooks.form');
   const { postgres, mysql, mssql } = splitConnections(jobConnections);
   return (
     <div className="flex flex-col gap-3">
       <FormHeader
         htmlFor="connectionId"
-        title="Connection"
-        description="The connection that this hook will be invoked against"
+        title={t('connection')}
+        description={t('connectionDescription')}
         isErrored={!!error}
       />
       <Select
@@ -154,7 +153,7 @@ function SelectConnections(props: SelectConnectionsProps): ReactElement {
         }}
       >
         <SelectTrigger>
-          <SelectValue placeholder="Select a connection..." />
+          <SelectValue placeholder={t('connectionPlaceholder')} />
         </SelectTrigger>
         <SelectContent>
           <ConnectionSelectContent

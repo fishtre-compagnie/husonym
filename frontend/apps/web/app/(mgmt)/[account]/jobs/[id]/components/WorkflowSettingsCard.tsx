@@ -25,6 +25,7 @@ import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { ConsistencyScope, Job, JobEngine, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ export default function WorkflowSettingsCard({
   job,
   mutate,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.overview.workflow');
   const form = useForm({
     mode: 'onChange',
     resolver: yupResolver(WorkflowSettingsSchema),
@@ -87,13 +89,13 @@ export default function WorkflowSettingsCard({
         id: job.id,
         worfklowOptions: toWorkflowOptions(values),
       });
-      toast.success('Successfully updated job workflow options!');
+      toast.success(t('updated'));
       if (resp.job) {
         mutate(resp.job);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job workflow options', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -110,13 +112,12 @@ export default function WorkflowSettingsCard({
               name="runTimeout"
               render={({ field }) => (
                 <FormItem className="pt-4">
-                  <FormLabel> Job Run Timeout</FormLabel>
+                  <FormLabel>{t('runTimeout')}</FormLabel>
                   <FormDescription>
-                    The maximum length of time (in minutes) that a single job
-                    run is allowed to span before it times out. <code>0</code>{' '}
-                    means no overall timeout.
-                    {!isPiiDetectJob(job) &&
-                      ' A table has no limit of its own: it is stopped when it no longer makes progress. At this limit, the run stops the tables still being copied and puts the destination triggers back.'}
+                    {t.rich('runTimeoutDescription', {
+                      code: (chunks) => <code>{chunks}</code>,
+                    })}
+                    {!isPiiDetectJob(job) && ` ${t('runTimeoutTables')}`}
                   </FormDescription>
                   <FormControl>
                     <Input
@@ -137,10 +138,11 @@ export default function WorkflowSettingsCard({
               name="engine"
               render={({ field }) => (
                 <FormItem className="pt-4">
-                  <FormLabel>Engine</FormLabel>
+                  <FormLabel>{t('engine')}</FormLabel>
                   <FormDescription>
-                    Transformation engine used to run this job.{' '}
-                    <code>Default</code> follows the deployment setting.
+                    {t.rich('engineDescription', {
+                      code: (chunks) => <code>{chunks}</code>,
+                    })}
                   </FormDescription>
                   <Select
                     onValueChange={(v) => field.onChange(Number(v))}
@@ -153,13 +155,13 @@ export default function WorkflowSettingsCard({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={String(JobEngine.UNSPECIFIED)}>
-                        Default (deployment)
+                        {t('engineDefault')}
                       </SelectItem>
                       <SelectItem value={String(JobEngine.ATHANOR)}>
                         Athanor
                       </SelectItem>
                       <SelectItem value={String(JobEngine.BENTHOS)}>
-                        Benthos (legacy)
+                        {t('engineBenthos')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -172,12 +174,9 @@ export default function WorkflowSettingsCard({
               name="consistencyScope"
               render={({ field }) => (
                 <FormItem className="pt-4">
-                  <FormLabel>Consistency scope</FormLabel>
+                  <FormLabel>{t('consistencyScope')}</FormLabel>
                   <FormDescription>
-                    Deterministic consistency (Athanor engine only): the same
-                    source value gets the same anonymized value everywhere in
-                    this scope. Beyond a single run, outputs stay linkable over
-                    time.
+                    {t('consistencyScopeDescription')}
                   </FormDescription>
                   <FormControl>
                     <ConsistencyScopeSelect
@@ -193,7 +192,7 @@ export default function WorkflowSettingsCard({
           <CardFooter className="flex justify-center border-t border-line-soft bg-surface-2 py-2">
             <div className="flex flex-row items-center justify-end w-full">
               <Button type="submit" disabled={!form.formState.isValid}>
-                Save
+                {t('save')}
               </Button>
             </div>
           </CardFooter>

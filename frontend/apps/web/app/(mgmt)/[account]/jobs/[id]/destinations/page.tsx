@@ -23,10 +23,12 @@ import {
 } from '../source/components/util';
 import { isAiDataGenJob, isDataGenJob } from '../util';
 import DestinationConnectionCard from './components/DestinationConnectionCard';
+import { useTranslations } from 'next-intl';
 
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
   const id = params?.id ?? '';
+  const t = useTranslations('jobs.destinations');
   const { account } = useAccount();
   const { data, isLoading, refetch } = useQuery(
     JobService.method.getJob,
@@ -64,8 +66,8 @@ export default function Page(props: PageProps): ReactElement {
   return (
     <div className="job-details-container flex flex-col gap-5">
       <SubPageHeader
-        header="Destinations"
-        description="Where the anonymized data is written, and how."
+        header={t('title')}
+        description={t('description')}
         extraHeading={
           isDataGenJob(data?.job) || isAiDataGenJob(data?.job) ? null : (
             <NewDestinationButton jobId={id} />
@@ -121,11 +123,12 @@ interface NewDestinationButtonProps {
 
 function NewDestinationButton(props: NewDestinationButtonProps): ReactElement {
   const { jobId } = props;
+  const t = useTranslations('jobs.destinations');
   const { account } = useAccount();
   return (
     <NextLink href={`/${account?.name}/new/job/${jobId}/destination`}>
       <Button>
-        <ButtonText leftIcon={<PlusIcon />} text="New destination" />
+        <ButtonText leftIcon={<PlusIcon />} text={t('new')} />
       </Button>
     </NextLink>
   );

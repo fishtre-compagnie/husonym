@@ -7,6 +7,7 @@ import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { Job, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -27,6 +28,7 @@ export default function ActivitySyncOptionsCard({
   job,
   mutate,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.overview.workflow');
   const form = useForm({
     mode: 'onChange',
     resolver: yupResolver(ActivityOptionsFormValues),
@@ -56,13 +58,13 @@ export default function ActivitySyncOptionsCard({
         id: job.id,
         syncOptions: toActivityOptions(values),
       });
-      toast.success('Successfully updated job workflow options!');
+      toast.success(t('updated'));
       if (resp.job) {
         mutate(resp.job);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job workflow options', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -102,7 +104,7 @@ export default function ActivitySyncOptionsCard({
           <CardFooter className="flex justify-center border-t border-line-soft bg-surface-2 py-2">
             <div className="flex flex-row items-center justify-end w-full">
               <Button type="submit" disabled={!form.formState.isValid}>
-                Save
+                {t('save')}
               </Button>
             </div>
           </CardFooter>

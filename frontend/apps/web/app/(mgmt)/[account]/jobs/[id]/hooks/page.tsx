@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { ReactElement, use } from 'react';
 import HooksCard from './components/HooksCard';
+import { useTranslations } from 'next-intl';
 
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
@@ -25,14 +26,12 @@ export default function Page(props: PageProps): ReactElement {
 }
 
 function HooksDisabledAlert(): ReactElement {
+  const t = useTranslations('jobs.hooks.disabled');
   return (
     <div>
       <Alert variant="warning">
-        <AlertTitle>Job Hooks are not currently enabled</AlertTitle>
-        <AlertDescription>
-          To enable them, please update Husonym configuration or contact your
-          system administrator.
-        </AlertDescription>
+        <AlertTitle>{t('title')}</AlertTitle>
+        <AlertDescription>{t('description')}</AlertDescription>
       </Alert>
     </div>
   );

@@ -16,6 +16,7 @@ import { PlusIcon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 import NewHookForm from './NewHookForm';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   jobId: string;
@@ -25,6 +26,7 @@ interface Props {
 
 export default function NewHookButton(props: Props): ReactElement {
   const { jobId, jobConnections, onCreated } = props;
+  const t = useTranslations('jobs.hooks.new');
   const { mutateAsync: createHook } = useMutation(
     JobService.method.createJobHook
   );
@@ -43,12 +45,12 @@ export default function NewHookButton(props: Props): ReactElement {
           priority: values.priority,
         },
       });
-      toast.success('Successfully created job hook!');
+      toast.success(t('created'));
       onCreated();
       setOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Unable to create job hook', {
+      toast.error(t('error'), {
         description: getErrorMessage(err),
       });
     }
@@ -58,7 +60,7 @@ export default function NewHookButton(props: Props): ReactElement {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" disabled={!allowed}>
-          <ButtonText leftIcon={<PlusIcon />} text="New Hook" />
+          <ButtonText leftIcon={<PlusIcon />} text={t('button')} />
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -66,11 +68,8 @@ export default function NewHookButton(props: Props): ReactElement {
         className="lg:max-w-4xl max-h-[85vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Create new Job Hook</DialogTitle>
-          <DialogDescription>
-            Configure values for a new job hook that will be invoked during a
-            job run
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <NewHookForm jobConnections={jobConnections} onSubmit={onCreate} />
       </DialogContent>

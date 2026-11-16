@@ -171,7 +171,9 @@ export function isDynamoDBConnection(connection: Connection): boolean {
 export function getDestinationDetailsRecord(
   dynamoDestinationConnections: Pick<JobDestination, 'id' | 'connectionId'>[],
   connectionsRecord: Record<string, Connection>,
-  destinationSchemaMapsResp: GetConnectionSchemaMapsResponse
+  destinationSchemaMapsResp: GetConnectionSchemaMapsResponse,
+  // What a destination whose connection is not found is called.
+  unknownName = 'Unknown Name'
 ): Record<string, DestinationDetails> {
   const destSchemaRecord: Record<string, string[]> = {};
   destinationSchemaMapsResp.connectionIds.forEach((connid, idx) => {
@@ -190,7 +192,7 @@ export function getDestinationDetailsRecord(
     const availableTableNames = destSchemaRecord[d.connectionId] ?? [];
     output[d.id] = {
       destinationId: d.id,
-      friendlyName: connection?.name ?? 'Unknown Name',
+      friendlyName: connection?.name ?? unknownName,
       availableTableNames,
     };
   });

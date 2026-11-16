@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobMapping, JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 
@@ -23,6 +24,7 @@ export default function DestinationAlerts({
   jobmappings,
   initTableSchemaEnabled,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.destinations.alerts');
   const { data: validateSchemaResponse, isLoading: isValidatingSchema } =
     useQuery(
       JobService.method.validateSchema,
@@ -54,8 +56,7 @@ export default function DestinationAlerts({
                 <AccordionTrigger className="text-left">
                   <div className="font-medium flex flex-row items-center gap-2">
                     <IoAlertCircleOutline className="h-6 w-6" />
-                    Found issues with columns in schema. Please resolve before
-                    next job run.
+                    {t('columnIssues')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -67,19 +68,19 @@ export default function DestinationAlerts({
                             validateSchemaResponse || {};
                           let output = '';
                           if (missingColumns && missingColumns.length > 0) {
-                            output += 'Columns Missing in Destination:\n';
+                            output += `${t('missingColumns')}\n`;
                             missingColumns.forEach((col) => {
                               output += ` - ${col.schema}.${col.table}.${col.column}\n`;
                             });
                             output += '\n';
                           }
                           if (extraColumns && extraColumns.length > 0) {
-                            output += 'Columns Not Found in Job Mappings:\n';
+                            output += `${t('extraColumns')}\n`;
                             extraColumns.forEach((col) => {
                               output += ` - ${col.schema}.${col.table}.${col.column}\n`;
                             });
                           }
-                          return output || 'No differences found.';
+                          return output || t('noDifferences');
                         })()}
                       </pre>
                     </div>
@@ -98,9 +99,7 @@ export default function DestinationAlerts({
                 <AccordionTrigger className="text-left">
                   <div className="font-medium flex flex-row items-center gap-2">
                     <IoAlertCircleOutline className="h-6 w-6" />
-                    This destination is missing tables found in Job Mappings.
-                    Either enable Init Table Schema or create the tables
-                    manually.
+                    {t('tableIssues')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -112,20 +111,20 @@ export default function DestinationAlerts({
                             validateSchemaResponse || {};
                           let output = '';
                           if (missingSchemas && missingSchemas.length > 0) {
-                            output += 'Schemas Missing in Destination:\n';
+                            output += `${t('missingSchemas')}\n`;
                             missingSchemas.forEach((schema) => {
                               output += ` - ${schema}\n`;
                             });
                             output += '\n';
                           }
                           if (missingTables && missingTables.length > 0) {
-                            output += 'Tables Missing in Destination:\n';
+                            output += `${t('missingTables')}\n`;
                             missingTables.forEach((table) => {
                               output += ` - ${table.schema}.${table.table}\n`;
                             });
                             output += '\n';
                           }
-                          return output || 'No differences found.';
+                          return output || t('noDifferences');
                         })()}
                       </pre>
                     </div>

@@ -6,6 +6,7 @@ import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService, JobStatus } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function JobNextRuns({ jobId, status }: Props): ReactElement {
+  const t = useTranslations('jobs.overview.nextRuns');
   const { data, isLoading, error } = useQuery(
     JobService.method.getJobNextRuns,
     { jobId },
@@ -29,18 +31,16 @@ export default function JobNextRuns({ jobId, status }: Props): ReactElement {
 
   return (
     <Panel className="h-full">
-      <PanelHeader title="Upcoming runs" />
+      <PanelHeader title={t('title')} />
       {!data?.nextRuns || error ? (
         <div className="p-4">
           <Alert variant="destructive">
-            <AlertTitle>Error: Unable to retrieve upcoming runs</AlertTitle>
+            <AlertTitle>{t('error')}</AlertTitle>
           </Alert>
         </div>
       ) : isPaused || nextRuns.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-          {isPaused
-            ? 'The job is paused: no upcoming runs.'
-            : 'No upcoming runs'}
+          {isPaused ? t('paused') : t('none')}
         </p>
       ) : (
         <ul className="m-0 list-none p-0">

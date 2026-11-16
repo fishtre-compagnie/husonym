@@ -1,5 +1,6 @@
 'use client';
 import { cn } from '@/libs/utils';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactElement } from 'react';
@@ -18,10 +19,11 @@ interface Props {
 // The sections of a job, as a bar of tabs under its header. Each is a page of its
 // own, so they are links: the current one is marked with aria-current.
 export default function JobTabs({ items }: Props): ReactElement {
+  const t = useTranslations('jobs.job.tabs');
   const pathname = usePathname();
   return (
     <nav
-      aria-label="Job sections"
+      aria-label={t('ariaLabel')}
       className="-mb-px flex gap-1 overflow-x-auto border-b border-line-soft"
     >
       {items.map((item) => {

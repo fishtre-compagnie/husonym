@@ -23,33 +23,36 @@ import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { Job, JobService } from '@husonym/sdk';
 import cron from 'cron-validate';
-import { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
+import { ReactElement, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
 
-const SCHEDULE_FORM_SCHEMA = Yup.object({
-  cronSchedule: Yup.string()
-    .optional()
-    .test('isValidCron', 'Not a valid cron schedule', (value, context) => {
-      if (!value) {
-        return false;
-      }
-      const output = cron(value);
-      if (output.isValid()) {
-        return true;
-      }
-      if (output.isError()) {
-        const errors = output.getError();
-        if (errors.length > 0) {
-          return context.createError({ message: errors.join(', ') });
+function scheduleFormSchema(invalidCron: string) {
+  return Yup.object({
+    cronSchedule: Yup.string()
+      .optional()
+      .test('isValidCron', invalidCron, (value, context) => {
+        if (!value) {
+          return false;
         }
-      }
-      return output.isValid();
-    }),
-});
+        const output = cron(value);
+        if (output.isValid()) {
+          return true;
+        }
+        if (output.isError()) {
+          const errors = output.getError();
+          if (errors.length > 0) {
+            return context.createError({ message: errors.join(', ') });
+          }
+        }
+        return output.isValid();
+      }),
+  });
+}
 
-type ScheduleFormValues = Yup.InferType<typeof SCHEDULE_FORM_SCHEMA>;
+type ScheduleFormValues = Yup.InferType<ReturnType<typeof scheduleFormSchema>>;
 
 interface Props {
   job: Job;
@@ -57,10 +60,12 @@ interface Props {
 }
 
 export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
+  const t = useTranslations('jobs.overview.schedule');
   const { allowed } = useLicenseFeature('scheduling');
+  const schema = useMemo(() => scheduleFormSchema(t('invalidCron')), [t]);
   const form = useForm({
     mode: 'onChange',
-    resolver: yupResolver(SCHEDULE_FORM_SCHEMA),
+    resolver: yupResolver(schema),
     values: { cronSchedule: job?.cronSchedule },
   });
   const { mutateAsync: updateJobScheduleAsync } = useMutation(
@@ -73,13 +78,13 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
         id: job.id,
         cronSchedule: values.cronSchedule,
       });
-      toast.success('Successfully updated job schedule!');
+      toast.success(t('updated'));
       if (resp.job) {
         mutate(resp.job);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Unable to update job schedule', {
+      toast.error(t('updateError'), {
         description: getErrorMessage(err),
       });
     }
@@ -87,13 +92,13 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
 
   const msg =
     !form.getValues().cronSchedule || form.getValues().cronSchedule === ''
-      ? 'Not currently scheduled'
+      ? t('notScheduled')
       : '';
 
   return (
     <Card className="h-full overflow-hidden">
       <CardHeader>
-        <CardTitle>Schedule</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
         <LicenseFeatureNotice feature="scheduling" />
       </CardHeader>
       <Form {...form}>
@@ -104,12 +109,10 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
               name="cronSchedule"
               render={({ field }) => (
                 <FormItem>
-                  <FormDescription>
-                    The schedule to run the job against if not a oneoff.
-                  </FormDescription>
+                  <FormDescription>{t('description')}</FormDescription>
                   <FormControl>
                     <Input
-                      placeholder="Cron schedule, e.g. 0 3 * * *"
+                      placeholder={t('placeholder')}
                       className="font-mono"
                       value={field.value || ''}
                       onChange={field.onChange}
@@ -131,7 +134,7 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
                   (!allowed && !!form.watch('cronSchedule'))
                 }
               >
-                Save
+                {t('save')}
               </Button>
             </div>
           </CardFooter>

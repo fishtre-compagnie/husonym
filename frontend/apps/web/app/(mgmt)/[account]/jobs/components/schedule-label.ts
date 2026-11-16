@@ -1,28 +1,35 @@
 import { DEFAULT_CRON_STRING } from '../schedule';
 
-export interface ScheduleLabel {
-  // What the list says of the schedule.
-  text: string;
-  // Whether the text is the cron expression itself, which no phrase could tell.
-  isCron: boolean;
-}
+// The phrases a schedule is said with: keys of the `jobs.schedule` messages.
+type ScheduleKey =
+  | 'manual'
+  | 'hourly'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'everyMinutes'
+  | 'everyHours'
+  | 'dailyAt'
+  | 'weekdaysAt'
+  | 'everyDayAt'
+  | 'monthlyAt';
 
-const DAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
+export type ScheduleLabel =
+  // The cron expression itself, which no phrase could tell.
+  | { isCron: true; text: string }
+  // A phrase of the messages, with its values.
+  | {
+      isCron: false;
+      key: ScheduleKey;
+      values?: Record<string, string | number>;
+    };
 
-const MACROS: Record<string, string> = {
-  '@hourly': 'Hourly',
-  '@daily': 'Daily at 00:00 UTC',
-  '@midnight': 'Daily at 00:00 UTC',
-  '@weekly': 'Every Sunday at 00:00 UTC',
-  '@monthly': 'Monthly on day 1 at 00:00 UTC',
+const MACROS: Record<string, ScheduleKey> = {
+  '@hourly': 'hourly',
+  '@daily': 'daily',
+  '@midnight': 'daily',
+  '@weekly': 'weekly',
+  '@monthly': 'monthly',
 };
 
 function isNumber(s: string): boolean {
@@ -30,7 +37,14 @@ function isNumber(s: string): boolean {
 }
 
 function time(hour: string, minute: string): string {
-  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')} UTC`;
+  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+}
+
+function phrase(
+  key: ScheduleKey,
+  values?: Record<string, string | number>
+): ScheduleLabel {
+  return { isCron: false, key, values };
 }
 
 // scheduleLabel says a job's schedule in words, for the common shapes of a cron
@@ -39,46 +53,47 @@ function time(hour: string, minute: string): string {
 export function scheduleLabel(cron: string | undefined): ScheduleLabel {
   const expr = (cron ?? '').trim();
   if (!expr || expr === DEFAULT_CRON_STRING) {
-    return { text: 'Manual', isCron: false };
+    return phrase('manual');
   }
   const macro = MACROS[expr.toLowerCase()];
   if (macro) {
-    return { text: macro, isCron: false };
+    return phrase(macro);
   }
+  const cronText: ScheduleLabel = { isCron: true, text: expr };
   const parts = expr.split(/\s+/);
   if (parts.length !== 5) {
-    return { text: expr, isCron: true };
+    return cronText;
   }
   const [min, hour, dom, month, dow] = parts;
   if (month !== '*') {
-    return { text: expr, isCron: true };
+    return cronText;
   }
   const everyMin = /^\*\/(\d+)$/.exec(min);
   if (everyMin && hour === '*' && dom === '*' && dow === '*') {
-    return { text: `Every ${everyMin[1]} min`, isCron: false };
+    return phrase('everyMinutes', { count: everyMin[1] });
   }
   if (isNumber(min) && hour === '*' && dom === '*' && dow === '*') {
-    return { text: 'Hourly', isCron: false };
+    return phrase('hourly');
   }
   const everyHour = /^\*\/(\d+)$/.exec(hour);
   if (isNumber(min) && everyHour && dom === '*' && dow === '*') {
-    return { text: `Every ${everyHour[1]} h`, isCron: false };
+    return phrase('everyHours', { count: everyHour[1] });
   }
   if (!isNumber(min) || !isNumber(hour)) {
-    return { text: expr, isCron: true };
+    return cronText;
   }
   const at = time(hour, min);
   if (dom === '*' && dow === '*') {
-    return { text: `Daily at ${at}`, isCron: false };
+    return phrase('dailyAt', { time: at });
   }
   if (dom === '*' && dow === '1-5') {
-    return { text: `Weekdays at ${at}`, isCron: false };
+    return phrase('weekdaysAt', { time: at });
   }
   if (dom === '*' && isNumber(dow) && Number(dow) <= 7) {
-    return { text: `Every ${DAYS[Number(dow) % 7]} at ${at}`, isCron: false };
+    return phrase('everyDayAt', { day: String(Number(dow) % 7), time: at });
   }
   if (isNumber(dom) && dow === '*') {
-    return { text: `Monthly on day ${dom} at ${at}`, isCron: false };
+    return phrase('monthlyAt', { day: dom, time: at });
   }
-  return { text: expr, isCron: true };
+  return cronText;
 }

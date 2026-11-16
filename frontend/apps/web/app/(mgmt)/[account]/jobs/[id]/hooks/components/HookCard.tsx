@@ -13,6 +13,7 @@ import { ReactElement } from 'react';
 import DisableHookButton from './DisableHookButton';
 import EditHookButton from './EditHookButton';
 import RemoveHookButton from './RemoveHookButton';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   hook: JobHook;
@@ -25,6 +26,7 @@ interface Props {
 export default function HookCard(props: Props): ReactElement {
   const { hook, onDeleted, onEdited, jobConnections, jobConnectionsMap } =
     props;
+  const t = useTranslations('jobs.hooks.card');
   const hookTiming = getHookTiming(hook.config ?? create(JobHookConfigSchema));
   return (
     <div id={`jobhook-${hook.id}`}>
@@ -44,7 +46,11 @@ export default function HookCard(props: Props): ReactElement {
               <div className="flex items-center gap-4 pt-2 flex-wrap">
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <ClockIcon className="shrink-0" />
-                  <p>{hookTiming}</p>
+                  <p>
+                    {hookTiming.key
+                      ? t(`timing.${hookTiming.key}`)
+                      : hookTiming.raw}
+                  </p>
                 </div>
 
                 <Badge variant="secondary">
@@ -52,7 +58,7 @@ export default function HookCard(props: Props): ReactElement {
                   {hook.priority}
                 </Badge>
                 <Badge variant={hook.enabled ? 'success' : 'outline'}>
-                  {hook.enabled ? 'Enabled' : 'Disabled'}
+                  {hook.enabled ? t('enabled') : t('disabled')}
                 </Badge>
                 {hook.config?.config.case && (
                   <Badge variant="secondary">{hook.config?.config.case}</Badge>
@@ -84,23 +90,27 @@ export default function HookCard(props: Props): ReactElement {
   );
 }
 
-function getHookTiming(config: JobHookConfig): string | undefined {
+// When a hook runs: a phrase of the messages, or the raw timing when it has none.
+function getHookTiming(config: JobHookConfig): {
+  key?: 'preSync' | 'postSync' | 'unknown';
+  raw?: string;
+} {
   switch (config.config.case) {
     case 'sql': {
       switch (config.config.value.timing?.timing.case) {
         case 'preSync': {
-          return 'Pre Sync';
+          return { key: 'preSync' };
         }
         case 'postSync': {
-          return 'Post Sync';
+          return { key: 'postSync' };
         }
         default: {
-          return config.config.value.timing?.timing.case;
+          return { raw: config.config.value.timing?.timing.case };
         }
       }
     }
   }
-  return 'Unknown';
+  return { key: 'unknown' };
 }
 
 interface HookConnectionBadgeProps {
@@ -135,10 +145,11 @@ function SqlHookConnectionBadge(
   props: SqlHookConnectionBadgeProps
 ): ReactElement {
   const { config, connMap } = props;
+  const t = useTranslations('jobs.hooks.card');
   const connection = connMap.get(config.connectionId);
   return (
     <Badge variant="secondary">
-      {connection?.name ?? 'Unknown Connection'}
+      {connection?.name ?? t('unknownConnection')}
     </Badge>
   );
 }

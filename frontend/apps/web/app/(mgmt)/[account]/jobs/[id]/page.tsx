@@ -14,6 +14,7 @@ import { create } from '@bufbuild/protobuf';
 import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
 import { GetJobResponseSchema, JobService } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, use } from 'react';
 import ActivitySyncOptionsCard from './components/ActivitySyncOptionsCard';
 import JobNextRuns from './components/NextRuns';
@@ -26,6 +27,7 @@ import { isPiiDetectJob } from './util';
 export default function Page(props: PageProps): ReactElement {
   const params = use(props.params);
   const id = params?.id ?? '';
+  const t = useTranslations('jobs.overview');
   const { data, isLoading } = useQuery(
     JobService.method.getJob,
     { id },
@@ -77,7 +79,7 @@ export default function Page(props: PageProps): ReactElement {
             className="rounded-2xl border border-line-soft bg-card px-5"
           >
             <AccordionTrigger className="font-display text-base font-semibold hover:no-underline">
-              Advanced settings
+              {t('advancedSettings')}
             </AccordionTrigger>
             <AccordionContent>
               <div className="flex flex-col gap-3 pb-2">

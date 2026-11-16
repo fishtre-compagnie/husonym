@@ -46,6 +46,7 @@ import {
 } from '@husonym/sdk';
 import { CheckCircledIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ReactElement, useMemo, useState } from 'react';
 import { LuPanelRight } from 'react-icons/lu';
 import { toast } from 'sonner';
@@ -64,6 +65,7 @@ interface Props {
 // uses too, to keep the run's choice or replace it; the selection confirms several at once.
 export default function MappingChangesCard(props: Props): ReactElement {
   const { jobId } = props;
+  const t = useTranslations('jobs.review');
   const { account } = useAccount();
   const { allowed } = useLicenseFeature('mapping_review');
   const accountId = account?.id ?? '';
@@ -159,13 +161,11 @@ export default function MappingChangesCard(props: Props): ReactElement {
         changeIds: changes.map((c) => c.id),
         note,
       });
-      toast.success(
-        `${resp.changeIds.length} change${resp.changeIds.length === 1 ? '' : 's'} reviewed`
-      );
+      toast.success(t('reviewed', { count: resp.changeIds.length }));
       setSelected(new Set());
       await refresh();
     } catch (error) {
-      toast.error('Unable to mark these changes reviewed', {
+      toast.error(t('reviewError'), {
         description: getErrorMessage(error),
       });
       // Rethrown so the dialog or the panel stays open, and keeps the note.
@@ -196,10 +196,10 @@ export default function MappingChangesCard(props: Props): ReactElement {
         changeIds: [change.id],
         note,
       });
-      toast.success(`${columnName(change)} mapped from the next run`);
+      toast.success(t('applied', { column: columnName(change) }));
       await refresh();
     } catch (error) {
-      toast.error('Unable to apply this transformer', {
+      toast.error(t('applyError'), {
         description: getErrorMessage(error),
       });
       throw error;
@@ -221,19 +221,15 @@ export default function MappingChangesCard(props: Props): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Changes to review</CardTitle>
-        <CardDescription>
-          What this job&apos;s runs changed in its mappings as its source
-          evolved. Open a change to keep what the run chose or pick another
-          transformer; select several to confirm them at once.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <LicenseFeatureNotice feature="mapping_review" />
         {pending.length === 0 ? (
           <div className="flex flex-row items-center gap-2 rounded-xl bg-ok-soft p-4 text-sm text-ok">
             <CheckCircledIcon />
-            Nothing waiting: every change the runs made has been reviewed.
+            {t('nothing')}
           </div>
         ) : (
           <div className="flex flex-col overflow-x-auto rounded-xl border border-line-soft">
@@ -242,7 +238,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
                 <div className="flex flex-row items-center gap-3 border-b border-line-soft bg-surface-2 px-4 py-2">
                   <input
                     type="checkbox"
-                    aria-label={`Select every change of ${table}`}
+                    aria-label={t('selectTable', { table })}
                     checked={changes.every((c) => selected.has(c.id))}
                     onChange={(e) =>
                       setSelected((prev) => {
@@ -256,7 +252,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
                   />
                   <span className="font-mono text-xs">{table}</span>
                   <span className="text-xs text-muted-foreground">
-                    {changes.length} change{changes.length === 1 ? '' : 's'}
+                    {t('changes', { count: changes.length })}
                   </span>
                 </div>
                 {changes.map((c) => (
@@ -280,12 +276,11 @@ export default function MappingChangesCard(props: Props): ReactElement {
         <div className="sticky bottom-4 z-20 flex justify-center pointer-events-none">
           <div
             role="region"
-            aria-label="Selected changes"
+            aria-label={t('selectedRegion')}
             className="pointer-events-auto flex flex-row items-center gap-3 rounded-2xl border border-border bg-card py-2 pl-4 pr-2 shadow-pop"
           >
             <span className="text-sm font-medium">
-              {selectedChanges.length} change
-              {selectedChanges.length === 1 ? '' : 's'} selected
+              {t('selected', { count: selectedChanges.length })}
             </span>
             <span className="h-5 w-px bg-border" aria-hidden="true" />
             <Button
@@ -294,7 +289,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
               disabled={!allowed}
               onClick={() => setReviewing(selectedChanges)}
             >
-              Mark reviewed…
+              {t('markReviewed')}
             </Button>
             <Button
               type="button"
@@ -302,7 +297,7 @@ export default function MappingChangesCard(props: Props): ReactElement {
               variant="ghost"
               onClick={() => setSelected(new Set())}
             >
-              Clear
+              {t('clear')}
             </Button>
           </div>
         </div>
@@ -357,6 +352,7 @@ interface RowProps {
 function ChangeRow(props: RowProps): ReactElement {
   const { change, isOpened, isSelected, onSelect, onOpen, transformerName } =
     props;
+  const t = useTranslations('jobs.review.row');
   const options = summarizeOptions(change.transformer?.config);
   const removed = change.kind === JobMappingChangeKind.REMOVED;
   const inClear =
@@ -388,7 +384,7 @@ function ChangeRow(props: RowProps): ReactElement {
       <span onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
-          aria-label={`Select ${columnName(change)}`}
+          aria-label={t('select', { column: columnName(change) })}
           checked={isSelected}
           onChange={onSelect}
         />
@@ -417,23 +413,23 @@ function ChangeRow(props: RowProps): ReactElement {
       <span className="flex flex-col w-64 shrink-0">
         <span className={cn('truncate text-sm', inClear && 'text-danger-fg')}>
           {removed
-            ? `was ${transformerName}`
+            ? t('was', { transformer: transformerName })
             : inClear
-              ? 'Passthrough — copied in clear'
+              ? t('inClear')
               : transformerName}
         </span>
         <span className="text-xs text-muted-foreground truncate">
           {options.length > 0
             ? options.join(' · ')
             : removed
-              ? 'Mapping removed from the job'
+              ? t('removed')
               : ''}
         </span>
       </span>
       <span className="grow text-xs text-muted-foreground">
         {change.piiCategory && (
           <Pill tone={inClear ? 'danger' : 'warn'}>
-            Personal data: {change.piiCategory}
+            {t('personalData', { category: change.piiCategory })}
           </Pill>
         )}
       </span>

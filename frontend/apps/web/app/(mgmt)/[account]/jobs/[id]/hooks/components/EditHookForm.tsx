@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { FormEvent, useEffect } from 'react';
 import * as yup from 'yup';
 
@@ -18,6 +19,7 @@ import {
   editFormDataToJobHook,
   EditJobHookFormValues,
   toEditFormData,
+  useHookErrorMessage,
 } from './validation';
 
 interface EditHookFormProps {
@@ -32,6 +34,8 @@ export function EditHookForm({
   onSubmit,
   jobConnections,
 }: EditHookFormProps) {
+  const t = useTranslations('jobs.hooks.form');
+  const errorMessage = useHookErrorMessage();
   const {
     formData,
     errors,
@@ -67,7 +71,7 @@ export function EditHookForm({
         const validationErrors: Record<string, string> = {};
         err.inner.forEach((error) => {
           if (error.path) {
-            validationErrors[error.path] = error.message;
+            validationErrors[error.path] = errorMessage(error.message);
           }
         });
         setErrors(validationErrors);
@@ -120,7 +124,7 @@ export function EditHookForm({
         >
           <ButtonText
             leftIcon={isSubmitting ? <Spinner /> : undefined}
-            text="Update"
+            text={t('update')}
           />
         </Button>
       </div>

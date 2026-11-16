@@ -2,6 +2,7 @@
 import SubPageHeader from '@/components/headers/SubPageHeader';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import { ReactElement } from 'react';
 import { isAiDataGenJob, isDataGenJob, isPiiDetectJob } from '../../util';
 import AiDataGenConnectionCard from './AiDataGenConnectionCard';
@@ -23,6 +24,7 @@ export default function SourceConnectionCard({
   jobId,
   section,
 }: Props): ReactElement {
+  const t = useTranslations('jobs.source');
   const { data, isLoading } = useQuery(
     JobService.method.getJob,
     { id: jobId },
@@ -35,10 +37,7 @@ export default function SourceConnectionCard({
   const job = data?.job;
   if (isDataGenJob(job) || isAiDataGenJob(job) || isPiiDetectJob(job)) {
     return (
-      <Section
-        header="Source"
-        description="Where the data comes from, and what the job does with it. Changes are kept once you save them."
-      >
+      <Section header={t('title')} description={t('otherDescription')}>
         {isDataGenJob(job) ? (
           <DataGenConnectionCard jobId={jobId} />
         ) : isAiDataGenJob(job) ? (
@@ -50,17 +49,11 @@ export default function SourceConnectionCard({
     );
   }
   return section === 'source' ? (
-    <Section
-      header="Source"
-      description="Where the data comes from, and what a run does when its schema changes. Changes are kept once you save them."
-    >
+    <Section header={t('title')} description={t('syncDescription')}>
       <DataSyncConnectionCard jobId={jobId} section="source" />
     </Section>
   ) : (
-    <Section
-      header="Mapping"
-      description="The tables the job copies, and what leaves each of their columns. Changes are kept once you save them."
-    >
+    <Section header={t('mappingTitle')} description={t('mappingDescription')}>
       <DataSyncConnectionCard jobId={jobId} section="mapping" />
     </Section>
   );

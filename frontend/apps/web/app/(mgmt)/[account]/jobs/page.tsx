@@ -6,6 +6,7 @@ import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@connectrpc/connect-query';
 import { ConnectionService, JobService, JobStatus } from '@husonym/sdk';
+import { useTranslations } from 'next-intl';
 import NextLink from 'next/link';
 import { ReactElement, useMemo, useState } from 'react';
 import { GrPowerCycle } from 'react-icons/gr';
@@ -20,11 +21,12 @@ import {
 } from './components/job-rows';
 
 export default function Jobs(): ReactElement {
+  const t = useTranslations('jobs.list');
   return (
     <PageBody className="gap-6">
       <PageHeader
-        title="Jobs"
-        description="Each job copies a source to one or more destinations, anonymizing the data on the way."
+        title={t('title')}
+        description={t('description')}
         actions={<NewJobButton />}
       />
       <JobList />
@@ -33,6 +35,7 @@ export default function Jobs(): ReactElement {
 }
 
 function JobList(): ReactElement {
+  const t = useTranslations('jobs.list');
   const { account } = useAccount();
   const accountId = account?.id;
   const {
@@ -79,6 +82,7 @@ function JobList(): ReactElement {
     () =>
       getColumns({
         accountName,
+        t,
         onDeleted() {
           refetchJobs();
         },
@@ -89,7 +93,7 @@ function JobList(): ReactElement {
           refetchRuns();
         },
       }),
-    [accountName, refetchJobs, refetchStatuses, refetchRuns]
+    [accountName, t, refetchJobs, refetchStatuses, refetchRuns]
   );
 
   const rows = useMemo(
@@ -102,8 +106,13 @@ function JobList(): ReactElement {
         runs: runsData?.jobRuns ?? [],
         connections: connData?.connections ?? [],
         pendingChanges: pendingData?.changes ?? [],
+        labels: {
+          generated: t('generatedData'),
+          aiGenerated: t('aiGeneratedData'),
+          unknownConnection: t('unknownConnection'),
+        },
       }),
-    [data, statusData, runsData, connData, pendingData]
+    [data, statusData, runsData, connData, pendingData, t]
   );
 
   const visible = useMemo(
@@ -121,12 +130,12 @@ function JobList(): ReactElement {
   if (rows.length === 0) {
     return (
       <EmptyState
-        title="No jobs yet"
-        description="Jobs are async workflows that transform data and sync it between source and destination systems."
+        title={t('empty.title')}
+        description={t('empty.description')}
         icon={<GrPowerCycle className="h-8 w-8 text-primary" />}
         extra={
           <EmptyStateLinkButton
-            buttonText="Create your first job"
+            buttonText={t('empty.button')}
             href={`/${accountName}/new/job`}
           />
         }
@@ -152,12 +161,12 @@ function JobList(): ReactElement {
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
           </svg>
-          <span className="sr-only">Filter jobs</span>
+          <span className="sr-only">{t('search.label')}</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by name, connection, table…"
+            placeholder={t('search.placeholder')}
             className="min-w-0 flex-1 border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
@@ -166,13 +175,14 @@ function JobList(): ReactElement {
         columns={columns}
         data={visible}
         pageResetKey={`${filter}|${query}`}
-        empty="No job matches this filter."
+        empty={t('noMatch')}
       />
     </div>
   );
 }
 
 function NewJobButton(): ReactElement {
+  const t = useTranslations('jobs.list');
   const { account } = useAccount();
   return (
     <Button asChild>
@@ -189,7 +199,7 @@ function NewJobButton(): ReactElement {
         >
           <path d="M12 5v14M5 12h14" />
         </svg>
-        New job
+        {t('newJob')}
       </NextLink>
     </Button>
   );
