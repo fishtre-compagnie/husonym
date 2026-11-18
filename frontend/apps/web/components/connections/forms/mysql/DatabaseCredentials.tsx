@@ -278,10 +278,10 @@ function HostTab(props: HostTabProps): ReactElement {
       <div className="space-y-2">
         <FormHeader
           htmlFor="name"
-          title={t('name.title')}
-          description={t('name.description')}
+          title={t('mysqlDatabase.title')}
+          description={t('mysqlDatabase.description')}
           isErrored={!!errors.name}
-          isRequired={true}
+          isRequired={false}
         />
         <Input
           id="name"
@@ -289,7 +289,7 @@ function HostTab(props: HostTabProps): ReactElement {
           onChange={(e) =>
             onDbValueChange({ ...dbValue, name: e.target.value })
           }
-          placeholder="mysql"
+          placeholder={t('mysqlDatabase.placeholder')}
         />
         <FormErrorMessage message={errors.name} />
       </div>

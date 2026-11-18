@@ -15,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
@@ -2078,6 +2079,7 @@ func (s *Service) ValidateJobMappings(
 		req.Msg.Mappings,
 		job_util.WithJobSourceOptions(sqlSourceOpts),
 		job_util.WithJobType(job_util.SupportedJobTypeOf(req.Msg.GetJobSource())),
+		job_util.WithDatabaseScope(dbconnectconfig.MysqlDatabaseScope(connection.Msg.GetConnection())),
 	)
 	result, err := validator.Validate(colInfoMap, req.Msg.VirtualForeignKeys, tableConstraints)
 	if err != nil {

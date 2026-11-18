@@ -159,11 +159,9 @@ const MysqlDbFormValue = Yup.object().shape({
     then: (schema) => schema.required('The host name is required.'),
     otherwise: (schema) => schema.notRequired(),
   }),
-  name: Yup.string().when('$activeTab', {
-    is: 'host',
-    then: (schema) => schema.required('The database name is required.'),
-    otherwise: (schema) => schema.notRequired(),
-  }),
+  // Optional: when given, the jobs are offered the tables of this database only;
+  // when empty, every database the user reaches.
+  name: Yup.string().optional(),
   user: Yup.string().when('$activeTab', {
     is: 'host',
     then: (schema) => schema.required('The database user is required.'),

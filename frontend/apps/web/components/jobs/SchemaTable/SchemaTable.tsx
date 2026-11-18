@@ -824,6 +824,15 @@ export function getAllFormErrors(
       level: 'error' as ErrorLevel,
     };
   });
+  // A table the job cannot copy at all, such as one outside the database its source
+  // connection is limited to.
+  const tableErr = validationErrors.tableErrors.map((e) => {
+    return {
+      path: `${e.schema}.${e.table}`,
+      message: e.errorReports.map((r) => r.message).join('. '),
+      level: 'error' as ErrorLevel,
+    };
+  });
   const colWarnings = validationErrors.columnWarnings.map((e) => {
     return {
       path: `${e.schema}.${e.table}.${e.column}`,
@@ -838,7 +847,7 @@ export function getAllFormErrors(
       level: 'error' as ErrorLevel,
     };
   });
-  messages = messages.concat(colErr, formErr, colWarnings);
+  messages = messages.concat(tableErr, colErr, formErr, colWarnings);
   if (dbErr) {
     messages = messages.concat(dbErr);
   }

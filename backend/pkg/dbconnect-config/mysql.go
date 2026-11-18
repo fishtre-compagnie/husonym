@@ -121,3 +121,20 @@ func GetMysqlDsn(mysqlurl string, logger *slog.Logger) (*mysql.Config, error) {
 	}
 	return cfg, nil
 }
+
+// MysqlDatabaseScope is the database a MySQL connection entered by host names: the jobs are
+// offered the objects of this database only. Empty when the connection names none, or when it
+// is given by URL, whose database stays only the session's default: every database the
+// account reaches is then offered.
+func MysqlDatabaseScope(connection *mgmtv1alpha1.Connection) string {
+	return strings.TrimSpace(
+		connection.GetConnectionConfig().GetMysqlConfig().GetConnection().GetName(),
+	)
+}
+
+// InMysqlDatabaseScope tells whether a schema (a database, for MySQL) lies in the scope a
+// connection names. Database names are compared without case, as a server on Windows or
+// macOS does.
+func InMysqlDatabaseScope(scope, schema string) bool {
+	return scope == "" || strings.EqualFold(scope, schema)
+}

@@ -583,3 +583,23 @@ func Test_mergeVirtualForeignKeys_ReferencedTableAbsentFromTheSource(t *testing.
 	require.EqualError(t, err,
 		"virtual foreign key of public.orders references table public.accounts, which the source does not hold")
 }
+
+func Test_checkMappingsInDatabaseScope(t *testing.T) {
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "allopneus", Table: "client", Column: "id"},
+		{Schema: "alloblog", Table: "wp_users", Column: "id"},
+		{Schema: "alloblog", Table: "wp_users", Column: "login"},
+	}
+	t.Run("no database, no check", func(t *testing.T) {
+		require.NoError(t, checkMappingsInDatabaseScope(mappings, ""))
+	})
+	t.Run("every mapped table in the database", func(t *testing.T) {
+		require.NoError(t, checkMappingsInDatabaseScope(mappings[:1], "Allopneus"))
+	})
+	t.Run("a mapped table outside the database refuses the run, named once", func(t *testing.T) {
+		err := checkMappingsInDatabaseScope(mappings, "allopneus")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "[alloblog.wp_users]")
+		require.Equal(t, 1, strings.Count(err.Error(), "wp_users"))
+	})
+}

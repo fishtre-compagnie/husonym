@@ -208,6 +208,11 @@ type HusonymApiLicenseKey struct {
 	CreatedByUserID pgtype.UUID
 }
 
+type HusonymApiMysqlConnectionDatabasesCleared struct {
+	ConnectionID pgtype.UUID
+	DatabaseName string
+}
+
 // Stores the usage of each run: counts and times, nothing a customer entered
 type HusonymApiRunUsage struct {
 	RunID              string

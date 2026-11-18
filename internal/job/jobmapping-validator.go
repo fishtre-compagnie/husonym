@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 )
@@ -19,6 +20,9 @@ type JobMappingsValidator struct {
 	jobMappings      map[string]map[string]*mgmtv1alpha1.JobMapping // schema.table -> column -> job mapping
 	// jobType decides which transformers a column takes; unspecified, they are not checked.
 	jobType mgmtv1alpha1.SupportedJobType
+	// databaseScope is the database a MySQL source connection names: the job copies its
+	// tables only. Empty, any database the account reaches.
+	databaseScope string
 }
 
 type JobMappingsValidatorResponse struct {
@@ -33,6 +37,13 @@ type Option func(*JobMappingsValidator)
 func WithJobSourceOptions(jobSourceOptions *SqlJobSourceOpts) Option {
 	return func(jmv *JobMappingsValidator) {
 		jmv.jobSourceOptions = jobSourceOptions
+	}
+}
+
+// WithDatabaseScope limits the tables the job may copy to one database of a MySQL source.
+func WithDatabaseScope(scope string) Option {
+	return func(jmv *JobMappingsValidator) {
+		jmv.databaseScope = scope
 	}
 }
 
@@ -162,12 +173,30 @@ func (j *JobMappingsValidator) Validate(
 	}, nil
 }
 
+// OutOfDatabaseScopeMessage tells that a mapped table lies outside the database its MySQL
+// source connection names.
+func OutOfDatabaseScopeMessage(table, scope string) string {
+	return fmt.Sprintf(
+		"Table [%s] is outside the database [%s] the source connection is limited to. Remove it from the job mappings, or clear the database of the connection",
+		table,
+		scope,
+	)
+}
+
 // validate that all tables and columns in job mappings exist in source
 func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 	tableColumnMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 ) {
 	// check for job mappings that do not exist in the source
 	for table, colMappings := range j.jobMappings {
+		if schema, _ := sqlmanager_shared.SplitTableKey(table); !dbconnectconfig.InMysqlDatabaseScope(j.databaseScope, schema) {
+			j.addTableError(
+				table,
+				OutOfDatabaseScopeMessage(table, j.databaseScope),
+				mgmtv1alpha1.TableError_TABLE_ERROR_CODE_TABLE_NOT_FOUND_IN_SOURCE,
+			)
+			continue
+		}
 		if _, ok := tableColumnMap[table]; !ok {
 			j.addTableError(
 				table,

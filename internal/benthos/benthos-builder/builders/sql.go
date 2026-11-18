@@ -13,6 +13,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
@@ -76,6 +77,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 
 	sqlSourceOpts, err := job_util.GetSqlJobSourceOpts(job.Source)
 	if err != nil {
+		return nil, err
+	}
+	if err := checkMappingsInDatabaseScope(job.Mappings, dbconnectconfig.MysqlDatabaseScope(sourceConnection)); err != nil {
 		return nil, err
 	}
 	var sourceTableOpts map[string]*sqlSourceTableOptions

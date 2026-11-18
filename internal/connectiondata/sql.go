@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
@@ -61,8 +62,12 @@ func (s *SQLConnectionDataService) GetAllSchemas(ctx context.Context) ([]string,
 	if err != nil {
 		return nil, err
 	}
+	scope := dbconnectconfig.MysqlDatabaseScope(s.connection)
 	schemas := make([]string, 0, len(dbschema))
 	for _, row := range dbschema {
+		if !dbconnectconfig.InMysqlDatabaseScope(scope, row.SchemaName) {
+			continue
+		}
 		schemas = append(schemas, row.SchemaName)
 	}
 	return schemas, nil
@@ -84,8 +89,12 @@ func (s *SQLConnectionDataService) GetAllTables(ctx context.Context) ([]TableIde
 	if err != nil {
 		return nil, err
 	}
+	scope := dbconnectconfig.MysqlDatabaseScope(s.connection)
 	uniqueTids := map[TableIdentifier]bool{}
 	for _, row := range dbschema {
+		if !dbconnectconfig.InMysqlDatabaseScope(scope, row.SchemaName) {
+			continue
+		}
 		ti := TableIdentifier{
 			Schema: row.SchemaName,
 			Table:  row.TableName,
@@ -336,9 +345,13 @@ func (s *SQLConnectionDataService) GetSchema(
 	if err != nil {
 		return nil, err
 	}
+	// A MySQL connection naming a database offers the jobs its objects only.
+	scope := dbconnectconfig.MysqlDatabaseScope(s.connection)
 	schemas := []*mgmtv1alpha1.DatabaseColumn{}
 	for _, col := range dbschema {
-		col := col
+		if !dbconnectconfig.InMysqlDatabaseScope(scope, col.TableSchema) {
+			continue
+		}
 		schemas = append(schemas, toDatabaseColumn(col))
 	}
 	return schemas, nil
