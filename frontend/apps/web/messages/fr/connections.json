@@ -254,6 +254,11 @@
           "title": "Nom de la base",
           "description": "Le nom de la base de données"
         },
+        "mysqlDatabase": {
+          "title": "Base de données (facultatif)",
+          "description": "Si renseignée, seuls ses objets sont proposés dans les jobs. Sinon, toutes les bases accessibles au compte.",
+          "placeholder": "toutes les bases"
+        },
         "user": {
           "title": "Nom d'utilisateur",
           "description": "Le nom d'utilisateur de la base de données"

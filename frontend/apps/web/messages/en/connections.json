@@ -254,6 +254,11 @@
           "title": "Database Name",
           "description": "The name of the database"
         },
+        "mysqlDatabase": {
+          "title": "Database (optional)",
+          "description": "When set, the jobs are offered its objects only. When empty, every database the account can reach.",
+          "placeholder": "every database"
+        },
         "user": {
           "title": "Username",
           "description": "The username for the database"

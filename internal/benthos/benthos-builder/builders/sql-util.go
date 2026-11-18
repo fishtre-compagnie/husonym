@@ -13,6 +13,7 @@ import (
 	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
@@ -47,6 +48,35 @@ var errSourceShowsNoMappedColumn = errors.New(
 // checkSourceShowsTheJob refuses a source in which none of the job's mapped columns remain. That
 // is not a source that lost columns but the wrong database, or a user without the rights to see
 // its tables: removing the mappings of the missing columns would empty the job.
+// checkMappingsInDatabaseScope refuses a job whose mappings reach a table outside the database
+// its MySQL source connection is limited to: the job copies the tables of that database only.
+func checkMappingsInDatabaseScope(mappings []*mgmtv1alpha1.JobMapping, scope string) error {
+	if scope == "" {
+		return nil
+	}
+	outside := []string{}
+	seen := map[string]bool{}
+	for _, m := range mappings {
+		if dbconnectconfig.InMysqlDatabaseScope(scope, m.GetSchema()) {
+			continue
+		}
+		key := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
+		if !seen[key] {
+			seen[key] = true
+			outside = append(outside, key)
+		}
+	}
+	if len(outside) == 0 {
+		return nil
+	}
+	slices.Sort(outside)
+	return fmt.Errorf(
+		"the job maps tables outside the database [%s] its source connection is limited to: [%s]",
+		scope,
+		strings.Join(outside, ", "),
+	)
+}
+
 func checkSourceShowsTheJob(mappings, found []*mgmtv1alpha1.JobMapping) error {
 	if len(mappings) > 0 && len(found) == 0 {
 		return errSourceShowsNoMappedColumn
