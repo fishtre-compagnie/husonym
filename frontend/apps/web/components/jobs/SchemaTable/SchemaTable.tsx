@@ -634,6 +634,14 @@ export function SchemaTable(props: Props): ReactElement {
     [schema, data]
   );
 
+  const columnCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(schema).map(([key, resp]) => [key, resp.schemas.length])
+      ),
+    [schema]
+  );
+
   const { onClick: onExportMappingsClick } = useOnExportMappings<JobMappingRow>(
     {
       jobMappings: data,
@@ -715,6 +723,7 @@ export function SchemaTable(props: Props): ReactElement {
         onChange={onSelectedTableToggle}
         mode={jobType === 'generate' ? 'single' : 'many'}
         columnCount={data.length}
+        columnCounts={columnCounts}
         formErrors={formErrors}
         isValidating={isJobMappingsValidating}
         onValidate={onValidate}
