@@ -1602,7 +1602,7 @@ func wrapIdempotentConstraint(
 	constraintname,
 	constraintStmt string,
 ) string {
-	procedureName := my.Quote(buildProcedureName(
+	procedureName := qualifiedProcedureName(schema, buildProcedureName(
 		"HusonymAddConstraint_",
 		hashInput(schema, table, constraintname),
 	))
@@ -1629,6 +1629,14 @@ CALL %[1]s();
 DROP PROCEDURE %[1]s;
 `, procedureName, my.Literal(schema), my.Literal(table), my.Literal(constraintname), constraintStmt)
 	return strings.TrimSpace(stmt)
+}
+
+// qualifiedProcedureName writes the procedure into the database of the table it alters. A
+// routine always lives in a database, and an unqualified name takes the default one of the
+// session: a connection that names no database has none, and MySQL refuses the statement
+// with "No database selected" (1046).
+func qualifiedProcedureName(schema, name string) string {
+	return my.Quote(schema) + "." + my.Quote(name)
 }
 
 // maxIdentifierLength is what MySQL allows for a procedure name.
@@ -1726,7 +1734,7 @@ func wrapIdempotentIndex(
 			columnInput = append(columnInput, escapeMysqlColumnWithPrefix(col, prefixes))
 		}
 	}
-	procedureName := my.Quote(buildProcedureName("HusonymAddIndex_", hashInput(hashParams...)))
+	procedureName := qualifiedProcedureName(schema, buildProcedureName("HusonymAddIndex_", hashInput(hashParams...)))
 	indexStmt := createIndexStmt(schema, table, idxInfo, columnInput)
 	// The names are compared as values here, and written as identifiers in indexStmt.
 	stmt := fmt.Sprintf(`
