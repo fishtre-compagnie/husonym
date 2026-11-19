@@ -4,14 +4,9 @@
       "title": "Overview",
       "periodAria": "Period",
       "periods": {
-        "24h": "24 h",
         "7d": "7 days",
-        "30d": "30 days"
-      },
-      "periodsLong": {
-        "24h": "last 24 hours",
-        "7d": "last 7 days",
-        "30d": "last 30 days"
+        "30d": "30 days",
+        "90d": "90 days"
       },
       "justNow": "just now",
       "subtitle": {
@@ -22,66 +17,44 @@
         "allPaused": "every schedule is paused"
       },
       "keyFigures": "Key figures",
-      "finished": {
-        "label": "Finished runs",
-        "none": "None in the {period}",
-        "succeeded": "{count} succeeded",
-        "failed": "{count} failed",
-        "canceled": "{count} canceled",
-        "series": "Finished runs over the {period}, oldest first: {series}.",
-        "successRate": "{rate}% success rate"
+      "kpi": {
+        "finished": "Finished runs",
+        "finishedNote": "{succeeded} succeeded · {failed} failed · {canceled} canceled",
+        "finishedNone": "No run finished in the period",
+        "rate": "Success rate",
+        "rateNote": "canceled runs aside",
+        "rows": "Rows read from sources",
+        "rowsNote": "{discarded} set aside",
+        "time": "Total run time",
+        "timeNote": "about {duration} per run",
+        "timeNone": "no known duration in the period",
+        "deltaPercent": "{value, number, ::sign-always} % vs previous {days} d",
+        "deltaPoints": "{value, number, ::sign-always} pt vs previous {days} d",
+        "series": "By day: {series}",
+        "unavailable": "The usage counters do not answer: the key figures and the jobs table are unavailable."
       },
-      "jobs": {
-        "label": "Jobs",
-        "none": "No job yet",
-        "note": "{schedules, plural, one {# active schedule} other {# active schedules}} · {connections, plural, one {# connection} other {# connections}}",
-        "engineDefault": "Default"
+      "activity": {
+        "title": "Activity",
+        "subRuns": "Finished runs by day, by outcome",
+        "subRows": "Rows read from the sources, by day",
+        "measure": "Measure",
+        "runs": "Runs",
+        "rows": "Rows read",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "canceled": "Canceled",
+        "dayAria": "{day}: {runs, plural, one {# run} other {# runs}}, {rows, number} rows read",
+        "tipSucceeded": "{count} succeeded",
+        "tipFailed": "{count} failed",
+        "tipCanceled": "{count} canceled",
+        "tipRows": "{rows} rows read"
       },
-      "protected": {
-        "label": "Personal columns protected",
-        "loading": "Loading",
-        "value": "{value}%",
-        "reading": "Reading source schemas…",
-        "noDatabase": "No job reads from a database",
-        "unreachable": "Source schema unreachable",
-        "noPersonal": "No personal column detected",
-        "ratio": "{anonymized} of {personal, plural, one {# detected column} other {# detected columns}}",
-        "bar": "{value}% of personal columns protected"
-      },
-      "toReview": {
-        "label": "To review",
-        "nothing": "Nothing waiting for a decision",
-        "inClear": "{count, plural, one {# new sensitive column} other {# new sensitive columns}} in clear",
-        "changes": "{changes, plural, one {# mapping change} other {# mapping changes}} in {jobs, plural, one {# job} other {# jobs}}",
-        "open": "Open the review"
-      },
-      "runsSection": "Runs",
-      "inProgress": {
-        "title": "In progress",
-        "seeAll": "See all",
+      "liveSection": {
+        "title": "Live",
+        "seeAll": "All runs",
         "empty": "No run in progress.",
-        "nextRun": "The next scheduled run starts {when}.",
-        "startOne": "Start one from a job."
-      },
-      "latest": {
-        "title": "Latest runs",
-        "all": "All runs",
-        "empty": "No run finished in the {period}."
-      },
-      "personalSection": "Personal data",
-      "inClear": {
-        "title": "Sensitive columns in clear",
-        "added": "{job} · added {when}",
-        "more": "And {count, plural, one {# other column} other {# other columns}}, in the mapping of each job.",
-        "personalData": "Personal data"
-      },
-      "spotted": {
-        "title": "Huso spotted {count, plural, one {# change} other {# changes}} in your sources",
-        "body": "{summary} across {jobs, plural, one {# job} other {# jobs}}, found by their runs. Each one waits for your review.",
-        "added": "{count, plural, one {# new column} other {# new columns}}",
-        "removed": "{count, plural, one {# column} other {# columns}} removed",
-        "typeChanged": "{count, plural, one {# type change} other {# type changes}}",
-        "mappingChanges": "Mapping changes"
+        "upcoming": "Coming up",
+        "noUpcoming": "No scheduled run."
       },
       "live": {
         "generated": "generated",
@@ -104,21 +77,45 @@
         "pending": "Pending",
         "unknown": "Unknown"
       },
-      "coverage": {
-        "title": "Personal data coverage",
-        "noSources": "None of your jobs reads from a database, so there is no column to classify.",
-        "noMatch": "No mapped column could be matched with its source schema.",
-        "breakdown": "Breakdown of {count, plural, one {# mapped column} other {# mapped columns}}",
-        "anonymized": "Personal, anonymized",
-        "kept": "Not personal, kept",
-        "toConfirm": "To confirm",
-        "inClear": "Personal, in clear",
-        "note": "The mapped columns of {count, plural, one {# job} other {# jobs}}, classified from their names and types in the source schema.",
-        "unreachable": "Could not read the schema of {names}: the jobs that read from {count, plural, one {it} other {them}} are not counted."
+      "jobsTable": {
+        "title": "Jobs of the period",
+        "hint": "Click a header to sort",
+        "empty": "No job ran in the period.",
+        "job": "Job",
+        "runs": "Runs",
+        "rate": "Success",
+        "rows": "Rows read",
+        "median": "Median duration",
+        "last": "Last",
+        "percent": "{value}%"
+      },
+      "kinds": {
+        "sync": "Sync",
+        "generate": "Generate",
+        "aiGenerate": "AI generate",
+        "piiDetect": "PII scan",
+        "other": "Job"
+      },
+      "heatmap": {
+        "title": "When the jobs run",
+        "sub": "Runs started by day and hour · hover a cell, click to pin it",
+        "less": "Less",
+        "more": "More",
+        "hour": "{hour}h",
+        "cell": "{day}, {hour}: {runs, plural, =0 {no run} one {# run} other {# runs}}",
+        "empty": "No run started in the last {days} days.",
+        "popTitle": "{day} · {from} – {to}",
+        "popSub": "{runs, plural, one {# run} other {# runs}} over {days} days · {failed, plural, =0 {all succeeded} other {# failed}}",
+        "jobOk": "succeeded",
+        "jobFailed": "{count} failed",
+        "jobMean": "mean duration {duration}",
+        "otherJobs": "{count, plural, one {and # other job} other {and # other jobs}}",
+        "close": "Close",
+        "seeRuns": "See the runs →"
       },
       "noJobs": {
         "title": "No job yet",
-        "description": "A job copies a source database to a destination, anonymizing its personal columns on the way. Its runs, and the coverage of personal data, will show up here.",
+        "description": "A job copies a source database to a destination, anonymizing its personal columns on the way. Its runs, their rhythm and the rows they read will show up here.",
         "newJob": "New job"
       }
     },

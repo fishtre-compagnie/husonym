@@ -252,6 +252,17 @@
   --header: rgba(244, 246, 249, 0.88);
   --hover: rgba(15, 23, 32, 0.035);
   --shadow-pop: 0 24px 60px rgba(15, 23, 32, 0.16);
+  /* Charts: told apart with a color vision deficiency (blue / orange / gray), checked
+     with the palette validator; the heat ramp is one hue, light to dark. */
+  --viz-ok: #2a78d6;
+  --viz-fail: #eb6834;
+  --viz-cancel: #8d96a0;
+  --viz-heat-0: #eef2f6;
+  --viz-heat-1: #cde2fb;
+  --viz-heat-2: #9ec5f4;
+  --viz-heat-3: #5598e7;
+  --viz-heat-4: #256abf;
+  --viz-heat-5: #104281;
 }
 
 .dark {
@@ -324,6 +335,15 @@
   --header: rgba(11, 15, 20, 0.85);
   --hover: rgba(230, 237, 243, 0.04);
   --shadow-pop: 0 24px 70px rgba(0, 0, 0, 0.5);
+  --viz-ok: #3987e5;
+  --viz-fail: #d95926;
+  --viz-cancel: #7d8793;
+  --viz-heat-0: #1f2732;
+  --viz-heat-1: #173a63;
+  --viz-heat-2: #1c5cab;
+  --viz-heat-3: #2a78d6;
+  --viz-heat-4: #5598e7;
+  --viz-heat-5: #9ec5f4;
 }
 
 @layer base {

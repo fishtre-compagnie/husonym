@@ -4,6 +4,7 @@ import {
   isUsagePeriod,
   periodLabel,
   periodRange,
+  previousRange,
   rangeLabel,
   USAGE_PERIODS,
 } from './period';
@@ -244,5 +245,31 @@ describe('rangeLabel', () => {
     expect(
       rangeLabel({ fromDay: day(2026, 10, 9), toDay: day(2026, 10, 9) }, 'UTC')
     ).toBe('Oct 9, 2026 · days in UTC');
+  });
+});
+
+describe('previousRange', () => {
+  it('gives as many days just before the range', () => {
+    expect(
+      previousRange({
+        fromDay: { year: 2026, month: 3, day: 1 },
+        toDay: { year: 2026, month: 3, day: 30 },
+      })
+    ).toEqual({
+      fromDay: { year: 2026, month: 1, day: 30 },
+      toDay: { year: 2026, month: 2, day: 28 },
+    });
+  });
+
+  it('gives the week before a week', () => {
+    expect(
+      previousRange({
+        fromDay: { year: 2026, month: 11, day: 13 },
+        toDay: { year: 2026, month: 11, day: 19 },
+      })
+    ).toEqual({
+      fromDay: { year: 2026, month: 11, day: 6 },
+      toDay: { year: 2026, month: 11, day: 12 },
+    });
   });
 });

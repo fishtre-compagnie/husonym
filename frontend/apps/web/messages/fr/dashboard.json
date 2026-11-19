@@ -4,14 +4,9 @@
       "title": "Vue d'ensemble",
       "periodAria": "Période",
       "periods": {
-        "24h": "24 h",
         "7d": "7 jours",
-        "30d": "30 jours"
-      },
-      "periodsLong": {
-        "24h": "24 dernières heures",
-        "7d": "7 derniers jours",
-        "30d": "30 derniers jours"
+        "30d": "30 jours",
+        "90d": "90 jours"
       },
       "justNow": "à l'instant",
       "subtitle": {
@@ -22,66 +17,44 @@
         "allPaused": "toutes les planifications sont en pause"
       },
       "keyFigures": "Chiffres clés",
-      "finished": {
-        "label": "Exécutions terminées",
-        "none": "Aucune sur les {period}",
-        "succeeded": "{count, plural, one {# réussie} other {# réussies}}",
-        "failed": "{count, plural, one {# échouée} other {# échouées}}",
-        "canceled": "{count, plural, one {# annulée} other {# annulées}}",
-        "series": "Exécutions terminées sur les {period}, de la plus ancienne à la plus récente : {series}.",
-        "successRate": "{rate} % de réussite"
+      "kpi": {
+        "finished": "Exécutions terminées",
+        "finishedNote": "{succeeded} réussies · {failed} en échec · {canceled} annulées",
+        "finishedNone": "Aucune exécution terminée sur la période",
+        "rate": "Taux de réussite",
+        "rateNote": "hors exécutions annulées",
+        "rows": "Lignes lues dans les sources",
+        "rowsNote": "{discarded} mises de côté",
+        "time": "Temps d'exécution cumulé",
+        "timeNote": "environ {duration} par exécution",
+        "timeNone": "aucune durée connue sur la période",
+        "deltaPercent": "{value, number, ::sign-always} % vs {days} j précédents",
+        "deltaPoints": "{value, number, ::sign-always} pt vs {days} j précédents",
+        "series": "Par jour : {series}",
+        "unavailable": "Les compteurs d'usage ne répondent pas : les chiffres clés et le tableau des jobs sont indisponibles."
       },
-      "jobs": {
-        "label": "Jobs",
-        "none": "Aucun job pour l'instant",
-        "note": "{schedules, plural, one {# planification active} other {# planifications actives}} · {connections, plural, one {# connexion} other {# connexions}}",
-        "engineDefault": "Par défaut"
+      "activity": {
+        "title": "Activité",
+        "subRuns": "Exécutions terminées par jour, selon leur issue",
+        "subRows": "Lignes lues dans les sources, par jour",
+        "measure": "Mesure",
+        "runs": "Exécutions",
+        "rows": "Lignes lues",
+        "succeeded": "Réussies",
+        "failed": "En échec",
+        "canceled": "Annulées",
+        "dayAria": "{day} : {runs, plural, one {# exécution} other {# exécutions}}, {rows, number} lignes lues",
+        "tipSucceeded": "{count, plural, one {# réussie} other {# réussies}}",
+        "tipFailed": "{count} en échec",
+        "tipCanceled": "{count, plural, one {# annulée} other {# annulées}}",
+        "tipRows": "{rows} lignes lues"
       },
-      "protected": {
-        "label": "Colonnes personnelles protégées",
-        "loading": "Chargement",
-        "value": "{value} %",
-        "reading": "Lecture des schémas sources…",
-        "noDatabase": "Aucun job ne lit une base de données",
-        "unreachable": "Schéma source inaccessible",
-        "noPersonal": "Aucune colonne personnelle détectée",
-        "ratio": "{anonymized} sur {personal, plural, one {# colonne détectée} other {# colonnes détectées}}",
-        "bar": "{value} % des colonnes personnelles protégées"
-      },
-      "toReview": {
-        "label": "À revoir",
-        "nothing": "Rien n'attend de décision",
-        "inClear": "{count, plural, one {# nouvelle colonne sensible en clair} other {# nouvelles colonnes sensibles en clair}}",
-        "changes": "{changes, plural, one {# changement de mapping} other {# changements de mapping}} dans {jobs, plural, one {# job} other {# jobs}}",
-        "open": "Ouvrir la revue"
-      },
-      "runsSection": "Exécutions",
-      "inProgress": {
-        "title": "En cours",
-        "seeAll": "Tout voir",
+      "liveSection": {
+        "title": "En direct",
+        "seeAll": "Toutes les exécutions",
         "empty": "Aucune exécution en cours.",
-        "nextRun": "La prochaine exécution planifiée démarre {when}.",
-        "startOne": "Lancez-en une depuis un job."
-      },
-      "latest": {
-        "title": "Dernières exécutions",
-        "all": "Toutes les exécutions",
-        "empty": "Aucune exécution terminée sur les {period}."
-      },
-      "personalSection": "Données personnelles",
-      "inClear": {
-        "title": "Colonnes sensibles en clair",
-        "added": "{job} · ajoutée {when}",
-        "more": "Et {count, plural, one {# autre colonne} other {# autres colonnes}}, dans le mapping de chaque job.",
-        "personalData": "Données personnelles"
-      },
-      "spotted": {
-        "title": "Huso a repéré {count, plural, one {# changement} other {# changements}} dans vos sources",
-        "body": "{summary} dans {jobs, plural, one {# job} other {# jobs}}, trouvés par leurs exécutions. Chacun attend votre revue.",
-        "added": "{count, plural, one {# nouvelle colonne} other {# nouvelles colonnes}}",
-        "removed": "{count, plural, one {# colonne supprimée} other {# colonnes supprimées}}",
-        "typeChanged": "{count, plural, one {# changement de type} other {# changements de type}}",
-        "mappingChanges": "Changements de mapping"
+        "upcoming": "À venir",
+        "noUpcoming": "Aucune exécution planifiée."
       },
       "live": {
         "generated": "généré",
@@ -104,21 +77,45 @@
         "pending": "En attente",
         "unknown": "Inconnu"
       },
-      "coverage": {
-        "title": "Couverture des données personnelles",
-        "noSources": "Aucun de vos jobs ne lit une base de données : il n'y a pas de colonne à classer.",
-        "noMatch": "Aucune colonne mappée n'a pu être rapprochée de son schéma source.",
-        "breakdown": "Répartition de {count, plural, one {# colonne mappée} other {# colonnes mappées}}",
-        "anonymized": "Personnelle, anonymisée",
-        "kept": "Non personnelle, conservée",
-        "toConfirm": "À confirmer",
-        "inClear": "Personnelle, en clair",
-        "note": "Les colonnes mappées de {count, plural, one {# job} other {# jobs}}, classées d'après leurs noms et types dans le schéma source.",
-        "unreachable": "Impossible de lire le schéma de {names} : les jobs qui {count, plural, one {le lisent} other {les lisent}} ne sont pas comptés."
+      "jobsTable": {
+        "title": "Jobs de la période",
+        "hint": "Cliquez un en-tête pour trier",
+        "empty": "Aucun job n'a tourné sur la période.",
+        "job": "Job",
+        "runs": "Exécutions",
+        "rate": "Réussite",
+        "rows": "Lignes lues",
+        "median": "Durée médiane",
+        "last": "Dernière",
+        "percent": "{value} %"
+      },
+      "kinds": {
+        "sync": "Synchro",
+        "generate": "Génération",
+        "aiGenerate": "Génération IA",
+        "piiDetect": "Scan PII",
+        "other": "Job"
+      },
+      "heatmap": {
+        "title": "Quand les jobs tournent",
+        "sub": "Exécutions démarrées par jour et par heure · survolez une case, cliquez pour l'épingler",
+        "less": "Moins",
+        "more": "Plus",
+        "hour": "{hour} h",
+        "cell": "{day}, {hour} : {runs, plural, =0 {aucune exécution} one {# exécution} other {# exécutions}}",
+        "empty": "Aucune exécution n'a démarré ces {days} derniers jours.",
+        "popTitle": "{day} · {from} – {to}",
+        "popSub": "{runs, plural, one {# exécution} other {# exécutions}} sur {days} jours · {failed, plural, =0 {toutes réussies} other {# en échec}}",
+        "jobOk": "réussies",
+        "jobFailed": "{count} en échec",
+        "jobMean": "durée moyenne {duration}",
+        "otherJobs": "{count, plural, one {et # autre job} other {et # autres jobs}}",
+        "close": "Fermer",
+        "seeRuns": "Voir les exécutions →"
       },
       "noJobs": {
         "title": "Aucun job pour l'instant",
-        "description": "Un job copie une base source vers une destination en anonymisant ses colonnes personnelles au passage. Ses exécutions et la couverture des données personnelles s'afficheront ici.",
+        "description": "Un job copie une base source vers une destination en anonymisant ses colonnes personnelles au passage. Ses exécutions, leur rythme et les lignes lues s'afficheront ici.",
         "newJob": "Nouveau job"
       }
     },

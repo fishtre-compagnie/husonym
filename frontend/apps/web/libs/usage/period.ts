@@ -69,6 +69,24 @@ export function periodRange(
   }
 }
 
+// The range of as many days just before `range`: the period a figure is compared to.
+export function previousRange(range: UsageRange): UsageRange {
+  const days = daysBetween(range.fromDay, range.toDay) + 1;
+  return {
+    fromDay: daysBefore(range.fromDay, days),
+    toDay: daysBefore(range.fromDay, 1),
+  };
+}
+
+// The days from `from` to `to`, read on the UTC calendar.
+function daysBetween(from: CalendarDay, to: CalendarDay): number {
+  return Math.round(
+    (Date.UTC(to.year, to.month - 1, to.day) -
+      Date.UTC(from.year, from.month - 1, from.day)) /
+      86_400_000
+  );
+}
+
 // The day it is in a zone at a moment.
 function dayIn(timeZone: string, at: Date): CalendarDay {
   const parts = new Intl.DateTimeFormat('en-US', {
