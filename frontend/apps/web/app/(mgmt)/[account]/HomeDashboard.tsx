@@ -1,20 +1,21 @@
 'use client';
 import {
+  PageHeader,
   Panel,
   PanelHeader,
-  PageHeader,
-  Pill,
   Segmented,
-  StatCard,
   StatusDot,
-  Tone,
   rowClass,
-  toneTextClass,
 } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDateFnsLocale } from '@/i18n/date-fns';
+import {
+  browserTimeZone,
+  periodRange,
+  previousRange,
+} from '@/libs/usage/period';
 import { cn } from '@/libs/utils';
-import { isPassthrough } from '@/util/mapping-changes';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import {
   createQueryOptions,
@@ -22,67 +23,63 @@ import {
   useTransport,
 } from '@connectrpc/connect-query';
 import {
-  ConnectionDataService,
   ConnectionService,
-  GetConnectionSchemaMapResponse,
+  GetAccountUsageResponse,
   Job,
-  JobMappingChangeKind,
+  JobKind,
   JobRun,
   JobService,
   JobStatus,
+  UsageService,
 } from '@husonym/sdk';
-import { useDateFnsLocale } from '@/i18n/date-fns';
 import { useQueries } from '@tanstack/react-query';
 import { useFormatter, useTranslations } from 'next-intl';
-import Image from 'next/image';
 import Link from 'next/link';
-import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { EmptyRow, LiveBar, rowLinkFocus } from './DashboardParts';
 import {
-  ArrowRight,
-  EmptyRow,
-  LegendRow,
-  LiveBar,
-  SegmentBar,
-  Sparkline,
-  rowLinkFocus,
-} from './DashboardParts';
+  dailyOutcomes,
+  percentChange,
+  successRate,
+  weekHeatmap,
+} from './dashboard-analytics';
 import {
   PERIODS_ORDER,
   Period,
   RelativeWords,
-  RunOutcome,
   activeRuns,
-  categoryLabel,
-  coverage,
-  engineCounts,
   formatAgo,
   formatIn,
   formatSpan,
-  latestRuns,
+  periodDays,
   runDuration,
   runOutcome,
-  runStats,
   runStatusKey,
-  runWhen,
-  sqlSourceConnectionId,
   toDate,
 } from './dashboard-data';
+import {
+  ActivityChart,
+  AreaSpark,
+  JobRow,
+  JobsTable,
+  KpiTile,
+  Ring,
+  RunHeatmap,
+} from './HomeCharts';
 
 interface Props {
   accountId: string;
   accountName: string;
 }
 
-const OUTCOME_TONE: Record<RunOutcome, Tone> = {
-  succeeded: 'ok',
-  failed: 'danger',
-  canceled: 'stopped',
-  running: 'live',
-  pending: 'pending',
-  unknown: 'muted',
-};
+// How many scheduled runs the "Coming up" list shows.
+const UPCOMING = 4;
 
-const SCHEMA_STALE_MS = 5 * 60_000;
+const USAGE_PERIOD = {
+  '7d': 'last-7-days',
+  '30d': 'last-30-days',
+  '90d': 'last-90-days',
+} as const;
 
 /** The current time, ticking every `everyMs`, so that "3 min ago" stays true. */
 function useNow(everyMs: number): Date {
@@ -105,10 +102,11 @@ export default function HomeDashboard({
     () => ({ locale: dateLocale, justNow: t('justNow') }),
     [dateLocale, t]
   );
-  const [period, setPeriod] = useState<Period>('7d');
+  const [period, setPeriod] = useState<Period>('30d');
   const now = useNow(15_000);
   const transport = useTransport();
   const base = `/${accountName}`;
+  const days = periodDays(period);
 
   const { data: jobsData, isLoading: jobsLoading } = useQuery(
     JobService.method.getJobs,
@@ -120,7 +118,7 @@ export default function HomeDashboard({
     { id: { case: 'accountId', value: accountId } },
     {
       enabled: !!accountId,
-      // Faster while something runs, so the "In progress" panel empties on its own.
+      // Faster while something runs, so the "Live" panel empties on its own.
       refetchInterval: (q) =>
         (q.state.data?.jobRuns ?? []).some((r) => {
           const o = runOutcome(r.status);
@@ -135,31 +133,42 @@ export default function HomeDashboard({
     { accountId },
     { enabled: !!accountId }
   );
-  const { data: pendingData } = useQuery(
-    JobService.method.getPendingMappingChanges,
-    { accountId },
-    { enabled: !!accountId }
-  );
   const { data: statusesData } = useQuery(
     JobService.method.getJobStatuses,
     { accountId },
     { enabled: !!accountId }
   );
 
-  const jobs = useMemo(() => jobsData?.jobs ?? [], [jobsData?.jobs]);
-  const runs = useMemo(() => runsData?.jobRuns ?? [], [runsData?.jobRuns]);
-  const pending = useMemo(
-    () => pendingData?.changes ?? [],
-    [pendingData?.changes]
+  // The usage counters of the period and of the one before it, to say how things moved.
+  // The day only changes the range, so the ranges are read from the day, not the minute.
+  const timeZone = useMemo(() => browserTimeZone(), []);
+  const today = now.toDateString();
+  const range = useMemo(
+    () => periodRange(USAGE_PERIOD[period], new Date(), timeZone),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [period, timeZone, today]
+  );
+  const before = useMemo(() => previousRange(range), [range]);
+  const { data: usage, error: usageError } = useQuery(
+    UsageService.method.getAccountUsage,
+    { accountId, fromDay: range.fromDay, toDay: range.toDay, timeZone },
+    { enabled: !!accountId, retry: false }
+  );
+  const { data: usageBefore } = useQuery(
+    UsageService.method.getAccountUsage,
+    { accountId, fromDay: before.fromDay, toDay: before.toDay, timeZone },
+    { enabled: !!accountId, retry: false }
   );
 
+  const jobs = useMemo(() => jobsData?.jobs ?? [], [jobsData?.jobs]);
+  const runs = useMemo(() => runsData?.jobRuns ?? [], [runsData?.jobRuns]);
   const jobsById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs]);
   const connNames = useMemo(
     () => new Map((connsData?.connections ?? []).map((c) => [c.id, c.name])),
     [connsData?.connections]
   );
 
-  // A job with a schedule that is not paused: the ones the next run can come from.
+  // A job with a schedule that is not paused: the ones the next runs come from.
   const pausedJobIds = useMemo(
     () =>
       new Set(
@@ -173,7 +182,6 @@ export default function HomeDashboard({
   const activeScheduled = statusesData
     ? scheduledJobs.filter((j) => !pausedJobIds.has(j.id))
     : [];
-
   const nextRunQueries = useQueries({
     queries: activeScheduled.map((j) => ({
       ...createQueryOptions(
@@ -184,151 +192,51 @@ export default function HomeDashboard({
       staleTime: 60_000,
     })),
   });
-  const nextRun = useMemo(() => {
-    let best: Date | undefined;
-    for (const q of nextRunQueries) {
-      for (const ts of q.data?.nextRuns?.nextRunTimes ?? []) {
-        const d = timestampDate(ts);
-        if (d.getTime() > now.getTime() && (!best || d < best)) {
-          best = d;
-        }
-      }
-    }
-    return best;
-  }, [nextRunQueries, now]);
-
-  // The schema of each database a job reads from: it says which columns are personal.
-  const sourceIds = useMemo(
-    () =>
-      [
-        ...new Set(
-          jobs
-            .map((j) => sqlSourceConnectionId(j.source))
-            .filter((id): id is string => !!id)
-        ),
-      ].sort(),
-    [jobs]
-  );
-  const schemaQueries = useQueries({
-    queries: sourceIds.map((id) => ({
-      ...createQueryOptions(
-        ConnectionDataService.method.getConnectionSchemaMap,
-        { connectionId: id },
-        { transport }
-      ),
-      staleTime: SCHEMA_STALE_MS,
-      retry: false,
-      refetchOnWindowFocus: false,
-    })),
-  });
-  const schemasLoading = schemaQueries.some((q) => q.isLoading);
-  const unreachable = sourceIds.filter((_, i) => schemaQueries[i]?.isError);
-  const schemaDataKey = schemaQueries.map((q) => q.dataUpdatedAt).join(',');
-  const cov = useMemo(() => {
-    const schemas = new Map<string, GetConnectionSchemaMapResponse>();
-    sourceIds.forEach((id, i) => {
-      const data = schemaQueries[i]?.data;
-      if (data) {
-        schemas.set(id, data);
+  const nextRunsKey = nextRunQueries.map((q) => q.dataUpdatedAt).join(',');
+  const upcoming = useMemo(() => {
+    const out: { job: Job; at: Date }[] = [];
+    nextRunQueries.forEach((q, i) => {
+      const job = activeScheduled[i];
+      const at = (q.data?.nextRuns?.nextRunTimes ?? [])
+        .map((ts) => timestampDate(ts))
+        .find((d) => d.getTime() > now.getTime());
+      if (job && at) {
+        out.push({ job, at });
       }
     });
-    return coverage(jobs, schemas);
-    // schemaQueries is a new array every render; its data changes with dataUpdatedAt.
+    return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+    // nextRunQueries is a new array every render; its data changes with nextRunsKey.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, sourceIds, schemaDataKey]);
+  }, [nextRunsKey, now]);
+  const nextRun = upcoming[0]?.at;
 
-  const stats = useMemo(() => runStats(runs, period, now), [runs, period, now]);
   const live = useMemo(() => activeRuns(runs), [runs]);
-  const latest = useMemo(
-    () => latestRuns(runs, period, 6, now),
-    [runs, period, now]
+  const outcomes = useMemo(
+    () => dailyOutcomes(runs, days, now),
+    [runs, days, now]
   );
+  const heat = useMemo(() => weekHeatmap(runs, days, now), [runs, days, now]);
 
-  const review = useMemo(() => {
-    const byJob = new Map<string, { count: number; inClear: number }>();
-    let added = 0;
-    let removed = 0;
-    let typeChanged = 0;
-    let inClear = 0;
-    for (const c of pending) {
-      const e = byJob.get(c.jobId) ?? { count: 0, inClear: 0 };
-      e.count++;
-      const clear =
-        !!c.piiCategory &&
-        c.kind === JobMappingChangeKind.ADDED &&
-        isPassthrough(c);
-      if (clear) {
-        e.inClear++;
-        inClear++;
-      }
-      byJob.set(c.jobId, e);
-      if (c.kind === JobMappingChangeKind.ADDED) added++;
-      else if (c.kind === JobMappingChangeKind.REMOVED) removed++;
-      else if (c.kind === JobMappingChangeKind.TYPE_CHANGED) typeChanged++;
-    }
-    // The job shipping the most personal data in clear first: that is the one to open.
-    const firstJobId = [...byJob.entries()].sort(
-      (a, b) => b[1].inClear - a[1].inClear || b[1].count - a[1].count
-    )[0]?.[0];
-    return {
-      total: pending.length,
-      inClear,
-      jobs: byJob.size,
-      firstJobId,
-      added,
-      removed,
-      typeChanged,
-    };
-  }, [pending]);
+  // The rows read on each day of the chart, matched on the calendar day.
+  const rowsByDay = useMemo(() => {
+    const byKey = new Map(
+      (usage?.days ?? []).map((d) => [
+        `${d.day?.year}-${d.day?.month}-${d.day?.day}`,
+        Number(d.rowsRead),
+      ])
+    );
+    return outcomes.map(
+      (o) =>
+        byKey.get(
+          `${o.day.getFullYear()}-${o.day.getMonth() + 1}-${o.day.getDate()}`
+        ) ?? 0
+    );
+  }, [usage?.days, outcomes]);
 
-  // Personal columns in clear: those a run just added first (they need a decision now),
-  // then those the current mappings copy as they are.
-  const clearList = useMemo(() => {
-    const items: {
-      key: string;
-      column: string;
-      sub: string;
-      kind: string;
-      href: string;
-    }[] = [];
-    const seen = new Set<string>();
-    for (const c of [...pending].reverse()) {
-      if (
-        !c.piiCategory ||
-        c.kind !== JobMappingChangeKind.ADDED ||
-        !isPassthrough(c)
-      ) {
-        continue;
-      }
-      const key = `${c.jobId}|${c.column?.schema}.${c.column?.table}.${c.column?.column}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const added = toDate(c.createdAt);
-      items.push({
-        key,
-        column: `${c.column?.table}.${c.column?.column}`,
-        sub: t('inClear.added', {
-          job: jobsById.get(c.jobId)?.name ?? c.jobId,
-          when: formatAgo(added, now, words),
-        }),
-        kind: categoryLabel(c.piiCategory, t('inClear.personalData')),
-        href: `${base}/jobs/${c.jobId}/review`,
-      });
-    }
-    for (const c of cov.inClearColumns) {
-      const key = `${c.jobId}|${c.schema}.${c.table}.${c.column}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push({
-        key,
-        column: `${c.table}.${c.column}`,
-        sub: c.jobName,
-        kind: categoryLabel(c.category, t('inClear.personalData')),
-        href: `${base}/jobs/${c.jobId}/mapping`,
-      });
-    }
-    return items;
-  }, [pending, cov.inClearColumns, jobsById, base, now, words, t]);
+  const jobRows = useMemo(
+    () => toJobRows(usage, runs, base, t),
+    [usage, runs, base, t]
+  );
 
   const isLoading = jobsLoading || runsLoading || connsLoading;
   if (isLoading) {
@@ -351,19 +259,19 @@ export default function HomeDashboard({
     .filter(Boolean)
     .join(' · ');
 
-  const engines = engineCounts(jobs);
-  const engineName = (name: string): string =>
-    name === 'Default' ? t('jobs.engineDefault') : name;
-  const personal = cov.anonymized + cov.inClear;
-  const protectedPct =
-    personal > 0 ? Math.round((cov.anonymized / personal) * 1000) / 10 : null;
-  const periodLong = t(`periodsLong.${period}`);
-
   return (
     <>
       <PageHeader
         title={t('title')}
-        description={subtitle}
+        description={
+          <span className="flex items-center gap-2">
+            <StatusDot
+              tone={running.length > 0 ? 'live' : 'muted'}
+              pulse={running.length > 0}
+            />
+            {subtitle}
+          </span>
+        }
         actions={
           <Segmented
             ariaLabel={t('periodAria')}
@@ -377,176 +285,20 @@ export default function HomeDashboard({
         }
       />
 
-      <section
-        aria-label={t('keyFigures')}
-        className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
-      >
-        <StatCard
-          label={t('finished.label')}
-          value={format.number(stats.finished)}
-          note={
-            stats.finished === 0
-              ? t('finished.none', { period: periodLong })
-              : [
-                  t('finished.succeeded', { count: stats.succeeded }),
-                  t('finished.failed', { count: stats.failed }),
-                  stats.canceled > 0
-                    ? t('finished.canceled', { count: stats.canceled })
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-          }
-          noteTone={
-            stats.finished === 0 ? 'muted' : stats.failed > 0 ? 'warn' : 'ok'
-          }
-          chart={
-            <>
-              <Sparkline values={stats.series} />
-              <span className="sr-only">
-                {t('finished.series', {
-                  period: periodLong,
-                  series: stats.series.join(', '),
-                })}
-              </span>
-            </>
-          }
-          footer={
-            stats.successRate !== null && (
-              <span className="text-xs text-muted-foreground">
-                {t('finished.successRate', { rate: stats.successRate })}
-              </span>
-            )
-          }
-        />
-
-        <StatCard
-          label={t('jobs.label')}
-          value={jobs.length}
-          note={
-            jobs.length === 0
-              ? t('jobs.none')
-              : t('jobs.note', {
-                  schedules: activeScheduled.length,
-                  connections: connNames.size,
-                })
-          }
-          chart={
-            engines.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <SegmentBar
-                  label={engines
-                    .map((e) => `${engineName(e.name)}: ${e.count}`)
-                    .join(', ')}
-                  segments={engines.map((e) => ({
-                    key: e.name,
-                    value: e.count,
-                    className: engineSwatch(e.name),
-                  }))}
-                />
-                <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {engines.map((e) => (
-                    <span key={e.name} className="flex items-center gap-1.5">
-                      <span
-                        className={cn(
-                          'size-2 rounded-[2px]',
-                          engineSwatch(e.name)
-                        )}
-                        aria-hidden="true"
-                      />
-                      {engineName(e.name)} {e.count}
-                    </span>
-                  ))}
-                </span>
-              </div>
-            )
-          }
-        />
-
-        <StatCard
-          label={t('protected.label')}
-          value={
-            schemasLoading && cov.jobsCounted === 0 ? (
-              <span
-                className="inline-block h-8 w-24 animate-pulse rounded-md bg-surface-2 align-middle"
-                aria-label={t('protected.loading')}
-              />
-            ) : protectedPct === null ? (
-              '—'
-            ) : (
-              t('protected.value', { value: protectedPct })
-            )
-          }
-          note={
-            schemasLoading && cov.jobsCounted === 0
-              ? t('protected.reading')
-              : sourceIds.length === 0
-                ? t('protected.noDatabase')
-                : cov.jobsCounted === 0
-                  ? t('protected.unreachable')
-                  : personal === 0
-                    ? t('protected.noPersonal')
-                    : t('protected.ratio', {
-                        anonymized: cov.anonymized,
-                        personal,
-                      })
-          }
-          noteTone={
-            cov.jobsCounted === 0 && !schemasLoading && sourceIds.length > 0
-              ? 'warn'
-              : 'muted'
-          }
-          chart={
-            personal > 0 && (
-              <SegmentBar
-                label={t('protected.bar', { value: protectedPct ?? 0 })}
-                segments={[
-                  { key: 'ok', value: cov.anonymized, className: 'bg-primary' },
-                  { key: 'clear', value: cov.inClear, className: 'bg-danger' },
-                ]}
-              />
-            )
-          }
-        />
-
-        <StatCard
-          label={t('toReview.label')}
-          tone={review.total > 0 ? 'danger' : 'default'}
-          value={review.total}
-          note={
-            review.total === 0
-              ? t('toReview.nothing')
-              : review.inClear > 0
-                ? t('toReview.inClear', { count: review.inClear })
-                : t('toReview.changes', {
-                    changes: review.total,
-                    jobs: review.jobs,
-                  })
-          }
-          noteTone={review.inClear > 0 ? 'danger' : 'muted'}
-          footer={
-            review.firstJobId && (
-              <Link
-                href={`${base}/jobs/${review.firstJobId}/review`}
-                className="flex w-fit items-center gap-1.5 rounded-sm text-[13px] font-semibold text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {t('toReview.open')}
-                <ArrowRight />
-              </Link>
-            )
-          }
-        />
-      </section>
-
       {jobs.length === 0 ? (
         <NoJobs base={base} />
       ) : (
-        <div className="flex flex-wrap items-start gap-5">
-          <section
-            aria-label={t('runsSection')}
-            className="flex min-w-0 flex-[3_1_520px] flex-col gap-5"
-          >
-            <Panel>
+        <>
+          <KeyFigures
+            usage={usage}
+            usageBefore={usageBefore}
+            unavailable={!!usageError}
+            days={days}
+          />
+
+          <div className="flex flex-wrap items-stretch gap-3.5">
+            <ActivityChart outcomes={outcomes} rows={rowsByDay} />
+            <Panel className="flex min-w-0 flex-[1_1_320px] flex-col">
               <PanelHeader
                 leading={
                   <StatusDot
@@ -554,25 +306,18 @@ export default function HomeDashboard({
                     pulse={live.length > 0}
                   />
                 }
-                title={t('inProgress.title')}
+                title={t('liveSection.title')}
                 actions={
                   <Link
                     href={`${base}/runs`}
                     className="text-link hover:underline"
                   >
-                    {t('inProgress.seeAll')}
+                    {t('liveSection.seeAll')}
                   </Link>
                 }
               />
               {live.length === 0 ? (
-                <EmptyRow>
-                  {t('inProgress.empty')}{' '}
-                  {nextRun
-                    ? t('inProgress.nextRun', {
-                        when: formatIn(nextRun, now, dateLocale),
-                      })
-                    : t('inProgress.startOne')}
-                </EmptyRow>
+                <EmptyRow>{t('liveSection.empty')}</EmptyRow>
               ) : (
                 live.map((r) => (
                   <LiveRunRow
@@ -586,140 +331,274 @@ export default function HomeDashboard({
                   />
                 ))
               )}
-            </Panel>
-
-            <Panel>
-              <PanelHeader
-                title={t('latest.title')}
-                actions={
-                  <Link
-                    href={`${base}/runs`}
-                    className="text-link hover:underline"
-                  >
-                    {t('latest.all')}
-                  </Link>
-                }
-              />
-              {latest.length === 0 ? (
-                <EmptyRow>{t('latest.empty', { period: periodLong })}</EmptyRow>
-              ) : (
-                <div className="overflow-x-auto">
-                  {latest.map((r) => (
-                    <LatestRunRow
-                      key={r.id}
-                      run={r}
-                      jobName={jobsById.get(r.jobId)?.name ?? r.jobId}
-                      href={`${base}/runs/${r.id}`}
-                      now={now}
-                      words={words}
-                    />
-                  ))}
-                </div>
-              )}
-            </Panel>
-          </section>
-
-          <section
-            aria-label={t('personalSection')}
-            className="flex min-w-0 flex-[2_1_340px] flex-col gap-5"
-          >
-            <CoveragePanel
-              loading={schemasLoading && cov.jobsCounted === 0}
-              hasSources={sourceIds.length > 0}
-              cov={cov}
-              unreachable={unreachable.map((id) => connNames.get(id) ?? id)}
-            />
-
-            {clearList.length > 0 && (
-              <Panel>
-                <PanelHeader title={t('inClear.title')} />
-                <ul className="m-0 list-none p-0">
-                  {clearList.slice(0, 6).map((c) => (
-                    <li key={c.key} className={rowClass}>
-                      <Link
-                        href={c.href}
-                        className={cn(
-                          'flex items-center gap-3 px-5 py-3',
-                          rowLinkFocus
-                        )}
-                      >
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate font-mono text-[13px]">
-                            {c.column}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {c.sub}
-                          </span>
-                        </span>
-                        <Pill tone="danger">{c.kind}</Pill>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {clearList.length > 6 && (
-                  <p className="m-0 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-                    {t('inClear.more', { count: clearList.length - 6 })}
-                  </p>
+              <div className="flex flex-col px-5 pb-3 pt-4">
+                <span className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                  {t('liveSection.upcoming')}
+                </span>
+                {upcoming.length === 0 ? (
+                  <span className="py-2 text-[13px] text-muted-foreground">
+                    {t('liveSection.noUpcoming')}
+                  </span>
+                ) : (
+                  upcoming.slice(0, UPCOMING).map((u) => (
+                    <Link
+                      key={u.job.id}
+                      href={`${base}/jobs/${u.job.id}`}
+                      className={cn(
+                        'flex items-center gap-2.5 border-b border-line-soft py-[7px] last:border-b-0',
+                        rowLinkFocus
+                      )}
+                    >
+                      <span className="w-[86px] shrink-0 font-mono text-xs text-link">
+                        {format.dateTime(u.at, {
+                          weekday:
+                            u.at.toDateString() === now.toDateString()
+                              ? undefined
+                              : 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <span className="min-w-0 grow truncate text-[13px]">
+                        {u.job.name}
+                      </span>
+                      <span className="shrink-0 text-[11.5px] text-muted-foreground">
+                        {formatIn(u.at, now, dateLocale)}
+                      </span>
+                    </Link>
+                  ))
                 )}
-              </Panel>
-            )}
+              </div>
+            </Panel>
+          </div>
 
-            {review.total > 0 && review.firstJobId && (
-              <Panel className="flex items-center gap-4 p-5">
-                <Image
-                  src="/images/mascot.png"
-                  alt=""
-                  width={64}
-                  height={64}
-                  className="h-auto w-16 shrink-0"
-                />
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="font-semibold">
-                    {t('spotted.title', { count: review.total })}
-                  </span>
-                  <span className="text-[13px] text-muted-foreground">
-                    {t('spotted.body', {
-                      summary: schemaChangeSummary(review, t),
-                      jobs: review.jobs,
-                    })}
-                  </span>
-                </div>
-              </Panel>
-            )}
-          </section>
-        </div>
+          {!usageError && <JobsTable rows={jobRows} />}
+
+          <RunHeatmap
+            slots={heat}
+            days={days}
+            jobName={(id) => jobsById.get(id)?.name ?? id}
+            runsHref={`${base}/runs`}
+          />
+        </>
       )}
     </>
   );
 }
 
-function engineSwatch(name: string): string {
-  switch (name) {
-    case 'Athanor':
-      return 'bg-primary';
-    case 'Benthos':
-      return 'bg-warn';
-    default:
-      return 'bg-quiet';
+/** The four key figures of the period, each beside its change since the period before. */
+function KeyFigures(props: {
+  usage?: GetAccountUsageResponse;
+  usageBefore?: GetAccountUsageResponse;
+  unavailable: boolean;
+  days: number;
+}): ReactElement {
+  const { usage, usageBefore, unavailable, days } = props;
+  const t = useTranslations('dashboard.home.kpi');
+  const format = useFormatter();
+
+  if (unavailable) {
+    return (
+      <Panel className="px-5 py-4 text-[13px] text-warn-fg">
+        {t('unavailable')}
+      </Panel>
+    );
   }
+  if (!usage) {
+    return (
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[148px] w-full rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
+
+  const cur = totals(usage);
+  const prev = usageBefore ? totals(usageBefore) : undefined;
+  const pct = (
+    a: number,
+    b?: number
+  ): { text: string; up: boolean } | undefined => {
+    const v = b === undefined ? undefined : percentChange(a, b);
+    return v === undefined
+      ? undefined
+      : { text: t('deltaPercent', { value: v, days }), up: v >= 0 };
+  };
+  const rate = successRate(cur.runs, cur.completed, cur.canceled);
+  const prevRate = prev
+    ? successRate(prev.runs, prev.completed, prev.canceled)
+    : undefined;
+  const ratePts =
+    rate !== undefined && prevRate !== undefined
+      ? Math.round((rate - prevRate) * 10) / 10
+      : undefined;
+  const runsByDay = usage.days.map((d) => Number(d.runs));
+  const rowsByDay = usage.days.map((d) => Number(d.rowsRead));
+  const seconds =
+    usage.durationTotalSeconds !== undefined
+      ? Number(usage.durationTotalSeconds)
+      : undefined;
+  const prevSeconds =
+    usageBefore?.durationTotalSeconds !== undefined
+      ? Number(usageBefore.durationTotalSeconds)
+      : undefined;
+
+  return (
+    <section
+      aria-label={t('finished')}
+      className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5"
+    >
+      <KpiTile
+        label={t('finished')}
+        value={format.number(cur.runs)}
+        delta={pct(cur.runs, prev?.runs)}
+        note={
+          cur.runs === 0
+            ? t('finishedNone')
+            : t('finishedNote', {
+                succeeded: format.number(cur.completed),
+                failed: format.number(cur.runs - cur.completed - cur.canceled),
+                canceled: format.number(cur.canceled),
+              })
+        }
+        chart={
+          <>
+            <AreaSpark values={runsByDay} />
+            <span className="sr-only">
+              {t('series', { series: runsByDay.join(', ') })}
+            </span>
+          </>
+        }
+      />
+      <KpiTile
+        label={t('rate')}
+        value={rate === undefined ? '—' : `${format.number(rate)} %`}
+        delta={
+          ratePts === undefined
+            ? undefined
+            : {
+                text: t('deltaPoints', { value: ratePts, days }),
+                up: ratePts >= 0,
+              }
+        }
+        note={t('rateNote')}
+        chart={rate !== undefined && <Ring percent={rate} />}
+      />
+      <KpiTile
+        label={t('rows')}
+        value={format.number(cur.rows, { notation: 'compact' })}
+        delta={pct(cur.rows, prev?.rows)}
+        note={t('rowsNote', {
+          discarded: format.number(cur.discarded, { notation: 'compact' }),
+        })}
+        chart={
+          <>
+            <AreaSpark values={rowsByDay} />
+            <span className="sr-only">
+              {t('series', { series: rowsByDay.join(', ') })}
+            </span>
+          </>
+        }
+      />
+      <KpiTile
+        label={t('time')}
+        value={seconds === undefined ? '—' : formatSpan(seconds * 1000)}
+        delta={seconds === undefined ? undefined : pct(seconds, prevSeconds)}
+        note={
+          seconds === undefined || cur.runs === 0
+            ? t('timeNone')
+            : t('timeNote', {
+                duration: formatSpan((seconds * 1000) / cur.runs),
+              })
+        }
+      />
+    </section>
+  );
 }
 
-function schemaChangeSummary(
-  r: {
-    added: number;
-    removed: number;
-    typeChanged: number;
-  },
+function totals(u: GetAccountUsageResponse): {
+  runs: number;
+  completed: number;
+  canceled: number;
+  rows: number;
+  discarded: number;
+} {
+  return {
+    runs: Number(u.totals?.runs ?? 0),
+    completed: Number(u.totals?.runsCompleted ?? 0),
+    canceled: Number(u.totals?.runsCanceled ?? 0),
+    rows: Number(u.totals?.rowsRead ?? 0),
+    discarded: Number(u.totals?.rowsDiscarded ?? 0),
+  };
+}
+
+// The jobs of the period as the table lists them: the usage counters, and the last run.
+function toJobRows(
+  usage: GetAccountUsageResponse | undefined,
+  runs: JobRun[],
+  base: string,
   t: ReturnType<typeof useTranslations<'dashboard.home'>>
-): string {
-  const parts = [
-    r.added > 0 ? t('spotted.added', { count: r.added }) : null,
-    r.removed > 0 ? t('spotted.removed', { count: r.removed }) : null,
-    r.typeChanged > 0
-      ? t('spotted.typeChanged', { count: r.typeChanged })
-      : null,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : t('spotted.mappingChanges');
+): JobRow[] {
+  const lastByJob = new Map<string, JobRun>();
+  for (const r of runs) {
+    const o = runOutcome(r.status);
+    if (o !== 'succeeded' && o !== 'failed' && o !== 'canceled') continue;
+    const at = toDate(r.completedAt) ?? toDate(r.startedAt);
+    const prev = lastByJob.get(r.jobId);
+    const prevAt = prev
+      ? (toDate(prev.completedAt) ?? toDate(prev.startedAt))
+      : undefined;
+    if (at && (!prevAt || at > prevAt)) {
+      lastByJob.set(r.jobId, r);
+    }
+  }
+  return (usage?.jobs ?? []).map((j) => {
+    const last = lastByJob.get(j.jobId);
+    const outcome = last ? runOutcome(last.status) : undefined;
+    const runsN = Number(j.totals?.runs ?? 0);
+    return {
+      jobId: j.jobId,
+      name: j.jobName,
+      kind: t(`kinds.${kindKey(j.kind)}`),
+      runs: runsN,
+      rate: successRate(
+        runsN,
+        Number(j.totals?.runsCompleted ?? 0),
+        Number(j.totals?.runsCanceled ?? 0)
+      ),
+      rows: Number(j.totals?.rowsRead ?? 0),
+      medianSeconds:
+        j.durationMedianSeconds !== undefined
+          ? Number(j.durationMedianSeconds)
+          : undefined,
+      last:
+        last &&
+        (outcome === 'succeeded' ||
+          outcome === 'failed' ||
+          outcome === 'canceled')
+          ? { outcome, label: t(`status.${runStatusKey(last.status)}`) }
+          : undefined,
+      href: `${base}/jobs/${j.jobId}`,
+    };
+  });
+}
+
+function kindKey(
+  kind: JobKind
+): 'sync' | 'generate' | 'aiGenerate' | 'piiDetect' | 'other' {
+  switch (kind) {
+    case JobKind.SYNC:
+      return 'sync';
+    case JobKind.GENERATE:
+      return 'generate';
+    case JobKind.AI_GENERATE:
+      return 'aiGenerate';
+    case JobKind.PII_DETECT:
+      return 'piiDetect';
+    default:
+      return 'other';
+  }
 }
 
 function LiveRunRow(props: {
@@ -805,121 +684,6 @@ function sourceConnectionId(job: Job): string | undefined {
   }
 }
 
-function LatestRunRow(props: {
-  run: JobRun;
-  jobName: string;
-  href: string;
-  now: Date;
-  words: RelativeWords;
-}): ReactElement {
-  const { run, jobName, href, now, words } = props;
-  const t = useTranslations('dashboard.home.status');
-  const tone = OUTCOME_TONE[runOutcome(run.status)];
-  const label = t(runStatusKey(run.status));
-  return (
-    <Link
-      href={href}
-      className={cn(
-        rowClass,
-        'grid min-w-[520px] grid-cols-[18px_minmax(160px,1.6fr)_minmax(90px,0.8fr)_minmax(90px,0.8fr)_minmax(80px,0.6fr)] items-center gap-3 px-5 py-3',
-        rowLinkFocus
-      )}
-    >
-      <StatusDot tone={tone} label={label} />
-      <span className="truncate font-medium">{jobName}</span>
-      <span className={cn('text-[13px]', toneTextClass(tone))}>{label}</span>
-      <span className="font-mono text-xs text-muted-foreground">
-        {formatSpan(runDuration(run, now))}
-      </span>
-      <span className="text-right text-[13px] text-muted-foreground">
-        {formatAgo(runWhen(run), now, words)}
-      </span>
-    </Link>
-  );
-}
-
-function CoveragePanel(props: {
-  loading: boolean;
-  hasSources: boolean;
-  cov: ReturnType<typeof coverage>;
-  unreachable: string[];
-}): ReactElement {
-  const { loading, hasSources, cov, unreachable } = props;
-  const t = useTranslations('dashboard.home.coverage');
-  const format = useFormatter();
-  let body: ReactNode;
-  if (!hasSources) {
-    body = (
-      <p className="m-0 text-sm text-muted-foreground">{t('noSources')}</p>
-    );
-  } else if (loading) {
-    body = (
-      <div className="flex flex-col gap-3" aria-busy="true">
-        <Skeleton className="h-3.5 w-full rounded-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-    );
-  } else if (cov.total === 0) {
-    body = <p className="m-0 text-sm text-muted-foreground">{t('noMatch')}</p>;
-  } else {
-    body = (
-      <>
-        <SegmentBar
-          className="h-3.5"
-          label={t('breakdown', { count: cov.total })}
-          segments={[
-            { key: 'anon', value: cov.anonymized, className: 'bg-primary' },
-            { key: 'kept', value: cov.kept, className: 'bg-quiet' },
-            { key: 'confirm', value: cov.toConfirm, className: 'bg-warn' },
-            { key: 'clear', value: cov.inClear, className: 'bg-danger' },
-          ]}
-        />
-        <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[13px]">
-          <LegendRow
-            swatch="bg-primary"
-            label={t('anonymized')}
-            value={format.number(cov.anonymized)}
-          />
-          <LegendRow
-            swatch="bg-quiet"
-            label={t('kept')}
-            value={format.number(cov.kept)}
-          />
-          <LegendRow
-            swatch="bg-warn"
-            label={t('toConfirm')}
-            value={format.number(cov.toConfirm)}
-          />
-          <LegendRow
-            swatch="bg-danger"
-            label={t('inClear')}
-            value={format.number(cov.inClear)}
-            valueClassName={cov.inClear > 0 ? 'text-danger-fg' : undefined}
-          />
-        </ul>
-        <p className="m-0 text-xs text-muted-foreground">
-          {t('note', { count: cov.jobsCounted })}
-        </p>
-      </>
-    );
-  }
-  return (
-    <Panel className="flex flex-col gap-4 p-5">
-      <h2 className="m-0 font-display text-base font-semibold">{t('title')}</h2>
-      {body}
-      {!loading && unreachable.length > 0 && (
-        <p className="m-0 text-xs text-warn-fg">
-          {t('unreachable', {
-            names: unreachable.join(', '),
-            count: unreachable.length,
-          })}
-        </p>
-      )}
-    </Panel>
-  );
-}
-
 function NoJobs(props: { base: string }): ReactElement {
   const t = useTranslations('dashboard.home.noJobs');
   return (
@@ -937,19 +701,19 @@ function NoJobs(props: { base: string }): ReactElement {
 
 function DashboardSkeleton(): ReactElement {
   return (
-    <div className="flex flex-col gap-7" aria-busy="true">
+    <div className="flex flex-col gap-5" aria-busy="true">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-5 w-80" />
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-[148px] w-full rounded-2xl" />
         ))}
       </div>
-      <div className="flex flex-wrap gap-5">
-        <Skeleton className="h-80 min-w-0 flex-[3_1_520px] rounded-2xl" />
-        <Skeleton className="h-80 min-w-0 flex-[2_1_340px] rounded-2xl" />
+      <div className="flex flex-wrap gap-3.5">
+        <Skeleton className="h-80 min-w-0 flex-[999_1_640px] rounded-2xl" />
+        <Skeleton className="h-80 min-w-0 flex-[1_1_320px] rounded-2xl" />
       </div>
     </div>
   );
