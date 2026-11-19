@@ -411,6 +411,7 @@ func (s *HusonymApiTestClient) setupMux(
 			Client:  transformerService,
 			License: eelicense,
 		},
+		v1alpha1_connectiondataservice.NewScanResults(husonymDb),
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(

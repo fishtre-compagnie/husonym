@@ -1,5 +1,8 @@
+import datetime
+
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mgmt.v1alpha1 import permission_pb2 as _permission_pb2
 from mgmt.v1alpha1 import transformer_pb2 as _transformer_pb2
 from google.protobuf.internal import containers as _containers
@@ -542,6 +545,52 @@ class DetectPiiInConnectionDataResponse(_message.Message):
     detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
     verdicts: _containers.RepeatedCompositeFieldContainer[ColumnPiiVerdict]
     def __init__(self, detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ..., verdicts: _Optional[_Iterable[_Union[ColumnPiiVerdict, _Mapping]]] = ...) -> None: ...
+
+class PiiScanTable(_message.Message):
+    __slots__ = ("schema", "table")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ...) -> None: ...
+
+class PiiScannedColumn(_message.Message):
+    __slots__ = ("column", "data_type")
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    column: str
+    data_type: str
+    def __init__(self, column: _Optional[str] = ..., data_type: _Optional[str] = ...) -> None: ...
+
+class PiiScanResult(_message.Message):
+    __slots__ = ("schema", "table", "columns", "detections", "verdicts", "scanned_at")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    DETECTIONS_FIELD_NUMBER: _ClassVar[int]
+    VERDICTS_FIELD_NUMBER: _ClassVar[int]
+    SCANNED_AT_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    columns: _containers.RepeatedCompositeFieldContainer[PiiScannedColumn]
+    detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
+    verdicts: _containers.RepeatedCompositeFieldContainer[ColumnPiiVerdict]
+    scanned_at: _timestamp_pb2.Timestamp
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[_Union[PiiScannedColumn, _Mapping]]] = ..., detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ..., verdicts: _Optional[_Iterable[_Union[ColumnPiiVerdict, _Mapping]]] = ..., scanned_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class GetPiiScanResultsRequest(_message.Message):
+    __slots__ = ("connection_id", "tables")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    TABLES_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    tables: _containers.RepeatedCompositeFieldContainer[PiiScanTable]
+    def __init__(self, connection_id: _Optional[str] = ..., tables: _Optional[_Iterable[_Union[PiiScanTable, _Mapping]]] = ...) -> None: ...
+
+class GetPiiScanResultsResponse(_message.Message):
+    __slots__ = ("results",)
+    RESULTS_FIELD_NUMBER: _ClassVar[int]
+    results: _containers.RepeatedCompositeFieldContainer[PiiScanResult]
+    def __init__(self, results: _Optional[_Iterable[_Union[PiiScanResult, _Mapping]]] = ...) -> None: ...
 
 class GetColumnSampleValuesRequest(_message.Message):
     __slots__ = ("connection_id", "schema", "table", "column", "limit")

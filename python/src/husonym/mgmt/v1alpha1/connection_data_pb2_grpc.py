@@ -66,6 +66,11 @@ class ConnectionDataServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
                 _registered_method=True)
+        self.GetPiiScanResults = channel.unary_unary(
+                '/mgmt.v1alpha1.ConnectionDataService/GetPiiScanResults',
+                request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsResponse.FromString,
+                _registered_method=True)
         self.GetColumnSampleValues = channel.unary_unary(
                 '/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues',
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.SerializeToString,
@@ -156,6 +161,16 @@ class ConnectionDataServiceServicer:
     def DetectPiiInConnectionData(self, request, context):
         """Scans sampled column content through Presidio to detect PII (deep scan).
         Complements the name-based heuristic returned by GetConnectionSchema.
+        A scan of every column of a table is kept, for GetPiiScanResults.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetPiiScanResults(self, request, context):
+        """Returns the last content scan of the tables of a connection, with the columns each
+        table had then, so that a table is scanned again only once it has changed. The kept
+        results hold no value read from the tables: only categories, counts and column names.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -240,6 +255,11 @@ def add_ConnectionDataServiceServicer_to_server(servicer, server):
                     servicer.DetectPiiInConnectionData,
                     request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.SerializeToString,
+            ),
+            'GetPiiScanResults': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPiiScanResults,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsResponse.SerializeToString,
             ),
             'GetColumnSampleValues': grpc.unary_unary_rpc_method_handler(
                     servicer.GetColumnSampleValues,
@@ -529,6 +549,33 @@ class ConnectionDataService:
             '/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData',
             mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetPiiScanResults(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.ConnectionDataService/GetPiiScanResults',
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetPiiScanResultsResponse.FromString,
             options,
             channel_credentials,
             insecure,

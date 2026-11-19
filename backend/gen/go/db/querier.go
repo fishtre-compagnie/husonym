@@ -166,6 +166,10 @@ type Querier interface {
 	GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error)
 	GetPendingJobMappingChangesByJob(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)
 	GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error)
+	GetPiiScanResultsByConnection(ctx context.Context, db DBTX, connectionID pgtype.UUID) ([]HusonymApiPiiScanResult, error)
+	// The tables are given as two arrays of the same length, the schema of each table and its
+	// name, which unnest reads side by side.
+	GetPiiScanResultsByTables(ctx context.Context, db DBTX, arg GetPiiScanResultsByTablesParams) ([]HusonymApiPiiScanResult, error)
 	GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (HusonymApiRuncontext, error)
 	GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX, arg GetRunContextsByExternalIdSuffixParams) ([]HusonymApiRuncontext, error)
 	GetSendingSince(ctx context.Context, db DBTX) (pgtype.Timestamptz, error)
@@ -408,6 +412,7 @@ type Querier interface {
 	// The kind of setting is the generated column, so the conflict is named by its constraint
 	// rather than by the columns it covers.
 	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
+	UpsertPiiScanResult(ctx context.Context, db DBTX, arg UpsertPiiScanResultParams) error
 	// Creates the row when the start was never recorded; a row already finished keeps what it
 	// holds, so that the first end told wins. The moment the end is recorded is the clock of the
 	// database, and a second end does not move it. The category and the step of the error go with

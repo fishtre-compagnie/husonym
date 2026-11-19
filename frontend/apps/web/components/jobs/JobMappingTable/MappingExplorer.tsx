@@ -17,7 +17,7 @@ import {
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { ReactElement, ReactNode, useMemo, useState } from 'react';
 import ApplyDefaultTransformersButton from '../SchemaTable/ApplyDefaultTransformersButton';
 import ExportJobMappingsButton from '../SchemaTable/ExportJobMappingsButton';
@@ -60,6 +60,8 @@ interface Props {
   showPiiScan?: boolean;
   onScanContent?(): void;
   isScanningPii?: boolean;
+  // The oldest scan the screen shows, when the results were kept from an earlier visit.
+  lastScannedAt?: Date;
   sourceConnectionId?: string;
 }
 
@@ -117,6 +119,7 @@ export default function MappingExplorer(props: Props): ReactElement {
     showPiiScan,
     onScanContent,
     isScanningPii,
+    lastScannedAt,
     sourceConnectionId,
   } = props;
 
@@ -237,6 +240,7 @@ export default function MappingExplorer(props: Props): ReactElement {
             {showPiiScan && (
               <ScanButton
                 isScanning={!!isScanningPii}
+                lastScannedAt={lastScannedAt}
                 onScan={() => onScanContent?.()}
               />
             )}
@@ -502,28 +506,40 @@ function Toolbar(props: {
 
 function ScanButton(props: {
   isScanning: boolean;
+  lastScannedAt?: Date;
   onScan(): void;
 }): ReactElement {
-  const { isScanning, onScan } = props;
+  const { isScanning, lastScannedAt, onScan } = props;
   // Without the pii_detection feature the API refuses every table: the button is
   // greyed and the notice beneath the toolbar says why.
   const { allowed } = useLicenseFeature('pii_detection');
   const t = useTranslations('mapping.jobMappingTable.explorer');
+  const format = useFormatter();
+  const date = lastScannedAt
+    ? format.dateTime(lastScannedAt, { dateStyle: 'medium' })
+    : undefined;
   return (
-    <Button
-      variant="outline"
-      type="button"
-      disabled={isScanning || !allowed}
-      onClick={onScan}
-      title={t('scanTitle')}
-    >
-      {isScanning ? (
-        <ReloadIcon className="size-3.5 animate-spin" />
-      ) : (
-        <MagnifyingGlassIcon className="size-3.5" />
+    <>
+      {date && !isScanning && (
+        <span className="text-xs whitespace-nowrap text-muted-foreground">
+          {t('scannedOn', { date })}
+        </span>
       )}
-      {isScanning ? t('scanning') : t('scan')}
-    </Button>
+      <Button
+        variant="outline"
+        type="button"
+        disabled={isScanning || !allowed}
+        onClick={onScan}
+        title={date ? t('scanTitleKept', { date }) : t('scanTitle')}
+      >
+        {isScanning ? (
+          <ReloadIcon className="size-3.5 animate-spin" />
+        ) : (
+          <MagnifyingGlassIcon className="size-3.5" />
+        )}
+        {isScanning ? t('scanning') : t('scan')}
+      </Button>
+    </>
   );
 }
 

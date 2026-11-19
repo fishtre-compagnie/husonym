@@ -21,6 +21,8 @@ type Service struct {
 	transformers Transformers
 	// sampleTimeout bounds each read of a sample for the PII scan; zero stands for the default.
 	sampleTimeout time.Duration
+	// scanResults keeps the content scans of the tables; nil keeps none.
+	scanResults ScanResults
 }
 
 type Config struct {
@@ -51,6 +53,7 @@ func New(
 	connectiondatabuilder connectiondata.ConnectionDataBuilder,
 	analyze presidio.Analyzer,
 	transformers Transformers,
+	scanResults ScanResults,
 ) *Service {
 	return &Service{
 		cfg:                   cfg,
@@ -58,5 +61,6 @@ func New(
 		connectiondatabuilder: connectiondatabuilder,
 		analyze:               analyze,
 		transformers:          transformers,
+		scanResults:           scanResults,
 	}
 }

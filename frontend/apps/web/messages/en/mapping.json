@@ -269,6 +269,8 @@
         "scanTitle": "Reads a sample of each column to find personal data, also in columns whose name says nothing. The suggested transformers are applied.",
         "scanning": "Scanning…",
         "scan": "Scan the content",
+        "scannedOn": "Scanned on {date}",
+        "scanTitleKept": "Results of the scan of {date}, kept while the tables do not change: a table added, or one whose columns change, is scanned by itself. Click to scan every table again.",
         "tableColumns": "{count, plural, one {# column} other {# columns}}",
         "personal": "{count} personal",
         "toDecide": "{count} to decide",

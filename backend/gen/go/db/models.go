@@ -213,6 +213,16 @@ type HusonymApiMysqlConnectionDatabasesCleared struct {
 	DatabaseName string
 }
 
+// Stores the last content scan of each table of a connection, and the columns the table had then
+type HusonymApiPiiScanResult struct {
+	ConnectionID pgtype.UUID
+	SchemaName   string
+	TableName    string
+	Columns      []byte
+	Result       []byte
+	ScannedAt    pgtype.Timestamptz
+}
+
 // Stores the usage of each run: counts and times, nothing a customer entered
 type HusonymApiRunUsage struct {
 	RunID              string
