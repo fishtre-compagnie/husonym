@@ -161,7 +161,9 @@ class ConnectionDataServiceServicer:
     def DetectPiiInConnectionData(self, request, context):
         """Scans sampled column content through Presidio to detect PII (deep scan).
         Complements the name-based heuristic returned by GetConnectionSchema.
-        A scan of every column of a table is kept, for GetPiiScanResults.
+        A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+        nothing the caller can see of the connection, so the call stays without side effects
+        as far as its callers are concerned.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

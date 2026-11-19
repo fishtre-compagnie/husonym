@@ -6517,6 +6517,154 @@ func (_c *MockQuerier_GetPersonalAccountByUserId_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// GetPiiScanResultsByConnection provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetPiiScanResultsByConnection(ctx context.Context, db DBTX, connectionID pgtype.UUID) ([]HusonymApiPiiScanResult, error) {
+	ret := _mock.Called(ctx, db, connectionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPiiScanResultsByConnection")
+	}
+
+	var r0 []HusonymApiPiiScanResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiPiiScanResult, error)); ok {
+		return returnFunc(ctx, db, connectionID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiPiiScanResult); ok {
+		r0 = returnFunc(ctx, db, connectionID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiPiiScanResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, connectionID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetPiiScanResultsByConnection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPiiScanResultsByConnection'
+type MockQuerier_GetPiiScanResultsByConnection_Call struct {
+	*mock.Call
+}
+
+// GetPiiScanResultsByConnection is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - connectionID pgtype.UUID
+func (_e *MockQuerier_Expecter) GetPiiScanResultsByConnection(ctx any, db any, connectionID any) *MockQuerier_GetPiiScanResultsByConnection_Call {
+	return &MockQuerier_GetPiiScanResultsByConnection_Call{Call: _e.mock.On("GetPiiScanResultsByConnection", ctx, db, connectionID)}
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByConnection_Call) Run(run func(ctx context.Context, db DBTX, connectionID pgtype.UUID)) *MockQuerier_GetPiiScanResultsByConnection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByConnection_Call) Return(husonymApiPiiScanResults []HusonymApiPiiScanResult, err error) *MockQuerier_GetPiiScanResultsByConnection_Call {
+	_c.Call.Return(husonymApiPiiScanResults, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByConnection_Call) RunAndReturn(run func(ctx context.Context, db DBTX, connectionID pgtype.UUID) ([]HusonymApiPiiScanResult, error)) *MockQuerier_GetPiiScanResultsByConnection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPiiScanResultsByTables provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetPiiScanResultsByTables(ctx context.Context, db DBTX, arg GetPiiScanResultsByTablesParams) ([]HusonymApiPiiScanResult, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPiiScanResultsByTables")
+	}
+
+	var r0 []HusonymApiPiiScanResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetPiiScanResultsByTablesParams) ([]HusonymApiPiiScanResult, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetPiiScanResultsByTablesParams) []HusonymApiPiiScanResult); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiPiiScanResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetPiiScanResultsByTablesParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetPiiScanResultsByTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPiiScanResultsByTables'
+type MockQuerier_GetPiiScanResultsByTables_Call struct {
+	*mock.Call
+}
+
+// GetPiiScanResultsByTables is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetPiiScanResultsByTablesParams
+func (_e *MockQuerier_Expecter) GetPiiScanResultsByTables(ctx any, db any, arg any) *MockQuerier_GetPiiScanResultsByTables_Call {
+	return &MockQuerier_GetPiiScanResultsByTables_Call{Call: _e.mock.On("GetPiiScanResultsByTables", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByTables_Call) Run(run func(ctx context.Context, db DBTX, arg GetPiiScanResultsByTablesParams)) *MockQuerier_GetPiiScanResultsByTables_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetPiiScanResultsByTablesParams
+		if args[2] != nil {
+			arg2 = args[2].(GetPiiScanResultsByTablesParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByTables_Call) Return(husonymApiPiiScanResults []HusonymApiPiiScanResult, err error) *MockQuerier_GetPiiScanResultsByTables_Call {
+	_c.Call.Return(husonymApiPiiScanResults, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetPiiScanResultsByTables_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetPiiScanResultsByTablesParams) ([]HusonymApiPiiScanResult, error)) *MockQuerier_GetPiiScanResultsByTables_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRunContextByKey provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (HusonymApiRuncontext, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -13799,6 +13947,69 @@ func (_c *MockQuerier_UpsertAccountSetting_Call) Return(husonymApiAccountSetting
 }
 
 func (_c *MockQuerier_UpsertAccountSetting_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)) *MockQuerier_UpsertAccountSetting_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertPiiScanResult provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) UpsertPiiScanResult(ctx context.Context, db DBTX, arg UpsertPiiScanResultParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertPiiScanResult")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertPiiScanResultParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_UpsertPiiScanResult_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertPiiScanResult'
+type MockQuerier_UpsertPiiScanResult_Call struct {
+	*mock.Call
+}
+
+// UpsertPiiScanResult is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg UpsertPiiScanResultParams
+func (_e *MockQuerier_Expecter) UpsertPiiScanResult(ctx any, db any, arg any) *MockQuerier_UpsertPiiScanResult_Call {
+	return &MockQuerier_UpsertPiiScanResult_Call{Call: _e.mock.On("UpsertPiiScanResult", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_UpsertPiiScanResult_Call) Run(run func(ctx context.Context, db DBTX, arg UpsertPiiScanResultParams)) *MockQuerier_UpsertPiiScanResult_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 UpsertPiiScanResultParams
+		if args[2] != nil {
+			arg2 = args[2].(UpsertPiiScanResultParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertPiiScanResult_Call) Return(err error) *MockQuerier_UpsertPiiScanResult_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertPiiScanResult_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertPiiScanResultParams) error) *MockQuerier_UpsertPiiScanResult_Call {
 	_c.Call.Return(run)
 	return _c
 }

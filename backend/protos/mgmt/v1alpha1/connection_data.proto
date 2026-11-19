@@ -675,7 +675,9 @@ service ConnectionDataService {
   }
   // Scans sampled column content through Presidio to detect PII (deep scan).
   // Complements the name-based heuristic returned by GetConnectionSchema.
-  // A scan of every column of a table is kept, for GetPiiScanResults.
+  // A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+  // nothing the caller can see of the connection, so the call stays without side effects
+  // as far as its callers are concerned.
   rpc DetectPiiInConnectionData(DetectPiiInConnectionDataRequest) returns (DetectPiiInConnectionDataResponse) {
     option (mgmt.v1alpha1.requires) = {
       all_of: [
@@ -683,7 +685,7 @@ service ConnectionDataService {
         PERMISSION_CONNECTION_VIEW_SENSITIVE
       ]
     };
-    option idempotency_level = IDEMPOTENT;
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns the last content scan of the tables of a connection, with the columns each
   // table had then, so that a table is scanned again only once it has changed. The kept

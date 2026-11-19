@@ -10284,7 +10284,7 @@
             },
             {
               "name": "DetectPiiInConnectionData",
-              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.\nA scan of every column of a table is kept, for GetPiiScanResults.",
+              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.\nA scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes\nnothing the caller can see of the connection, so the call stays without side effects\nas far as its callers are concerned.",
               "requestType": "DetectPiiInConnectionDataRequest",
               "requestLongType": "DetectPiiInConnectionDataRequest",
               "requestFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
@@ -10294,7 +10294,7 @@
               "responseFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
               "responseStreaming": false,
               "options": {
-                "idempotency_level": "IDEMPOTENT"
+                "idempotency_level": "NO_SIDE_EFFECTS"
               }
             },
             {

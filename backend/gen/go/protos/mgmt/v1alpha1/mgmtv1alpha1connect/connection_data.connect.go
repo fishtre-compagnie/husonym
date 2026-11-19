@@ -101,7 +101,9 @@ type ConnectionDataServiceClient interface {
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
 	// Scans sampled column content through Presidio to detect PII (deep scan).
 	// Complements the name-based heuristic returned by GetConnectionSchema.
-	// A scan of every column of a table is kept, for GetPiiScanResults.
+	// A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+	// nothing the caller can see of the connection, so the call stays without side effects
+	// as far as its callers are concerned.
 	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
 	// Returns the last content scan of the tables of a connection, with the columns each
 	// table had then, so that a table is scanned again only once it has changed. The kept
@@ -192,7 +194,7 @@ func NewConnectionDataServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+ConnectionDataServiceDetectPiiInConnectionDataProcedure,
 			connect.WithSchema(connectionDataServiceMethods.ByName("DetectPiiInConnectionData")),
-			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getPiiScanResults: connect.NewClient[v1alpha1.GetPiiScanResultsRequest, v1alpha1.GetPiiScanResultsResponse](
@@ -341,7 +343,9 @@ type ConnectionDataServiceHandler interface {
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
 	// Scans sampled column content through Presidio to detect PII (deep scan).
 	// Complements the name-based heuristic returned by GetConnectionSchema.
-	// A scan of every column of a table is kept, for GetPiiScanResults.
+	// A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+	// nothing the caller can see of the connection, so the call stays without side effects
+	// as far as its callers are concerned.
 	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
 	// Returns the last content scan of the tables of a connection, with the columns each
 	// table had then, so that a table is scanned again only once it has changed. The kept
@@ -428,7 +432,7 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 		ConnectionDataServiceDetectPiiInConnectionDataProcedure,
 		svc.DetectPiiInConnectionData,
 		connect.WithSchema(connectionDataServiceMethods.ByName("DetectPiiInConnectionData")),
-		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	connectionDataServiceGetPiiScanResultsHandler := connect.NewUnaryHandler(

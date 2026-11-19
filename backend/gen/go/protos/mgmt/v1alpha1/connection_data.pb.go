@@ -4588,7 +4588,7 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\v\x92\xb5\x18\x04\n" +
 	"\x02\x05\x06\x90\x02\x01\x12\x8b\x01\n" +
 	"\x19DetectPiiInConnectionData\x12/.mgmt.v1alpha1.DetectPiiInConnectionDataRequest\x1a0.mgmt.v1alpha1.DetectPiiInConnectionDataResponse\"\v\x92\xb5\x18\x04\n" +
-	"\x02\x05\x06\x90\x02\x02\x12s\n" +
+	"\x02\x05\x06\x90\x02\x01\x12s\n" +
 	"\x11GetPiiScanResults\x12'.mgmt.v1alpha1.GetPiiScanResultsRequest\x1a(.mgmt.v1alpha1.GetPiiScanResultsResponse\"\v\x92\xb5\x18\x04\n" +
 	"\x02\x05\x06\x90\x02\x01\x12\x7f\n" +
 	"\x15GetColumnSampleValues\x12+.mgmt.v1alpha1.GetColumnSampleValuesRequest\x1a,.mgmt.v1alpha1.GetColumnSampleValuesResponse\"\v\x92\xb5\x18\x04\n" +
