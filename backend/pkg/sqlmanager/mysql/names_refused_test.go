@@ -80,7 +80,7 @@ func Test_ConstraintColumns_ExpressionKeyPartIsAccepted(t *testing.T) {
 // which comes as a JSON null. The statement of such a key is built as it is for any column,
 // with an empty name, so that the server answers it alone and the table is still read.
 func Test_ConstraintColumns_AKeyColumnTheUserCannotSee(t *testing.T) {
-	ordinary := func(name string) oddName { return oddName{name: name, lit: "'" + name + "'"} }
+	ordinary := func(name string) oddName { return oddName{name: name, ident: "`" + name + "`", lit: "'" + name + "'"} }
 	cases := []struct {
 		name              string
 		kind              string

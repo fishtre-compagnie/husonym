@@ -198,12 +198,25 @@ func Test_IdempotentWrappers_AreConcurrencySafe(t *testing.T) {
 }
 
 // procedureNameOf reads the name back out of a generated statement, which starts with
-// "DROP PROCEDURE IF EXISTS `<name>`;".
+// "DROP PROCEDURE IF EXISTS `db`.`<name>`;".
 func procedureNameOf(t *testing.T, stmt string) string {
 	t.Helper()
-	_, rest, found := strings.Cut(stmt, "DROP PROCEDURE IF EXISTS `")
+	_, rest, found := strings.Cut(stmt, "DROP PROCEDURE IF EXISTS `db`.`")
 	require.True(t, found)
 	name, _, found := strings.Cut(rest, "`;")
 	require.True(t, found)
 	return name
+}
+
+// A connection that names no database leaves the session without a default one, so a
+// procedure written without its database is refused with "No database selected" (1046).
+func Test_IdempotentWrappers_QualifyTheProcedure(t *testing.T) {
+	constraint := wrapIdempotentConstraint("shop", "t", "uniq", "ALTER TABLE `shop`.`t` ADD CONSTRAINT `uniq` UNIQUE (`a`);")
+	index := wrapIdempotentIndex("shop", "t", &indexInfo{indexName: "idx", indexType: "BTREE", columns: []string{"a"}})
+	for _, stmt := range []string{constraint, index} {
+		for _, verb := range []string{"DROP PROCEDURE IF EXISTS ", "CREATE PROCEDURE ", "CALL ", "DROP PROCEDURE "} {
+			require.Contains(t, stmt, verb+"`shop`.`Husonym", verb)
+			require.NotContains(t, stmt, verb+"`Husonym", verb)
+		}
+	}
 }

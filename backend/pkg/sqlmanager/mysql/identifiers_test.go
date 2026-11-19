@@ -51,9 +51,9 @@ func withFixedProcedureName(t *testing.T, statement string) string {
 }
 
 func wantConstraintProcedure(schema, table, constraint oddName, alter string) string {
-	return "DROP PROCEDURE IF EXISTS `PROC`;\n" +
+	return "DROP PROCEDURE IF EXISTS " + schema.ident + ".`PROC`;\n" +
 		"\n" +
-		"CREATE PROCEDURE `PROC`()\n" +
+		"CREATE PROCEDURE " + schema.ident + ".`PROC`()\n" +
 		"BEGIN\n" +
 		"    DECLARE constraint_exists INT DEFAULT 0;\n" +
 		"\n" +
@@ -68,14 +68,14 @@ func wantConstraintProcedure(schema, table, constraint oddName, alter string) st
 		"    END IF;\n" +
 		"END;\n" +
 		"\n" +
-		"CALL `PROC`();\n" +
-		"DROP PROCEDURE `PROC`;"
+		"CALL " + schema.ident + ".`PROC`();\n" +
+		"DROP PROCEDURE " + schema.ident + ".`PROC`;"
 }
 
 func wantIndexProcedure(schema, table, index oddName, alter string) string {
-	return "DROP PROCEDURE IF EXISTS `PROC`;\n" +
+	return "DROP PROCEDURE IF EXISTS " + schema.ident + ".`PROC`;\n" +
 		"\n" +
-		"CREATE PROCEDURE `PROC`()\n" +
+		"CREATE PROCEDURE " + schema.ident + ".`PROC`()\n" +
 		"BEGIN\n" +
 		"    DECLARE index_exists INT DEFAULT 0;\n" +
 		"\n" +
@@ -90,8 +90,8 @@ func wantIndexProcedure(schema, table, index oddName, alter string) string {
 		"    END IF;\n" +
 		"END;\n" +
 		"\n" +
-		"CALL `PROC`();\n" +
-		"DROP PROCEDURE `PROC`;"
+		"CALL " + schema.ident + ".`PROC`();\n" +
+		"DROP PROCEDURE " + schema.ident + ".`PROC`;"
 }
 
 func jsonNames(t *testing.T, names ...string) json.RawMessage {
