@@ -13,6 +13,7 @@ import {
   VirtualForeignConstraintFormValues,
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation } from '@connectrpc/connect-query';
 import {
   ColumnPiiDetection,
@@ -51,6 +52,7 @@ import { useOnExportMappings } from './useOnExportMappings';
 import MappingScopeBar from './MappingScopeBar';
 import MappingExplorer from '../JobMappingTable/MappingExplorer';
 import { handleDataTypeBadge } from './util';
+import { oldestScan, scanStillHolds } from './pii-scan-cache';
 
 interface Props {
   data: JobMappingFormValues[];
@@ -154,6 +156,14 @@ export function SchemaTable(props: Props): ReactElement {
     useLicenseFeature('pii_detection');
   const { mutateAsync: detectPii } = useMutation(
     ConnectionDataService.method.detectPiiInConnectionData
+  );
+  const { mutateAsync: getPiiScanResults } = useMutation(
+    ConnectionDataService.method.getPiiScanResults
+  );
+  // La date de l'analyse de chaque table : celle conservée par l'API pour une table
+  // reprise telle quelle, l'heure du scan pour une table analysée ici.
+  const [scanDates, setScanDates] = useState<Record<string, Date | undefined>>(
+    {}
   );
 
   // Verdict RGPD d'une colonne. Après le scan de contenu, c'est celui que le
@@ -319,6 +329,7 @@ export function SchemaTable(props: Props): ReactElement {
       };
       setContentPii({});
       setNotScannedTables(new Set());
+      setScanDates({});
     }
 
     const tables = new Map<string, { schema: string; table: string }>();
@@ -333,11 +344,53 @@ export function SchemaTable(props: Props): ReactElement {
       return;
     }
 
+    // Les tables que ce passage couvre, scan conservé repris ou scan relancé.
+    const covered = new Set(tables.keys());
+
     setIsScanningPii(true);
     try {
       const next: Record<string, ColumnPiiVerdict> = {};
       // Ce que le scan a trouvé, avant réconciliation : c'est ce qu'il annonce.
       const found: ColumnPiiDetection[] = [];
+      // Ce que les scans conservés avaient trouvé : appliqué comme un scan neuf, mais
+      // pas réannoncé à chaque ouverture de l'écran.
+      const foundBefore: ColumnPiiDetection[] = [];
+      const dates: Record<string, Date | undefined> = {};
+
+      // Le scan de fond reprend d'abord ce que l'API a conservé : une table déjà
+      // analysée n'est échantillonnée de nouveau que si elle a changé depuis (une
+      // colonne ajoutée, retirée, ou d'un autre type). Le bouton, lui, relance tout.
+      if (scope === 'new') {
+        try {
+          const kept = await getPiiScanResults({
+            connectionId: sourceConnectionId,
+            tables: [...tables.values()],
+          });
+          for (const result of kept.results) {
+            const key = `${result.schema}.${result.table}`;
+            const current = schema[key]?.schemas.map((c) => ({
+              column: c.column,
+              dataType: c.dataType,
+            }));
+            if (!tables.has(key) || !scanStillHolds(result.columns, current)) {
+              continue;
+            }
+            result.verdicts.forEach((v) => {
+              next[`${v.schema}.${v.table}.${v.column}`] = v;
+            });
+            foundBefore.push(...result.detections);
+            dates[key] = result.scannedAt
+              ? timestampDate(result.scannedAt)
+              : undefined;
+            tables.delete(key);
+            scanned.current.tables.add(key);
+          }
+        } catch (e) {
+          // Sans les scans conservés, l'écran analyse comme avant.
+          console.warn('scans conservés illisibles', e);
+        }
+      }
+
       // Une table en échec (volumineuse, verrouillée, droits manquants) ne doit pas
       // emporter le scan des autres : sur une base réelle, une seule table lente
       // faisait perdre le résultat de toutes celles déjà analysées.
@@ -354,6 +407,7 @@ export function SchemaTable(props: Props): ReactElement {
             next[`${v.schema}.${v.table}.${v.column}`] = v;
           });
           found.push(...resp.detections);
+          dates[`${sch}.${tbl}`] = new Date();
         } catch (e) {
           failed.push(`${sch}.${tbl}`);
           console.warn(`scan PII impossible sur ${sch}.${tbl}`, e);
@@ -365,7 +419,7 @@ export function SchemaTable(props: Props): ReactElement {
       }
       // Les détections des tables qui viennent d'être analysées remplacent les
       // leurs ; celles des autres tables, analysées plus tôt, sont conservées.
-      const rescanned = new Set(tables.keys());
+      const rescanned = covered;
       setContentPii((prev) => {
         const merged: Record<string, ColumnPiiVerdict> = {};
         Object.entries(prev).forEach(([key, value]) => {
@@ -380,6 +434,7 @@ export function SchemaTable(props: Props): ReactElement {
         const kept = [...prev].filter((table) => !rescanned.has(table));
         return new Set([...kept, ...failed]);
       });
+      setScanDates((prev) => ({ ...prev, ...dates }));
 
       // Les tables non analysées sont annoncées, et leurs colonnes portent le badge
       // « non analysée » : sans cela, l'absence de détection passerait pour une
@@ -413,7 +468,9 @@ export function SchemaTable(props: Props): ReactElement {
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
       // sur un modèle statistique ou un format ambigu ne le sont jamais : elles
       // s'affichent en badge orange pour que l'utilisateur lève le doute.
-      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(found) : 0;
+      const applied = applyPiiOnLoad
+        ? applyContentPiiSuggestions([...foundBefore, ...found])
+        : 0;
 
       const confirmed = found.filter(
         (d) => d.piiConfidence === PiiConfidence.CONFIRMED
@@ -507,6 +564,13 @@ export function SchemaTable(props: Props): ReactElement {
     isLicenseLoading,
     isPiiDetectionAllowed,
   ]);
+
+  // L'analyse la plus ancienne parmi les tables affichées : ce que l'écran montre
+  // peut dater d'elle, et le bouton la relance.
+  const lastScannedAt = useMemo(() => {
+    const tables = new Set(data.map((d) => `${d.schema}.${d.table}`));
+    return oldestScan([...tables].map((key) => scanDates[key]));
+  }, [data, scanDates]);
 
   const piiScanProps = {
     showPiiScan: !!sourceConnectionId,
@@ -680,6 +744,7 @@ export function SchemaTable(props: Props): ReactElement {
           onRemoveMissingSourceColumnMappings
         }
         {...piiScanProps}
+        lastScannedAt={lastScannedAt}
       />
     ) : (
       <JobMappingTable

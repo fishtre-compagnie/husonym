@@ -369,3 +369,56 @@ func Test_DetectPiiInConnectionData_NeedsThePiiDetectionFeature(t *testing.T) {
 		require.Len(t, resp.GetDetections(), 1)
 	})
 }
+
+// keptScans records what a scan keeps.
+type keptScans struct {
+	kept []string
+}
+
+func (k *keptScans) Keep(
+	_ context.Context,
+	connectionID, schema, table string,
+	columns []*mgmtv1alpha1.PiiScannedColumn,
+	_ *mgmtv1alpha1.DetectPiiInConnectionDataResponse,
+) error {
+	names := make([]string, 0, len(columns))
+	for _, c := range columns {
+		names = append(names, c.GetColumn()+":"+c.GetDataType())
+	}
+	k.kept = append(k.kept, connectionID+"/"+schema+"."+table+" "+strings.Join(names, ","))
+	return nil
+}
+
+func (k *keptScans) Read(
+	context.Context, string, []*mgmtv1alpha1.PiiScanTable,
+) ([]*mgmtv1alpha1.PiiScanResult, error) {
+	return nil, nil
+}
+
+// The scan of a whole table is kept with the columns the table has, for the next visit of the
+// mapping to read back; the scan of some of its columns is not the table's, and is not kept.
+func Test_DetectPiiInConnectionData_KeepsTheScanOfAWholeTable(t *testing.T) {
+	kept := &keptScans{}
+	service := &Service{scanResults: kept}
+	columns := []*mgmtv1alpha1.DatabaseColumn{
+		{Column: "name", DataType: "text"}, {Column: "status", DataType: "text"},
+	}
+	whole := &mgmtv1alpha1.DetectPiiInConnectionDataRequest{ConnectionId: "c1", Schema: "public", Table: "clients"}
+	result := &mgmtv1alpha1.DetectPiiInConnectionDataResponse{}
+
+	require.NoError(t, service.keepScan(t.Context(), whole, columns, map[string]struct{}{}, result))
+	require.Equal(t, []string{"c1/public.clients name:text,status:text"}, kept.kept)
+
+	someColumns := &mgmtv1alpha1.DetectPiiInConnectionDataRequest{
+		ConnectionId: "c1", Schema: "public", Table: "clients", Columns: []string{"name"},
+	}
+	require.NoError(t, service.keepScan(t.Context(), someColumns, columns, map[string]struct{}{}, result))
+	// The analyzer failing on a column leaves the table to be scanned again.
+	require.NoError(t, service.keepScan(t.Context(), whole, columns, map[string]struct{}{"name": {}}, result))
+	// Without the columns of the table, nothing tells later whether it changed.
+	require.NoError(t, service.keepScan(t.Context(), whole, nil, map[string]struct{}{}, result))
+	require.Len(t, kept.kept, 1)
+
+	// A service that keeps nothing scans as before.
+	require.NoError(t, (&Service{}).keepScan(t.Context(), whole, columns, map[string]struct{}{}, result))
+}

@@ -9459,6 +9459,66 @@
           ]
         },
         {
+          "name": "GetPiiScanResultsRequest",
+          "longName": "GetPiiScanResultsRequest",
+          "fullName": "mgmt.v1alpha1.GetPiiScanResultsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection the tables were scanned on.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tables",
+              "description": "The tables wanted. Empty means every table of the connection that was scanned.",
+              "label": "repeated",
+              "type": "PiiScanTable",
+              "longType": "PiiScanTable",
+              "fullType": "mgmt.v1alpha1.PiiScanTable",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetPiiScanResultsResponse",
+          "longName": "GetPiiScanResultsResponse",
+          "fullName": "mgmt.v1alpha1.GetPiiScanResultsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "results",
+              "description": "One result per table that was scanned; a table never scanned has none.",
+              "label": "repeated",
+              "type": "PiiScanResult",
+              "longType": "PiiScanResult",
+              "fullType": "mgmt.v1alpha1.PiiScanResult",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetTableRowCountRequest",
           "longName": "GetTableRowCountRequest",
           "fullName": "mgmt.v1alpha1.GetTableRowCountRequest",
@@ -9633,6 +9693,162 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": []
+        },
+        {
+          "name": "PiiScanResult",
+          "longName": "PiiScanResult",
+          "fullName": "mgmt.v1alpha1.PiiScanResult",
+          "description": "The last content scan of a table, as DetectPiiInConnectionData returned it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "columns",
+              "description": "The columns of the table and their types when it was scanned. When the table has\nother columns now, or a column of another type, the result no longer describes it\nand the table is to be scanned again.",
+              "label": "repeated",
+              "type": "PiiScannedColumn",
+              "longType": "PiiScannedColumn",
+              "fullType": "mgmt.v1alpha1.PiiScannedColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "detections",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnPiiDetection",
+              "longType": "ColumnPiiDetection",
+              "fullType": "mgmt.v1alpha1.ColumnPiiDetection",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "verdicts",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnPiiVerdict",
+              "longType": "ColumnPiiVerdict",
+              "fullType": "mgmt.v1alpha1.ColumnPiiVerdict",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "scanned_at",
+              "description": "",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "PiiScanTable",
+          "longName": "PiiScanTable",
+          "fullName": "mgmt.v1alpha1.PiiScanTable",
+          "description": "A table whose content scan is asked for.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "PiiScannedColumn",
+          "longName": "PiiScannedColumn",
+          "fullName": "mgmt.v1alpha1.PiiScannedColumn",
+          "description": "A column of a table, as it was when the content of the table was scanned.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "column",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_type",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         },
         {
           "name": "PostgresSchemaConfig",
@@ -10068,7 +10284,7 @@
             },
             {
               "name": "DetectPiiInConnectionData",
-              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.",
+              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.\nA scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes\nnothing the caller can see of the connection, so the call stays without side effects\nas far as its callers are concerned.",
               "requestType": "DetectPiiInConnectionDataRequest",
               "requestLongType": "DetectPiiInConnectionDataRequest",
               "requestFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
@@ -10076,6 +10292,21 @@
               "responseType": "DetectPiiInConnectionDataResponse",
               "responseLongType": "DetectPiiInConnectionDataResponse",
               "responseFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetPiiScanResults",
+              "description": "Returns the last content scan of the tables of a connection, with the columns each\ntable had then, so that a table is scanned again only once it has changed. The kept\nresults hold no value read from the tables: only categories, counts and column names.",
+              "requestType": "GetPiiScanResultsRequest",
+              "requestLongType": "GetPiiScanResultsRequest",
+              "requestFullType": "mgmt.v1alpha1.GetPiiScanResultsRequest",
+              "requestStreaming": false,
+              "responseType": "GetPiiScanResultsResponse",
+              "responseLongType": "GetPiiScanResultsResponse",
+              "responseFullType": "mgmt.v1alpha1.GetPiiScanResultsResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

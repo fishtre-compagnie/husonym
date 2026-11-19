@@ -116,6 +116,13 @@ components:
       additionalProperties:
         $ref: '#/components/schemas/google.protobuf.Value'
       description: A JSON object whose property values may be any JSON value.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
     google.protobuf.Value:
       oneOf:
         - type: "null"
@@ -1493,6 +1500,33 @@ components:
              constraints and the functions in scope — never any of the column's values.
       title: GetJavascriptDraftPromptResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetPiiScanResultsRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection the tables were scanned on.
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.PiiScanTable'
+          title: tables
+          description: The tables wanted. Empty means every table of the connection that was scanned.
+      title: GetPiiScanResultsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetPiiScanResultsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.PiiScanResult'
+          title: results
+          description: One result per table that was scanned; a table never scanned has none.
+      title: GetPiiScanResultsResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetTableRowCountRequest:
       type: object
       properties:
@@ -1774,6 +1808,67 @@ components:
         - PII_DETECTION_METHOD_CONTENT
         - PII_DETECTION_METHOD_FORMAT
       description: Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
+    mgmt.v1alpha1.PiiScanResult:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+        table:
+          type: string
+          title: table
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.PiiScannedColumn'
+          title: columns
+          description: |-
+            The columns of the table and their types when it was scanned. When the table has
+             other columns now, or a column of another type, the result no longer describes it
+             and the table is to be scanned again.
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiDetection'
+          title: detections
+        verdicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiVerdict'
+          title: verdicts
+        scannedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: scanned_at
+      title: PiiScanResult
+      additionalProperties: false
+      description: The last content scan of a table, as DetectPiiInConnectionData returned it.
+    mgmt.v1alpha1.PiiScanTable:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+        table:
+          type: string
+          title: table
+          minLength: 1
+      title: PiiScanTable
+      additionalProperties: false
+      description: A table whose content scan is asked for.
+    mgmt.v1alpha1.PiiScannedColumn:
+      type: object
+      properties:
+        column:
+          type: string
+          title: column
+        dataType:
+          type: string
+          title: data_type
+      title: PiiScannedColumn
+      additionalProperties: false
+      description: A column of a table, as it was when the content of the table was scanned.
     mgmt.v1alpha1.PostgresSchemaConfig:
       type: object
       title: PostgresSchemaConfig
@@ -2870,6 +2965,9 @@ paths:
       description: |-
         Scans sampled column content through Presidio to detect PII (deep scan).
          Complements the name-based heuristic returned by GetConnectionSchema.
+         A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+         nothing the caller can see of the connection, so the call stays without side effects
+         as far as its callers are concerned.
       operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
       parameters:
         - name: Connect-Protocol-Version
@@ -3273,6 +3371,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetJavascriptDraftPromptResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetPiiScanResults:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetPiiScanResults
+      description: |-
+        Returns the last content scan of the tables of a connection, with the columns each
+         table had then, so that a table is scanned again only once it has changed. The kept
+         results hold no value read from the tables: only categories, counts and column names.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetPiiScanResults
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetPiiScanResultsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetPiiScanResultsResponse'
   /mgmt.v1alpha1.ConnectionDataService/GetTableRowCount:
     post:
       tags:

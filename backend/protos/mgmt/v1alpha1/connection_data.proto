@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "mgmt/v1alpha1/permission.proto";
 import "mgmt/v1alpha1/transformer.proto";
 
@@ -441,6 +442,43 @@ message DetectPiiInConnectionDataResponse {
   repeated ColumnPiiVerdict verdicts = 2;
 }
 
+// A table whose content scan is asked for.
+message PiiScanTable {
+  string schema = 1 [(buf.validate.field).string.min_len = 1];
+  string table = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// A column of a table, as it was when the content of the table was scanned.
+message PiiScannedColumn {
+  string column = 1;
+  string data_type = 2;
+}
+
+// The last content scan of a table, as DetectPiiInConnectionData returned it.
+message PiiScanResult {
+  string schema = 1;
+  string table = 2;
+  // The columns of the table and their types when it was scanned. When the table has
+  // other columns now, or a column of another type, the result no longer describes it
+  // and the table is to be scanned again.
+  repeated PiiScannedColumn columns = 3;
+  repeated ColumnPiiDetection detections = 4;
+  repeated ColumnPiiVerdict verdicts = 5;
+  google.protobuf.Timestamp scanned_at = 6;
+}
+
+message GetPiiScanResultsRequest {
+  // The unique identifier of the connection the tables were scanned on.
+  string connection_id = 1 [(buf.validate.field).string.uuid = true];
+  // The tables wanted. Empty means every table of the connection that was scanned.
+  repeated PiiScanTable tables = 2;
+}
+
+message GetPiiScanResultsResponse {
+  // One result per table that was scanned; a table never scanned has none.
+  repeated PiiScanResult results = 1;
+}
+
 // Échantillon des valeurs d'une colonne, pour lever un doute sur une détection
 // RGPD en regardant les données réelles.
 message GetColumnSampleValuesRequest {
@@ -637,7 +675,22 @@ service ConnectionDataService {
   }
   // Scans sampled column content through Presidio to detect PII (deep scan).
   // Complements the name-based heuristic returned by GetConnectionSchema.
+  // A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+  // nothing the caller can see of the connection, so the call stays without side effects
+  // as far as its callers are concerned.
   rpc DetectPiiInConnectionData(DetectPiiInConnectionDataRequest) returns (DetectPiiInConnectionDataResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Returns the last content scan of the tables of a connection, with the columns each
+  // table had then, so that a table is scanned again only once it has changed. The kept
+  // results hold no value read from the tables: only categories, counts and column names.
+  rpc GetPiiScanResults(GetPiiScanResultsRequest) returns (GetPiiScanResultsResponse) {
     option (mgmt.v1alpha1.requires) = {
       all_of: [
         PERMISSION_CONNECTION_VIEW,

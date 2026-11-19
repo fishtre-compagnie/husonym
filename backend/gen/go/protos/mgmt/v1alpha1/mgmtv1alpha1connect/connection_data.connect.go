@@ -63,6 +63,9 @@ const (
 	// ConnectionDataServiceDetectPiiInConnectionDataProcedure is the fully-qualified name of the
 	// ConnectionDataService's DetectPiiInConnectionData RPC.
 	ConnectionDataServiceDetectPiiInConnectionDataProcedure = "/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData"
+	// ConnectionDataServiceGetPiiScanResultsProcedure is the fully-qualified name of the
+	// ConnectionDataService's GetPiiScanResults RPC.
+	ConnectionDataServiceGetPiiScanResultsProcedure = "/mgmt.v1alpha1.ConnectionDataService/GetPiiScanResults"
 	// ConnectionDataServiceGetColumnSampleValuesProcedure is the fully-qualified name of the
 	// ConnectionDataService's GetColumnSampleValues RPC.
 	ConnectionDataServiceGetColumnSampleValuesProcedure = "/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues"
@@ -98,7 +101,14 @@ type ConnectionDataServiceClient interface {
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
 	// Scans sampled column content through Presidio to detect PII (deep scan).
 	// Complements the name-based heuristic returned by GetConnectionSchema.
+	// A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+	// nothing the caller can see of the connection, so the call stays without side effects
+	// as far as its callers are concerned.
 	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
+	// Returns the last content scan of the tables of a connection, with the columns each
+	// table had then, so that a table is scanned again only once it has changed. The kept
+	// results hold no value read from the tables: only categories, counts and column names.
+	GetPiiScanResults(context.Context, *connect.Request[v1alpha1.GetPiiScanResultsRequest]) (*connect.Response[v1alpha1.GetPiiScanResultsResponse], error)
 	// Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
 	// une détection RGPD en consultant les données réelles.
 	GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error)
@@ -187,6 +197,13 @@ func NewConnectionDataServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getPiiScanResults: connect.NewClient[v1alpha1.GetPiiScanResultsRequest, v1alpha1.GetPiiScanResultsResponse](
+			httpClient,
+			baseURL+ConnectionDataServiceGetPiiScanResultsProcedure,
+			connect.WithSchema(connectionDataServiceMethods.ByName("GetPiiScanResults")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getColumnSampleValues: connect.NewClient[v1alpha1.GetColumnSampleValuesRequest, v1alpha1.GetColumnSampleValuesResponse](
 			httpClient,
 			baseURL+ConnectionDataServiceGetColumnSampleValuesProcedure,
@@ -223,6 +240,7 @@ type connectionDataServiceClient struct {
 	getTableRowCount              *connect.Client[v1alpha1.GetTableRowCountRequest, v1alpha1.GetTableRowCountResponse]
 	getAllSchemasAndTables        *connect.Client[v1alpha1.GetAllSchemasAndTablesRequest, v1alpha1.GetAllSchemasAndTablesResponse]
 	detectPiiInConnectionData     *connect.Client[v1alpha1.DetectPiiInConnectionDataRequest, v1alpha1.DetectPiiInConnectionDataResponse]
+	getPiiScanResults             *connect.Client[v1alpha1.GetPiiScanResultsRequest, v1alpha1.GetPiiScanResultsResponse]
 	getColumnSampleValues         *connect.Client[v1alpha1.GetColumnSampleValuesRequest, v1alpha1.GetColumnSampleValuesResponse]
 	getJavascriptDraftPrompt      *connect.Client[v1alpha1.GetJavascriptDraftPromptRequest, v1alpha1.GetJavascriptDraftPromptResponse]
 	previewColumnTransformer      *connect.Client[v1alpha1.PreviewColumnTransformerRequest, v1alpha1.PreviewColumnTransformerResponse]
@@ -280,6 +298,11 @@ func (c *connectionDataServiceClient) DetectPiiInConnectionData(ctx context.Cont
 	return c.detectPiiInConnectionData.CallUnary(ctx, req)
 }
 
+// GetPiiScanResults calls mgmt.v1alpha1.ConnectionDataService.GetPiiScanResults.
+func (c *connectionDataServiceClient) GetPiiScanResults(ctx context.Context, req *connect.Request[v1alpha1.GetPiiScanResultsRequest]) (*connect.Response[v1alpha1.GetPiiScanResultsResponse], error) {
+	return c.getPiiScanResults.CallUnary(ctx, req)
+}
+
 // GetColumnSampleValues calls mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues.
 func (c *connectionDataServiceClient) GetColumnSampleValues(ctx context.Context, req *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error) {
 	return c.getColumnSampleValues.CallUnary(ctx, req)
@@ -320,7 +343,14 @@ type ConnectionDataServiceHandler interface {
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
 	// Scans sampled column content through Presidio to detect PII (deep scan).
 	// Complements the name-based heuristic returned by GetConnectionSchema.
+	// A scan of every column of a table is kept, for GetPiiScanResults. Keeping it changes
+	// nothing the caller can see of the connection, so the call stays without side effects
+	// as far as its callers are concerned.
 	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
+	// Returns the last content scan of the tables of a connection, with the columns each
+	// table had then, so that a table is scanned again only once it has changed. The kept
+	// results hold no value read from the tables: only categories, counts and column names.
+	GetPiiScanResults(context.Context, *connect.Request[v1alpha1.GetPiiScanResultsRequest]) (*connect.Response[v1alpha1.GetPiiScanResultsResponse], error)
 	// Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
 	// une détection RGPD en consultant les données réelles.
 	GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error)
@@ -405,6 +435,13 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	connectionDataServiceGetPiiScanResultsHandler := connect.NewUnaryHandler(
+		ConnectionDataServiceGetPiiScanResultsProcedure,
+		svc.GetPiiScanResults,
+		connect.WithSchema(connectionDataServiceMethods.ByName("GetPiiScanResults")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	connectionDataServiceGetColumnSampleValuesHandler := connect.NewUnaryHandler(
 		ConnectionDataServiceGetColumnSampleValuesProcedure,
 		svc.GetColumnSampleValues,
@@ -448,6 +485,8 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 			connectionDataServiceGetAllSchemasAndTablesHandler.ServeHTTP(w, r)
 		case ConnectionDataServiceDetectPiiInConnectionDataProcedure:
 			connectionDataServiceDetectPiiInConnectionDataHandler.ServeHTTP(w, r)
+		case ConnectionDataServiceGetPiiScanResultsProcedure:
+			connectionDataServiceGetPiiScanResultsHandler.ServeHTTP(w, r)
 		case ConnectionDataServiceGetColumnSampleValuesProcedure:
 			connectionDataServiceGetColumnSampleValuesHandler.ServeHTTP(w, r)
 		case ConnectionDataServiceGetJavascriptDraftPromptProcedure:
@@ -501,6 +540,10 @@ func (UnimplementedConnectionDataServiceHandler) GetAllSchemasAndTables(context.
 
 func (UnimplementedConnectionDataServiceHandler) DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData is not implemented"))
+}
+
+func (UnimplementedConnectionDataServiceHandler) GetPiiScanResults(context.Context, *connect.Request[v1alpha1.GetPiiScanResultsRequest]) (*connect.Response[v1alpha1.GetPiiScanResultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.GetPiiScanResults is not implemented"))
 }
 
 func (UnimplementedConnectionDataServiceHandler) GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error) {

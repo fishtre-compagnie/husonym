@@ -853,6 +853,7 @@ func serve(ctx context.Context) error {
 			PiiText: presidioClients.piiText,
 			License: eelicense,
 		},
+		v1alpha1_connectiondataservice.NewScanResults(db),
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewConnectionDataServiceHandler(

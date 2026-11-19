@@ -218,12 +218,18 @@ func (s *Service) DetectPiiInConnectionData(
 		}
 	}
 
-	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
+	result := &mgmtv1alpha1.DetectPiiInConnectionDataResponse{
 		Detections: detections,
 		Verdicts: verdicts(
 			req.Msg.GetSchema(), req.Msg.GetTable(), tableColumns, wanted, detections, content.notAnalyzed,
 		),
-	}), nil
+	}
+	// Not keeping the scan costs the next visit a scan, not this one its answer.
+	if err := s.keepScan(ctx, req.Msg, tableColumns, content.notAnalyzed, result); err != nil {
+		logger.Warn(fmt.Sprintf("unable to keep the content scan of %s.%s: %v",
+			req.Msg.GetSchema(), req.Msg.GetTable(), err))
+	}
+	return connect.NewResponse(result), nil
 }
 
 // verdicts reconciles each column's name with what the scan found in it: every column of the
