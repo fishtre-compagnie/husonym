@@ -857,7 +857,9 @@ export default function DataSyncConnectionCard({
                     remove(indices);
                   }
 
-                  if (!source || isDynamoDBConnection(source)) {
+                  // Only a DynamoDB source writes to DynamoDB destinations: their table
+                  // mappings are the only destination options to clean up.
+                  if (!source || !isDynamoDBConnection(source)) {
                     return;
                   }
 
@@ -877,7 +879,7 @@ export default function DataSyncConnectionCard({
 
                         return {
                           ...opt,
-                          dynamoDb: {
+                          dynamodb: {
                             ...opt.dynamodb,
                             tableMappings: updatedTableMappings,
                           },
