@@ -121,6 +121,13 @@ func (s *MongoDbConnectionDataService) GetTableSchema(
 	return nil, errors.ErrUnsupported
 }
 
+func (s *MongoDbConnectionDataService) GetTablesSchema(
+	ctx context.Context,
+	tables []TableIdentifier,
+) ([]*mgmtv1alpha1.DatabaseColumn, error) {
+	return nil, errors.ErrUnsupported
+}
+
 func (s *MongoDbConnectionDataService) GetTableRowCount(
 	ctx context.Context,
 	schema, table string,

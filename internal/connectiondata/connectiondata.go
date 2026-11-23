@@ -43,6 +43,12 @@ type ConnectionDataService interface {
 		ctx context.Context,
 		schema, table string,
 	) ([]*mgmtv1alpha1.DatabaseColumn, error)
+	// GetTablesSchema reads the columns of several tables at once, the way GetTableSchema reads
+	// those of one. A table that does not exist has no column.
+	GetTablesSchema(
+		ctx context.Context,
+		tables []TableIdentifier,
+	) ([]*mgmtv1alpha1.DatabaseColumn, error)
 	GetTableRowCount(ctx context.Context, schema, table string, whereClause *string) (int64, error)
 	SampleData(
 		ctx context.Context,

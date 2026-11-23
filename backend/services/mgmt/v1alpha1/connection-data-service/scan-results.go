@@ -8,7 +8,9 @@ import (
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -172,7 +174,79 @@ func (s *Service) GetPiiScanResults(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&mgmtv1alpha1.GetPiiScanResultsResponse{Results: results}), nil
+	return connect.NewResponse(&mgmtv1alpha1.GetPiiScanResultsResponse{
+		Results: s.stillHolding(ctx, connResp.Msg.GetConnection(), results),
+	}), nil
+}
+
+// stillHolding keeps the results that still describe their table: the columns the table has now
+// are read the way the scan read them when it was kept (GetTableSchema), and a table whose
+// columns or column types changed since is left out, to be scanned again.
+//
+// The check is made here, and not by the screen against the schema it shows, because the two
+// readers do not write the types alike: on MySQL the schema of the connection gives varchar where
+// the table's own reader gives varchar(255). Compared across them, every table looked changed.
+//
+// When the columns cannot be read, no result is returned: one that cannot be checked is not
+// vouched for, and the screen scans as it did before any was kept.
+func (s *Service) stillHolding(
+	ctx context.Context,
+	connection *mgmtv1alpha1.Connection,
+	results []*mgmtv1alpha1.PiiScanResult,
+) []*mgmtv1alpha1.PiiScanResult {
+	if len(results) == 0 {
+		return results
+	}
+	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connection)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("unable to check the kept content scans against the source: %v", err))
+		return []*mgmtv1alpha1.PiiScanResult{}
+	}
+	tables := make([]connectiondata.TableIdentifier, 0, len(results))
+	for _, r := range results {
+		tables = append(tables, connectiondata.TableIdentifier{Schema: r.GetSchema(), Table: r.GetTable()})
+	}
+	columns, err := dataconn.GetTablesSchema(ctx, tables)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("unable to check the kept content scans against the source: %v", err))
+		return []*mgmtv1alpha1.PiiScanResult{}
+	}
+	current := map[string][]*mgmtv1alpha1.PiiScannedColumn{}
+	for _, c := range columns {
+		key := c.GetSchema() + "." + c.GetTable()
+		current[key] = append(current[key], &mgmtv1alpha1.PiiScannedColumn{
+			Column: c.GetColumn(), DataType: c.GetDataType(),
+		})
+	}
+	holding := make([]*mgmtv1alpha1.PiiScanResult, 0, len(results))
+	for _, r := range results {
+		if sameColumns(r.GetColumns(), current[r.GetSchema()+"."+r.GetTable()]) {
+			holding = append(holding, r)
+		}
+	}
+	return holding
+}
+
+// sameColumns tells whether a table has the columns a scan saw: the same names, each of the same
+// type. A table whose columns are unknown is not taken for unchanged.
+func sameColumns(scanned, current []*mgmtv1alpha1.PiiScannedColumn) bool {
+	if len(current) == 0 || len(scanned) != len(current) {
+		return false
+	}
+	types := make(map[string]string, len(scanned))
+	for _, c := range scanned {
+		types[c.GetColumn()] = c.GetDataType()
+	}
+	if len(types) != len(scanned) {
+		return false
+	}
+	for _, c := range current {
+		if t, ok := types[c.GetColumn()]; !ok || t != c.GetDataType() {
+			return false
+		}
+	}
+	return true
 }
 
 // keepScan keeps the scan of a whole table, whose columns are known. A scan of some columns
