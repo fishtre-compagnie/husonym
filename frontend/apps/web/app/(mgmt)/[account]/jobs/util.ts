@@ -1503,7 +1503,7 @@ function setDefaultSchemaFormValues(
           }
           return {
             destinationId: dest.id,
-            dynamoDb: {
+            dynamodb: {
               tableMappings: dest.options.config.value.tableMappings.map(
                 (tm) => ({
                   sourceTable: tm.sourceTable,

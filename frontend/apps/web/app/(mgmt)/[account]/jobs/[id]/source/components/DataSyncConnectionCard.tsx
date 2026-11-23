@@ -539,16 +539,30 @@ export default function DataSyncConnectionCard({
 
   const onDestinationTableMappingUpdate = useCallback(
     (req: OnTableMappingUpdateRequest) => {
+      // A new value rather than the one in the form changed in place: the save bar
+      // tells a change from the values the job was loaded with.
       const destOpts = form.getValues('destinationOptions');
-      const destOpt = destOpts.find(
-        (d) => d.destinationId === req.destinationId
-      );
-      const tm = destOpt?.dynamodb?.tableMappings.find(
-        (tm) => tm.sourceTable === req.souceName
-      );
-      if (tm) {
-        tm.destinationTable = req.tableName;
-        form.setValue('destinationOptions', destOpts);
+      let found = false;
+      const updated = destOpts.map((d) => {
+        if (d.destinationId !== req.destinationId || !d.dynamodb) {
+          return d;
+        }
+        return {
+          ...d,
+          dynamodb: {
+            ...d.dynamodb,
+            tableMappings: d.dynamodb.tableMappings.map((tm) => {
+              if (tm.sourceTable !== req.souceName) {
+                return tm;
+              }
+              found = true;
+              return { ...tm, destinationTable: req.tableName };
+            }),
+          },
+        };
+      });
+      if (found) {
+        form.setValue('destinationOptions', updated, { shouldDirty: true });
       }
       return;
     },
@@ -843,7 +857,9 @@ export default function DataSyncConnectionCard({
                     remove(indices);
                   }
 
-                  if (!source || isDynamoDBConnection(source)) {
+                  // Only a DynamoDB source writes to DynamoDB destinations: their table
+                  // mappings are the only destination options to clean up.
+                  if (!source || !isDynamoDBConnection(source)) {
                     return;
                   }
 
@@ -863,7 +879,7 @@ export default function DataSyncConnectionCard({
 
                         return {
                           ...opt,
-                          dynamoDb: {
+                          dynamodb: {
                             ...opt.dynamodb,
                             tableMappings: updatedTableMappings,
                           },
@@ -874,7 +890,9 @@ export default function DataSyncConnectionCard({
                     .filter(
                       (opt) => (opt.dynamodb?.tableMappings.length ?? 0) > 0
                     );
-                  form.setValue('destinationOptions', updatedDestOpts);
+                  form.setValue('destinationOptions', updatedDestOpts, {
+                    shouldDirty: true,
+                  });
                 }}
                 onEditMappings={(values, index) => {
                   if (index >= 0 && index < formMappings.length) {
@@ -951,7 +969,9 @@ export default function DataSyncConnectionCard({
                     }
                   );
 
-                  form.setValue('destinationOptions', updated);
+                  form.setValue('destinationOptions', updated, {
+                    shouldDirty: true,
+                  });
                 }}
                 destinationDetailsRecord={getDestinationDetailsRecord(
                   dynamoDBDestinations,

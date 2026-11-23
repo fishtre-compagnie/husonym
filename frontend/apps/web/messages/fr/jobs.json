@@ -410,7 +410,7 @@
       "saveBar": {
         "region": "Enregistrer le job",
         "unsaved": "Modifications non enregistrées",
-        "saved": "Aucune modification non enregistrée",
+        "saved": "Tout est enregistré",
         "save": "Enregistrer"
       },
       "import": {

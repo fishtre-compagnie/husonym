@@ -11,8 +11,8 @@ interface Props {
 }
 
 // The bar that saves the page's form, held at the bottom of the screen while the
-// long mapping scrolls. It tells whether something is still to save; the button
-// stays enabled either way, as the Update button it replaces did.
+// long mapping scrolls. It tells whether something is still to save, and the
+// button saves only then, as the Save button of the source does.
 export default function SaveBar({
   isDirty,
   isSubmitting,
@@ -33,7 +33,7 @@ export default function SaveBar({
           <StatusDot tone={isDirty ? 'warn' : 'ok'} />
           {isDirty ? t('unsaved') : t('saved')}
         </span>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={!isDirty || isSubmitting}>
           {isSubmitting && <Spinner />}
           {label ?? t('save')}
         </Button>

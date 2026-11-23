@@ -410,7 +410,7 @@
       "saveBar": {
         "region": "Save the job",
         "unsaved": "Unsaved changes",
-        "saved": "No unsaved changes",
+        "saved": "Everything is saved",
         "save": "Save"
       },
       "import": {
