@@ -522,6 +522,74 @@ func (_c *MockConnectionDataService_GetTableSchema_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// GetTablesSchema provides a mock function for the type MockConnectionDataService
+func (_mock *MockConnectionDataService) GetTablesSchema(ctx context.Context, tables []TableIdentifier) ([]*mgmtv1alpha1.DatabaseColumn, error) {
+	ret := _mock.Called(ctx, tables)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTablesSchema")
+	}
+
+	var r0 []*mgmtv1alpha1.DatabaseColumn
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []TableIdentifier) ([]*mgmtv1alpha1.DatabaseColumn, error)); ok {
+		return returnFunc(ctx, tables)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []TableIdentifier) []*mgmtv1alpha1.DatabaseColumn); ok {
+		r0 = returnFunc(ctx, tables)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*mgmtv1alpha1.DatabaseColumn)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []TableIdentifier) error); ok {
+		r1 = returnFunc(ctx, tables)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockConnectionDataService_GetTablesSchema_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTablesSchema'
+type MockConnectionDataService_GetTablesSchema_Call struct {
+	*mock.Call
+}
+
+// GetTablesSchema is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tables []TableIdentifier
+func (_e *MockConnectionDataService_Expecter) GetTablesSchema(ctx any, tables any) *MockConnectionDataService_GetTablesSchema_Call {
+	return &MockConnectionDataService_GetTablesSchema_Call{Call: _e.mock.On("GetTablesSchema", ctx, tables)}
+}
+
+func (_c *MockConnectionDataService_GetTablesSchema_Call) Run(run func(ctx context.Context, tables []TableIdentifier)) *MockConnectionDataService_GetTablesSchema_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []TableIdentifier
+		if args[1] != nil {
+			arg1 = args[1].([]TableIdentifier)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockConnectionDataService_GetTablesSchema_Call) Return(databaseColumns []*mgmtv1alpha1.DatabaseColumn, err error) *MockConnectionDataService_GetTablesSchema_Call {
+	_c.Call.Return(databaseColumns, err)
+	return _c
+}
+
+func (_c *MockConnectionDataService_GetTablesSchema_Call) RunAndReturn(run func(ctx context.Context, tables []TableIdentifier) ([]*mgmtv1alpha1.DatabaseColumn, error)) *MockConnectionDataService_GetTablesSchema_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SampleColumn provides a mock function for the type MockConnectionDataService
 func (_mock *MockConnectionDataService) SampleColumn(ctx context.Context, stream SampleDataStream, schema string, table string, column string, numRows uint) error {
 	ret := _mock.Called(ctx, stream, schema, table, column, numRows)

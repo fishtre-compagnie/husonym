@@ -544,6 +544,16 @@ func (s *SQLConnectionDataService) GetTableSchema(
 	ctx context.Context,
 	schema, table string,
 ) ([]*mgmtv1alpha1.DatabaseColumn, error) {
+	return s.GetTablesSchema(ctx, []TableIdentifier{{Schema: schema, Table: table}})
+}
+
+func (s *SQLConnectionDataService) GetTablesSchema(
+	ctx context.Context,
+	tables []TableIdentifier,
+) ([]*mgmtv1alpha1.DatabaseColumn, error) {
+	if len(tables) == 0 {
+		return []*mgmtv1alpha1.DatabaseColumn{}, nil
+	}
 	db, err := s.sqlmanager.NewSqlConnection(
 		ctx,
 		connectionmanager.NewUniqueSession(),
@@ -554,9 +564,11 @@ func (s *SQLConnectionDataService) GetTableSchema(
 		return nil, err
 	}
 	defer db.Db().Close()
-	schematable := &sqlmanager_shared.SchemaTable{Schema: schema, Table: table}
-	dbschema, err := db.Db().
-		GetDatabaseTableSchemasBySchemasAndTables(ctx, []*sqlmanager_shared.SchemaTable{schematable})
+	schematables := make([]*sqlmanager_shared.SchemaTable, 0, len(tables))
+	for _, t := range tables {
+		schematables = append(schematables, &sqlmanager_shared.SchemaTable{Schema: t.Schema, Table: t.Table})
+	}
+	dbschema, err := db.Db().GetDatabaseTableSchemasBySchemasAndTables(ctx, schematables)
 	if err != nil {
 		return nil, err
 	}

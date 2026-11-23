@@ -52,7 +52,7 @@ import { useOnExportMappings } from './useOnExportMappings';
 import MappingScopeBar from './MappingScopeBar';
 import MappingExplorer from '../JobMappingTable/MappingExplorer';
 import { handleDataTypeBadge } from './util';
-import { oldestScan, scanStillHolds } from './pii-scan-cache';
+import { oldestScan } from './pii-scan-cache';
 
 interface Props {
   data: JobMappingFormValues[];
@@ -357,9 +357,10 @@ export function SchemaTable(props: Props): ReactElement {
       const foundBefore: ColumnPiiDetection[] = [];
       const dates: Record<string, Date | undefined> = {};
 
-      // Le scan de fond reprend d'abord ce que l'API a conservé : une table déjà
-      // analysée n'est échantillonnée de nouveau que si elle a changé depuis (une
-      // colonne ajoutée, retirée, ou d'un autre type). Le bouton, lui, relance tout.
+      // Le scan de fond reprend d'abord ce que l'API a conservé. L'API ne rend que
+      // les scans qui décrivent encore leur table (mêmes colonnes, mêmes types, lus
+      // comme le scan les a lus) : une table absente de sa réponse a changé, ou n'a
+      // jamais été analysée, et l'est ici. Le bouton, lui, relance tout.
       if (scope === 'new') {
         try {
           const kept = await getPiiScanResults({
@@ -368,11 +369,7 @@ export function SchemaTable(props: Props): ReactElement {
           });
           for (const result of kept.results) {
             const key = `${result.schema}.${result.table}`;
-            const current = schema[key]?.schemas.map((c) => ({
-              column: c.column,
-              dataType: c.dataType,
-            }));
-            if (!tables.has(key) || !scanStillHolds(result.columns, current)) {
+            if (!tables.has(key)) {
               continue;
             }
             result.verdicts.forEach((v) => {
