@@ -73,16 +73,28 @@ func scanResultsFrom(
 	return resp.Msg.GetResults()
 }
 
-// A kept scan is returned while its table has the columns it saw, read the way the scan read
-// them: on MySQL that is the whole column type, varchar(255) and not varchar. The screen used to
-// compare it with the schema of the connection, which writes varchar, and scanned every table
-// again on each visit.
+// statuses gives the status of each result, by table.
+func statuses(results []*mgmtv1alpha1.PiiScanResult) map[string]mgmtv1alpha1.PiiScanStatus {
+	byTable := make(map[string]mgmtv1alpha1.PiiScanStatus, len(results))
+	for _, r := range results {
+		byTable[r.GetTable()] = r.GetStatus()
+	}
+	return byTable
+}
+
+func detectionOn(table string) *mgmtv1alpha1.ColumnPiiDetection {
+	return &mgmtv1alpha1.ColumnPiiDetection{Schema: "shop", Table: table, Column: "email"}
+}
+
+// A kept scan holds while its table has the columns it saw, read the way the scan read them: on
+// MySQL that is the whole column type, varchar(255) and not varchar. The screen used to compare it
+// with the schema of the connection, which writes varchar, and scanned every table again on each
+// visit.
 func Test_GetPiiScanResults_KeepsTheScansOfUnchangedTables(t *testing.T) {
+	customers := keptScanOf("customers", "email", "varchar(255)", "active", "tinyint(1)")
+	customers.Detections = []*mgmtv1alpha1.ColumnPiiDetection{detectionOn("customers")}
 	results := scanResultsFrom(t,
-		[]*mgmtv1alpha1.PiiScanResult{
-			keptScanOf("customers", "email", "varchar(255)", "active", "tinyint(1)"),
-			keptScanOf("orders", "id", "int unsigned"),
-		},
+		[]*mgmtv1alpha1.PiiScanResult{customers, keptScanOf("orders", "id", "int unsigned")},
 		[]*mgmtv1alpha1.DatabaseColumn{
 			sourceColumn("customers", "active", "tinyint(1)"),
 			sourceColumn("customers", "email", "varchar(255)"),
@@ -91,23 +103,29 @@ func Test_GetPiiScanResults_KeepsTheScansOfUnchangedTables(t *testing.T) {
 		nil,
 	)
 
-	require.Len(t, results, 2)
-	require.Equal(t, "customers", results[0].GetTable())
-	require.Equal(t, "orders", results[1].GetTable())
+	require.Equal(t, map[string]mgmtv1alpha1.PiiScanStatus{
+		"customers": mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_HOLDS,
+		"orders":    mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_HOLDS,
+	}, statuses(results))
+	require.Len(t, results[0].GetDetections(), 1, "a scan that holds keeps what it found")
 }
 
-// A table whose columns changed since its scan is left out, to be scanned again: a column of
-// another type, even of another length, one added, one removed, or the table gone.
-func Test_GetPiiScanResults_LeavesOutTheTablesThatChanged(t *testing.T) {
-	results := scanResultsFrom(t,
-		[]*mgmtv1alpha1.PiiScanResult{
-			keptScanOf("lengthened", "country", "varchar(2)"),
-			keptScanOf("retyped", "active", "tinyint(1)"),
-			keptScanOf("widened", "email", "varchar(255)"),
-			keptScanOf("narrowed", "email", "varchar(255)", "phone", "varchar(20)"),
-			keptScanOf("dropped", "email", "varchar(255)"),
-			keptScanOf("unchanged", "email", "varchar(255)"),
-		},
+// A table whose columns changed since its scan is told changed, and its result carries no
+// detection, to be scanned again: a column of another type, even of another length, one added,
+// one removed, or the table gone.
+func Test_GetPiiScanResults_TellsTheTablesThatChanged(t *testing.T) {
+	kept := []*mgmtv1alpha1.PiiScanResult{
+		keptScanOf("lengthened", "country", "varchar(2)"),
+		keptScanOf("retyped", "active", "tinyint(1)"),
+		keptScanOf("widened", "email", "varchar(255)"),
+		keptScanOf("narrowed", "email", "varchar(255)", "phone", "varchar(20)"),
+		keptScanOf("dropped", "email", "varchar(255)"),
+		keptScanOf("unchanged", "email", "varchar(255)"),
+	}
+	for _, r := range kept {
+		r.Detections = []*mgmtv1alpha1.ColumnPiiDetection{detectionOn(r.GetTable())}
+	}
+	results := scanResultsFrom(t, kept,
 		[]*mgmtv1alpha1.DatabaseColumn{
 			sourceColumn("lengthened", "country", "varchar(255)"),
 			sourceColumn("retyped", "active", "tinyint(4)"),
@@ -119,20 +137,37 @@ func Test_GetPiiScanResults_LeavesOutTheTablesThatChanged(t *testing.T) {
 		nil,
 	)
 
-	require.Len(t, results, 1)
-	require.Equal(t, "unchanged", results[0].GetTable())
+	changed := mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_CHANGED
+	require.Equal(t, map[string]mgmtv1alpha1.PiiScanStatus{
+		"lengthened": changed,
+		"retyped":    changed,
+		"widened":    changed,
+		"narrowed":   changed,
+		"dropped":    changed,
+		"unchanged":  mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_HOLDS,
+	}, statuses(results))
+	for _, r := range results {
+		if r.GetStatus() == changed {
+			require.Empty(t, r.GetDetections(), "%s: a changed table is not described by its old scan", r.GetTable())
+		}
+	}
 }
 
-// A kept scan that cannot be checked against the source is not vouched for: none is returned,
-// and the screen scans as it did before any was kept.
-func Test_GetPiiScanResults_ReturnsNoneWhenTheSourceCannotBeRead(t *testing.T) {
+// A kept scan that cannot be checked against the source is returned as it was kept, unverified:
+// a failed check is no sign of a change, and taking it for one had the screen scan every table of
+// the job again.
+func Test_GetPiiScanResults_ReturnsTheScansUnverifiedWhenTheSourceCannotBeRead(t *testing.T) {
+	customers := keptScanOf("customers", "email", "varchar(255)")
+	customers.Detections = []*mgmtv1alpha1.ColumnPiiDetection{detectionOn("customers")}
 	results := scanResultsFrom(t,
-		[]*mgmtv1alpha1.PiiScanResult{keptScanOf("customers", "email", "varchar(255)")},
+		[]*mgmtv1alpha1.PiiScanResult{customers},
 		nil,
 		errors.New("connection refused"),
 	)
 
-	require.Empty(t, results)
+	require.Len(t, results, 1)
+	require.Equal(t, mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_UNVERIFIED, results[0].GetStatus())
+	require.Len(t, results[0].GetDetections(), 1)
 }
 
 func Test_sameColumns(t *testing.T) {

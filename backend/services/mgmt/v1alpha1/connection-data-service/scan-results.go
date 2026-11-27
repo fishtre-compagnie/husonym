@@ -175,21 +175,23 @@ func (s *Service) GetPiiScanResults(
 		return nil, err
 	}
 	return connect.NewResponse(&mgmtv1alpha1.GetPiiScanResultsResponse{
-		Results: s.stillHolding(ctx, connResp.Msg.GetConnection(), results),
+		Results: s.checkAgainstSource(ctx, connResp.Msg.GetConnection(), results),
 	}), nil
 }
 
-// stillHolding keeps the results that still describe their table: the columns the table has now
-// are read the way the scan read them when it was kept (GetTableSchema), and a table whose
-// columns or column types changed since is left out, to be scanned again.
+// checkAgainstSource tells of each result whether it still describes its table: the columns the
+// table has now are read the way the scan read them when it was kept (GetTableSchema). A result
+// whose table has the same columns, of the same types, holds. One whose table changed since, or
+// is gone, is returned without its detections, to be scanned again.
 //
 // The check is made here, and not by the screen against the schema it shows, because the two
 // readers do not write the types alike: on MySQL the schema of the connection gives varchar where
 // the table's own reader gives varchar(255). Compared across them, every table looked changed.
 //
-// When the columns cannot be read, no result is returned: one that cannot be checked is not
-// vouched for, and the screen scans as it did before any was kept.
-func (s *Service) stillHolding(
+// When the columns cannot be read, the results are returned as they were kept, unverified. A
+// failed check says nothing of the tables: taking it for a change had the screen scan every
+// table of the job again, each time the source was slow to answer.
+func (s *Service) checkAgainstSource(
 	ctx context.Context,
 	connection *mgmtv1alpha1.Connection,
 	results []*mgmtv1alpha1.PiiScanResult,
@@ -198,10 +200,16 @@ func (s *Service) stillHolding(
 		return results
 	}
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+	unverified := func(err error) []*mgmtv1alpha1.PiiScanResult {
+		logger.Warn(fmt.Sprintf("unable to check the kept content scans against the source: %v", err))
+		for _, r := range results {
+			r.Status = mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_UNVERIFIED
+		}
+		return results
+	}
 	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connection)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("unable to check the kept content scans against the source: %v", err))
-		return []*mgmtv1alpha1.PiiScanResult{}
+		return unverified(err)
 	}
 	tables := make([]connectiondata.TableIdentifier, 0, len(results))
 	for _, r := range results {
@@ -209,8 +217,7 @@ func (s *Service) stillHolding(
 	}
 	columns, err := dataconn.GetTablesSchema(ctx, tables)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("unable to check the kept content scans against the source: %v", err))
-		return []*mgmtv1alpha1.PiiScanResult{}
+		return unverified(err)
 	}
 	current := map[string][]*mgmtv1alpha1.PiiScannedColumn{}
 	for _, c := range columns {
@@ -219,13 +226,16 @@ func (s *Service) stillHolding(
 			Column: c.GetColumn(), DataType: c.GetDataType(),
 		})
 	}
-	holding := make([]*mgmtv1alpha1.PiiScanResult, 0, len(results))
 	for _, r := range results {
 		if sameColumns(r.GetColumns(), current[r.GetSchema()+"."+r.GetTable()]) {
-			holding = append(holding, r)
+			r.Status = mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_HOLDS
+			continue
 		}
+		r.Status = mgmtv1alpha1.PiiScanStatus_PII_SCAN_STATUS_CHANGED
+		r.Detections = nil
+		r.Verdicts = nil
 	}
-	return holding
+	return results
 }
 
 // sameColumns tells whether a table has the columns a scan saw: the same names, each of the same

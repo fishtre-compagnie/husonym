@@ -62,6 +62,8 @@ interface Props {
   isScanningPii?: boolean;
   // The oldest scan the screen shows, when the results were kept from an earlier visit.
   lastScannedAt?: Date;
+  // Some of the kept scans could not be checked against the source, which did not answer.
+  hasUnverifiedScans?: boolean;
   sourceConnectionId?: string;
 }
 
@@ -120,6 +122,7 @@ export default function MappingExplorer(props: Props): ReactElement {
     onScanContent,
     isScanningPii,
     lastScannedAt,
+    hasUnverifiedScans,
     sourceConnectionId,
   } = props;
 
@@ -241,6 +244,7 @@ export default function MappingExplorer(props: Props): ReactElement {
               <ScanButton
                 isScanning={!!isScanningPii}
                 lastScannedAt={lastScannedAt}
+                unverified={!!hasUnverifiedScans}
                 onScan={() => onScanContent?.()}
               />
             )}
@@ -507,9 +511,10 @@ function Toolbar(props: {
 function ScanButton(props: {
   isScanning: boolean;
   lastScannedAt?: Date;
+  unverified: boolean;
   onScan(): void;
 }): ReactElement {
-  const { isScanning, lastScannedAt, onScan } = props;
+  const { isScanning, lastScannedAt, unverified, onScan } = props;
   // Without the pii_detection feature the API refuses every table: the button is
   // greyed and the notice beneath the toolbar says why.
   const { allowed } = useLicenseFeature('pii_detection');
@@ -521,8 +526,12 @@ function ScanButton(props: {
   return (
     <>
       {date && !isScanning && (
-        <span className="text-xs whitespace-nowrap text-muted-foreground">
+        <span
+          className="text-xs whitespace-nowrap text-muted-foreground"
+          title={unverified ? t('scanUnverifiedTitle') : undefined}
+        >
           {t('scannedOn', { date })}
+          {unverified && ` · ${t('scanUnverified')}`}
         </span>
       )}
       <Button

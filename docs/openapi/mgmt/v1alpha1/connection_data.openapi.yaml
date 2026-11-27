@@ -1524,7 +1524,7 @@ components:
           items:
             $ref: '#/components/schemas/mgmt.v1alpha1.PiiScanResult'
           title: results
-          description: One result per table that was scanned; a table never scanned has none.
+          description: One result per table that was scanned, with its status; a table never scanned has none.
       title: GetPiiScanResultsResponse
       additionalProperties: false
     mgmt.v1alpha1.GetTableRowCountRequest:
@@ -1840,9 +1840,23 @@ components:
           allOf:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: scanned_at
+        status:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiScanStatus'
+          title: status
+          description: Whether the result still describes its table, checked against the source when it is read.
       title: PiiScanResult
       additionalProperties: false
       description: The last content scan of a table, as DetectPiiInConnectionData returned it.
+    mgmt.v1alpha1.PiiScanStatus:
+      type: string
+      title: PiiScanStatus
+      enum:
+        - PII_SCAN_STATUS_UNSPECIFIED
+        - PII_SCAN_STATUS_HOLDS
+        - PII_SCAN_STATUS_CHANGED
+        - PII_SCAN_STATUS_UNVERIFIED
+      description: Whether a kept content scan still describes its table.
     mgmt.v1alpha1.PiiScanTable:
       type: object
       properties:

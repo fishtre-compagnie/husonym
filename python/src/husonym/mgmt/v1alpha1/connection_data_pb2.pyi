@@ -28,6 +28,13 @@ class PiiDetectionMethod(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PII_DETECTION_METHOD_CONTENT: _ClassVar[PiiDetectionMethod]
     PII_DETECTION_METHOD_FORMAT: _ClassVar[PiiDetectionMethod]
 
+class PiiScanStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PII_SCAN_STATUS_UNSPECIFIED: _ClassVar[PiiScanStatus]
+    PII_SCAN_STATUS_HOLDS: _ClassVar[PiiScanStatus]
+    PII_SCAN_STATUS_CHANGED: _ClassVar[PiiScanStatus]
+    PII_SCAN_STATUS_UNVERIFIED: _ClassVar[PiiScanStatus]
+
 class JavascriptDraftMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: _ClassVar[JavascriptDraftMode]
@@ -47,6 +54,10 @@ PII_DETECTION_METHOD_COLUMN_NAME: PiiDetectionMethod
 PII_DETECTION_METHOD_CHECKSUM: PiiDetectionMethod
 PII_DETECTION_METHOD_CONTENT: PiiDetectionMethod
 PII_DETECTION_METHOD_FORMAT: PiiDetectionMethod
+PII_SCAN_STATUS_UNSPECIFIED: PiiScanStatus
+PII_SCAN_STATUS_HOLDS: PiiScanStatus
+PII_SCAN_STATUS_CHANGED: PiiScanStatus
+PII_SCAN_STATUS_UNVERIFIED: PiiScanStatus
 JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: JavascriptDraftMode
 JAVASCRIPT_DRAFT_MODE_TRANSFORM: JavascriptDraftMode
 JAVASCRIPT_DRAFT_MODE_GENERATE: JavascriptDraftMode
@@ -563,20 +574,22 @@ class PiiScannedColumn(_message.Message):
     def __init__(self, column: _Optional[str] = ..., data_type: _Optional[str] = ...) -> None: ...
 
 class PiiScanResult(_message.Message):
-    __slots__ = ("schema", "table", "columns", "detections", "verdicts", "scanned_at")
+    __slots__ = ("schema", "table", "columns", "detections", "verdicts", "scanned_at", "status")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMNS_FIELD_NUMBER: _ClassVar[int]
     DETECTIONS_FIELD_NUMBER: _ClassVar[int]
     VERDICTS_FIELD_NUMBER: _ClassVar[int]
     SCANNED_AT_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     columns: _containers.RepeatedCompositeFieldContainer[PiiScannedColumn]
     detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
     verdicts: _containers.RepeatedCompositeFieldContainer[ColumnPiiVerdict]
     scanned_at: _timestamp_pb2.Timestamp
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[_Union[PiiScannedColumn, _Mapping]]] = ..., detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ..., verdicts: _Optional[_Iterable[_Union[ColumnPiiVerdict, _Mapping]]] = ..., scanned_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    status: PiiScanStatus
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[_Union[PiiScannedColumn, _Mapping]]] = ..., detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ..., verdicts: _Optional[_Iterable[_Union[ColumnPiiVerdict, _Mapping]]] = ..., scanned_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., status: _Optional[_Union[PiiScanStatus, str]] = ...) -> None: ...
 
 class GetPiiScanResultsRequest(_message.Message):
     __slots__ = ("connection_id", "tables")
