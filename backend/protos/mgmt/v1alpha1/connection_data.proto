@@ -465,6 +465,21 @@ message PiiScanResult {
   repeated ColumnPiiDetection detections = 4;
   repeated ColumnPiiVerdict verdicts = 5;
   google.protobuf.Timestamp scanned_at = 6;
+  // Whether the result still describes its table, checked against the source when it is read.
+  PiiScanStatus status = 7;
+}
+
+// Whether a kept content scan still describes its table.
+enum PiiScanStatus {
+  PII_SCAN_STATUS_UNSPECIFIED = 0;
+  // The table has the columns and the column types the scan saw: the result holds.
+  PII_SCAN_STATUS_HOLDS = 1;
+  // The table has other columns now, or a column of another type, or is gone: the result no
+  // longer describes it and carries no detection. The table is to be scanned again.
+  PII_SCAN_STATUS_CHANGED = 2;
+  // The source could not be read to check it. The result is returned as it was kept; a failed
+  // check is no sign that the table changed, so it is not a reason to scan it again.
+  PII_SCAN_STATUS_UNVERIFIED = 3;
 }
 
 message GetPiiScanResultsRequest {
@@ -475,7 +490,7 @@ message GetPiiScanResultsRequest {
 }
 
 message GetPiiScanResultsResponse {
-  // One result per table that was scanned; a table never scanned has none.
+  // One result per table that was scanned, with its status; a table never scanned has none.
   repeated PiiScanResult results = 1;
 }
 

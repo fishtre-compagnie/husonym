@@ -270,6 +270,8 @@
         "scanning": "Scanning…",
         "scan": "Scan the content",
         "scannedOn": "Scanned on {date}",
+        "scanUnverified": "not rechecked",
+        "scanUnverifiedTitle": "The source did not answer the check: these results are shown as they were kept, without knowing whether the tables changed since. Click “Scan the content” to scan them again.",
         "scanTitleKept": "Results of the scan of {date}, kept while the tables do not change: a table added, or one whose columns change, is scanned by itself. Click to scan every table again.",
         "tableColumns": "{count, plural, one {# column} other {# columns}}",
         "personal": "{count} personal",

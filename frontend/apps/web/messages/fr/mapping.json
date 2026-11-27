@@ -270,6 +270,8 @@
         "scanning": "Analyse…",
         "scan": "Analyser le contenu",
         "scannedOn": "Analysé le {date}",
+        "scanUnverified": "non revérifié",
+        "scanUnverifiedTitle": "La source n'a pas répondu à la vérification : ces résultats sont repris tels qu'ils ont été conservés, sans savoir si les tables ont changé depuis. Cliquez sur « Analyser le contenu » pour les réanalyser.",
         "scanTitleKept": "Résultats de l'analyse du {date}, conservés tant que les tables ne changent pas : une table ajoutée, ou dont une colonne change, est analysée d'elle-même. Cliquez pour réanalyser toutes les tables.",
         "tableColumns": "{count, plural, one {# colonne} other {# colonnes}}",
         "personal": "{count, plural, one {# personnelle} other {# personnelles}}",

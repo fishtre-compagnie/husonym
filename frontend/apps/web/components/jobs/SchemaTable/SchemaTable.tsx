@@ -23,6 +23,7 @@ import {
   JobMapping,
   JobMappingTransformerSchema,
   PiiConfidence,
+  PiiScanStatus,
   PiiDetectionMethod,
   TransformerSource,
   ValidateJobMappingsResponse,
@@ -152,6 +153,15 @@ export function SchemaTable(props: Props): ReactElement {
     new Set()
   );
   const [isScanningPii, setIsScanningPii] = useState(false);
+  // La lecture des scans conservés, avant toute analyse. Elle n'est pas montrée
+  // comme une analyse : rouvrir l'écran ne lit rien de la source, à part le schéma
+  // des tables, et n'a pas à afficher « Analyse… ».
+  const [isReadingKeptScans, setIsReadingKeptScans] = useState(false);
+  // Les tables dont le scan conservé n'a pas pu être revérifié contre la source :
+  // il est repris tel quel, et l'écran le dit.
+  const [unverifiedTables, setUnverifiedTables] = useState<Set<string>>(
+    new Set()
+  );
   const { allowed: isPiiDetectionAllowed, isLoading: isLicenseLoading } =
     useLicenseFeature('pii_detection');
   const { mutateAsync: detectPii } = useMutation(
@@ -329,6 +339,7 @@ export function SchemaTable(props: Props): ReactElement {
       };
       setContentPii({});
       setNotScannedTables(new Set());
+      setUnverifiedTables(new Set());
       setScanDates({});
     }
 
@@ -346,8 +357,14 @@ export function SchemaTable(props: Props): ReactElement {
 
     // Les tables que ce passage couvre, scan conservé repris ou scan relancé.
     const covered = new Set(tables.keys());
+    // Celles dont le scan conservé est repris sans avoir pu être revérifié.
+    const unverified = new Set<string>();
 
-    setIsScanningPii(true);
+    if (scope === 'new') {
+      setIsReadingKeptScans(true);
+    } else {
+      setIsScanningPii(true);
+    }
     try {
       const next: Record<string, ColumnPiiVerdict> = {};
       // Ce que le scan a trouvé, avant réconciliation : c'est ce qu'il annonce.
@@ -357,10 +374,14 @@ export function SchemaTable(props: Props): ReactElement {
       const foundBefore: ColumnPiiDetection[] = [];
       const dates: Record<string, Date | undefined> = {};
 
-      // Le scan de fond reprend d'abord ce que l'API a conservé. L'API ne rend que
-      // les scans qui décrivent encore leur table (mêmes colonnes, mêmes types, lus
-      // comme le scan les a lus) : une table absente de sa réponse a changé, ou n'a
-      // jamais été analysée, et l'est ici. Le bouton, lui, relance tout.
+      // Le scan de fond reprend d'abord ce que l'API a conservé. L'API dit de chaque
+      // scan s'il décrit encore sa table (mêmes colonnes, mêmes types, lus comme le
+      // scan les a lus). Seules sont analysées ici une table qui a changé et une
+      // table jamais analysée, absente de la réponse. Un scan que l'API n'a pas pu
+      // revérifier, la source ne répondant pas, est repris : l'échec d'une
+      // vérification ne dit pas que la table a changé, et le prendre pour un
+      // changement relançait l'analyse de toutes les tables du job. Le bouton,
+      // lui, relance tout.
       if (scope === 'new') {
         try {
           const kept = await getPiiScanResults({
@@ -369,8 +390,11 @@ export function SchemaTable(props: Props): ReactElement {
           });
           for (const result of kept.results) {
             const key = `${result.schema}.${result.table}`;
-            if (!tables.has(key)) {
+            if (!tables.has(key) || result.status === PiiScanStatus.CHANGED) {
               continue;
+            }
+            if (result.status === PiiScanStatus.UNVERIFIED) {
+              unverified.add(key);
             }
             result.verdicts.forEach((v) => {
               next[`${v.schema}.${v.table}.${v.column}`] = v;
@@ -386,6 +410,12 @@ export function SchemaTable(props: Props): ReactElement {
           // Sans les scans conservés, l'écran analyse comme avant.
           console.warn('scans conservés illisibles', e);
         }
+        setIsReadingKeptScans(false);
+      }
+
+      // L'état « Analyse… » ne s'affiche que s'il reste des tables à analyser.
+      if (tables.size > 0) {
+        setIsScanningPii(true);
       }
 
       // Une table en échec (volumineuse, verrouillée, droits manquants) ne doit pas
@@ -430,6 +460,10 @@ export function SchemaTable(props: Props): ReactElement {
       setNotScannedTables((prev) => {
         const kept = [...prev].filter((table) => !rescanned.has(table));
         return new Set([...kept, ...failed]);
+      });
+      setUnverifiedTables((prev) => {
+        const kept = [...prev].filter((table) => !rescanned.has(table));
+        return new Set([...kept, ...unverified]);
       });
       setScanDates((prev) => ({ ...prev, ...dates }));
 
@@ -506,6 +540,7 @@ export function SchemaTable(props: Props): ReactElement {
         })
       );
     } finally {
+      setIsReadingKeptScans(false);
       setIsScanningPii(false);
     }
   };
@@ -546,7 +581,12 @@ export function SchemaTable(props: Props): ReactElement {
   // chaque table et l'écran annoncer « N table(s) not scanned » sans dire pourquoi.
   // Il attend que la licence soit lue, pour ne pas partir avant de le savoir.
   useEffect(() => {
-    if (!sourceConnectionId || data.length === 0 || isScanningPii) {
+    if (
+      !sourceConnectionId ||
+      data.length === 0 ||
+      isScanningPii ||
+      isReadingKeptScans
+    ) {
       return;
     }
     if (isLicenseLoading || !isPiiDetectionAllowed) {
@@ -558,6 +598,7 @@ export function SchemaTable(props: Props): ReactElement {
     sourceConnectionId,
     data.length,
     isScanningPii,
+    isReadingKeptScans,
     isLicenseLoading,
     isPiiDetectionAllowed,
   ]);
@@ -568,6 +609,10 @@ export function SchemaTable(props: Props): ReactElement {
     const tables = new Set(data.map((d) => `${d.schema}.${d.table}`));
     return oldestScan([...tables].map((key) => scanDates[key]));
   }, [data, scanDates]);
+  const hasUnverifiedScans = useMemo(
+    () => data.some((d) => unverifiedTables.has(`${d.schema}.${d.table}`)),
+    [data, unverifiedTables]
+  );
 
   const piiScanProps = {
     showPiiScan: !!sourceConnectionId,
@@ -742,6 +787,7 @@ export function SchemaTable(props: Props): ReactElement {
         }
         {...piiScanProps}
         lastScannedAt={lastScannedAt}
+        hasUnverifiedScans={hasUnverifiedScans}
       />
     ) : (
       <JobMappingTable
